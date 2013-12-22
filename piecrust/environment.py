@@ -48,5 +48,6 @@ class Environment(object):
 
 
 class StandardEnvironment(Environment):
-    pass
+    def __init__(self):
+        super(StandardEnvironment, self).__init__()
 

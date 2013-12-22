@@ -1,13 +1,14 @@
 import logging
+from piecrust.pathutil import SiteNotFoundError
 
 
 logger = logging.getLogger(__name__)
 
 
 class CommandContext(object):
-    def __init__(self, args, app):
-        self.args = args
+    def __init__(self, app, args):
         self.app = app
+        self.args = args
 
 
 class ChefCommand(object):
@@ -22,16 +23,8 @@ class ChefCommand(object):
     def run(self, ctx):
         raise NotImplementedError()
 
-
-class RootCommand(ChefCommand):
-    def __init__(self):
-        super(RootCommand, self).__init__()
-        self.name = 'root'
-        self.description = "Gets the root directory of the current website."
-
-    def setupParser(self, parser):
-        pass
-
-    def run(self, ctx):
-        logger.info(ctx.app.root)
+    def _runFromChef(self, app, res):
+        if app.root is None and self.requires_website:
+            raise SiteNotFoundError()
+        self.run(CommandContext(app, res))
 

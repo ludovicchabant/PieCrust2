@@ -3,9 +3,9 @@ import os.path
 import logging
 import argparse
 from piecrust.app import PieCrust, PieCrustConfiguration, APP_VERSION
-from piecrust.commands.base import CommandContext
 from piecrust.environment import StandardEnvironment
 from piecrust.pathutil import SiteNotFoundError, find_app_root
+from piecrust.plugins.base import PluginLoader
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,9 @@ class NullPieCrust:
         self.theme_dir = None
         self.cache_dir = None
         self.config = PieCrustConfiguration()
-        self.env = StandardEnvironment(self)
+        self.plugin_loader = PluginLoader(self)
+        self.env = StandardEnvironment()
+        self.env.initialize(self)
 
 
 def main():
@@ -86,14 +88,9 @@ def main():
             lambda a, b: cmp(a.name, b.name))
     subparsers = parser.add_subparsers()
     for c in commands:
-        def command_runner(r):
-            if root is None and c.requires_website:
-                raise SiteNotFoundError()
-            c.run(CommandContext(r, app))
-
         p = subparsers.add_parser(c.name, help=c.description)
         c.setupParser(p)
-        p.set_defaults(func=command_runner)
+        p.set_defaults(func=c._runFromChef)
 
     # Parse the command line.
     result = parser.parse_args()
@@ -110,7 +107,7 @@ def main():
         logger.addHandler(FileHandler(result.log))
 
     # Run the command!
-    result.func(result)
+    result.func(app, result)
 
 
 if __name__ == '__main__':

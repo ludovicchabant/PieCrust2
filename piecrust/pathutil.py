@@ -17,7 +17,7 @@ def find_app_root(cwd=None):
 
     while not os.path.isfile(os.path.join(cwd, '_content', 'config.yml')):
         cwd = os.path.dirname(cwd)
-        if not cwd:
+        if not cwd or cwd == '/':
             return None
     return cwd
 

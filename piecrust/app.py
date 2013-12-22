@@ -7,7 +7,7 @@ import logging
 import yaml
 from cache import SimpleCache
 from decorators import lazy_property
-from plugins import PluginLoader
+from plugins.base import PluginLoader
 from environment import StandardEnvironment
 from configuration import Configuration, merge_dicts
 

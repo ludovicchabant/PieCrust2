@@ -1,5 +1,4 @@
 import os
-from piecrust.commands.base import (RootCommand)
 
 
 class PieCrustPlugin(object):
@@ -32,16 +31,6 @@ class PieCrustPlugin(object):
 
     def initialize(self, app):
         pass
-
-
-class BuiltInPlugin(PieCrustPlugin):
-    def __init__(self):
-        super(BuiltInPlugin, self).__init__()
-        self.name = '__builtin__'
-
-    def getCommands(self):
-        return [
-                RootCommand()]
 
 
 class PluginLoader(object):
@@ -89,6 +78,7 @@ class PluginLoader(object):
         if self._plugins is not None:
             return
 
+        from piecrust.plugins.builtin import BuiltInPlugin
         self._plugins = [BuiltInPlugin()]
         self._pluginsMeta = {self._plugins[0].name: False}
 
