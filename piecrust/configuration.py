@@ -1,12 +1,17 @@
 import re
+import logging
 import yaml
+
+
+logger = logging.getLogger(__name__)
 
 
 class Configuration(object):
     def __init__(self, values=None, validate=True):
-        self._values = {}
         if values is not None:
             self.set_all(values, validate)
+        else:
+            self._values = None
 
     def set_all(self, values, validate=True):
         if validate:
@@ -68,10 +73,13 @@ class Configuration(object):
         return value
 
 
-def merge_dicts(local_cur, incoming_cur, parent_path=None, validator=None):
+def merge_dicts(source, merging, validator=None):
     if validator is None:
         validator = lambda k, v: v
+    _recurse_merge_dicts(source, merging, None, validator)
 
+
+def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
     for k, v in incoming_cur.iteritems():
         key_path = k
         if parent_path is not None:
@@ -80,7 +88,7 @@ def merge_dicts(local_cur, incoming_cur, parent_path=None, validator=None):
         local_v = local_cur.get(k)
         if local_v is not None:
             if isinstance(v, dict) and isinstance(local_v, dict):
-                local_cur[k] = merge_dicts(local_v, v)
+                _recurse_merge_dicts(local_v, v, key_path, validator)
             elif isinstance(v, list) and isinstance(local_v, list):
                 local_cur[k] = v + local_v
             else:
