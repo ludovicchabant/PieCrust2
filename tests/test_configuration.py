@@ -14,7 +14,7 @@ def test_config_init(values, expected):
 
 def test_config_set_all():
     config = Configuration()
-    config.set_all({'foo': 'bar'})
+    config.setAll({'foo': 'bar'})
     assert config.get() == {'foo': 'bar'}
 
 
@@ -102,5 +102,4 @@ def test_config_merge():
                 }
             }
     assert config.get() == expected
-
 

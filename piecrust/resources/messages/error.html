@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+    <title>The Cake Just Burned!</title>
+    <meta name="generator" content="PieCrust" />
+	<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Lobster">
+	<style>
+		body {
+			margin: 0;
+			padding: 1em;
+			background: #eee;
+			color: #000;
+			font-family: Georgia, serif;
+		}
+		h1 {
+			font-size: 4.5em;
+			font-family: Lobster, 'Trebuchet MS', Verdana, sans-serif;
+			text-align: center;
+			font-weight: bold;
+            margin-top: 0;
+			color: #333;
+			text-shadow: 0px 2px 5px rgba(0,0,0,0.3);
+		}
+		h2 {
+			font-size: 2.5em;
+            font-family: 'Lobster', 'Trebuchet MS', Verdana, sans-serif;
+		}
+		code {
+			background: #ddd;
+			padding: 0 0.2em;
+		}
+        #preamble {
+            font-size: 1.2em;
+            font-style: italic;
+            text-align: center;
+            margin-bottom: 0;
+        }
+		#container {
+			margin: 0 20%;
+		}
+        #content {
+            margin: 2em 1em;
+        }
+		.note {
+			margin: 3em;
+			color: #888;
+			font-style: italic;
+		}
+	</style>
+</head>
+<body>
+    <div id="container">
+        <div id="header">
+            <p id="preamble">A Message From The Kitchen:</p>
+			<h1>The Cake Just Burned!</h1>
+		</div>
+        <hr />
+        <div id="content">
+            			<div id="error-details">{{ details }}</div>
+
+            		</div>
+        <hr />
+        	<p class="note">You&#8217;re seeing this because something wrong happend. To see detailed errors with callstacks, run chef with the <code>--debug</code> parameter, append <code>?!debug</code> to the <span class="caps">URL</span>, or initialize the <code>PieCrust</code> object with <code>{&#39;debug&#39;=&#62;true}</code>. On the other hand, to see you custom error pages, set the <code>site/display_errors</code> setting  to <code>false</code>.</p>	</div>
+</body>
+</html>

@@ -23,10 +23,16 @@ class PieCrustPlugin(object):
     def getCommands(self):
         return []
 
+    def getCommandExtensions(self):
+        return []
+
     def getRepositories(self):
         return []
 
     def getBakerAssistants(self):
+        return []
+
+    def getSources(self):
         return []
 
     def initialize(self, app):
@@ -68,11 +74,17 @@ class PluginLoader(object):
     def getCommands(self):
         return self._getPluginComponents('getCommands')
 
+    def getCommandExtensions(self):
+        return self._getPluginComponents('getCommandExtensions')
+
     def getRepositories(self):
         return self._getPluginComponents('getRepositories', True)
 
     def getBakerAssistants(self):
         return self._getPluginComponents('getBakerAssistants')
+
+    def getSources(self):
+        return self._getPluginComponents('getSources')
 
     def _ensureLoaded(self):
         if self._plugins is not None:

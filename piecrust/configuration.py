@@ -6,17 +6,24 @@ import yaml
 logger = logging.getLogger(__name__)
 
 
+class ConfigurationError(Exception):
+    pass
+
+
 class Configuration(object):
     def __init__(self, values=None, validate=True):
         if values is not None:
-            self.set_all(values, validate)
+            self.setAll(values, validate)
         else:
             self._values = None
 
-    def set_all(self, values, validate=True):
+    def setAll(self, values, validate=True):
         if validate:
             self._validateAll(values)
         self._values = values
+
+    def getAll(self):
+        return self.get()
 
     def get(self, key_path=None):
         self._ensureLoaded()
@@ -73,10 +80,12 @@ class Configuration(object):
         return value
 
 
-def merge_dicts(source, merging, validator=None):
+def merge_dicts(source, merging, validator=None, *args):
     if validator is None:
         validator = lambda k, v: v
     _recurse_merge_dicts(source, merging, None, validator)
+    for other in args:
+        _recurse_merge_dicts(source, other, None, validator)
 
 
 def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
@@ -105,7 +114,7 @@ def parse_config_header(text):
     m = header_regex.match(text)
     if m is not None:
         header = unicode(m.group('header'))
-        config = yaml.safe_load(header)
+        config = yaml.load(header, Loader=yaml.BaseLoader)
         offset = m.end()
     else:
         config = {}

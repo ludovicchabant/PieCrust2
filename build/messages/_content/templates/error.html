@@ -1,0 +1,7 @@
+{% extends "default.html" %}
+
+{% block footer %}
+{% pcformat textile %}
+p(note). You're seeing this because something wrong happend. To see detailed errors with callstacks, run chef with the @--debug@ parameter, append @?!debug@ to the URL, or initialize the @PieCrust@ object with @{'debug'=>true}@. On the other hand, to see you custom error pages, set the @site/display_errors@ setting  to @false@.
+{% endpcformat %}
+{% endblock %}
