@@ -1,0 +1,12 @@
+Jinja2==2.7.3
+Markdown==2.4.1
+MarkupSafe==0.23
+PyYAML==3.11
+Pygments==1.6
+colorama==0.3.1
+py==1.4.23
+pytest==2.6.1
+python-dateutil==2.2
+repoze.lru==0.6
+six==1.7.3
+strict-rfc3339==0.4
