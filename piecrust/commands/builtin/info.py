@@ -106,7 +106,7 @@ class FindCommand(ChefCommand):
         sources = list(ctx.app.sources)
         if ctx.args.endpoint:
             endpoints = ctx.args.endpoint
-            sources = filter(lambda s: s.endpoint in endpoints, sources)
+            sources = [s for s in sources if s.endpoint in endpoints]
         for src in sources:
             page_facs = src.getPageFactories()
             for pf in page_facs:
@@ -116,7 +116,7 @@ class FindCommand(ChefCommand):
                         name = pf.path
                     if ctx.args.metadata:
                         logger.info("path:%s" % pf.path)
-                        for key, val in pf.metadata.iteritems():
+                        for key, val in pf.metadata.items():
                             logger.info("%s:%s" % (key, val))
                         logger.info("---")
                     else:

@@ -30,7 +30,7 @@ class PaginationFilter(object):
             self.root_clause = AndBooleanClause()
 
     def _addClausesFromConfigRecursive(self, config, parent_clause):
-        for key, val in config.iteritems():
+        for key, val in config.items():
             if key == 'and':
                 if not isinstance(val, list) or len(val) == 0:
                     raise Exception("The given boolean 'AND' filter clause "
@@ -145,7 +145,7 @@ class HasFilterClause(SettingFilterClause):
             return False
 
         if self.coercer:
-            actual_value = map(self.coercer, actual_value)
+            actual_value = list(map(self.coercer, actual_value))
 
         return self.value in actual_value
 

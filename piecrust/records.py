@@ -5,7 +5,7 @@ from piecrust import APP_VERSION
 from piecrust.events import Event
 
 try:
-    import cPickle as pickle
+    import pickle as pickle
 except ImportError:
     import pickle
 
@@ -33,7 +33,7 @@ class Record(object):
     def save(self, path):
         path_dir = os.path.dirname(path)
         if not os.path.isdir(path_dir):
-            os.makedirs(path_dir, 0755)
+            os.makedirs(path_dir, 0o755)
 
         with open(path, 'w') as fp:
             pickle.dump(self, fp, pickle.HIGHEST_PROTOCOL)

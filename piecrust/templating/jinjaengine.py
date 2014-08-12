@@ -36,7 +36,7 @@ class JinjaTemplateEngine(TemplateEngine):
                 tse.filename = filename
             import sys
             _, __, traceback = sys.exc_info()
-            raise tse, None, traceback
+            raise tse.with_traceback(traceback)
 
     def renderFile(self, paths, data):
         self._ensureLoaded()

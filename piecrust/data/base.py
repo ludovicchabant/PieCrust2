@@ -96,7 +96,7 @@ def load_rendered_segment(data, name):
         logger.exception("Error rendering segments for '%s': %s" % (uri, e))
         raise
 
-    for k, v in segs.iteritems():
+    for k, v in segs.items():
         data.mapLoader(k, None)
         data.setValue(k, v)
 

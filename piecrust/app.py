@@ -58,7 +58,7 @@ class PieCrustConfiguration(Configuration):
             self._values = self._validateAll({})
             return
 
-        path_times = map(lambda p: os.path.getmtime(p), self.paths)
+        path_times = [os.path.getmtime(p) for p in self.paths]
         cache_key = hashlib.md5("version=%s&cache=%d" % (
                 APP_VERSION, CACHE_VERSION)).hexdigest()
 
@@ -122,7 +122,7 @@ class PieCrustConfiguration(Configuration):
         sitec = values.get('site')
         if sitec is None:
             sitec = {}
-        for key, val in default_sitec.iteritems():
+        for key, val in default_sitec.items():
             sitec.setdefault(key, val)
         values['site'] = sitec
 
@@ -135,7 +135,7 @@ class PieCrustConfiguration(Configuration):
             raise ConfigurationError("The 'site/auto_formats' setting must be a dictionary.")
         cachec['auto_formats_re'] = r"\.(%s)$" % (
                 '|'.join(
-                        map(lambda i: re.escape(i), sitec['auto_formats'].keys())))
+                        [re.escape(i) for i in list(sitec['auto_formats'].keys())]))
         if sitec['default_auto_format'] not in sitec['auto_formats']:
             raise ConfigurationError("Default auto-format '%s' is not declared." % sitec['default_auto_format'])
 
@@ -254,7 +254,7 @@ class PieCrustConfiguration(Configuration):
         # Add the theme page source if no sources were defined in the theme
         # configuration itself.
         has_any_theme_source = False
-        for sn, sc in sourcesc.iteritems():
+        for sn, sc in sourcesc.items():
             if sc.get('realm') == REALM_THEME:
                 has_any_theme_source = True
                 break
@@ -272,7 +272,7 @@ class PieCrustConfiguration(Configuration):
 
         # Sources have the `default` scanner by default, duh. Also, a bunch
         # of other default values for other configuration stuff.
-        for sn, sc in sourcesc.iteritems():
+        for sn, sc in sourcesc.items():
             if not isinstance(sc, dict):
                 raise ConfigurationError("All sources in 'site/sources' must be dictionaries.")
             sc.setdefault('type', 'default')
@@ -296,7 +296,7 @@ class PieCrustConfiguration(Configuration):
                 raise ConfigurationError("Route URLs must start with '/'.")
             if rc.get('source') is None:
                 raise ConfigurationError("Routes must specify a source.")
-            if rc['source'] not in sourcesc.keys():
+            if rc['source'] not in list(sourcesc.keys()):
                 raise ConfigurationError("Route is referencing unknown source: %s" %
                         rc['source'])
             rc.setdefault('taxonomy', None)
@@ -305,7 +305,7 @@ class PieCrustConfiguration(Configuration):
         # Validate taxonomies.
         sitec.setdefault('taxonomies', {})
         taxonomiesc = sitec.get('taxonomies')
-        for tn, tc in taxonomiesc.iteritems():
+        for tn, tc in taxonomiesc.items():
             tc.setdefault('multiple', False)
             tc.setdefault('term', tn)
             tc.setdefault('page', '_%s.%%ext%%' % tc['term'])
@@ -314,7 +314,7 @@ class PieCrustConfiguration(Configuration):
         reserved_endpoints = set(['piecrust', 'site', 'page', 'route',
                                   'assets', 'pagination', 'siblings',
                                   'family'])
-        for name, src in sitec['sources'].iteritems():
+        for name, src in sitec['sources'].items():
             endpoint = src['data_endpoint']
             if endpoint in reserved_endpoints:
                 raise ConfigurationError(
@@ -366,10 +366,10 @@ class PieCrust(object):
                 tplc = sitec.get('templates_dirs')
                 if tplc is None:
                     return
-                if isinstance(tplc, types.StringTypes):
+                if isinstance(tplc, str):
                     tplc = [tplc]
-                sitec['templates_dirs'] = filter(tplc,
-                        lambda p: os.path.join(self.theme_dir, p))
+                sitec['templates_dirs'] = list(filter(tplc,
+                        lambda p: os.path.join(self.theme_dir, p)))
             config.fixups.append(_fixupThemeTemplatesDir)
 
             # We'll also need to flag all page sources as coming from
@@ -383,7 +383,7 @@ class PieCrust(object):
                     config['site'] = sitec
                 srcc = sitec.get('sources')
                 if srcc is not None:
-                    for sn, sc in srcc.iteritems():
+                    for sn, sc in srcc.items():
                         sc['realm'] = REALM_THEME
             config.fixups.append(_fixupThemeSources)
 
@@ -425,7 +425,7 @@ class PieCrust(object):
             defs[cls.SOURCE_NAME] = cls
 
         sources = []
-        for n, s in self.config.get('site/sources').iteritems():
+        for n, s in self.config.get('site/sources').items():
             cls = defs.get(s['type'])
             if cls is None:
                 raise ConfigurationError("No such page source type: %s" % s['type'])
@@ -444,7 +444,7 @@ class PieCrust(object):
     @cached_property
     def taxonomies(self):
         taxonomies = []
-        for tn, tc in self.config.get('site/taxonomies').iteritems():
+        for tn, tc in self.config.get('site/taxonomies').items():
             tax = Taxonomy(self, tn, tc)
             taxonomies.append(tax)
         return taxonomies
@@ -491,11 +491,10 @@ class PieCrust(object):
         # Add custom directories from the configuration.
         conf_dirs = self.config.get(conf_name)
         if conf_dirs is not None:
-            if isinstance(conf_dirs, types.StringTypes):
+            if isinstance(conf_dirs, str):
                 dirs.append(os.path.join(self.root_dir, conf_dirs))
             else:
-                dirs += filter(lambda p: os.path.join(self.root_dir, p),
-                        conf_dirs)
+                dirs += [p for p in conf_dirs if os.path.join(self.root_dir, p)]
 
         # Add the default directory if it exists.
         default_dir = os.path.join(self.root_dir, default_rel_dir)

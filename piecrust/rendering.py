@@ -136,8 +136,8 @@ def _do_render_page_segments(page, page_data):
         raise PageRenderingError("Can't find template engine '%s'." % engine_name)
 
     formatted_content = {}
-    for seg_name, seg in page.raw_content.iteritems():
-        seg_text = u''
+    for seg_name, seg in page.raw_content.items():
+        seg_text = ''
         for seg_part in seg.parts:
             part_format = seg_part.fmt or format_name
             part_text = engine.renderString(seg_part.content, page_data,

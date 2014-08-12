@@ -26,7 +26,7 @@ class ExtensibleCache(object):
                 if c is None:
                     c_dir = os.path.join(self.base_dir, name)
                     if not os.path.isdir(c_dir):
-                        os.makedirs(c_dir, 0755)
+                        os.makedirs(c_dir, 0o755)
 
                     c = SimpleCache(c_dir)
                     self.caches[name] = c
@@ -71,7 +71,7 @@ class SimpleCache(object):
         cache_path = self.getCachePath(path)
         cache_dir = os.path.dirname(cache_path)
         if not os.path.isdir(cache_dir):
-            os.makedirs(cache_dir, 0755)
+            os.makedirs(cache_dir, 0o755)
         with codecs.open(cache_path, 'w', 'utf-8') as fp:
             fp.write(content)
 

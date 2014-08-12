@@ -17,7 +17,7 @@ from piecrust.uriutil import UriInfo, parse_uri
 def test_parse_uri(routes, uri, expected):
     if expected is not None:
         expected.uri = uri
-    for pattern, args in routes.iteritems():
+    for pattern, args in routes.items():
         if 'taxonomy' not in args:
             args['taxonomy'] = None
 

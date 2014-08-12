@@ -28,7 +28,7 @@ class DataProvider(object):
 
     def _debugRenderUserData(self):
         if self._user_data:
-            return self._user_data.keys()
+            return list(self._user_data.keys())
         return []
 
 
@@ -121,7 +121,7 @@ class BlogDataProvider(DataProvider):
             year = post.datetime.strftime('%Y')
 
             posts_this_year = next(
-                    itertools.ifilter(lambda y: y.name == year, self._yearly),
+                    filter(lambda y: y.name == year, self._yearly),
                     None)
             if posts_this_year is None:
                 timestamp = time.mktime(
@@ -146,7 +146,7 @@ class BlogDataProvider(DataProvider):
             month = post.datetime.strftime('%B %Y')
 
             posts_this_month = next(
-                    itertools.ifilter(lambda m: m.name == month, self._monthly),
+                    filter(lambda m: m.name == month, self._monthly),
                     None)
             if posts_this_month is None:
                 timestamp = time.mktime(
@@ -177,7 +177,7 @@ class BlogDataProvider(DataProvider):
                 posts_by_tax_value[val].append(post)
 
         entries = []
-        for value, ds in posts_by_tax_value.iteritems():
+        for value, ds in posts_by_tax_value.items():
             source = ArraySource(self._page.app, ds)
             entries.append(BlogTaxonomyEntry(self._page, source, value))
         self._taxonomies[tax_name] = sorted(entries, key=lambda k: k.name)

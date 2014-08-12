@@ -135,7 +135,7 @@ class ContentSegmentPart(object):
 
 def json_load_segments(data):
     segments = {}
-    for key, seg_data in data.iteritems():
+    for key, seg_data in data.items():
         seg = ContentSegment()
         for p_data in seg_data:
             part = ContentSegmentPart(p_data['c'], p_data['f'], p_data['l'])
@@ -146,7 +146,7 @@ def json_load_segments(data):
 
 def json_save_segments(segments):
     data = {}
-    for key, seg in segments.iteritems():
+    for key, seg in segments.items():
         seg_data = []
         for part in seg.parts:
             p_data = {'c': part.content, 'f': part.fmt, 'l': part.line}
@@ -162,7 +162,7 @@ def load_page(app, path):
         logger.exception("Error loading page: %s" %
                 os.path.relpath(path, app.root_dir))
         _, __, traceback = sys.exc_info()
-        raise PageLoadingError(path, e), None, traceback
+        raise PageLoadingError(path, e).with_traceback(traceback)
 
 
 def _do_load_page(app, path):
@@ -197,7 +197,7 @@ def _do_load_page(app, path):
 
     config = PageConfiguration(header)
     content = parse_segments(raw, offset)
-    config.set('segments', list(content.iterkeys()))
+    config.set('segments', list(content.keys()))
 
     # Save to the cache.
     cache_data = {

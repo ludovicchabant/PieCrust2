@@ -20,7 +20,7 @@ class PostsSource(PageSource, IPreparingSource):
         super(PostsSource, self).__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, CONTENT_DIR, self.fs_endpoint)
-        self.supported_extensions = app.config.get('site/auto_formats').keys()
+        self.supported_extensions = list(app.config.get('site/auto_formats').keys())
 
     @property
     def path_format(self):
@@ -105,9 +105,7 @@ class PostsSource(PageSource, IPreparingSource):
         today = datetime.date.today()
         year, month, day = today.year, today.month, today.day
         if args.date:
-            year, month, day = filter(
-                    lambda s: int(s),
-                    args.date.split('/'))
+            year, month, day = [s for s in args.date.split('/') if int(s)]
         return {'year': year, 'month': month, 'day': day, 'slug': args.slug}
 
     def _checkFsEndpointPath(self):
@@ -163,7 +161,7 @@ class ShallowPostsSource(PostsSource):
         year_pattern = re.compile(r'(\d{4})$')
         file_pattern = re.compile(r'(\d{2})-(\d{2})_(.*)\.(\w+)$')
         _, year_dirs, __ = next(os.walk(self.fs_endpoint_path))
-        year_dirs = filter(lambda d: year_pattern.match(d), year_dirs)
+        year_dirs = [d for d in year_dirs if year_pattern.match(d)]
         for yd in year_dirs:
             if year_pattern.match(yd) is None:
                 logger.warning("'%s' is not formatted as 'YYYY' and will be ignored. "
@@ -201,13 +199,13 @@ class HierarchyPostsSource(PostsSource):
         month_pattern = re.compile(r'(\d{2})$')
         file_pattern = re.compile(r'(\d{2})_(.*)\.(\w+)$')
         _, year_dirs, __ = next(os.walk(self.fs_endpoint_path))
-        year_dirs = filter(lambda d: year_pattern.match(d), year_dirs)
+        year_dirs = [d for d in year_dirs if year_pattern.match(d)]
         for yd in year_dirs:
             year = int(yd)
             year_dir = os.path.join(self.fs_endpoint_path, yd)
 
             _, month_dirs, __ = next(os.walk(year_dir))
-            month_dirs = filter(lambda d: month_pattern.match(d), month_dirs)
+            month_dirs = [d for d in month_dirs if month_pattern.match(d)]
             for md in month_dirs:
                 month = int(md)
                 month_dir = os.path.join(year_dir, md)

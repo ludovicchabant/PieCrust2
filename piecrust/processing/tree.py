@@ -150,7 +150,7 @@ class ProcessingTreeRunner(object):
             except Exception as e:
                 import sys
                 _, __, traceback = sys.exc_info()
-                raise Exception("Error processing: %s" % node.path, e), None, traceback
+                raise Exception("Error processing: %s" % node.path, e).with_traceback(traceback)
 
         # All outputs of a node must go to the same directory, so we can get
         # the output directory off of the first output.
@@ -161,9 +161,9 @@ class ProcessingTreeRunner(object):
             if self.lock:
                 with self.lock:
                     if not os.path.isdir(out_dir):
-                        os.makedirs(out_dir, 0755)
+                        os.makedirs(out_dir, 0o755)
             else:
-                os.makedirs(out_dir, 0755)
+                os.makedirs(out_dir, 0o755)
 
         try:
             start_time = time.clock()
@@ -180,7 +180,7 @@ class ProcessingTreeRunner(object):
         except Exception as e:
             import sys
             _, __, traceback = sys.exc_info()
-            raise Exception("Error processing: %s" % node.path, e), None, traceback
+            raise Exception("Error processing: %s" % node.path, e).with_traceback(traceback)
 
     def _computeNodeState(self, node):
         if node.state != STATE_UNKNOWN:

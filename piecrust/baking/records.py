@@ -84,7 +84,7 @@ class TransitionalBakeRecord(object):
         return None
 
     def collapseRecords(self):
-        for pair in self.transitions.itervalues():
+        for pair in self.transitions.values():
             prev = pair[0]
             cur = pair[1]
 

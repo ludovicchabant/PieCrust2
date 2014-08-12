@@ -35,7 +35,7 @@ class LessProcessor(SimpleFileProcessor):
             path_dir = os.path.dirname(path)
             def _makeAbs(p):
                 return os.path.join(path_dir, p)
-            return map(_makeAbs, source[:-1])
+            return list(map(_makeAbs, source[:-1]))
         except IOError:
             # Map file not found... rebuild.
             logger.debug("No map file found for LESS file '%s' at '%s'. "

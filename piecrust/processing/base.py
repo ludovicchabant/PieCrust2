@@ -4,7 +4,7 @@ import shutil
 import os.path
 import logging
 import threading
-from Queue import Queue, Empty
+from queue import Queue, Empty
 from piecrust.chefutil import format_timed
 from piecrust.processing.tree import (ProcessingTreeBuilder,
         ProcessingTreeRunner, STATE_DIRTY, print_node)
@@ -183,7 +183,7 @@ class ProcessorPipeline(object):
             # Process only the given path.
             # Find out if this source directory is in a mount point.
             base_dir = self.app.root_dir
-            for name, path in self.mounts.iteritems():
+            for name, path in self.mounts.items():
                 if src_dir_or_file[:len(path)] == path:
                     base_dir = path
 
@@ -200,7 +200,7 @@ class ProcessorPipeline(object):
             logger.debug("Initiating processing pipeline on: %s" % self.app.root_dir)
             self.processDirectory(ctx, self.app.root_dir)
             ctx.is_multi_mount = True
-            for name, path in self.mounts.iteritems():
+            for name, path in self.mounts.items():
                 mount_ctx = ProcessingContext(path, queue, record)
                 logger.debug("Initiating processing pipeline on: %s" % path)
                 self.processDirectory(mount_ctx, path)
@@ -325,7 +325,7 @@ def make_re(patterns):
                     .replace(r'\*', r'[^/\\]*')
                     .replace(r'\?', r'[^/\\]'))
             re_patterns.append(escaped_pat)
-    return map(lambda p: re.compile(p), re_patterns)
+    return [re.compile(p) for p in re_patterns]
 
 
 def re_matchany(filename, patterns):

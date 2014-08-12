@@ -89,7 +89,7 @@ def merge_dicts(source, merging, validator=None, *args):
 
 
 def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
-    for k, v in incoming_cur.iteritems():
+    for k, v in incoming_cur.items():
         key_path = k
         if parent_path is not None:
             key_path = parent_path + '/' + k
@@ -113,7 +113,7 @@ header_regex = re.compile(
 def parse_config_header(text):
     m = header_regex.match(text)
     if m is not None:
-        header = unicode(m.group('header'))
+        header = str(m.group('header'))
         config = yaml.load(header, Loader=yaml.BaseLoader)
         offset = m.end()
     else:

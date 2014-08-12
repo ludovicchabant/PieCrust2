@@ -58,8 +58,8 @@ With another...
 def test_parse_segments(text, expected):
     actual = parse_segments(text)
     assert actual is not None
-    assert actual.keys() == expected.keys()
-    for key, val in expected.iteritems():
+    assert list(actual.keys()) == list(expected.keys())
+    for key, val in expected.items():
         if isinstance(val, str):
             assert len(actual[key].parts) == 1
             assert actual[key].parts[0].content == val

@@ -49,7 +49,7 @@ def parse_uri(routes, uri):
 
     uri = '/' + uri.strip('/')
 
-    for rn, rc in routes.iteritems():
+    for rn, rc in routes.items():
         pattern = route_to_pattern(rn)
         m = re.match(pattern, uri)
         if m is not None:
@@ -68,7 +68,7 @@ def route_to_pattern(route):
 
 
 def multi_replace(text, replacements):
-    reps = dict((re.escape(k), v) for k, v in replacements.iteritems())
-    pattern = re.compile("|".join(reps.keys()))
+    reps = dict((re.escape(k), v) for k, v in replacements.items())
+    pattern = re.compile("|".join(list(reps.keys())))
     return pattern.sub(lambda m: reps[re.escape(m.group(0))], text)
 

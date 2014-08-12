@@ -1,11 +1,11 @@
 import time
 import os.path
 import codecs
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import hashlib
 import logging
 import threading
-from Queue import Queue, Empty
+from queue import Queue, Empty
 from piecrust.baking.records import TransitionalBakeRecord, BakeRecordPageEntry
 from piecrust.chefutil import format_timed
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
@@ -61,7 +61,7 @@ class PageBaker(object):
 
     def getOutputPath(self, uri):
         bake_path = [self.out_dir]
-        decoded_uri = urllib2.unquote(uri.lstrip('/')).decode('utf8')
+        decoded_uri = urllib.parse.unquote(uri.lstrip('/')).decode('utf8')
         if self.pretty_urls:
             bake_path.append(decoded_uri)
             bake_path.append('index.html')
@@ -188,7 +188,7 @@ class PageBaker(object):
 
         out_dir = os.path.dirname(out_path)
         if not os.path.isdir(out_dir):
-            os.makedirs(out_dir, 0755)
+            os.makedirs(out_dir, 0o755)
 
         with codecs.open(out_path, 'w', 'utf-8') as fp:
             fp.write(rp.content.decode('utf-8'))
@@ -228,7 +228,7 @@ class Baker(object):
 
         # Make sure the output directory exists.
         if not os.path.isdir(self.out_dir):
-            os.makedirs(self.out_dir, 0755)
+            os.makedirs(self.out_dir, 0o755)
 
         # Load/create the bake record.
         record = TransitionalBakeRecord()
@@ -313,7 +313,7 @@ class Baker(object):
 
         # Now see which ones are 'dirty' based on our bake record.
         logger.debug("Gathering dirty taxonomy terms")
-        for prev_entry, cur_entry in record.transitions.itervalues():
+        for prev_entry, cur_entry in record.transitions.values():
             for tax in self.app.taxonomies:
                 changed_terms = None
                 # Re-bake all taxonomy pages that include new or changed
@@ -343,7 +343,7 @@ class Baker(object):
         # Re-bake the combination pages for terms that are 'dirty'.
         known_combinations = set()
         logger.debug("Gathering dirty term combinations")
-        for prev_entry, cur_entry in record.transitions.itervalues():
+        for prev_entry, cur_entry in record.transitions.values():
             if cur_entry:
                 known_combinations |= cur_entry.used_taxonomy_terms
             elif prev_entry:
@@ -355,8 +355,8 @@ class Baker(object):
 
         # Start baking those terms.
         pool, queue, abort = self._createWorkerPool(record, self.num_workers)
-        for source_name, source_taxonomies in buckets.iteritems():
-            for tax_name, terms in source_taxonomies.iteritems():
+        for source_name, source_taxonomies in buckets.items():
+            for tax_name, terms in source_taxonomies.items():
                 if len(terms) == 0:
                     continue
 

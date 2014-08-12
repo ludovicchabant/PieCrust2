@@ -152,7 +152,7 @@ class Paginator(object):
             return []
 
         if radius <= 0 or total_page_count < (2 * radius + 1):
-            return range(1, total_page_count)
+            return list(range(1, total_page_count))
 
         first_num = self._page_num - radius
         last_num = self._page_num + radius
@@ -164,7 +164,7 @@ class Paginator(object):
             last_num = total_page_count
         first_num = max(1, first_num)
         last_num = min(total_page_count, last_num)
-        return range(first_num, last_num)
+        return list(range(first_num, last_num))
 
     def page(self, index):
         return self._getPageUri(index)

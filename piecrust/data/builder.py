@@ -59,7 +59,7 @@ def build_page_data(ctx):
 
 def build_layout_data(page, page_data, contents):
     data = dict(page_data)
-    for name, txt in contents.iteritems():
+    for name, txt in contents.items():
         if name in data:
             logger.warning("Content segment '%s' will hide existing data." %
                     name)

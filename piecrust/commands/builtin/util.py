@@ -29,11 +29,11 @@ class InitCommand(ChefCommand):
             destination = os.getcwd()
 
         if not os.path.isdir(destination):
-            os.makedirs(destination, 0755)
+            os.makedirs(destination, 0o755)
 
         config_path = os.path.join(destination, CONFIG_PATH)
         if not os.path.isdir(os.path.dirname(config_path)):
-            os.makedirs(os.path.dirname(config_path), 0755)
+            os.makedirs(os.path.dirname(config_path), 0o755)
 
         config_text = yaml.dump({
                 'site': {
@@ -96,7 +96,7 @@ class PrepareCommand(ChefCommand):
 
         logger.info("Creating page: %s" % os.path.relpath(page_path, app.root_dir))
         if not os.path.exists(os.path.dirname(page_path)):
-            os.makedirs(os.path.dirname(page_path), 0755)
+            os.makedirs(os.path.dirname(page_path), 0o755)
         with open(page_path, 'w') as f:
             f.write('---\n')
             f.write('title: %s\n' % 'Unknown title')

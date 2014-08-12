@@ -4,7 +4,7 @@ import time
 import os.path
 import hashlib
 import logging
-import StringIO
+import io
 from werkzeug.exceptions import (NotFound, MethodNotAllowed,
         InternalServerError)
 from werkzeug.serving import run_simple
@@ -237,7 +237,7 @@ class Server(object):
         if ('gzip' in request.accept_encodings and
                 app.config.get('site/enable_gzip')):
             try:
-                gzip_buffer = StringIO.StringIO()
+                gzip_buffer = io.StringIO()
                 gzip_file = gzip.GzipFile(
                         mode='wb',
                         compresslevel=9,

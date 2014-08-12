@@ -103,7 +103,7 @@ class PageRef(object):
         self._page_ref = page_ref
         self._paths = None
         self._first_valid_path_index = -2
-        self._exts = app.config.get('site/auto_formats').keys()
+        self._exts = list(app.config.get('site/auto_formats').keys())
 
     @property
     def exists(self):
@@ -266,7 +266,7 @@ class SimplePageSource(PageSource):
         super(SimplePageSource, self).__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, CONTENT_DIR, self.fs_endpoint)
-        self.supported_extensions = app.config.get('site/auto_formats').keys()
+        self.supported_extensions = list(app.config.get('site/auto_formats').keys())
 
     def buildPageFactories(self):
         logger.debug("Scanning for pages in: %s" % self.fs_endpoint_path)
@@ -275,7 +275,7 @@ class SimplePageSource(PageSource):
 
         for dirpath, dirnames, filenames in os.walk(self.fs_endpoint_path):
             rel_dirpath = os.path.relpath(dirpath, self.fs_endpoint_path)
-            dirnames[:] = filter(self._filterPageDirname, dirnames)
+            dirnames[:] = list(filter(self._filterPageDirname, dirnames))
             for f in filter(self._filterPageFilename, filenames):
                 slug, ext = os.path.splitext(os.path.join(rel_dirpath, f))
                 if slug.startswith('./') or slug.startswith('.\\'):

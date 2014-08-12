@@ -55,7 +55,7 @@ class Assetor(object):
 
     def _debugRenderAssetNames(self):
         self._cacheAssets()
-        return self._cache.keys()
+        return list(self._cache.keys())
 
     def _cacheAssets(self):
         if self._cache is not None:

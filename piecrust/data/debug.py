@@ -1,8 +1,9 @@
 import re
 import cgi
 import logging
-import StringIO
+import io
 from piecrust import APP_VERSION, PIECRUST_URL
+import collections
 
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ BRANDING_TEXT = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
 def build_debug_info(page, data):
     """ Generates HTML debug info for the given page's data.
     """
-    output = StringIO.StringIO()
+    output = io.StringIO()
     try:
         _do_build_debug_info(page, data, output)
         return output.getvalue()
@@ -61,10 +62,10 @@ def _do_build_debug_info(page, data, output):
     app = page.app
     exec_info = app.env.exec_info_stack.current_page_info
 
-    print >>output, '<div id="piecrust-debug-info" style="%s">' % CSS_DEBUGINFO
+    print('<div id="piecrust-debug-info" style="%s">' % CSS_DEBUGINFO, file=output)
 
-    print >>output, '<div>'
-    print >>output, '<p style="%s"><strong>PieCrust %s</strong> &mdash; ' % (CSS_P, APP_VERSION)
+    print('<div>', file=output)
+    print('<p style="%s"><strong>PieCrust %s</strong> &mdash; ' % (CSS_P, APP_VERSION), file=output)
 
     # If we have some execution info in the environment,
     # add more information.
@@ -91,25 +92,25 @@ def _do_build_debug_info(page, data, output):
     else:
         output.write('no timing information available')
 
-    print >>output, '</p>'
-    print >>output, '</div>'
+    print('</p>', file=output)
+    print('</div>', file=output)
 
     if data:
-        print >>output, '<div>'
-        print >>output, ('<p style="%s cursor: pointer;" onclick="var l = '
+        print('<div>', file=output)
+        print(('<p style="%s cursor: pointer;" onclick="var l = '
                          'document.getElementById(\'piecrust-debug-details\'); '
                          'if (l.style.display == \'none\') l.style.display = '
-                         '\'block\'; else l.style.display = \'none\';">' % CSS_P)
-        print >>output, ('<span style="%s">Template engine data</span> '
-                         '&mdash; click to toggle</a>.</p>' % CSS_BIGHEADER)
+                         '\'block\'; else l.style.display = \'none\';">' % CSS_P), file=output)
+        print(('<span style="%s">Template engine data</span> '
+                         '&mdash; click to toggle</a>.</p>' % CSS_BIGHEADER), file=output)
 
-        print >>output, '<div id="piecrust-debug-details" style="display: none;">'
-        print >>output, ('<p style="%s">The following key/value pairs are '
+        print('<div id="piecrust-debug-details" style="display: none;">', file=output)
+        print(('<p style="%s">The following key/value pairs are '
                          'available in the layout\'s markup, and most are '
-                         'available in the page\'s markup.</p>' % CSS_DOC)
+                         'available in the page\'s markup.</p>' % CSS_DOC), file=output)
 
         filtered_data = dict(data)
-        for k in filtered_data.keys():
+        for k in list(filtered_data.keys()):
             if k.startswith('__'):
                 del filtered_data[k]
 
@@ -120,10 +121,10 @@ def _do_build_debug_info(page, data, output):
                 "This section comes from the page's configuration header.")
         renderer.renderData(filtered_data)
 
-        print >>output, '</div>'
-        print >>output, '</div>'
+        print('</div>', file=output)
+        print('</div>', file=output)
 
-    print >>output, '</div>'
+    print('</div>', file=output)
 
 
 class DebugDataRenderer(object):
@@ -174,7 +175,7 @@ class DebugDataRenderer(object):
             self._write('<span style="%s">%4.2f</span>' % (CSS_VALUE, data))
             return
 
-        if data_type in (str, unicode):
+        if data_type in (str, str):
             if data_type == str:
                 data = data.decode('utf8')
             if len(data) > DebugDataRenderer.MAX_VALUE_LENGTH:
@@ -203,7 +204,7 @@ class DebugDataRenderer(object):
         self._renderDoc(data, path)
         self._renderAttributes(data, path)
         rendered_count = self._renderIterable(data, path,
-                lambda d: sorted(d.iteritems(), key=lambda i: i[0]))
+                lambda d: sorted(iter(d.items()), key=lambda i: i[0]))
         if rendered_count == 0:
             self._writeLine('<p style="%s %s">(empty dictionary)</p>' % (CSS_P, CSS_DOC))
         self._writeLine('</div>')
@@ -289,7 +290,7 @@ class DebugDataRenderer(object):
                 # dynamic attribute.
                 attr = getattr(data, name)
 
-            if callable(attr):
+            if isinstance(attr, collections.Callable):
                 attr_func = getattr(data, name)
                 argcount = attr_func.__code__.co_argcount
                 var_names = attr_func.__code__.co_varnames
