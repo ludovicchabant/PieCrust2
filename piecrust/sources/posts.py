@@ -6,6 +6,7 @@ import logging
 import datetime
 from piecrust import CONTENT_DIR
 from piecrust.sources.base import (PageSource, IPreparingSource,
+        SimplePaginationSourceMixin,
         PageNotFoundError, InvalidFileSystemEndpointError,
         PageFactory, MODE_CREATING)
 
@@ -13,7 +14,7 @@ from piecrust.sources.base import (PageSource, IPreparingSource,
 logger = logging.getLogger(__name__)
 
 
-class PostsSource(PageSource, IPreparingSource):
+class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
     PATH_FORMAT = None
 
     def __init__(self, app, name, config):

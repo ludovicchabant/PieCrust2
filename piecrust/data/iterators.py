@@ -1,5 +1,5 @@
 import logging
-from piecrust.data.base import PaginationData
+from piecrust.data.base import IPaginationSource
 from piecrust.data.filters import PaginationFilter
 from piecrust.events import Event
 
@@ -89,16 +89,6 @@ class SettingSortIterator(object):
         return sorted(self.it, cmp=self._comparer, reverse=self.reverse)
 
 
-class DateSortIterator(object):
-    def __init__(self, it, reverse=True):
-        self.it = it
-        self.reverse = reverse
-
-    def __iter__(self):
-        return iter(sorted(self.it,
-                           key=lambda x: x.datetime, reverse=self.reverse))
-
-
 class PaginationFilterIterator(object):
     def __init__(self, it, fil):
         self.it = it
@@ -110,39 +100,24 @@ class PaginationFilterIterator(object):
                 yield page
 
 
-class SourceFactoryIterator(object):
-    def __init__(self, source):
-        self.source = source
-        self.it = None # This is to permit recursive traversal of the
-                       # iterator chain. It acts as the end.
-
-    def __iter__(self):
-        for factory in self.source.getPageFactories():
-            yield factory.buildPage()
-
-
-class PaginationDataBuilderIterator(object):
-    def __init__(self, it):
-        self.it = it
-
-    def __iter__(self):
-        for page in self.it:
-            yield PaginationData(page)
-
-
 class PageIterator(object):
     def __init__(self, source, current_page=None, pagination_filter=None,
             offset=0, limit=-1, locked=False):
         self._source = source
         self._current_page = current_page
         self._locked = False
-        self._pages = SourceFactoryIterator(source)
+        self._pages = source
         self._pagesData = None
         self._pagination_slicer = None
         self._has_sorter = False
         self._next_page = None
         self._prev_page = None
         self._iter_event = Event()
+
+        if isinstance(source, IPaginationSource):
+            src_it = source.getSourceIterator()
+            if src_it is not None:
+                self._pages = src_it
 
         # Apply any filter first, before we start sorting or slicing.
         if pagination_filter is not None:
@@ -203,7 +178,7 @@ class PageIterator(object):
                 return self._simpleNonSortedWrap(SettingFilterIterator, conf)
             return has_filter
 
-        raise AttributeError()
+        return self.__getattribute__(name)
 
     def skip(self, count):
         return self._simpleWrap(SliceIterator, count)
@@ -268,7 +243,10 @@ class PageIterator(object):
     def _ensureSorter(self):
         if self._has_sorter:
             return
-        self._pages = DateSortIterator(self._pages)
+        if isinstance(self._source, IPaginationSource):
+            sort_it = self._source.getSorterIterator(self._pages)
+            if sort_it is not None:
+                self._pages = sort_it
         self._has_sorter = True
 
     def _unload(self):
@@ -282,10 +260,19 @@ class PageIterator(object):
 
         self._ensureSorter()
 
-        it_chain = PaginationDataBuilderIterator(self._pages)
+        it_chain = self._pages
+        is_pgn_source = False
+        if isinstance(self._source, IPaginationSource):
+            is_pgn_source = True
+            tail_it = self._source.getTailIterator(self._pages)
+            if tail_it is not None:
+                it_chain = tail_it
+
         self._pagesData = list(it_chain)
 
-        if self._current_page and self._pagination_slicer:
-            self._prev_page = PaginationData(self._pagination_slicer.prev_page)
-            self._next_page = PaginationData(self._pagination_slicer.next_page)
+        if is_pgn_source and self._current_page and self._pagination_slicer:
+            pn = [self._pagination_slicer.prev_page,
+                    self._pagination_slicer.next_page]
+            pn_it = self._source.getTailIterator(iter(pn))
+            self._prev_page, self._next_page = (list(pn_it))
 

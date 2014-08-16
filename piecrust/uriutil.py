@@ -38,7 +38,7 @@ pagenum_pattern = re.compile(r'/(\d+)/?$')
 
 
 def parse_uri(routes, uri):
-    if string.find(uri, '..') >= 0:
+    if uri.find('..') >= 0:
         raise UriError(uri)
 
     page_num = 1

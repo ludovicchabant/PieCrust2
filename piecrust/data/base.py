@@ -6,6 +6,23 @@ from piecrust.data.assetor import Assetor
 logger = logging.getLogger(__name__)
 
 
+class IPaginationSource(object):
+    def getItemsPerPage(self):
+        raise NotImplementedError()
+
+    def getSourceIterator(self):
+        raise NotImplementedError()
+
+    def getSorterIterator(self, it):
+        raise NotImplementedError()
+
+    def getTailIterator(self, it):
+        raise NotImplementedError()
+
+    def getPaginationFilter(self, page):
+        raise NotImplementedError()
+
+
 class LazyPageConfigData(object):
     """ An object that represents the configuration header of a page,
         but also allows for additional data. It's meant to be exposed
@@ -78,43 +95,19 @@ class LazyPageConfigData(object):
         pass
 
 
-def build_uri(page):
-    route = page.app.getRoute(page.source.name, page.source_metadata)
-    if route is None:
-        raise Exception("Can't get route for page: %s" % page.path)
-    return route.getUri(page.source_metadata)
-
-
-def load_rendered_segment(data, name):
-    from piecrust.rendering import PageRenderingContext, render_page_segments
-
-    uri = build_uri(data.page)
-    try:
-        ctx = PageRenderingContext(data.page, uri)
-        segs = render_page_segments(ctx)
-    except Exception as e:
-        logger.exception("Error rendering segments for '%s': %s" % (uri, e))
-        raise
-
-    for k, v in segs.items():
-        data.mapLoader(k, None)
-        data.setValue(k, v)
-
-    if 'content.abstract' in segs:
-        data.setValue('content', segs['content.abstract'])
-        data.setValue('has_more', True)
-        if name == 'content':
-            return segs['content.abstract']
-
-    return segs[name]
-
-
 class PaginationData(LazyPageConfigData):
     def __init__(self, page):
         super(PaginationData, self).__init__(page)
 
+    def _get_uri(self):
+        page = self._page
+        route = page.app.getRoute(page.source.name, page.source_metadata)
+        if route is None:
+            raise Exception("Can't get route for page: %s" % page.path)
+        return route.getUri(page.source_metadata)
+
     def _loadCustom(self):
-        page_url = build_uri(self.page)
+        page_url = self._get_uri()
         self.setValue('url', page_url)
         self.setValue('slug', page_url)
         self.setValue('timestamp',
@@ -128,5 +121,29 @@ class PaginationData(LazyPageConfigData):
 
         segment_names = self.page.config.get('segments')
         for name in segment_names:
-            self.mapLoader(name, load_rendered_segment)
+            self.mapLoader(name, self._load_rendered_segment)
+
+    def _load_rendered_segment(self, data, name):
+        from piecrust.rendering import PageRenderingContext, render_page_segments
+
+        assert self is data
+        uri = self._get_uri()
+        try:
+            ctx = PageRenderingContext(self._page, uri)
+            segs = render_page_segments(ctx)
+        except Exception as e:
+            logger.exception("Error rendering segments for '%s': %s" % (uri, e))
+            raise
+
+        for k, v in segs.items():
+            self.mapLoader(k, None)
+            self.setValue(k, v)
+
+        if 'content.abstract' in segs:
+            self.setValue('content', segs['content.abstract'])
+            self.setValue('has_more', True)
+            if name == 'content':
+                return segs['content.abstract']
+
+        return segs[name]
 

@@ -1,6 +1,7 @@
 import math
 import logging
 from werkzeug.utils import cached_property
+from piecrust.data.base import IPaginationSource
 from piecrust.data.filters import PaginationFilter
 from piecrust.data.iterators import PageIterator
 
@@ -82,8 +83,11 @@ class Paginator(object):
 
     @cached_property
     def items_per_page(self):
-        return (self._parent_page.config.get('items_per_page') or
-            self._source.items_per_page)
+        if self._parent_page:
+            ipp = self._parent_page.config.get('items_per_page')
+            if ipp is not None:
+                return ipp
+        return self._source.getItemsPerPage()
 
     @property
     def items_this_page(self):
@@ -152,7 +156,7 @@ class Paginator(object):
             return []
 
         if radius <= 0 or total_page_count < (2 * radius + 1):
-            return list(range(1, total_page_count))
+            return list(range(1, total_page_count + 1))
 
         first_num = self._page_num - radius
         last_num = self._page_num + radius
@@ -164,7 +168,7 @@ class Paginator(object):
             last_num = total_page_count
         first_num = max(1, first_num)
         last_num = min(total_page_count, last_num)
-        return list(range(first_num, last_num))
+        return list(range(first_num, last_num + 1))
 
     def page(self, index):
         return self._getPageUri(index)
@@ -191,12 +195,10 @@ class Paginator(object):
         if self._pgn_filter is not None:
             f.addClause(self._pgn_filter.root_clause)
 
-        conf = (self._parent_page.config.get('items_filters') or
-                self._parent_page.app.config.get('site/items_filters'))
-        if conf == 'none' or conf == 'nil' or conf == '':
-            conf = None
-        if conf is not None:
-            f.addClausesFromConfig(conf)
+        if isinstance(self._source, IPaginationSource):
+            sf = self._source.getPaginationFilter(self._parent_page)
+            if sf is not None:
+                f.addClause(sf)
 
         return f
 
@@ -209,7 +211,7 @@ class Paginator(object):
         return uri
 
     def _onIteration(self):
-        if not self._pgn_set_on_ctx:
+        if self._parent_page is not None and not self._pgn_set_on_ctx:
             eis = self._parent_page.app.env.exec_info_stack
             eis.current_page_info.render_ctx.setPagination(self)
             self._pgn_set_on_ctx = True

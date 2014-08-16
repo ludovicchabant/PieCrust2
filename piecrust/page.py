@@ -7,7 +7,6 @@ import hashlib
 import logging
 import datetime
 import dateutil.parser
-import threading
 from piecrust.configuration import (Configuration, ConfigurationError,
         parse_config_header)
 from piecrust.environment import PHASE_PAGE_PARSING

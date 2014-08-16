@@ -34,7 +34,8 @@ def test_get_output_path(uri, page_num, pretty, expected):
     assert app.config.get('site/pretty_urls') == pretty
 
     baker = PageBaker(app, '/destination')
-    path = baker.getOutputPath(uri, page_num)
+    sub_uri = baker.getOutputUri(uri, page_num)
+    path = baker.getOutputPath(sub_uri)
     expected = '/destination/' + expected
     assert expected == path
 

@@ -1,9 +1,14 @@
+import os
 import os.path
 import logging
 from piecrust.uriutil import multi_replace
 
 
 logger = logging.getLogger(__name__)
+
+
+class UnsupportedAssetsError(Exception):
+    pass
 
 
 def build_base_url(app, uri, assets_path):
@@ -13,6 +18,7 @@ def build_base_url(app, uri, assets_path):
     pretty = app.config.get('site/pretty_urls')
     if not pretty:
         uri, _ = os.path.splitext(uri)
+    uri = uri.lstrip('/')
     base_url = multi_replace(
             base_url_format,
             {
@@ -71,5 +77,8 @@ class Assetor(object):
         for _, __, filenames in os.walk(assets_dir):
             for fn in filenames:
                 name, ext = os.path.splitext(fn)
+                if name in self._cache:
+                    raise UnsupportedAssetsError(
+                            "Multiple asset files are named '%s'." % name)
                 self._cache[name] = base_url + fn
 

@@ -5,6 +5,8 @@ import logging
 from werkzeug.utils import cached_property
 from piecrust import CONTENT_DIR
 from piecrust.configuration import ConfigurationError
+from piecrust.data.base import IPaginationSource, PaginationData
+from piecrust.data.filters import PaginationFilter
 from piecrust.page import Page
 
 
@@ -247,6 +249,31 @@ class IPreparingSource:
         raise NotImplementedError()
 
 
+class SimplePaginationSourceMixin(IPaginationSource):
+    def getItemsPerPage(self):
+        return self.config['items_per_page']
+
+    def getSourceIterator(self):
+        return SourceFactoryIterator(self)
+
+    def getSorterIterator(self, it):
+        return DateSortIterator(it)
+
+    def getTailIterator(self, it):
+        return PaginationDataBuilderIterator(it)
+
+    def getPaginationFilter(self, page):
+        conf = (page.config.get('items_filters') or
+                page.app.config.get('site/items_filters'))
+        if conf == 'none' or conf == 'nil' or conf == '':
+            conf = None
+        if conf is not None:
+            f = PaginationFilter()
+            f.addClausesFromConfig(conf)
+            return f
+        return None
+
+
 class ArraySource(PageSource):
     def __init__(self, app, inner_source, name='array', config=None):
         super(ArraySource, self).__init__(app, name, config or {})
@@ -325,7 +352,8 @@ class SimplePageSource(PageSource):
                 f not in ['Thumbs.db'])
 
 
-class DefaultPageSource(SimplePageSource, IPreparingSource):
+class DefaultPageSource(SimplePageSource, IPreparingSource,
+        SimplePaginationSourceMixin):
     SOURCE_NAME = 'default'
 
     def __init__(self, app, name, config):
@@ -336,4 +364,34 @@ class DefaultPageSource(SimplePageSource, IPreparingSource):
 
     def buildMetadata(self, args):
         return {'path': args.uri}
+
+
+class SourceFactoryIterator(object):
+    def __init__(self, source):
+        self.source = source
+        self.it = None # This is to permit recursive traversal of the
+                       # iterator chain. It acts as the end.
+
+    def __iter__(self):
+        for factory in self.source.getPageFactories():
+            yield factory.buildPage()
+
+
+class DateSortIterator(object):
+    def __init__(self, it, reverse=True):
+        self.it = it
+        self.reverse = reverse
+
+    def __iter__(self):
+        return iter(sorted(self.it,
+                           key=lambda x: x.datetime, reverse=self.reverse))
+
+
+class PaginationDataBuilderIterator(object):
+    def __init__(self, it):
+        self.it = it
+
+    def __iter__(self):
+        for page in self.it:
+            yield PaginationData(page)
 

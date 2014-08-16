@@ -61,13 +61,15 @@ class PageBaker(object):
 
     def getOutputPath(self, uri):
         bake_path = [self.out_dir]
-        decoded_uri = urllib.parse.unquote(uri.lstrip('/')).decode('utf8')
+        decoded_uri = urllib.parse.unquote(uri.lstrip('/'))
         if self.pretty_urls:
             bake_path.append(decoded_uri)
             bake_path.append('index.html')
         else:
             name, ext = os.path.splitext(decoded_uri)
-            if ext:
+            if decoded_uri == '':
+                bake_path.append('index.html')
+            elif ext:
                 bake_path.append(decoded_uri)
             else:
                 bake_path.append(decoded_uri + '.html')
@@ -191,7 +193,7 @@ class PageBaker(object):
             os.makedirs(out_dir, 0o755)
 
         with codecs.open(out_path, 'w', 'utf-8') as fp:
-            fp.write(rp.content.decode('utf-8'))
+            fp.write(rp.content)
 
         return ctx, rp
 

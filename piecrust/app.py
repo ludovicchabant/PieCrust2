@@ -1,7 +1,6 @@
 import re
 import json
 import os.path
-import types
 import codecs
 import hashlib
 import logging
@@ -59,8 +58,8 @@ class PieCrustConfiguration(Configuration):
             return
 
         path_times = [os.path.getmtime(p) for p in self.paths]
-        cache_key = hashlib.md5("version=%s&cache=%d" % (
-                APP_VERSION, CACHE_VERSION)).hexdigest()
+        cache_key = hashlib.md5(("version=%s&cache=%d" % (
+                APP_VERSION, CACHE_VERSION)).encode('utf8')).hexdigest()
 
         if self.cache.isValid('config.json', path_times):
             logger.debug("Loading configuration from cache...")
