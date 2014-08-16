@@ -3,10 +3,12 @@ Markdown==2.4.1
 MarkupSafe==0.23
 PyYAML==3.11
 Pygments==1.6
+Werkzeug==0.9.6
 colorama==0.3.1
+mock==1.0.1
 py==1.4.23
 pytest==2.6.1
+pytest-mock==0.2.0
 python-dateutil==2.2
 repoze.lru==0.6
-six==1.7.3
 strict-rfc3339==0.4
