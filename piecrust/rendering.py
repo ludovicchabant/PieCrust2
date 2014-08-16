@@ -1,6 +1,5 @@
 import re
 import os.path
-import codecs
 import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
@@ -98,7 +97,7 @@ def render_page(ctx):
 
         rp = RenderedPage(page, ctx.uri, ctx.page_num)
         rp.data = page_data
-        rp.content = codecs.encode(output, 'utf8')
+        rp.content = output
         rp.execution_info = eis.current_page_info
         return rp
     finally:

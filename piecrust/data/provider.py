@@ -1,5 +1,4 @@
 import time
-import itertools
 from piecrust.data.iterators import PageIterator
 from piecrust.sources.base import ArraySource
 
@@ -18,7 +17,10 @@ class DataProvider(object):
 
     def __getattr__(self, name):
         if self._user_data is not None:
-            return self._user_data[name]
+            try:
+                return self._user_data[name]
+            except KeyError:
+                pass
         raise AttributeError()
 
     def __getitem__(self, name):
@@ -170,6 +172,8 @@ class BlogDataProvider(DataProvider):
         for fac in self._source.getPageFactories():
             post = fac.buildPage()
             tax_values = post.config.get(tax_name)
+            if tax_values is None:
+                continue
             if not isinstance(tax_values, list):
                 tax_values = [tax_values]
             for val in tax_values:

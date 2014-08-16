@@ -172,7 +172,7 @@ def _do_load_page(app, path):
 
     # Check the cache first.
     cache = app.cache.getCache('pages')
-    cache_path = "%s.json" % hashlib.md5(path).hexdigest()
+    cache_path = "%s.json" % hashlib.md5(path.encode('utf8')).hexdigest()
     page_time = os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
         exec_info.was_cache_valid = True

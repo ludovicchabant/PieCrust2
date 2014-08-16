@@ -192,7 +192,7 @@ class PageBaker(object):
         if not os.path.isdir(out_dir):
             os.makedirs(out_dir, 0o755)
 
-        with codecs.open(out_path, 'w', 'utf-8') as fp:
+        with codecs.open(out_path, 'w', 'utf8') as fp:
             fp.write(rp.content)
 
         return ctx, rp
@@ -235,7 +235,8 @@ class Baker(object):
         # Load/create the bake record.
         record = TransitionalBakeRecord()
         record_cache = self.app.cache.getCache('bake_r')
-        record_name = hashlib.md5(self.out_dir).hexdigest() + '.record'
+        record_name = (hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
+                '.record')
         if not self.force and record_cache.has(record_name):
             t = time.clock()
             record.loadPrevious(record_cache.getCachePath(record_name))

@@ -35,7 +35,7 @@ class Record(object):
         if not os.path.isdir(path_dir):
             os.makedirs(path_dir, 0o755)
 
-        with open(path, 'w') as fp:
+        with open(path, 'wb') as fp:
             pickle.dump(self, fp, pickle.HIGHEST_PROTOCOL)
 
     def __getstate__(self):
@@ -46,6 +46,6 @@ class Record(object):
     @staticmethod
     def load(path):
         logger.debug("Loading bake record from: %s" % path)
-        with open(path, 'r') as fp:
+        with open(path, 'rb') as fp:
             return pickle.load(fp)
 

@@ -135,7 +135,7 @@ def main():
     parser.add_argument('--log', help="Send log messages to the specified file.")
 
     commands = sorted(app.plugin_loader.getCommands(),
-            lambda a, b: cmp(a.name, b.name))
+            key=lambda c: c.name)
     subparsers = parser.add_subparsers()
     for c in commands:
         p = subparsers.add_parser(c.name, help=c.description)

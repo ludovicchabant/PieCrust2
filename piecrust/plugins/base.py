@@ -105,7 +105,7 @@ class PluginLoader(object):
     def _loadPlugin(self, plugin_dir):
         pass
 
-    def _getPluginComponents(self, name, initialize=False, order_cmp=None, order_key=None):
+    def _getPluginComponents(self, name, initialize=False, order_key=None):
         if name in self._componentCache:
             return self._componentCache[name]
 
@@ -117,8 +117,8 @@ class PluginLoader(object):
                 for comp in plugin_components:
                     comp.initialize(self.app)
 
-        if order_cmp is not None or order_key is not None:
-            all_components.sort(cmp=order_cmp, key=order_key)
+        if order_key is not None:
+            all_components.sort(key=order_key)
 
         self._componentCache[name] = all_components
         return all_components

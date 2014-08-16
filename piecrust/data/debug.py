@@ -175,9 +175,7 @@ class DebugDataRenderer(object):
             self._write('<span style="%s">%4.2f</span>' % (CSS_VALUE, data))
             return
 
-        if data_type in (str, str):
-            if data_type == str:
-                data = data.decode('utf8')
+        if data_type is str:
             if len(data) > DebugDataRenderer.MAX_VALUE_LENGTH:
                 data = data[:DebugDataRenderer.MAX_VALUE_LENGTH - 5]
                 data += '[...]'

@@ -71,7 +71,7 @@ class LessProcessor(SimpleFileProcessor):
                             "must be an array of arguments.")
 
     def _getMapPath(self, path):
-        map_name = "%s.map" % hashlib.md5(path).hexdigest()
+        map_name = "%s.map" % hashlib.md5(path.encode('utf8')).hexdigest()
         map_path = os.path.join(self._map_dir, map_name)
         return map_path
 

@@ -23,8 +23,6 @@ from piecrust.sources.base import MODE_PARSING
 logger = logging.getLogger(__name__)
 
 
-
-
 class Server(object):
     def __init__(self, root_dir, host='localhost', port='8080',
                  debug=False, static_preview=True):
@@ -122,7 +120,7 @@ class Server(object):
         pipeline.run(asset_in_path)
 
         logger.debug("Serving %s" % asset_out_path)
-        wrapper = wrap_file(environ, open(asset_out_path))
+        wrapper = wrap_file(environ, open(asset_out_path, 'rb'))
         response = Response(wrapper)
         _, ext = os.path.splitext(rel_req_path)
         response.mimetype = self._mimetype_map.get(
@@ -138,7 +136,7 @@ class Server(object):
             return None
 
         logger.debug("Serving %s" % full_path)
-        wrapper = wrap_file(environ, open(full_path))
+        wrapper = wrap_file(environ, open(full_path, 'rb'))
         response = Response(wrapper)
         _, ext = os.path.splitext(full_path)
         response.mimetype = self._mimetype_map.get(
@@ -197,10 +195,17 @@ class Server(object):
         rendered_page = render_page(render_ctx)
         rp_content = rendered_page.content
 
+        if app.debug:
+            now_time = time.clock()
+            timing_info = ('%8.1f ms' %
+                    ((now_time - app.env.start_time) * 1000.0))
+            rp_content = rp_content.replace('__PIECRUST_TIMING_INFORMATION__',
+                    timing_info)
+
         # Start response.
         response = Response()
 
-        etag = hashlib.md5(rp_content).hexdigest()
+        etag = hashlib.md5(rp_content.encode('utf8')).hexdigest()
         if not app.debug and etag in request.if_none_match:
             response.status_code = 304
             return response
@@ -227,29 +232,18 @@ class Server(object):
         if mimetype:
             response.mimetype = mimetype
 
-        if app.debug:
-            now_time = time.clock()
-            timing_info = ('%8.1f ms' %
-                    ((now_time - app.env.start_time) * 1000.0))
-            rp_content = rp_content.replace('__PIECRUST_TIMING_INFORMATION__',
-                    timing_info)
-
         if ('gzip' in request.accept_encodings and
                 app.config.get('site/enable_gzip')):
             try:
-                gzip_buffer = io.StringIO()
-                gzip_file = gzip.GzipFile(
-                        mode='wb',
-                        compresslevel=9,
-                        fileobj=gzip_buffer)
-                gzip_file.write(rp_content)
-                gzip_file.close()
-                rp_content = gzip_buffer.getvalue()
-                response.content_encoding = 'gzip'
+                with io.BytesIO() as gzip_buffer:
+                    with gzip.open(gzip_buffer, mode='wt',
+                                   encoding='utf8') as gzip_file:
+                        gzip_file.write(rp_content)
+                    rp_content = gzip_buffer.getvalue()
+                    response.content_encoding = 'gzip'
             except Exception:
                 logger.exception("Error compressing response, "
                                  "falling back to uncompressed.")
-                rp_content = rendered_page.content
         response.set_data(rp_content)
 
         return response

@@ -274,7 +274,7 @@ class SimplePaginationSourceMixin(IPaginationSource):
         return None
 
 
-class ArraySource(PageSource):
+class ArraySource(PageSource, SimplePaginationSourceMixin):
     def __init__(self, app, inner_source, name='array', config=None):
         super(ArraySource, self).__init__(app, name, config or {})
         self.inner_source = inner_source

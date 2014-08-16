@@ -65,7 +65,14 @@ class TransitionalBakeRecord(object):
         self.current.entry_added += self._onCurrentEntryAdded
 
     def loadPrevious(self, previous_path):
-        self.previous = BakeRecord.load(previous_path)
+        try:
+            self.previous = BakeRecord.load(previous_path)
+        except Exception as ex:
+            logger.debug("Error loading previous record: %s" % ex)
+            logger.debug("Will reset to an empty one.")
+            self.previous = BakeRecord()
+            return
+
         for e in self.previous.entries:
             self.transitions[e.transition_key] = (e, None)
 
