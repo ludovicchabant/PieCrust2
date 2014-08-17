@@ -1,0 +1,12 @@
+include README.md
+include CHANGELOG.md
+include LICENSE.md
+recursive-include piecrust *.py
+recursive-include tests *.py
+#global-exclude .DS_Store
+#global-exclude Thumbs.db
+#global-exclude Desktop.ini
+#global-exclude *.swp
+#global-exclude *~
+#global-exclude *.bak
+

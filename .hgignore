@@ -3,4 +3,7 @@ syntax: glob
 venv
 tags
 build/messages/_cache
+dist
+piecrust.egg-info
+piecrust/__version__.py
 
