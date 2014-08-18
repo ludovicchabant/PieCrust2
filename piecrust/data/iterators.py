@@ -230,6 +230,7 @@ class PageIterator(object):
         self._pages = it_class(self._pages, *args, **kwargs)
         if self._pagination_slicer is None and it_class is SliceIterator:
             self._pagination_slicer = self._pages
+            self._pagination_slicer.current_page = self._current_page
         return self
 
     def _simpleNonSortedWrap(self, it_class, *args, **kwargs):
