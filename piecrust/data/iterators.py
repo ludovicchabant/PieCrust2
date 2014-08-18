@@ -23,8 +23,14 @@ class SliceIterator(object):
         if self._cache is None:
             inner_list = list(self.it)
             self.inner_count = len(inner_list)
-            self.has_more = self.inner_count > (self.offset + self.limit)
-            self._cache = inner_list[self.offset:self.offset + self.limit]
+
+            if self.limit > 0:
+                self.has_more = self.inner_count > (self.offset + self.limit)
+                self._cache = inner_list[self.offset:self.offset + self.limit]
+            else:
+                self.has_more = False
+                self._cache = inner_list[self.offset:]
+
             if self.current_page:
                 idx = inner_list.index(self.current_page)
                 if idx >= 0:
@@ -32,6 +38,7 @@ class SliceIterator(object):
                         self.next_page = inner_list[idx + 1]
                     if idx > 0:
                         self.prev_page = inner_list[idx - 1]
+
         return iter(self._cache)
 
 
@@ -56,6 +63,15 @@ class SettingFilterIterator(object):
                 yield i
 
 
+class NaturalSortIterator(object):
+    def __init__(self, it, reverse=False):
+        self.it = it
+        self.reverse = reverse
+
+    def __iter__(self):
+        return iter(sorted(self.it, reverse=self.reverse))
+
+
 class SettingSortIterator(object):
     def __init__(self, it, name, reverse=False, value_accessor=None):
         self.it = it
@@ -64,29 +80,13 @@ class SettingSortIterator(object):
         self.value_accessor = value_accessor
 
     def __iter__(self):
-        def comparer(x, y):
-            if self.value_accessor:
-                v1 = self.value_accessor(x, self.name)
-                v2 = self.value_accessor(y, self.name)
-            else:
-                v1 = x.config.get(self.name)
-                v2 = y.config.get(self.name)
+        return iter(sorted(self.it, key=self._key_getter,
+                           reverse=self.reverse))
 
-            if v1 is None and v2 is None:
-                return 0
-            if v1 is None and v2 is not None:
-                return 1 if self.reverse else -1
-            if v1 is not None and v2 is None:
-                return -1 if self.reverse else 1
-
-            if v1 == v2:
-                return 0
-            if self.reverse:
-                return 1 if v1 < v2 else -1
-            else:
-                return -1 if v1 < v2 else 1
-
-        return sorted(self.it, cmp=self._comparer, reverse=self.reverse)
+    def _key_getter(self, item):
+        if self.value_accessor:
+            return self.value_accessor(item, self.name)
+        return item.config.get(self.name)
 
 
 class PaginationFilterIterator(object):
@@ -200,10 +200,14 @@ class PageIterator(object):
                             (filter_name, self._current_page.path))
         return self._simpleNonSortedWrap(SettingFilterIterator, filter_conf)
 
-    def sort(self, setting_name, reverse=False):
+    def sort(self, setting_name=None, reverse=False):
         self._ensureUnlocked()
         self._unload()
-        self._pages = SettingSortIterator(self._pages, setting_name, reverse)
+        if setting_name is not None:
+            self._pages = SettingSortIterator(self._pages, setting_name,
+                                              reverse)
+        else:
+            self._pages = NaturalSortIterator(self._pages, reverse)
         self._has_sorter = True
         return self
 
