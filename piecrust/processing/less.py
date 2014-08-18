@@ -3,6 +3,7 @@ import os.path
 import json
 import hashlib
 import logging
+import platform
 import subprocess
 from piecrust.processing.base import SimpleFileProcessor
 from piecrust.processing.tree import FORCE_BUILD
@@ -52,7 +53,17 @@ class LessProcessor(SimpleFileProcessor):
         args.append(in_path)
         args.append(out_path)
         logger.debug("Processing LESS file: %s" % args)
-        retcode = subprocess.call(args)
+
+        # On Windows, we need to run the process in a shell environment
+        # otherwise it looks like `PATH` isn't taken into account.
+        shell=(platform.system() == 'Windows')
+        try:
+            retcode = subprocess.call(args, shell=shell)
+        except FileNotFoundError as ex:
+            logger.error("Tried running LESS processor with command: %s" %
+                    args)
+            raise Exception("Error running LESS processor. "
+                            "Did you install it?") from ex
         if retcode != 0:
             raise Exception("Error occured in LESS compiler. Please check "
                             "log messages above for more information.")
