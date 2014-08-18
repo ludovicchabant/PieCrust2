@@ -54,10 +54,7 @@ class Assetor(object):
 
     def __iter__(self):
         self._cacheAssets()
-        return self._cache.__iter__()
-
-    def iterkeys(self):
-        return self.__iter__(self)
+        return iter(self._cache.values())
 
     def _debugRenderAssetNames(self):
         self._cacheAssets()
