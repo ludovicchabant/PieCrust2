@@ -8,7 +8,7 @@ from piecrust import CONTENT_DIR
 from piecrust.sources.base import (PageSource, IPreparingSource,
         SimplePaginationSourceMixin,
         PageNotFoundError, InvalidFileSystemEndpointError,
-        PageFactory, MODE_CREATING)
+        PageFactory, MODE_CREATING, MODE_PARSING)
 
 
 logger = logging.getLogger(__name__)
@@ -22,13 +22,14 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, CONTENT_DIR, self.fs_endpoint)
         self.supported_extensions = list(app.config.get('site/auto_formats').keys())
+        self.default_auto_format = app.config.get('site/default_auto_format')
 
     @property
     def path_format(self):
         return self.__class__.PATH_FORMAT
 
     def resolveRef(self, ref_path):
-        return os.path.join(self.fs_endpoint_path, ref_path)
+        return os.path.normpath(os.path.join(self.fs_endpoint_path, ref_path))
 
     def findPagePath(self, metadata, mode):
         year = metadata.get('year')
@@ -40,6 +41,8 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         if ext is None:
             if len(self.supported_extensions) == 1:
                 ext = self.supported_extensions[0]
+            elif mode == MODE_CREATING and self.default_auto_format:
+                ext = self.default_auto_format
 
         replacements = {
                 'year': year,
@@ -64,7 +67,8 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         if ext is None:
             needs_recapture = True
             replacements['ext'] = '*'
-        path = os.path.join(self.fs_endpoint_path, self.path_format % replacements)
+        path = os.path.normpath(os.path.join(
+                self.fs_endpoint_path, self.path_format % replacements))
 
         if needs_recapture:
             if mode == MODE_CREATING:
@@ -73,8 +77,8 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
             if len(possible_paths) != 1:
                 raise PageNotFoundError()
             path = possible_paths[0]
-        elif not os.path.isfile(path):
-            raise PageNotFoundError()
+        elif mode == MODE_PARSING and not os.path.isfile(path):
+            raise PageNotFoundError(path)
 
         regex_repl = {
                 'year': '(?P<year>\d{4})',
@@ -83,8 +87,12 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 'slug': '(?P<slug>.*)',
                 'ext': '(?P<ext>.*)'
                 }
-        pattern = os.path.join(self.fs_endpoint_path, self.path_format) % regex_repl
-        m = re.match(pattern, path)
+        #sanitized_fs_endpoint_path = (self.fs_endpoint_path.
+        #        replace('\\', '/').rstrip('/'))
+        #pattern = (re.escape(sanitized_fs_endpoint_path) + '/' +
+        #        self.path_format % regex_repl)
+        pattern = self.path_format % regex_repl + '$'
+        m = re.search(pattern, path.replace('\\', '/'))
         if not m:
             raise Exception("Expected to be able to match path with path "
                             "format: %s" % path)
@@ -94,8 +102,9 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 'day': m.group('day'),
                 'slug': m.group('slug')
                 }
-
-        return path, fac_metadata
+        rel_path = os.path.relpath(path, self.fs_endpoint_path)
+        rel_path = rel_path.replace('\\', '/')
+        return rel_path, fac_metadata
 
     def setupPrepareParser(self, parser, app):
         parser.add_argument('-d', '--date', help="The date of the post, "
@@ -114,6 +123,7 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
             raise InvalidFileSystemEndpointError(self.name, self.fs_endpoint_path)
 
     def _makeFactory(self, path, slug, year, month, day):
+        path = path.replace('\\', '/')
         timestamp = datetime.date(year, month, day)
         metadata = {
                 'slug': slug,

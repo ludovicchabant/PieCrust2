@@ -86,18 +86,19 @@ class PrepareCommand(ChefCommand):
         app = ctx.app
         source = ctx.args.source
         metadata = source.buildMetadata(ctx.args)
-        page_path = source.findPagePath(metadata, MODE_CREATING)
-        name, ext = os.path.splitext(page_path)
+        rel_path, metadata = source.findPagePath(metadata, MODE_CREATING)
+        path = source.resolveRef(rel_path)
+        name, ext = os.path.splitext(path)
         if ext == '.*':
-            page_path = '%s.%s' % (name,
+            path = '%s.%s' % (name,
                     app.config.get('site/default_auto_format'))
-        if os.path.exists(page_path):
-            raise Exception("'%s' already exists." % page_path)
+        if os.path.exists(path):
+            raise Exception("'%s' already exists." % path)
 
-        logger.info("Creating page: %s" % os.path.relpath(page_path, app.root_dir))
-        if not os.path.exists(os.path.dirname(page_path)):
-            os.makedirs(os.path.dirname(page_path), 0o755)
-        with open(page_path, 'w') as f:
+        logger.info("Creating page: %s" % os.path.relpath(path, app.root_dir))
+        if not os.path.exists(os.path.dirname(path)):
+            os.makedirs(os.path.dirname(path), 0o755)
+        with open(path, 'w') as f:
             f.write('---\n')
             f.write('title: %s\n' % 'Unknown title')
             f.write('---\n')

@@ -40,6 +40,7 @@ class mock_fs(object):
                     "site:\n  title: Mock Website\n")
 
     def path(self, p):
+        p = p.replace('\\', '/')
         if p in ['/', '', None]:
             return '/%s' % self._root
         return '/%s/%s' % (self._root, p.lstrip('/'))
@@ -49,6 +50,7 @@ class mock_fs(object):
         return PieCrust(root_dir, cache=False)
 
     def withDir(self, path):
+        path = path.replace('\\', '/')
         cur = self._fs[self._root]
         for b in path.split('/'):
             if b not in cur:
@@ -57,6 +59,7 @@ class mock_fs(object):
         return self
 
     def withFile(self, path, contents):
+        path = path.replace('\\', '/')
         cur = self._fs[self._root]
         bits = path.split('/')
         for b in bits[:-1]:
@@ -73,11 +76,13 @@ class mock_fs(object):
         return self.withDir('kitchen/' + path)
 
     def withConfig(self, config):
-        return self.withFile('kitchen/_content/config.yml',
+        return self.withFile(
+                'kitchen/_content/config.yml',
                 yaml.dump(config))
 
     def withThemeConfig(self, config):
-        return self.withFile('kitchen/_content/theme/_content/theme_config.yml',
+        return self.withFile(
+                'kitchen/_content/theme/_content/theme_config.yml',
                 yaml.dump(config))
 
     def withPage(self, url, config=None, contents=None):
@@ -92,7 +97,7 @@ class mock_fs(object):
         if not ext:
             url += '.md'
         url = url.lstrip('/')
-        return self.withAsset('_content/pages/' + url, text)
+        return self.withAsset('_content/' + url, text)
 
     def withPageAsset(self, page_url, name, contents=None):
         contents = contents or "A test asset."
@@ -138,25 +143,31 @@ class mock_fs_scope(object):
         self._patchers.append(mock.patch(name, func, **kwargs))
 
     def _open(self, path, *args, **kwargs):
-        path = os.path.abspath(path)
+        path = os.path.normpath(path)
         if path.startswith(resources_path):
             return self._originals['__main__.open'](path, **kwargs)
         e = self._getFsEntry(path)
+        if e is None:
+            raise OSError("No such file: %s" % path)
         return io.StringIO(e[0])
 
     def _codecsOpen(self, path, *args, **kwargs):
-        path = os.path.abspath(path)
+        path = os.path.normpath(path)
         if path.startswith(resources_path):
             return self._originals['codecs.open'](path, *args, **kwargs)
         e = self._getFsEntry(path)
+        if e is None:
+            raise OSError("No such file: %s" % path)
         return io.StringIO(e[0])
 
     def _listdir(self, path):
         if not path.startswith('/' + self._root):
             return self._originals['os.listdir'](path)
         e = self._getFsEntry(path)
+        if e is None:
+            raise OSError("No such directory: %s" % path)
         if not isinstance(e, dict):
-            raise Exception("'%s' is not a directory." % path)
+            raise OSError("'%s' is not a directory." % path)
         return list(e.keys())
 
     def _isdir(self, path):
@@ -175,12 +186,13 @@ class mock_fs_scope(object):
             return self._originals['os.path.getmtime'](path)
         e = self._getFsEntry(path)
         if e is None:
-            raise OSError()
+            raise OSError("No such file: %s" % path)
         return e[1]['mtime']
 
     def _getFsEntry(self, path):
         cur = self._fs
-        bits = path.lstrip('/').split('/')
+        path = path.replace('\\', '/').lstrip('/')
+        bits = path.split('/')
         for p in bits:
             try:
                 cur = cur[p]

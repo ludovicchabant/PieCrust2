@@ -74,7 +74,7 @@ class PageBaker(object):
             else:
                 bake_path.append(decoded_uri + '.html')
 
-        return os.path.join(*bake_path)
+        return os.path.normpath(os.path.join(*bake_path))
 
     def bake(self, factory, route, taxonomy_name=None, taxonomy_term=None):
         page = factory.buildPage()
@@ -155,9 +155,8 @@ class PageBaker(object):
                 ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
                         pagination_filter, custom_data)
             except Exception as ex:
-                logger.exception("Error baking page '%s' for URI '%s': %s" %
-                        (page.ref_spec, uri, ex))
-                raise
+                raise Exception("Error baking page '%s' for URI '%s'." %
+                        (page.ref_spec, uri)) from ex
 
             cur_record_entry.out_uris.append(sub_uri)
             cur_record_entry.out_paths.append(out_path)

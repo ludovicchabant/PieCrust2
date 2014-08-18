@@ -1,6 +1,7 @@
 import re
 import gzip
 import time
+import os
 import os.path
 import hashlib
 import logging
@@ -17,7 +18,7 @@ from piecrust.data.filters import (PaginationFilter, HasFilterClause,
 from piecrust.page import Page
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import PageRenderingContext, render_page
-from piecrust.sources.base import MODE_PARSING
+from piecrust.sources.base import PageFactory, MODE_PARSING
 
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ class Server(object):
 
     def _try_serve_asset(self, app, environ, request):
         logger.debug("Searching for asset with path: %s" % request.path)
-        rel_req_path = request.path.lstrip('/')
+        rel_req_path = request.path.lstrip('/').replace('/', os.sep)
         entry = self._record.findEntry(rel_req_path)
         if entry is None:
             return None
@@ -161,16 +162,16 @@ class Server(object):
         for route, route_metadata in routes:
             source = app.getSource(route.source_name)
             if route.taxonomy is None:
-                path, fac_metadata = source.findPagePath(
+                rel_path, fac_metadata = source.findPagePath(
                         route_metadata, MODE_PARSING)
-                if path is not None:
+                if rel_path is not None:
                     break
             else:
                 taxonomy = app.getTaxonomy(route.taxonomy)
                 term_value = route_metadata.get(taxonomy.term_name)
                 if term_value is not None:
                     tax_page_ref = taxonomy.getPageRef(source.name)
-                    path = tax_page_ref.path
+                    rel_path = tax_page_ref.rel_path
                     source = tax_page_ref.source
                     fac_metadata = {taxonomy.term_name: term_value}
                     break
@@ -180,7 +181,8 @@ class Server(object):
                     (req_path, [r.source_name for r, _ in routes]))
 
         # Build the page and render it.
-        page = Page(source, fac_metadata, path)
+        fac = PageFactory(source, rel_path, fac_metadata)
+        page = fac.buildPage()
         render_ctx = PageRenderingContext(page, req_path, page_num)
         if taxonomy is not None:
             flt = PaginationFilter()

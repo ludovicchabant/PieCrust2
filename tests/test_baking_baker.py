@@ -1,3 +1,4 @@
+import os.path
 import pytest
 from piecrust.baking.baker import PageBaker
 from .mockutil import get_mock_app
@@ -36,6 +37,7 @@ def test_get_output_path(uri, page_num, pretty, expected):
     baker = PageBaker(app, '/destination')
     sub_uri = baker.getOutputUri(uri, page_num)
     path = baker.getOutputPath(sub_uri)
-    expected = '/destination/' + expected
+    expected = os.path.normpath(
+            os.path.join('/destination', expected))
     assert expected == path
 

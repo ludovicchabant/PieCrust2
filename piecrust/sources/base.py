@@ -294,6 +294,7 @@ class SimplePageSource(PageSource):
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, CONTENT_DIR, self.fs_endpoint)
         self.supported_extensions = list(app.config.get('site/auto_formats').keys())
+        self.default_auto_format = app.config.get('site/default_auto_format')
 
     def buildPageFactories(self):
         logger.debug("Scanning for pages in: %s" % self.fs_endpoint_path)
@@ -313,22 +314,26 @@ class SimplePageSource(PageSource):
                 fac_path = f
                 if rel_dirpath != '.':
                     fac_path = os.path.join(rel_dirpath, f)
+                fac_path = fac_path.replace('\\', '/')
                 yield PageFactory(self, fac_path, metadata)
 
     def resolveRef(self, ref_path):
-        return os.path.join(self.fs_endpoint_path, ref_path)
+        return os.path.normpath(
+                os.path.join(self.fs_endpoint_path, ref_path))
 
     def findPagePath(self, metadata, mode):
         uri_path = metadata['path']
         if uri_path == '':
             uri_path = '_index'
-        path = os.path.join(self.fs_endpoint_path, uri_path)
+        path = os.path.normpath(os.path.join(self.fs_endpoint_path, uri_path))
         _, ext = os.path.splitext(path)
 
         if mode == MODE_CREATING:
             if ext == '':
-                return '%s.*' % path
-            return path, metadata
+                path = '%s.%s' % (path, self.default_auto_format)
+            rel_path = os.path.relpath(path, self.fs_endpoint_path)
+            rel_path = rel_path.replace('\\', '/')
+            return rel_path, metadata
 
         if ext == '':
             paths_to_check = ['%s.%s' % (path, e)
@@ -337,7 +342,9 @@ class SimplePageSource(PageSource):
             paths_to_check = [path]
         for path in paths_to_check:
             if os.path.isfile(path):
-                return path, metadata
+                rel_path = os.path.relpath(path, self.fs_endpoint_path)
+                rel_path = rel_path.replace('\\', '/')
+                return rel_path, metadata
 
         return None, None
 
@@ -393,5 +400,8 @@ class PaginationDataBuilderIterator(object):
 
     def __iter__(self):
         for page in self.it:
-            yield PaginationData(page)
+            if page is None:
+                yield None
+            else:
+                yield PaginationData(page)
 
