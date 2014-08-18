@@ -1,9 +1,9 @@
 import re
-import cgi
-import logging
 import io
-from piecrust import APP_VERSION, PIECRUST_URL
+import html
+import logging
 import collections
+from piecrust import APP_VERSION, PIECRUST_URL
 
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ class DebugDataRenderer(object):
             if len(data) > DebugDataRenderer.MAX_VALUE_LENGTH:
                 data = data[:DebugDataRenderer.MAX_VALUE_LENGTH - 5]
                 data += '[...]'
-            data = cgi.escape(data).encode('ascii', 'xmlcharrefreplace')
+            data = html.escape(data)
             self._write('<span style="%s">%s</span>' % (CSS_VALUE, data))
             return
 
@@ -275,17 +275,28 @@ class DebugDataRenderer(object):
                 name_gen = getattr(data, ng)
                 invoke_attrs += name_gen()
 
+        redirects = {}
+        if hasattr(data.__class__, 'debug_render_redirect'):
+            redirects = data.__class__.debug_render_redirect
+
         rendered_count = 0
         for name in attr_names:
             value = None
             render_name = name
             should_call = name in invoke_attrs
 
+            if name in redirects:
+                name = redirects[name]
+
+            query_instance = False
             try:
                 attr = getattr(data.__class__, name)
             except AttributeError:
                 # This could be an attribute on the instance itself, or some
                 # dynamic attribute.
+                query_instance = True
+
+            if query_instance:
                 attr = getattr(data, name)
 
             if isinstance(attr, collections.Callable):
