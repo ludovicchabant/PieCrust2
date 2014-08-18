@@ -4,6 +4,7 @@ import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
 from piecrust.environment import PHASE_PAGE_FORMATTING, PHASE_PAGE_RENDERING
+from piecrust.uriutil import get_slug
 
 
 logger = logging.getLogger(__name__)
@@ -47,6 +48,10 @@ class PageRenderingContext(object):
     @property
     def app(self):
         return self.page.app
+
+    @property
+    def slug(self):
+        return get_slug(self.page.app, self.uri)
 
     @property
     def source_metadata(self):

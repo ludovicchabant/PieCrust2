@@ -72,3 +72,9 @@ def multi_replace(text, replacements):
     pattern = re.compile("|".join(list(reps.keys())))
     return pattern.sub(lambda m: reps[re.escape(m.group(0))], text)
 
+
+def get_slug(app, uri):
+    site_root = app.config.get('site/root')
+    uri = uri[len(site_root):]
+    return uri.lstrip('/')
+

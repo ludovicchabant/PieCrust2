@@ -53,6 +53,12 @@ class ExecutionInfoStack(threading.local):
     def is_main_page(self):
         return len(self._page_stack) == 1
 
+    def hasPage(self, page):
+        for ei in self._page_stack:
+            if ei.page == page:
+                return True
+        return False
+
     def pushPage(self, page, phase, render_ctx):
         self._page_stack.append(ExecutionInfo(page, phase, render_ctx))
 

@@ -5,6 +5,7 @@ from piecrust.data.assetor import Assetor
 from piecrust.data.debug import build_debug_info
 from piecrust.data.linker import Linker
 from piecrust.data.paginator import Paginator
+from piecrust.uriutil import get_slug
 
 
 logger = logging.getLogger(__name__)
@@ -18,18 +19,23 @@ class DataBuildingContext(object):
         self.pagination_source = None
         self.pagination_filter = None
 
+    @property
+    def slug(self):
+        return get_slug(self.page.app, self.uri)
+
 
 def build_page_data(ctx):
     page = ctx.page
     app = page.app
 
+    pc_data = PieCrustData()
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
     paginator = Paginator(page, pgn_source, ctx.uri, ctx.page_num,
             ctx.pagination_filter)
     assetor = Assetor(page, ctx.uri)
     linker = Linker(page)
     data = {
-            'piecrust': build_piecrust_data(),
+            'piecrust': pc_data,
             'page': dict(page.config.get()),
             'assets': assetor,
             'pagination': paginator,
@@ -38,6 +44,7 @@ def build_page_data(ctx):
             }
     page_data = data['page']
     page_data['url'] = ctx.uri
+    page_data['slug'] = ctx.slug
     page_data['timestamp'] = time.mktime(page.datetime.timetuple())
     date_format = app.config.get('site/date_format')
     if date_format:
@@ -52,7 +59,7 @@ def build_page_data(ctx):
     # displayed in the debugger window.
     if (app.debug and app.config.get('site/enable_debug_info') and
             not app.config.get('baker/is_baking')):
-        data['piecrust']['debug_info'] = build_debug_info(page, data)
+        pc_data._enableDebugInfo(page, data)
 
     return data
 
@@ -73,14 +80,31 @@ except ImportError:
     from piecrust import APP_VERSION as VERSION
 
 
-def build_piecrust_data():
-    data = {
-            'version': VERSION,
-            'url': 'http://bolt80.com/piecrust/',
-            'branding': 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
+class PieCrustData(object):
+    debug_render = ['version', 'url', 'branding', 'debug_info']
+    debug_render_invoke = ['version', 'url', 'branding', 'debug_info']
+    debug_render_redirect = {'debug_info': '_debugRenderDebugInfo'}
+
+    def __init__(self):
+        self.version = VERSION
+        self.url = 'http://bolt80.com/piecrust/'
+        self.branding = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
                 'http://bolt80.com/piecrust/', VERSION)
-            }
-    return data
+        self._page = None
+        self._data = None
+
+    @property
+    def debug_info(self):
+        if self._page is not None and self._data is not None:
+            return build_debug_info(self._page, self._data)
+        return None
+
+    def _enableDebugInfo(self, page, data):
+        self._page = page
+        self._data = data
+
+    def _debugRenderDebugInfo(self):
+        return "The very thing you're looking at!"
 
 
 def build_site_data(page):

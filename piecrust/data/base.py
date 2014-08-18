@@ -1,12 +1,16 @@
 import time
 import logging
 from piecrust.data.assetor import Assetor
+from piecrust.uriutil import get_slug
 
 
 logger = logging.getLogger(__name__)
 
 
 class IPaginationSource(object):
+    """ Defines the interface for a source that can be used as the data
+        for an iterator or a pagination.
+    """
     def getItemsPerPage(self):
         raise NotImplementedError()
 
@@ -28,6 +32,9 @@ class LazyPageConfigData(object):
         but also allows for additional data. It's meant to be exposed
         to the templating system.
     """
+    debug_render = []
+    debug_render_dynamic = ['_debugRenderKeys']
+
     def __init__(self, page):
         self._page = page
         self._values = None
@@ -37,7 +44,16 @@ class LazyPageConfigData(object):
     def page(self):
         return self._page
 
+    def __getattr__(self, name):
+        try:
+            return self.getValue(name)
+        except KeyError:
+            raise AttributeError
+
     def __getitem__(self, name):
+        return self.getValue(name)
+
+    def getValue(self, name):
         self._load()
 
         if self._loaders:
@@ -46,10 +62,8 @@ class LazyPageConfigData(object):
                 try:
                     self._values[name] = loader(self, name)
                 except Exception as ex:
-                    logger.error("Error while loading attribute '%s' for: %s"
-                            % (name, self._page.path))
-                    logger.exception(ex)
-                    raise Exception("Internal Error: %s" % ex)
+                    raise Exception("Error while loading attribute '%s' for: %s"
+                            % (name, self._page.rel_path)) from ex
 
                 # We need to double-check `_loaders` here because
                 # the loader could have removed all loaders, which
@@ -87,12 +101,17 @@ class LazyPageConfigData(object):
         try:
             self._loadCustom()
         except Exception as ex:
-            logger.error("Error while loading data for: %s" % self._page.path)
-            logger.exception(ex)
-            raise Exception("Internal Error: %s" % ex)
+            raise Exception("Error while loading data for: %s" % self._page.rel_path) from ex
 
     def _loadCustom(self):
         pass
+
+    def _debugRenderKeys(self):
+        self._load()
+        keys = set(self._values.keys())
+        if self._loaders:
+            keys |= set(self._loaders.keys())
+        return list(keys)
 
 
 class PaginationData(LazyPageConfigData):
@@ -109,7 +128,7 @@ class PaginationData(LazyPageConfigData):
     def _loadCustom(self):
         page_url = self._get_uri()
         self.setValue('url', page_url)
-        self.setValue('slug', page_url)
+        self.setValue('slug', get_slug(self._page.app, page_url))
         self.setValue('timestamp',
                 time.mktime(self.page.datetime.timetuple()))
         date_format = self.page.app.config.get('site/date_format')
@@ -124,16 +143,29 @@ class PaginationData(LazyPageConfigData):
             self.mapLoader(name, self._load_rendered_segment)
 
     def _load_rendered_segment(self, data, name):
-        from piecrust.rendering import PageRenderingContext, render_page_segments
+        do_render = True
+        eis = self._page.app.env.exec_info_stack
+        if eis is not None and eis.hasPage(self._page):
+            # This is the pagination data for the page that is currently
+            # being rendered! Inception! But this is possible... so just
+            # prevent infinite recursion.
+            do_render = False
 
         assert self is data
-        uri = self._get_uri()
-        try:
-            ctx = PageRenderingContext(self._page, uri)
-            segs = render_page_segments(ctx)
-        except Exception as e:
-            logger.exception("Error rendering segments for '%s': %s" % (uri, e))
-            raise
+
+        if do_render:
+            uri = self._get_uri()
+            try:
+                from piecrust.rendering import (PageRenderingContext,
+                        render_page_segments)
+                ctx = PageRenderingContext(self._page, uri)
+                segs = render_page_segments(ctx)
+            except Exception as e:
+                raise Exception("Error rendering segments for '%s'" % uri) from e
+        else:
+            segs = {}
+            for name in self.page.config.get('segments'):
+                segs[name] = "<unavailable: current page>"
 
         for k, v in segs.items():
             self.mapLoader(k, None)
