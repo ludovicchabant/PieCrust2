@@ -148,9 +148,7 @@ class ProcessingTreeRunner(object):
                 print_node(format_timed(start_time, "(bypassing structured processing)"))
                 return True
             except Exception as e:
-                import sys
-                _, __, traceback = sys.exc_info()
-                raise Exception("Error processing: %s" % node.path, e).with_traceback(traceback)
+                raise Exception("Error processing: %s" % node.path) from e
 
         # All outputs of a node must go to the same directory, so we can get
         # the output directory off of the first output.
@@ -178,9 +176,7 @@ class ProcessingTreeRunner(object):
                 print_node(node, "-> %s [clean]" % out_dir)
                 return False
         except Exception as e:
-            import sys
-            _, __, traceback = sys.exc_info()
-            raise Exception("Error processing: %s" % node.path, e).with_traceback(traceback)
+            raise Exception("Error processing: %s" % node.path) from e
 
     def _computeNodeState(self, node):
         if node.state != STATE_UNKNOWN:
