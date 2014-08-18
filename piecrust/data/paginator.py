@@ -21,13 +21,15 @@ class Paginator(object):
                     'total_item_count', 'total_page_count',
                     'next_item', 'prev_item']
 
-    def __init__(self, page, source, uri, page_num=1, pgn_filter=None):
+    def __init__(self, page, source, uri, page_num=1, pgn_filter=None,
+            items_per_page=-1):
         self._parent_page = page
         self._source = source
         self._uri = uri
         self._page_num = page_num
         self._iterator = None
         self._pgn_filter = pgn_filter
+        self._items_per_page = items_per_page
         self._pgn_set_on_ctx = False
 
     @property
@@ -83,11 +85,16 @@ class Paginator(object):
 
     @cached_property
     def items_per_page(self):
+        if self._items_per_page > 0:
+            return self._items_per_page
         if self._parent_page:
             ipp = self._parent_page.config.get('items_per_page')
             if ipp is not None:
                 return ipp
-        return self._source.getItemsPerPage()
+        if isinstance(self._source, IPaginationSource):
+            return self._source.getItemsPerPage()
+        raise Exception("No way to figure out how many items to display "
+                        "per page.")
 
     @property
     def items_this_page(self):
