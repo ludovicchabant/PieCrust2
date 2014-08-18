@@ -9,6 +9,7 @@ from jinja2.nodes import CallBlock, Const
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
+from piecrust.data.paginator import Paginator
 from piecrust.rendering import format_text
 from piecrust.routing import CompositeRouteFunction
 from piecrust.templating.base import TemplateEngine, TemplateNotFoundError
@@ -69,9 +70,11 @@ class PieCrustEnvironment(Environment):
     def __init__(self, app, *args, **kwargs):
         super(PieCrustEnvironment, self).__init__(*args, **kwargs)
         self.app = app
+        self.auto_reload = True
         self.globals.update({
                 'fail': raise_exception})
         self.filters.update({
+                'paginate': self._paginate,
                 'formatwith': self._formatWith,
                 'markdown': lambda v: self._formatWith(v, 'markdown'),
                 'textile': lambda v: self._formatWith(v, 'textile'),
@@ -106,6 +109,15 @@ class PieCrustEnvironment(Environment):
                 raise Exception("Route function '%s' collides with an "
                                 "existing function or template data." %
                                 name)
+
+    def _paginate(self, value, items_per_page=5):
+        cpi = self.app.env.exec_info_stack.current_page_info
+        if cpi is None or cpi.page is None or cpi.render_ctx is None:
+            raise Exception("Can't paginate when no page has been pushed "
+                            "on the execution stack.")
+        return Paginator(cpi.page, value, cpi.render_ctx.uri,
+                page_num=cpi.render_ctx.page_num,
+                items_per_page=items_per_page)
 
     def _formatWith(self, value, format_name):
         return format_text(self.app, format_name, value)
