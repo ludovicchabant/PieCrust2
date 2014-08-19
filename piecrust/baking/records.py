@@ -1,4 +1,5 @@
 import logging
+from piecrust.sources.base import PageSource
 from piecrust.records import Record
 
 
@@ -51,6 +52,11 @@ class BakeRecordPageEntry(object):
     def transition_key(self):
         return _get_transition_key(self.source_name, self.rel_path,
                 self.taxonomy_name, self.taxonomy_term)
+
+    def addUsedSource(self, source):
+        if isinstance(source, PageSource):
+            self.used_source_names.add(source.name)
+
 
 class TransitionalBakeRecord(object):
     DELETION_MISSING = 1

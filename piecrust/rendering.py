@@ -4,6 +4,7 @@ import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
 from piecrust.environment import PHASE_PAGE_FORMATTING, PHASE_PAGE_RENDERING
+from piecrust.sources.base import PageSource
 from piecrust.uriutil import get_slug
 
 
@@ -64,6 +65,10 @@ class PageRenderingContext(object):
         if self.used_pagination is not None:
             raise Exception("Pagination has already been used.")
         self.used_pagination = paginator
+
+    def addUsedSource(self, source):
+        if isinstance(source, PageSource):
+            self.used_source_names.add(source.name)
 
 
 def render_page(ctx):

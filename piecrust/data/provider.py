@@ -70,8 +70,7 @@ class IteratorDataProvider(DataProvider):
     def _onIteration(self):
         if not self._ctx_set:
             eis = self._page.app.env.exec_info_stack
-            eis.current_page_info.render_ctx.used_source_names.add(
-                    self._source.name)
+            eis.current_page_info.render_ctx.addUsedSource(self._source.name)
             self._ctx_set = True
 
 
@@ -192,8 +191,7 @@ class BlogDataProvider(DataProvider):
     def _onIteration(self):
         if not self._ctx_set:
             eis = self._page.app.env.exec_info_stack
-            eis.current_page_info.render_ctx.used_source_names.add(
-                    self._source.name)
+            eis.current_page_info.render_ctx.addUsedSource(self._source)
             self._ctx_set = True
 
 

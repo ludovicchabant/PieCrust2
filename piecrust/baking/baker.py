@@ -165,8 +165,7 @@ class PageBaker(object):
 
             has_more_subs = False
             if ctx.used_pagination is not None:
-                cur_record_entry.used_source_names.add(
-                        ctx.used_pagination._source.name)
+                cur_record_entry.addUsedSource(ctx.used_pagination._source)
                 if ctx.used_pagination.has_more:
                     cur_sub += 1
                     has_more_subs = True
