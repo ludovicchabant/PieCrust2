@@ -24,7 +24,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 10
+CACHE_VERSION = 11
 
 
 class VariantNotFoundError(Exception):
@@ -132,6 +132,9 @@ class PieCrustConfiguration(Configuration):
         # Cache auto-format regexes.
         if not isinstance(sitec['auto_formats'], dict):
             raise ConfigurationError("The 'site/auto_formats' setting must be a dictionary.")
+        html_auto_format = sitec['auto_formats']
+        if not html_auto_format:
+            sitec['auto_formats']['html'] = sitec['default_format']
         cachec['auto_formats_re'] = r"\.(%s)$" % (
                 '|'.join(
                         [re.escape(i) for i in list(sitec['auto_formats'].keys())]))
