@@ -129,6 +129,7 @@ class mock_fs_scope(object):
         self._createMock('codecs.open', codecs.open, self._codecsOpen)
         self._createMock('os.listdir', os.listdir, self._listdir)
         self._createMock('os.path.isdir', os.path.isdir, self._isdir)
+        self._createMock('os.path.isfile', os.path.isfile, self._isfile)
         self._createMock('os.path.islink', os.path.islink, self._islink)
         self._createMock('os.path.getmtime', os.path.getmtime, self._getmtime)
         for p in self._patchers:
@@ -149,6 +150,8 @@ class mock_fs_scope(object):
         e = self._getFsEntry(path)
         if e is None:
             raise OSError("No such file: %s" % path)
+        if not isinstance(e, tuple):
+            raise OSError("'%s' is not a file" % path)
         return io.StringIO(e[0])
 
     def _codecsOpen(self, path, *args, **kwargs):
@@ -158,6 +161,8 @@ class mock_fs_scope(object):
         e = self._getFsEntry(path)
         if e is None:
             raise OSError("No such file: %s" % path)
+        if not isinstance(e, tuple):
+            raise OSError("'%s' is not a file" % path)
         return io.StringIO(e[0])
 
     def _listdir(self, path):
@@ -175,6 +180,12 @@ class mock_fs_scope(object):
             return self._originals['os.path.isdir'](path)
         e = self._getFsEntry(path)
         return e is not None and isinstance(e, dict)
+
+    def _isfile(self, path):
+        if not path.startswith('/' + self._root):
+            return self._originals['os.path.isfile'](path)
+        e = self._getFsEntry(path)
+        return e is not None and isinstance(e, tuple)
 
     def _islink(self, path):
         if not path.startswith('/' + self._root):
