@@ -332,7 +332,7 @@ def re_matchany(filename, patterns):
     # skip patterns use a forward slash regardless of the platform.
     filename = filename.replace('\\', '/')
     for pattern in patterns:
-        if pattern.match(filename):
+        if pattern.search(filename):
             return True
     return False
 
