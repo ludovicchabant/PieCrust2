@@ -42,6 +42,7 @@ class PageRenderingContext(object):
         self.pagination_filter = None
         self.custom_data = None
         self.use_cache = False
+        self.used_assets = None
         self.used_pagination = None
         self.used_source_names = set()
         self.used_taxonomy_terms = set()

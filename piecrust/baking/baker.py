@@ -1,10 +1,11 @@
 import time
 import os.path
 import codecs
-import urllib.request, urllib.error, urllib.parse
+import shutil
 import hashlib
 import logging
 import threading
+import urllib.request, urllib.error, urllib.parse
 from queue import Queue, Empty
 from piecrust.baking.records import TransitionalBakeRecord, BakeRecordPageEntry
 from piecrust.chefutil import format_timed
@@ -21,13 +22,14 @@ logger = logging.getLogger(__name__)
 
 class PageBaker(object):
     def __init__(self, app, out_dir, force=False, record=None,
-            copy_assets=False):
+            copy_assets=True):
         self.app = app
         self.out_dir = out_dir
         self.force = force
         self.record = record
         self.force = force
         self.copy_assets = copy_assets
+        self.site_root = app.config.get('site/root')
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.pagination_suffix = app.config.get('site/pagination_suffix')
 
@@ -158,6 +160,26 @@ class PageBaker(object):
                 raise Exception("Error baking page '%s' for URI '%s'." %
                         (page.ref_spec, uri)) from ex
 
+            # Copy page assets.
+            if (cur_sub == 1 and self.copy_assets and
+                    ctx.used_assets is not None):
+                if self.pretty_urls:
+                    out_assets_dir = os.path.dirname(out_path)
+                else:
+                    out_assets_dir, out_name = os.path.split(out_path)
+                    if sub_uri != self.site_root:
+                        out_name_noext, _ = os.path.splitext(out_name)
+                        out_assets_dir += out_name_noext
+
+                logger.debug("Copying page assets to: %s" % out_assets_dir)
+                if not os.path.isdir(out_assets_dir):
+                    os.makedirs(out_assets_dir, 0o755)
+                for ap in ctx.used_assets._getAssetPaths():
+                    dest_ap = os.path.join(out_assets_dir, os.path.basename(ap))
+                    logger.debug("  %s -> %s" % (ap, dest_ap))
+                    shutil.copy(ap, dest_ap)
+
+            # Record what we did and figure out if we have more work.
             cur_record_entry.out_uris.append(sub_uri)
             cur_record_entry.out_paths.append(out_path)
             cur_record_entry.used_source_names |= ctx.used_source_names
