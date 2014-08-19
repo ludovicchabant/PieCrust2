@@ -166,6 +166,8 @@ def get_atom_date(value):
 
 
 def get_date(value, fmt):
+    if value == 'now':
+        value = time.time()
     return time.strftime(fmt, time.localtime(value))
 
 
