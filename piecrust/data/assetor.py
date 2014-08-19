@@ -1,4 +1,3 @@
-import re
 import os
 import os.path
 import logging
@@ -16,15 +15,11 @@ def build_base_url(app, uri, rel_assets_path):
     base_url_format = app.env.base_asset_url_format
     rel_assets_path = rel_assets_path.replace('\\', '/')
 
-    # Remove any extension or pagination suffix from the URL, since
-    # we'll be copying assets into the 1st sub-page's folder.
+    # Remove any extension since we'll be copying assets into the 1st
+    # sub-page's folder.
     pretty = app.config.get('site/pretty_urls')
     if not pretty:
         uri, _ = os.path.splitext(uri)
-    pgn_suffix_re = app.config.get('__cache/pagination_suffix_re')
-    m = re.search(pgn_suffix_re, uri)
-    if m:
-        uri = uri[:m.start():]
 
     base_url = multi_replace(
             base_url_format,

@@ -58,19 +58,16 @@ def test_multiple_assets_with_same_name():
 
 @pytest.mark.parametrize('url_format, pretty_urls, uri, expected', [
         ('%uri%', True, '/foo', '/foo/'),
-        ('%uri%', True, '/foo/2', '/foo/'),
         ('%uri%', True, '/foo.ext', '/foo.ext/'),
-        ('%uri%', True, '/foo.ext/2', '/foo.ext/'),
         ('%uri%', False, '/foo.html', '/foo/'),
-        ('%uri%', False, '/foo/2.html', '/foo/'),
+        ('%uri%', False, '/foo.ext', '/foo/'),
         ])
 def test_build_base_url(url_format, pretty_urls, uri, expected):
     app = MagicMock()
     app.env = MagicMock()
     app.env.base_asset_url_format = url_format
     app.config = {
-            'site/pretty_urls': pretty_urls,
-            '__cache/pagination_suffix_re': '/(?P<num>\\d+)$'}
+            'site/pretty_urls': pretty_urls}
     assets_path = 'foo/bar-assets'
     actual = build_base_url(app, uri, assets_path)
     assert actual == expected

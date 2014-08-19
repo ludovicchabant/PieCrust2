@@ -1,5 +1,6 @@
+import mock
 import pytest
-from piecrust.uriutil import UriInfo, parse_uri
+from piecrust.uriutil import UriInfo, parse_uri, get_first_sub_uri
 
 
 @pytest.mark.parametrize('routes, uri, expected', [
@@ -22,5 +23,24 @@ def test_parse_uri(routes, uri, expected):
             args['taxonomy'] = None
 
     actual = parse_uri(routes, uri)
+    assert actual == expected
+
+
+@pytest.mark.parametrize('uri, expected, pretty_urls', [
+    ('foo/bar', 'foo/bar', True),
+    ('foo/bar/2', 'foo/bar', True),
+    ('foo/bar.ext', 'foo/bar.ext', True),
+    ('foo/bar.ext/2', 'foo/bar.ext', True),
+    ('foo/bar.html', 'foo/bar.html', False),
+    ('foo/bar/2.html', 'foo/bar.html', False),
+    ('foo/bar.ext', 'foo/bar.ext', False),
+    ('foo/bar/2.ext', 'foo/bar.ext', False)
+    ])
+def test_get_first_sub_uri(uri, expected, pretty_urls):
+    app = mock.MagicMock()
+    app.config = {
+            'site/pretty_urls': pretty_urls,
+            '__cache/pagination_suffix_re': '/(\\d+)$'}
+    actual = get_first_sub_uri(app, uri)
     assert actual == expected
 

@@ -1,4 +1,5 @@
 import re
+import os.path
 import string
 import logging
 import functools
@@ -77,4 +78,20 @@ def get_slug(app, uri):
     site_root = app.config.get('site/root')
     uri = uri[len(site_root):]
     return uri.lstrip('/')
+
+
+def get_first_sub_uri(app, uri):
+    pretty_urls = app.config.get('site/pretty_urls')
+    if not pretty_urls:
+        uri, ext = os.path.splitext(uri)
+
+    pgn_suffix_re = app.config.get('__cache/pagination_suffix_re')
+    m = re.search(pgn_suffix_re, uri)
+    if m:
+        uri = uri[:m.start()]
+
+    if not pretty_urls:
+        uri += ext
+
+    return uri
 

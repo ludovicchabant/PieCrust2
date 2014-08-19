@@ -5,7 +5,7 @@ from piecrust.data.assetor import Assetor
 from piecrust.data.debug import build_debug_info
 from piecrust.data.linker import Linker
 from piecrust.data.paginator import Paginator
-from piecrust.uriutil import get_slug
+from piecrust.uriutil import get_slug, get_first_sub_uri
 
 
 logger = logging.getLogger(__name__)
@@ -27,12 +27,13 @@ class DataBuildingContext(object):
 def build_page_data(ctx):
     page = ctx.page
     app = page.app
+    first_uri = get_first_sub_uri(app, ctx.uri)
 
     pc_data = PieCrustData()
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
-    paginator = Paginator(page, pgn_source, ctx.uri, ctx.page_num,
+    paginator = Paginator(page, pgn_source, first_uri, ctx.page_num,
             ctx.pagination_filter)
-    assetor = Assetor(page, ctx.uri)
+    assetor = Assetor(page, first_uri)
     linker = Linker(page)
     data = {
             'piecrust': pc_data,
