@@ -163,7 +163,7 @@ class PieCrustConfiguration(Configuration):
             posts_fs = sitec.setdefault('posts_fs', DEFAULT_POSTS_FS)
             blogsc = sitec.setdefault('blogs', ['posts'])
 
-            g_post_url = sitec.get('post_url', '%year%/%month%/%slug%')
+            g_post_url = sitec.get('post_url', '%year%/%month%/%day%/%slug%')
             g_tag_url = sitec.get('tag_url', 'tag/%tag%')
             g_category_url = sitec.get('category_url', '%category%')
             g_posts_per_page = sitec.get('items_per_page', 5)
