@@ -32,7 +32,10 @@ class SliceIterator(object):
                 self._cache = inner_list[self.offset:]
 
             if self.current_page:
-                idx = inner_list.index(self.current_page)
+                try:
+                    idx = inner_list.index(self.current_page)
+                except ValueError:
+                    idx = -1
                 if idx >= 0:
                     if idx < self.inner_count - 1:
                         self.next_page = inner_list[idx + 1]
