@@ -306,6 +306,9 @@ class SimplePageSource(PageSource):
             dirnames[:] = list(filter(self._filterPageDirname, dirnames))
             for f in filter(self._filterPageFilename, filenames):
                 slug, ext = os.path.splitext(os.path.join(rel_dirpath, f))
+                slug = slug.replace('\\', '/')
+                if ext not in self.supported_extensions:
+                    slug += ext
                 if slug.startswith('./') or slug.startswith('.\\'):
                     slug = slug[2:]
                 if slug == '_index':
@@ -353,10 +356,9 @@ class SimplePageSource(PageSource):
 
     def _filterPageFilename(self, f):
         name, ext = os.path.splitext(f)
-        return (f[0] != '.' and
-                f[-1] != '~' and
-                ext.lstrip('.') in self.supported_extensions and
-                f not in ['Thumbs.db'])
+        return (f[0] != '.' and   # .DS_store and other crap
+                f[-1] != '~' and  # Vim temp files and what-not
+                f not in ['Thumbs.db']) # Windows bullshit
 
 
 class DefaultPageSource(SimplePageSource, IPreparingSource,
