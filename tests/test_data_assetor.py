@@ -1,25 +1,27 @@
 import pytest
 from mock import MagicMock
-from piecrust.data.assetor import Assetor, UnsupportedAssetsError
+from piecrust.data.assetor import (Assetor, UnsupportedAssetsError,
+        build_base_url)
 from .mockutil import mock_fs, mock_fs_scope
 
 
 @pytest.mark.parametrize('fs, expected', [
-        (mock_fs().withPage('foo/bar'), {}),
+        (mock_fs().withPage('pages/foo/bar'), {}),
         (mock_fs()
-            .withPage('foo/bar')
-            .withPageAsset('foo/bar', 'one.txt', 'one'),
+            .withPage('pages/foo/bar')
+            .withPageAsset('pages/foo/bar', 'one.txt', 'one'),
             {'one': 'one'}),
         (mock_fs()
-            .withPage('foo/bar')
-            .withPageAsset('foo/bar', 'one.txt', 'one')
-            .withPageAsset('foo/bar', 'two.txt', 'two'),
+            .withPage('pages/foo/bar')
+            .withPageAsset('pages/foo/bar', 'one.txt', 'one')
+            .withPageAsset('pages/foo/bar', 'two.txt', 'two'),
             {'one': 'one', 'two': 'two'})
         ])
 def test_assets(fs, expected):
     with mock_fs_scope(fs):
         page = MagicMock()
         page.app = fs.getApp()
+        page.app.env.base_asset_url_format = '%uri%'
         page.path = fs.path('/kitchen/_content/pages/foo/bar.md')
         assetor = Assetor(page, '/foo/bar')
         for en in expected.keys():
@@ -31,7 +33,7 @@ def test_assets(fs, expected):
 
 def test_missing_asset():
     with pytest.raises(KeyError):
-        fs = mock_fs().withPage('foo/bar')
+        fs = mock_fs().withPage('pages/foo/bar')
         with mock_fs_scope(fs):
             page = MagicMock()
             page.app = fs.getApp()
@@ -43,13 +45,33 @@ def test_missing_asset():
 def test_multiple_assets_with_same_name():
     with pytest.raises(UnsupportedAssetsError):
         fs = (mock_fs()
-                .withPage('foo/bar')
-                .withPageAsset('foo/bar', 'one.txt', 'one text')
-                .withPageAsset('foo/bar', 'one.jpg', 'one picture'))
+                .withPage('pages/foo/bar')
+                .withPageAsset('pages/foo/bar', 'one.txt', 'one text')
+                .withPageAsset('pages/foo/bar', 'one.jpg', 'one picture'))
         with mock_fs_scope(fs):
             page = MagicMock()
             page.app = fs.getApp()
             page.path = fs.path('/kitchen/_content/pages/foo/bar.md')
             assetor = Assetor(page, '/foo/bar')
             assetor['one']
+
+
+@pytest.mark.parametrize('url_format, pretty_urls, uri, expected', [
+        ('%uri%', True, '/foo', '/foo/'),
+        ('%uri%', True, '/foo/2', '/foo/'),
+        ('%uri%', True, '/foo.ext', '/foo.ext/'),
+        ('%uri%', True, '/foo.ext/2', '/foo.ext/'),
+        ('%uri%', False, '/foo.html', '/foo/'),
+        ('%uri%', False, '/foo/2.html', '/foo/'),
+        ])
+def test_build_base_url(url_format, pretty_urls, uri, expected):
+    app = MagicMock()
+    app.env = MagicMock()
+    app.env.base_asset_url_format = url_format
+    app.config = {
+            'site/pretty_urls': pretty_urls,
+            '__cache/pagination_suffix_re': '/(?P<num>\\d+)$'}
+    assets_path = 'foo/bar-assets'
+    actual = build_base_url(app, uri, assets_path)
+    assert actual == expected
 

@@ -73,7 +73,7 @@ class Environment(object):
         self.was_cache_cleaned = False
         self.page_repository = MemCache()
         self.rendered_segments_repository = MemCache()
-        self.base_asset_url_format = '%site_root%%uri%'
+        self.base_asset_url_format = '%uri%'
 
     def initialize(self, app):
         pass

@@ -246,7 +246,7 @@ class Baker(object):
         # Get into bake mode.
         start_time = time.clock()
         self.app.config.set('baker/is_baking', True)
-        self.app.env.base_asset_url_format = '%site_root%%uri%'
+        self.app.env.base_asset_url_format = '%uri%'
 
         # Make sure the output directory exists.
         if not os.path.isdir(self.out_dir):

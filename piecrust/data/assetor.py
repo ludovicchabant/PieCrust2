@@ -1,3 +1,4 @@
+import re
 import os
 import os.path
 import logging
@@ -11,19 +12,24 @@ class UnsupportedAssetsError(Exception):
     pass
 
 
-def build_base_url(app, uri, assets_path):
+def build_base_url(app, uri, rel_assets_path):
     base_url_format = app.env.base_asset_url_format
-    site_root = app.config.get('site/root')
-    rel_path = os.path.relpath(assets_path, app.root_dir).replace('\\', '/')
+    rel_assets_path = rel_assets_path.replace('\\', '/')
+
+    # Remove any extension or pagination suffix from the URL, since
+    # we'll be copying assets into the 1st sub-page's folder.
     pretty = app.config.get('site/pretty_urls')
     if not pretty:
         uri, _ = os.path.splitext(uri)
-    uri = uri.lstrip('/')
+    pgn_suffix_re = app.config.get('__cache/pagination_suffix_re')
+    m = re.search(pgn_suffix_re, uri)
+    if m:
+        uri = uri[:m.start():]
+
     base_url = multi_replace(
             base_url_format,
             {
-                '%site_root%': site_root,
-                '%path%': rel_path,
+                '%path%': rel_assets_path,
                 '%uri%': uri})
     return base_url.rstrip('/') + '/'
 
@@ -74,7 +80,8 @@ class Assetor(object):
         if not os.path.isdir(assets_dir):
             return
 
-        base_url = build_base_url(self._page.app, self._uri, assets_dir)
+        rel_assets_dir = os.path.relpath(assets_dir, self._page.app.root_dir)
+        base_url = build_base_url(self._page.app, self._uri, rel_assets_dir)
         for fn in os.listdir(assets_dir):
             full_fn = os.path.join(assets_dir, fn)
             if not os.path.isfile(full_fn):

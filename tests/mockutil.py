@@ -103,7 +103,7 @@ class mock_fs(object):
         contents = contents or "A test asset."
         url_base, ext = os.path.splitext(page_url)
         dirname = url_base + '-assets'
-        return self.withAsset('_content/pages/%s/%s' % (dirname, name),
+        return self.withAsset('_content/%s/%s' % (dirname, name),
                 contents)
 
 
