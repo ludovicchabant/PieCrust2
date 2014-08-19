@@ -14,6 +14,8 @@ from .mockutil import get_mock_app
         ('foo/bar', 2, True, 'foo/bar/2/index.html'),
         ('foo.ext', 1, True, 'foo.ext/index.html'),
         ('foo.ext', 2, True, 'foo.ext/2/index.html'),
+        ('foo/bar.ext', 1, True, 'foo/bar.ext/index.html'),
+        ('foo/bar.ext', 2, True, 'foo/bar.ext/2/index.html'),
         ('foo.bar.ext', 1, True, 'foo.bar.ext/index.html'),
         ('foo.bar.ext', 2, True, 'foo.bar.ext/2/index.html'),
         # Ugly URLs
@@ -25,6 +27,8 @@ from .mockutil import get_mock_app
         ('foo/bar', 2, False, 'foo/bar/2.html'),
         ('foo.ext', 1, False, 'foo.ext'),
         ('foo.ext', 2, False, 'foo/2.ext'),
+        ('foo/bar.ext', 1, False, 'foo/bar.ext'),
+        ('foo/bar.ext', 2, False, 'foo/bar/2.ext'),
         ('foo.bar.ext', 1, False, 'foo.bar.ext'),
         ('foo.bar.ext', 2, False, 'foo.bar/2.ext')
         ])
