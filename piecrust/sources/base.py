@@ -307,7 +307,7 @@ class SimplePageSource(PageSource):
             for f in filter(self._filterPageFilename, filenames):
                 slug, ext = os.path.splitext(os.path.join(rel_dirpath, f))
                 slug = slug.replace('\\', '/')
-                if ext not in self.supported_extensions:
+                if ext.lstrip('.') not in self.supported_extensions:
                     slug += ext
                 if slug.startswith('./') or slug.startswith('.\\'):
                     slug = slug[2:]
