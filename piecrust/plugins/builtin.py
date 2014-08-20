@@ -9,6 +9,7 @@ from piecrust.formatting.markdownformatter import MarkdownFormatter
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
 from piecrust.processing.less import LessProcessor
+from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (FlatPostsSource, ShallowPostsSource,
         HierarchyPostsSource)
@@ -60,5 +61,6 @@ class BuiltInPlugin(PieCrustPlugin):
     def getProcessors(self):
         return [
                 CopyFileProcessor(),
-                LessProcessor()]
+                LessProcessor(),
+                SitemapProcessor()]
 
