@@ -78,6 +78,9 @@ class PrepareCommand(ChefCommand):
             if not isinstance(src, IPreparingSource):
                 logger.debug("Skipping source '%s' because it's not preparable.")
                 continue
+            if src.is_theme_source:
+                logger.debug("Skipping source '%s' because it's a theme source.")
+                continue
             p = subparsers.add_parser(src.name)
             src.setupPrepareParser(p, app)
             p.set_defaults(source=src)
