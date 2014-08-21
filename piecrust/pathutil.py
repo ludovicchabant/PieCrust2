@@ -1,14 +1,23 @@
+import re
 import os
 import os.path
 
 
+re_terminal_path = re.compile(r'[/\\]|(\w\:)')
+
+
 class SiteNotFoundError(Exception):
-    def __init__(self, root=None):
+    def __init__(self, root=None, msg=None):
         if not root:
             root = os.getcwd()
-        Exception.__init__(self,
-                "No PieCrust website in '%s' "
-                "('config.yml' not found!)." % root)
+        full_msg = ("No PieCrust website in '%s' "
+                    "('config.yml' not found!)" %
+                    root)
+        if msg:
+            full_msg += ": " + msg
+        else:
+            full_msg += "."
+        Exception.__init__(self, full_msg)
 
 
 def find_app_root(cwd=None):
@@ -17,7 +26,7 @@ def find_app_root(cwd=None):
 
     while not os.path.isfile(os.path.join(cwd, 'config.yml')):
         cwd = os.path.dirname(cwd)
-        if not cwd or cwd == '/':
-            return None
+        if not cwd or re_terminal_path.match(cwd):
+            raise SiteNotFoundError(cwd)
     return cwd
 

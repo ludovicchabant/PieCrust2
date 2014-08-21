@@ -73,6 +73,11 @@ class PrepareCommand(ChefCommand):
         self.description = "Prepares new content for your website."
 
     def setupParser(self, parser, app):
+        # Don't setup anything if this is a null app
+        # (for when `chef` is run from outside a website)
+        if app.root_dir is None:
+            return
+
         subparsers = parser.add_subparsers()
         for src in app.sources:
             if not isinstance(src, IPreparingSource):

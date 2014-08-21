@@ -49,40 +49,56 @@ class NullPieCrust:
 
 
 def main():
-    start_time = time.clock()
+    argv = sys.argv
+    pre_args = _pre_parse_chef_args(argv)
+    try:
+        return _run_chef(pre_args)
+    except Exception as ex:
+        if pre_args.debug:
+            logger.exception(ex)
+        else:
+            logger.error(str(ex))
 
+
+class PreParsedChefArgs(object):
+    def __init__(self, root=None, cache=True, debug=False, quiet=False,
+            log_file=None, config_variant=None):
+        self.root = root
+        self.cache = cache
+        self.debug = debug
+        self.quiet = quiet
+        self.log_file = log_file
+        self.config_variant = config_variant
+
+
+def _pre_parse_chef_args(argv):
     # We need to parse some arguments before we can build the actual argument
     # parser, because it can affect which plugins will be loaded. Also, log-
     # related arguments must be parsed first because we want to log everything
     # from the beginning.
-    root = None
-    cache = True
-    debug = False
-    quiet = False
-    log_file = None
-    config_variant = None
+    res = PreParsedChefArgs()
     i = 1
-    while i < len(sys.argv):
-        arg = sys.argv[i]
+    while i < len(argv):
+        arg = argv[i]
         if arg.startswith('--root='):
-            root = os.path.expanduser(arg[len('--root='):])
+            res.root = os.path.expanduser(arg[len('--root='):])
         elif arg == '--root':
-            root = sys.argv[i + 1]
+            res.root = argv[i + 1]
             ++i
         elif arg.startswith('--config='):
-            config_variant = arg[len('--config='):]
+            res.config_variant = arg[len('--config='):]
         elif arg == '--config':
-            config_variant = sys.argv[i + 1]
+            res.config_variant = argv[i + 1]
             ++i
         elif arg == '--log':
-            log_file = sys.argv[i + 1]
+            res.log_file = argv[i + 1]
             ++i
         elif arg == '--no-cache':
-            cache = False
+            res.cache = False
         elif arg == '--debug':
-            debug = True
+            res.debug = True
         elif arg == '--quiet':
-            quiet = True
+            res.quiet = True
 
         if arg[0] != '-':
             break
@@ -90,38 +106,47 @@ def main():
         i = i + 1
 
     # Setup the logger.
-    if debug and quiet:
+    if res.debug and res.quiet:
         raise Exception("You can't specify both --debug and --quiet.")
 
     colorama.init()
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     log_handler = logging.StreamHandler(sys.stdout)
-    if debug:
+    if res.debug:
         root_logger.setLevel(logging.DEBUG)
         log_handler.setFormatter(ColoredFormatter("[%(name)s] %(message)s"))
     else:
-        if quiet:
+        if res.quiet:
             root_logger.setLevel(logging.WARNING)
         log_handler.setFormatter(ColoredFormatter("%(message)s"))
     root_logger.addHandler(log_handler)
-    if log_file:
-        root_logger.addHandler(logging.FileHandler(log_file))
+    if res.log_file:
+        root_logger.addHandler(logging.FileHandler(res.log_file))
 
+    return res
+
+
+def _run_chef(pre_args):
     # Setup the app.
+    start_time = time.clock()
+    root = pre_args.root
     if root is None:
-        root = find_app_root()
+        try:
+            root = find_app_root()
+        except SiteNotFoundError:
+            root = None
 
     if not root:
         app = NullPieCrust()
     else:
-        app = PieCrust(root, cache=cache)
+        app = PieCrust(root, cache=pre_args.cache)
 
     # Handle a configuration variant.
-    if config_variant is not None:
+    if pre_args.config_variant is not None:
         if not root:
-            raise SiteNotFoundError()
-        app.config.applyVariant('variants/' + config_variant)
+            raise SiteNotFoundError("Can't apply any variant.")
+        app.config.applyVariant('variants/' + pre_args.config_variant)
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
@@ -144,7 +169,7 @@ def main():
 
     # Parse the command line.
     result = parser.parse_args()
-    logger.debug(format_timed(start_time, 'initialized PieCrust'))
+    logger.debug(format_timed(start_time, 'initialized PieCrust', colored=False))
 
     # Run the command!
     exit_code = result.func(app, result)
