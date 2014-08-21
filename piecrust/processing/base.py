@@ -160,6 +160,11 @@ class ProcessorPipeline(object):
         self.skip_patterns = make_re(self.skip_patterns)
         self.force_patterns = make_re(self.force_patterns)
 
+    def filterProcessors(self, authorized_names):
+        self.processors = list(filter(
+            lambda p: p.PROCESSOR_NAME in authorized_names,
+            self.processors))
+
     def run(self, src_dir_or_file=None):
         record = ProcessorPipelineRecord()
 
@@ -221,12 +226,10 @@ class ProcessorPipeline(object):
         for dirpath, dirnames, filenames in os.walk(start_dir):
             rel_dirpath = os.path.relpath(dirpath, start_dir)
             dirnames[:] = [d for d in dirnames
-                    if not re_matchany(os.path.join(rel_dirpath, d),
-                                       self.skip_patterns)]
+                    if not re_matchany(d, self.skip_patterns, rel_dirpath)]
 
             for filename in filenames:
-                if re_matchany(os.path.join(rel_dirpath, filename),
-                               self.skip_patterns):
+                if re_matchany(filename, self.skip_patterns, rel_dirpath):
                     continue
                 self.processFile(ctx, os.path.join(dirpath, filename))
 
@@ -328,7 +331,10 @@ def make_re(patterns):
     return [re.compile(p) for p in re_patterns]
 
 
-def re_matchany(filename, patterns):
+def re_matchany(filename, patterns, dirname=None):
+    if dirname and dirname != '.':
+        filename = os.path.join(dirname, filename)
+
     # skip patterns use a forward slash regardless of the platform.
     filename = filename.replace('\\', '/')
     for pattern in patterns:
