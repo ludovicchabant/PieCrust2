@@ -7,7 +7,7 @@ import logging
 import yaml
 from werkzeug.utils import cached_property
 from piecrust import (APP_VERSION,
-        CACHE_DIR, TEMPLATES_DIR,
+        CACHE_DIR, TEMPLATES_DIR, ASSETS_DIR,
         PLUGINS_DIR, THEME_DIR,
         CONFIG_PATH, THEME_CONFIG_PATH,
         DEFAULT_FORMAT, DEFAULT_TEMPLATE_ENGINE, DEFAULT_POSTS_FS,
@@ -24,7 +24,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 11
+CACHE_VERSION = 12
 
 
 class VariantNotFoundError(Exception):
@@ -392,11 +392,24 @@ class PieCrust(object):
         return config
 
     @cached_property
+    def assets_dirs(self):
+        assets_dirs = self._get_configurable_dirs(ASSETS_DIR,
+                'site/assets_dirs')
+
+        # Also add the theme directory, if any.
+        if self.theme_dir:
+            default_theme_dir = os.path.join(self.theme_dir, ASSETS_DIR)
+            if os.path.isdir(default_theme_dir):
+                assets_dirs.append(default_theme_dir)
+
+        return assets_dirs
+
+    @cached_property
     def templates_dirs(self):
         templates_dirs = self._get_configurable_dirs(TEMPLATES_DIR,
                 'site/templates_dirs')
 
-        # Also, add the theme directory, if nay.
+        # Also, add the theme directory, if any.
         if self.theme_dir:
             default_theme_dir = os.path.join(self.theme_dir, TEMPLATES_DIR)
             if os.path.isdir(default_theme_dir):

@@ -1,11 +1,15 @@
+import os.path
 import pytest
 from piecrust.processing.base import ProcessorPipeline
 from .mockutil import mock_fs, mock_fs_scope
 
 
 def _get_pipeline(fs, **kwargs):
-    return ProcessorPipeline(fs.getApp(), fs.path('counter'),
+    app = fs.getApp()
+    mounts = [os.path.join(app.root_dir, 'assets')]
+    return ProcessorPipeline(app, mounts, fs.path('counter'),
             num_workers=1, **kwargs)
+
 
 def test_empty():
     fs = mock_fs()
@@ -21,7 +25,7 @@ def test_empty():
 
 def test_one_file():
     fs = (mock_fs()
-            .withFile('kitchen/something.html', 'A test file.'))
+            .withFile('kitchen/assets/something.html', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
         pp.filterProcessors(['copy'])
@@ -43,9 +47,9 @@ def test_one_file():
         ])
 def test_skip_pattern(patterns, expected):
     fs = (mock_fs()
-            .withFile('kitchen/something.html', 'A test file.')
-            .withFile('kitchen/_hidden.html', 'Shhh')
-            .withFile('kitchen/foo/_important.html', 'Important!'))
+            .withFile('kitchen/assets/something.html', 'A test file.')
+            .withFile('kitchen/assets/_hidden.html', 'Shhh')
+            .withFile('kitchen/assets/foo/_important.html', 'Important!'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs, skip_patterns=['/^_/'])
         pp.filterProcessors(['copy'])

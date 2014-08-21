@@ -37,7 +37,7 @@ class mock_fs(object):
         self._fs = {self._root: {}}
         if default_spec:
             self.withDir('counter')
-            self.withFile('kitchen/_content/config.yml',
+            self.withFile('kitchen/config.yml',
                     "site:\n  title: Mock Website\n")
 
     def path(self, p):
@@ -72,12 +72,12 @@ class mock_fs(object):
 
     def withConfig(self, config):
         return self.withFile(
-                'kitchen/_content/config.yml',
+                'kitchen/config.yml',
                 yaml.dump(config))
 
     def withThemeConfig(self, config):
         return self.withFile(
-                'kitchen/_content/theme/_content/theme_config.yml',
+                'kitchen/theme/theme_config.yml',
                 yaml.dump(config))
 
     def withPage(self, url, config=None, contents=None):
@@ -92,13 +92,13 @@ class mock_fs(object):
         if not ext:
             url += '.md'
         url = url.lstrip('/')
-        return self.withAsset('_content/' + url, text)
+        return self.withAsset(url, text)
 
     def withPageAsset(self, page_url, name, contents=None):
         contents = contents or "A test asset."
         url_base, ext = os.path.splitext(page_url)
         dirname = url_base + '-assets'
-        return self.withAsset('_content/%s/%s' % (dirname, name),
+        return self.withAsset('%s/%s' % (dirname, name),
                 contents)
 
     def getStructure(self, path=None):

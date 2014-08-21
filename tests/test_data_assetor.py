@@ -22,7 +22,7 @@ def test_assets(fs, expected):
         page = MagicMock()
         page.app = fs.getApp()
         page.app.env.base_asset_url_format = '%uri%'
-        page.path = fs.path('/kitchen/_content/pages/foo/bar.md')
+        page.path = fs.path('/kitchen/pages/foo/bar.md')
         assetor = Assetor(page, '/foo/bar')
         for en in expected.keys():
             assert hasattr(assetor, en)
@@ -37,7 +37,7 @@ def test_missing_asset():
         with mock_fs_scope(fs):
             page = MagicMock()
             page.app = fs.getApp()
-            page.path = fs.path('/kitchen/_content/pages/foo/bar.md')
+            page.path = fs.path('/kitchen/pages/foo/bar.md')
             assetor = Assetor(page, '/foo/bar')
             assetor['this_doesnt_exist']
 
@@ -51,7 +51,7 @@ def test_multiple_assets_with_same_name():
         with mock_fs_scope(fs):
             page = MagicMock()
             page.app = fs.getApp()
-            page.path = fs.path('/kitchen/_content/pages/foo/bar.md')
+            page.path = fs.path('/kitchen/pages/foo/bar.md')
             assetor = Assetor(page, '/foo/bar')
             assetor['one']
 

@@ -3,7 +3,6 @@ import os
 import os.path
 import logging
 from werkzeug.utils import cached_property
-from piecrust import CONTENT_DIR
 from piecrust.configuration import ConfigurationError
 from piecrust.data.base import IPaginationSource, PaginationData
 from piecrust.data.filters import PaginationFilter
@@ -292,7 +291,7 @@ class SimplePageSource(PageSource):
     def __init__(self, app, name, config):
         super(SimplePageSource, self).__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
-        self.fs_endpoint_path = os.path.join(self.root_dir, CONTENT_DIR, self.fs_endpoint)
+        self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
         self.supported_extensions = list(app.config.get('site/auto_formats').keys())
         self.default_auto_format = app.config.get('site/default_auto_format')
 

@@ -4,7 +4,6 @@ import re
 import glob
 import logging
 import datetime
-from piecrust import CONTENT_DIR
 from piecrust.sources.base import (PageSource, IPreparingSource,
         SimplePaginationSourceMixin,
         PageNotFoundError, InvalidFileSystemEndpointError,
@@ -20,7 +19,7 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
     def __init__(self, app, name, config):
         super(PostsSource, self).__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
-        self.fs_endpoint_path = os.path.join(self.root_dir, CONTENT_DIR, self.fs_endpoint)
+        self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
         self.supported_extensions = list(app.config.get('site/auto_formats').keys())
         self.default_auto_format = app.config.get('site/default_auto_format')
 

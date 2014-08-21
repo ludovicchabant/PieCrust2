@@ -2,13 +2,13 @@
 APP_VERSION = '2.0.0alpha'
 
 CACHE_DIR = '_cache'
-CONTENT_DIR = '_content'
-TEMPLATES_DIR = '_content/templates'
-PLUGINS_DIR = '_content/plugins'
-THEME_DIR = '_content/theme'
+ASSETS_DIR = 'assets'
+TEMPLATES_DIR = 'templates'
+PLUGINS_DIR = 'plugins'
+THEME_DIR = 'theme'
 
-CONFIG_PATH = '_content/config.yml'
-THEME_CONFIG_PATH = '_content/theme_config.yml'
+CONFIG_PATH = 'config.yml'
+THEME_CONFIG_PATH = 'theme_config.yml'
 
 DEFAULT_FORMAT = 'markdown'
 DEFAULT_TEMPLATE_ENGINE = 'jinja2'

@@ -29,7 +29,7 @@ def test_default_source_factories(fs, expected_paths, expected_slugs):
                 {'url': '/%path%', 'source': 'test'}]
             }
         })
-    fs.withDir('kitchen/_content/test')
+    fs.withDir('kitchen/test')
     with mock_fs_scope(fs):
         app = PieCrust(fs.path('kitchen'), cache=False)
         s = app.getSource('test')
@@ -42,8 +42,8 @@ def test_default_source_factories(fs, expected_paths, expected_slugs):
 
 
 @pytest.mark.parametrize('ref_path, expected', [
-        ('foo.html', '/kitchen/_content/test/foo.html'),
-        ('foo/bar.html', '/kitchen/_content/test/foo/bar.html'),
+        ('foo.html', '/kitchen/test/foo.html'),
+        ('foo/bar.html', '/kitchen/test/foo/bar.html'),
         ])
 def test_default_source_resolve_ref(ref_path, expected):
     fs = mock_fs()

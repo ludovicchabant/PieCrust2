@@ -8,14 +8,14 @@ class SiteNotFoundError(Exception):
             root = os.getcwd()
         Exception.__init__(self,
                 "No PieCrust website in '%s' "
-                "('_content/config.yml' not found!)." % root)
+                "('config.yml' not found!)." % root)
 
 
 def find_app_root(cwd=None):
     if cwd is None:
         cwd = os.getcwd()
 
-    while not os.path.isfile(os.path.join(cwd, '_content', 'config.yml')):
+    while not os.path.isfile(os.path.join(cwd, 'config.yml')):
         cwd = os.path.dirname(cwd)
         if not cwd or cwd == '/':
             return None

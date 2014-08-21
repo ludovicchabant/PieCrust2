@@ -98,14 +98,11 @@ class ProcessorPipelineRecord(Record):
 
     def __init__(self):
         super(ProcessorPipelineRecord, self).__init__()
-        self.is_multi_mount = False
 
     def addEntry(self, item):
         self.entries.append(item)
 
     def hasOverrideEntry(self, rel_path):
-        if not self.is_multi_mount:
-            return False
         return self.findEntry(rel_path) is not None
 
     def findEntry(self, rel_path):
@@ -133,9 +130,10 @@ class ProcessingContext(object):
 
 
 class ProcessorPipeline(object):
-    def __init__(self, app, out_dir, force=False, mounts=None,
+    def __init__(self, app, mounts, out_dir, force=False,
             skip_patterns=None, force_patterns=None, num_workers=4):
         self.app = app
+        self.mounts = mounts
         tmp_dir = app.cache_dir
         if not tmp_dir:
             import tempfile
@@ -143,16 +141,12 @@ class ProcessorPipeline(object):
         self.tmp_dir = os.path.join(tmp_dir, 'proc')
         self.out_dir = out_dir
         self.force = force
-        self.mounts = mounts or {}
         self.skip_patterns = skip_patterns or []
         self.force_patterns = force_patterns or []
         self.processors = app.plugin_loader.getProcessors()
         self.num_workers = num_workers
 
-        if app.theme_dir is not None:
-            self.mounts['theme'] = app.theme_dir
-
-        self.skip_patterns += ['_cache', '_content', '_counter',
+        self.skip_patterns += ['_cache', '_counter',
                 'theme_info.yml',
                 '.DS_Store', 'Thumbs.db',
                 '.git*', '.hg*', '.svn']
@@ -186,11 +180,15 @@ class ProcessorPipeline(object):
 
         if src_dir_or_file is not None:
             # Process only the given path.
-            # Find out if this source directory is in a mount point.
-            base_dir = self.app.root_dir
-            for name, path in self.mounts.items():
+            # Find out what mount point this is in.
+            for path in self.mounts:
                 if src_dir_or_file[:len(path)] == path:
                     base_dir = path
+                    break
+            else:
+                raise Exception("Input path '%s' is not part of any known "
+                                "mount point: %s" %
+                                (src_dir_or_file, self.mounts))
 
             ctx = ProcessingContext(base_dir, queue, record)
             logger.debug("Initiating processing pipeline on: %s" % src_dir_or_file)
@@ -201,14 +199,10 @@ class ProcessorPipeline(object):
 
         else:
             # Process everything.
-            ctx = ProcessingContext(self.app.root_dir, queue, record)
-            logger.debug("Initiating processing pipeline on: %s" % self.app.root_dir)
-            self.processDirectory(ctx, self.app.root_dir)
-            ctx.is_multi_mount = True
-            for name, path in self.mounts.items():
-                mount_ctx = ProcessingContext(path, queue, record)
+            for path in self.mounts:
+                ctx = ProcessingContext(path, queue, record)
                 logger.debug("Initiating processing pipeline on: %s" % path)
-                self.processDirectory(mount_ctx, path)
+                self.processDirectory(ctx, path)
 
         # Wait on all workers.
         for w in pool:

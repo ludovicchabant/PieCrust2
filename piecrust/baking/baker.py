@@ -409,11 +409,12 @@ class Baker(object):
         self._waitOnWorkerPool(pool, abort)
 
     def _bakeAssets(self, record):
+        mounts = self.app.assets_dirs
         baker_params = self.app.config.get('baker') or {}
         skip_patterns = baker_params.get('skip_patterns')
         force_patterns = baker_params.get('force_patterns')
         proc = ProcessorPipeline(
-                self.app, self.out_dir, force=self.force,
+                self.app, mounts, self.out_dir, force=self.force,
                 skip_patterns=skip_patterns, force_patterns=force_patterns,
                 num_workers=self.num_workers)
         proc.run()
