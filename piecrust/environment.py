@@ -1,4 +1,6 @@
+import re
 import time
+import json
 import logging
 import threading
 import repoze.lru
@@ -7,10 +9,21 @@ import repoze.lru
 logger = logging.getLogger(__name__)
 
 
+re_fs_cache_key = re.compile(r'[^\d\w\-\._]+')
+
+
+def _make_fs_cache_key(key):
+    return re_fs_cache_key.sub('_', key)
+
+
 class MemCache(object):
+    """ Simple memory cache. It can be backed by a simple file-system
+        cache, but items need to be JSON-serializable to do this.
+    """
     def __init__(self, size=2048):
         self.cache = repoze.lru.LRUCache(size)
         self.lock = threading.RLock()
+        self.fs_cache = None
 
     def get(self, key, item_maker):
         item = self.cache.get(key)
@@ -19,9 +32,28 @@ class MemCache(object):
             with self.lock:
                 item = self.cache.get(key)
                 if item is None:
+                    if self.fs_cache is not None:
+                        # Try first from the file-system cache.
+                        fs_key = _make_fs_cache_key(key)
+                        logger.debug("'%s' not found in cache, trying the "
+                                     "file-system: %s" % (key, fs_key))
+                        try:
+                            item_raw = self.fs_cache.read(fs_key)
+                            item = json.loads(item_raw)
+                            self.cache.put(key, item)
+                            return item
+                        except:
+                            pass
+
+                    # Look into the mem-cache.
                     logger.debug("'%s' not found in cache, must build." % key)
                     item = item_maker()
                     self.cache.put(key, item)
+
+                    # Save to the file-system if needed.
+                    if self.fs_cache is not None:
+                        item_raw = json.dumps(item)
+                        self.fs_cache.write(fs_key, item_raw)
         return item
 
 
@@ -76,7 +108,8 @@ class Environment(object):
         self.base_asset_url_format = '%uri%'
 
     def initialize(self, app):
-        pass
+        cache = app.cache.getCache('renders')
+        self.rendered_segments_repository.fs_cache = cache
 
 
 class StandardEnvironment(Environment):
