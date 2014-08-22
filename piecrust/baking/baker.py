@@ -320,9 +320,10 @@ class Baker(object):
             # better just force a bake from scratch if that's the case.
             max_time = 0
             for d in self.app.templates_dirs:
-                for _, __, filenames in os.walk(d):
+                for dpath, _, filenames in os.walk(d):
                     for fn in filenames:
-                        max_time = max(max_time, os.path.getmtime(fn))
+                        full_fn = os.path.join(dpath, fn)
+                        max_time = max(max_time, os.path.getmtime(full_fn))
             if max_time >= record.previous.bake_time:
                 reason = "templates modified"
 
