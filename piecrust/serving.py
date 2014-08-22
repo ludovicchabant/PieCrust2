@@ -42,11 +42,12 @@ class Server(object):
         # Bake all the assets so we know what we have, and so we can serve
         # them to the client. We need a temp app for this.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
+        mounts = app.assets_dirs
         self._out_dir = os.path.join(app.cache_dir, 'server')
         self._skip_patterns = app.config.get('baker/skip_patterns')
         self._force_patterns = app.config.get('baker/force_patterns')
         pipeline = ProcessorPipeline(
-                app, self._out_dir,
+                app, mounts, self._out_dir,
                 skip_patterns=self._skip_patterns,
                 force_patterns=self._force_patterns)
         self._record = pipeline.run()
@@ -112,10 +113,11 @@ class Server(object):
         # Yep, we know about this URL because we processed an asset that
         # maps to it... make sure it's up to date by re-processing it
         # before serving.
-        asset_in_path = os.path.join(app.root_dir, entry.rel_input)
+        mounts = app.assets_dirs
+        asset_in_path = entry.path
         asset_out_path = os.path.join(self._out_dir, rel_req_path)
         pipeline = ProcessorPipeline(
-                app, self._out_dir,
+                app, mounts, self._out_dir,
                 skip_patterns=self._skip_patterns,
                 force_patterns=self._force_patterns)
         pipeline.run(asset_in_path)

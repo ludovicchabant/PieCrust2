@@ -24,7 +24,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 12
+CACHE_VERSION = 13
 
 
 class VariantNotFoundError(Exception):
@@ -68,6 +68,7 @@ class PieCrustConfiguration(Configuration):
 
             actual_cache_key = self._values.get('__cache_key')
             if actual_cache_key == cache_key:
+                self._values['__cache_valid'] = True
                 return
             logger.debug("Outdated cache key '%s' (expected '%s')." % (
                     actual_cache_key, cache_key))
@@ -92,6 +93,7 @@ class PieCrustConfiguration(Configuration):
         self._values['__cache_key'] = cache_key
         config_text = json.dumps(self._values)
         self.cache.write('config.json', config_text)
+        self._values['__cache_valid'] = False
 
     def _validateAll(self, values):
         # Put all the defaults in the `site` section.
@@ -181,6 +183,10 @@ class PieCrustConfiguration(Configuration):
             sitec['sources'] = sourcesc
 
             routesc = []
+            routesc.append({
+                    'url': '/%path:path%',
+                    'source': 'pages',
+                    'func': 'pcurl(path)'})
             sitec['routes'] = routesc
 
             taxonomiesc = {}
@@ -237,9 +243,6 @@ class PieCrustConfiguration(Configuration):
                 routesc.append({'url': category_url, 'source': blog_name,
                         'taxonomy': 'categories',
                         'func': 'pccaturl(category)'})
-
-            routesc.append({'url': '/%path:path%', 'source': 'pages',
-                    'func': 'pcurl(path)'})
 
         # Validate sources/routes.
         sourcesc = sitec.get('sources')

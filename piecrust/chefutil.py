@@ -9,3 +9,11 @@ def format_timed(start_time, message, colored=True):
         return '[%s%s%s] %s' % (Fore.GREEN, time_str, Fore.RESET, message)
     return '[%s] %s' % (time_str, message)
 
+
+def log_friendly_exception(logger, ex):
+    indent = ''
+    while ex:
+        logger.error('%s%s' % (indent, str(ex)))
+        indent += '  '
+        ex = ex.__cause__
+

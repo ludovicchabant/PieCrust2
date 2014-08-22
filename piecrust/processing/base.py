@@ -115,11 +115,17 @@ class ProcessorPipelineRecord(Record):
 
 
 class ProcessorPipelineRecordEntry(object):
-    def __init__(self, rel_input, is_processed=False, is_overridden=False):
+    def __init__(self, base_dir, rel_input, is_processed=False,
+            is_overridden=False):
+        self.base_dir = base_dir
         self.rel_input = rel_input
         self.rel_outputs = []
         self.is_processed = is_processed
         self.is_overridden = is_overridden
+
+    @property
+    def path(self):
+        return os.path.join(self.base_dir, self.rel_input)
 
 
 class ProcessingContext(object):
@@ -284,7 +290,8 @@ class ProcessingWorker(threading.Thread):
         # This can happen if a theme file (processed via a mount point)
         # is overridden in the user's website.
         if record.hasOverrideEntry(rel_path):
-            record.addEntry(ProcessorPipelineRecordEntry(rel_path,
+            record.addEntry(ProcessorPipelineRecordEntry(
+                    job.base_dir, rel_path,
                     is_processed=False, is_overridden=True))
             logger.info(format_timed(start_time,
                     '%s [not baked, overridden]' % rel_path))
@@ -294,7 +301,7 @@ class ProcessingWorker(threading.Thread):
         tree_root = builder.build(rel_path)
         print_node(tree_root, recursive=True)
         leaves = tree_root.getLeaves()
-        fi = ProcessorPipelineRecordEntry(rel_path)
+        fi = ProcessorPipelineRecordEntry(job.base_dir, rel_path)
         fi.rel_outputs = [l.path for l in leaves]
         record.addEntry(fi)
 

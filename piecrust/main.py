@@ -5,7 +5,7 @@ import logging
 import argparse
 import colorama
 from piecrust.app import PieCrust, PieCrustConfiguration, APP_VERSION
-from piecrust.chefutil import format_timed
+from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.environment import StandardEnvironment
 from piecrust.pathutil import SiteNotFoundError, find_app_root
 from piecrust.plugins.base import PluginLoader
@@ -57,7 +57,8 @@ def main():
         if pre_args.debug:
             logger.exception(ex)
         else:
-            logger.error(str(ex))
+            log_friendly_exception(logger, ex)
+        return 1
 
 
 class PreParsedChefArgs(object):
@@ -122,7 +123,7 @@ def _pre_parse_chef_args(argv):
         log_handler.setFormatter(ColoredFormatter("%(message)s"))
     root_logger.addHandler(log_handler)
     if res.log_file:
-        root_logger.addHandler(logging.FileHandler(res.log_file))
+        root_logger.addHandler(logging.FileHandler(res.log_file, mode='w'))
 
     return res
 

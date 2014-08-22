@@ -8,7 +8,7 @@ import threading
 import urllib.request, urllib.error, urllib.parse
 from queue import Queue, Empty
 from piecrust.baking.records import TransitionalBakeRecord, BakeRecordPageEntry
-from piecrust.chefutil import format_timed
+from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause, AndBooleanClause)
 from piecrust.processing.base import ProcessorPipeline
@@ -157,7 +157,7 @@ class PageBaker(object):
                 ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
                         pagination_filter, custom_data)
             except Exception as ex:
-                raise Exception("Error baking page '%s' for URI '%s'." %
+                raise Exception("Error baking page '%s' for URL '%s'." %
                         (page.ref_spec, uri)) from ex
 
             # Copy page assets.
@@ -263,6 +263,10 @@ class Baker(object):
             logger.debug(format_timed(t, 'loaded previous bake record',
                 colored=False));
 
+        # Figure out if we need to clean the cache because important things
+        # have changed.
+        self._handleCacheValidity(record)
+
         # Gather all sources by realm -- we're going to bake each realm
         # separately so we can handle "overlaying" (i.e. one realm overrides
         # another realm's pages).
@@ -287,6 +291,7 @@ class Baker(object):
 
         # Save the bake record.
         t = time.clock()
+        record.current.bake_time = time.time()
         record.collapseRecords()
         record.saveCurrent(record_cache.getCachePath(record_name))
         logger.debug(format_timed(t, 'saved bake record', colored=False))
@@ -295,6 +300,43 @@ class Baker(object):
         self.app.config.set('baker/is_baking', False)
         logger.info('-------------------------');
         logger.info(format_timed(start_time, 'done baking'));
+
+    def _handleCacheValidity(self, record):
+        start_time = time.clock()
+
+        reason = None
+        if self.force:
+            reason = "ordered to"
+        elif not self.app.config.get('__cache_valid'):
+            # The configuration file was changed, or we're running a new
+            # version of the app.
+            reason = "not valid anymore"
+        elif not record.previous.bake_time:
+            # We have no valid previous bake record.
+            reason = "need bake record regeneration"
+        else:
+            # Check if any template has changed since the last bake. Since
+            # there could be some advanced conditional logic going on, we'd
+            # better just force a bake from scratch if that's the case.
+            max_time = 0
+            for d in self.app.templates_dirs:
+                for _, __, filenames in os.walk(d):
+                    for fn in filenames:
+                        max_time = max(max_time, os.path.getmtime(fn))
+            if max_time >= record.previous.bake_time:
+                reason = "templates modified"
+
+        if reason is not None:
+            cache_dir = self.app.cache_dir
+            if os.path.isdir(cache_dir):
+                logger.debug("Cleaning cache: %s" % cache_dir)
+                shutil.rmtree(cache_dir)
+                self.force = True
+            logger.info(format_timed(start_time,
+                "cleaned cache (reason: %s)" % reason))
+        else:
+            logger.debug(format_timed(start_time, "cache is assumed valid",
+                colored=False))
 
     def _bakeRealm(self, record, realm, srclist):
         # Gather all page factories from the sources and queue them
@@ -435,7 +477,16 @@ class Baker(object):
         for w in pool:
             w.join()
         if abort.is_set():
-            raise Exception("Worker pool was aborted.")
+            excs = [w.abort_exception for w in pool
+                    if w.abort_exception is not None]
+            logger.error("%s errors" % len(excs))
+            if self.app.debug:
+                for e in excs:
+                    logger.exception(e)
+            else:
+                for e in excs:
+                    log_friendly_exception(logger, e)
+            raise Exception("Baking was aborted due to errors.")
 
 
 class BakeWorkerContext(object):
@@ -463,10 +514,10 @@ class BakeWorkerJob(object):
 
 class BakeWorker(threading.Thread):
     def __init__(self, wid, ctx):
-        super(BakeWorker, self).__init__()
+        super(BakeWorker, self).__init__(name=('worker%d' % wid))
         self.wid = wid
         self.ctx = ctx
-        self.num_bakes = 0
+        self.abort_exception = None
         self._page_baker = PageBaker(ctx.app, ctx.out_dir, ctx.force,
                 ctx.record)
 
@@ -484,8 +535,8 @@ class BakeWorker(threading.Thread):
                 self.ctx.work_queue.task_done()
             except Exception as ex:
                 self.ctx.abort_event.set()
-                logger.error("[%d] Critical error, aborting." % self.wid)
-                logger.exception(ex)
+                self.abort_exception = ex
+                logger.debug("[%d] Critical error, aborting." % self.wid)
                 break
 
     def _unsafeRun(self, job):
@@ -503,5 +554,4 @@ class BakeWorker(threading.Thread):
                 friendly_count = ' (%d pages)' % bake_res.num_subs
             logger.info(format_timed(start_time, '[%d] %s%s' %
                     (self.wid, friendly_uri, friendly_count)))
-            self.num_bakes += 1
 

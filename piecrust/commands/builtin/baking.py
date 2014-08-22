@@ -41,7 +41,12 @@ class BakeCommand(ChefCommand):
             # a web server to handle serving default documents.
             ctx.app.config.set('site/pretty_urls', False)
 
-        baker.bake()
+        try:
+            baker.bake()
+            return 0
+        except Exception as ex:
+            logger.error(str(ex))
+            return 1
 
 
 class ShowRecordCommand(ChefCommand):
@@ -59,7 +64,7 @@ class ShowRecordCommand(ChefCommand):
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
         record_cache = ctx.app.cache.getCache('bake_r')
-        record_name = hashlib.md5(out_dir).hexdigest() + '.record'
+        record_name = hashlib.md5(out_dir.encode('utf8')).hexdigest() + '.record'
         if not record_cache.has(record_name):
             raise Exception("No record has been created for this output path. "
                             "Did you bake there yet?")
