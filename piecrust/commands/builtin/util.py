@@ -81,10 +81,12 @@ class PrepareCommand(ChefCommand):
         subparsers = parser.add_subparsers()
         for src in app.sources:
             if not isinstance(src, IPreparingSource):
-                logger.debug("Skipping source '%s' because it's not preparable.")
+                logger.debug("Skipping source '%s' because it's not "
+                             "preparable." % src.name)
                 continue
             if src.is_theme_source:
-                logger.debug("Skipping source '%s' because it's a theme source.")
+                logger.debug("Skipping source '%s' because it's a theme "
+                             "source." % src.name)
                 continue
             p = subparsers.add_parser(src.name)
             src.setupPrepareParser(p, app)
