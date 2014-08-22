@@ -98,7 +98,7 @@ class PieCrustData(object):
     def debug_info(self):
         if self._page is not None and self._data is not None:
             return build_debug_info(self._page, self._data)
-        return None
+        return ''
 
     def _enableDebugInfo(self, page, data):
         self._page = page
