@@ -13,6 +13,7 @@ from piecrust.data.paginator import Paginator
 from piecrust.rendering import format_text
 from piecrust.routing import CompositeRouteFunction
 from piecrust.templating.base import TemplateEngine, TemplateNotFoundError
+from piecrust.uriutil import multi_replace
 
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,14 @@ def get_atom_date(value):
 def get_date(value, fmt):
     if value == 'now':
         value = time.time()
+    if '%' not in fmt:
+        suggest = php_format_to_strftime_format(fmt)
+        raise Exception("PieCrust 1 date formats won't work in PieCrust 2. "
+                        "You probably want a format that look like '%s'. "
+                        "Please check the `strftime` formatting page here: "
+                        "https://docs.python.org/3/library/datetime.html"
+                        "#strftime-and-strptime-behavior" %
+                        suggest)
     return time.strftime(fmt, time.localtime(value))
 
 
@@ -271,4 +280,31 @@ class PieCrustCacheExtension(Extension):
         rv = caller()
         self.environment.piecrust_cache[key] = rv
         return rv
+
+
+def php_format_to_strftime_format(fmt):
+    replacements = {
+            'd': '%d',
+            'D': '%a',
+            'j': '%d',
+            'l': '%A',
+            'w': '%w',
+            'z': '%j',
+            'W': '%W',
+            'F': '%B',
+            'm': '%m',
+            'M': '%b',
+            'n': '%m',
+            'y': '%Y',
+            'Y': '%y',
+            'g': '%I',
+            'G': '%H',
+            'h': '%I',
+            'H': '%H',
+            'i': '%M',
+            's': '%S',
+            'e': '%Z',
+            'O': '%z',
+            'c': '%Y-%m-%dT%H:%M:%SZ'}
+    return multi_replace(fmt, replacements)
 
