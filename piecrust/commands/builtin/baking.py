@@ -45,7 +45,10 @@ class BakeCommand(ChefCommand):
             baker.bake()
             return 0
         except Exception as ex:
-            logger.error(str(ex))
+            if ctx.app.debug:
+                logger.exception(ex)
+            else:
+                logger.error(str(ex))
             return 1
 
 
