@@ -141,7 +141,7 @@ def _run_chef(pre_args):
     if not root:
         app = NullPieCrust()
     else:
-        app = PieCrust(root, cache=pre_args.cache)
+        app = PieCrust(root, cache=pre_args.cache, debug=pre_args.debug)
 
     # Handle a configuration variant.
     if pre_args.config_variant is not None:
