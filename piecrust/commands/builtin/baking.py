@@ -66,7 +66,7 @@ class ShowRecordCommand(ChefCommand):
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
-        record_cache = ctx.app.cache.getCache('bake_r')
+        record_cache = ctx.app.cache.getCache('baker')
         record_name = hashlib.md5(out_dir.encode('utf8')).hexdigest() + '.record'
         if not record_cache.has(record_name):
             raise Exception("No record has been created for this output path. "

@@ -254,7 +254,7 @@ class Baker(object):
 
         # Load/create the bake record.
         record = TransitionalBakeRecord()
-        record_cache = self.app.cache.getCache('bake_r')
+        record_cache = self.app.cache.getCache('baker')
         record_name = (hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
                 '.record')
         if not self.force and record_cache.has(record_name):
@@ -328,11 +328,11 @@ class Baker(object):
                 reason = "templates modified"
 
         if reason is not None:
-            cache_dir = self.app.cache_dir
+            cache_dir = self.app.cache.getCacheDir('baker')
             if os.path.isdir(cache_dir):
-                logger.debug("Cleaning cache: %s" % cache_dir)
+                logger.debug("Cleaning baker cache: %s" % cache_dir)
                 shutil.rmtree(cache_dir)
-                self.force = True
+            self.force = True
             logger.info(format_timed(start_time,
                 "cleaned cache (reason: %s)" % reason))
         else:
