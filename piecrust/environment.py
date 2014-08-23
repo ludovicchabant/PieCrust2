@@ -50,7 +50,8 @@ class MemCache(object):
                     self.cache.put(key, item)
 
                     # Save to the file-system if needed.
-                    if self.fs_cache is not None:
+                    if (self.fs_cache is not None and
+                            fs_cache_time is not None):
                         item_raw = json.dumps(item)
                         self.fs_cache.write(fs_key, item_raw)
         return item

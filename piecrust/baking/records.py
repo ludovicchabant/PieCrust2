@@ -28,17 +28,24 @@ class BakeRecord(Record):
 
 
 class BakeRecordPageEntry(object):
-    def __init__(self, page):
-        self.path = page.path
-        self.rel_path = page.rel_path
-        self.source_name = page.source.name
-        self.config = page.config.get()
+    def __init__(self, page=None):
+        self.path = None
+        self.rel_path = None
+        self.source_name = None
+        self.config = None
         self.taxonomy_name = None
         self.taxonomy_term = None
+        self.was_overriden = False
         self.out_uris = []
         self.out_paths = []
         self.used_source_names = set()
         self.used_taxonomy_terms = set()
+
+        if page:
+            self.path = page.path
+            self.rel_path = page.rel_path
+            self.source_name = page.source.name
+            self.config = page.config.get()
 
     @property
     def was_baked(self):
@@ -88,6 +95,22 @@ class TransitionalBakeRecord(object):
     def addEntry(self, entry):
         self.current.addEntry(entry)
 
+    def getOverrideEntry(self, factory, uri):
+        for pair in self.transitions.values():
+            prev = pair[0]
+            cur = pair[1]
+            if (cur and
+                    (cur.source_name != factory.source.name or
+                        cur.rel_path != factory.rel_path) and
+                    len(cur.out_uris) > 0 and cur.out_uris[0] == uri):
+                return cur
+            if (prev and
+                    (prev.source_name != factory.source.name or
+                        prev.rel_path != factory.rel_path) and
+                    len(prev.out_uris) > 0 and prev.out_uris[0] == uri):
+                return prev
+        return None
+
     def getPreviousEntry(self, page, taxonomy_name=None, taxonomy_term=None):
         key = _get_transition_key(page.source.name, page.rel_path,
                 taxonomy_name, taxonomy_term)
@@ -105,6 +128,7 @@ class TransitionalBakeRecord(object):
                 # This page wasn't baked, so the information from last
                 # time is still valid (we didn't get any information
                 # since we didn't bake).
+                cur.was_overriden = prev.was_overriden
                 cur.out_uris = list(prev.out_uris)
                 cur.out_paths = list(prev.out_paths)
                 cur.used_source_names = set(prev.used_source_names)

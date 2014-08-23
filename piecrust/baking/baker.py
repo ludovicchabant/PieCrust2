@@ -79,8 +79,6 @@ class PageBaker(object):
         return os.path.normpath(os.path.join(*bake_path))
 
     def bake(self, factory, route, taxonomy_name=None, taxonomy_term=None):
-        page = factory.buildPage()
-
         pagination_filter = None
         custom_data = None
         if taxonomy_name and taxonomy_term:
@@ -110,8 +108,31 @@ class PageBaker(object):
             # Normal page bake.
             uri = route.getUri(factory.metadata)
 
+        override = self.record.getOverrideEntry(factory, uri)
+        if override is not None:
+            override_source = self.app.getSource(override.source_name)
+            if override_source.realm == factory.source.realm:
+                raise Exception(
+                        "Page '%s' maps to URL '%s' but is overriden by page"
+                        "'%s:%s'." % (factory.ref_spec, uri,
+                            override.source_name, override.rel_path))
+            logger.debug("'%s' [%s] is overriden by '%s:%s'. Skipping" %
+                    (factory.ref_spec, uri, override.source_name,
+                        override.rel_path))
+            entry = BakeRecordPageEntry()
+            entry.path = factory.path
+            entry.rel_path = factory.rel_path
+            entry.source_name = factory.source.name
+            entry.was_overriden = True
+
+            if self.record:
+                self.record.addEntry(entry)
+
+            return entry
+
         cur_sub = 1
         has_more_subs = True
+        page = factory.buildPage()
         cur_record_entry = BakeRecordPageEntry(page)
         cur_record_entry.taxonomy_name = taxonomy_name
         cur_record_entry.taxonomy_term = taxonomy_term
@@ -540,6 +561,8 @@ class BakeWorker(threading.Thread):
                 self.ctx.abort_event.set()
                 self.abort_exception = ex
                 logger.debug("[%d] Critical error, aborting." % self.wid)
+                if self.ctx.app.debug:
+                    logger.exception(ex)
                 break
 
     def _unsafeRun(self, job):

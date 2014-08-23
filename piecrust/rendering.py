@@ -122,7 +122,8 @@ def render_page_segments(ctx):
     if repo:
         cache_key = '%s:%s' % (ctx.uri, ctx.page_num)
         return repo.get(cache_key,
-            lambda: _do_render_page_segments_from_ctx(ctx))
+            lambda: _do_render_page_segments_from_ctx(ctx),
+            fs_cache_time=ctx.page.path_mtime)
 
     return _do_render_page_segments_from_ctx(ctx)
 

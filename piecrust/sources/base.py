@@ -45,7 +45,7 @@ class PageFactory(object):
         self.rel_path = rel_path
         self.metadata = metadata
 
-    @property
+    @cached_property
     def ref_spec(self):
         return '%s:%s' % (self.source.name, self.rel_path)
 
