@@ -25,25 +25,24 @@ class MemCache(object):
         self.lock = threading.RLock()
         self.fs_cache = None
 
-    def get(self, key, item_maker):
+    def get(self, key, item_maker, fs_cache_time=None):
         item = self.cache.get(key)
         if item is None:
             logger.debug("Acquiring lock for: %s" % key)
             with self.lock:
                 item = self.cache.get(key)
                 if item is None:
-                    if self.fs_cache is not None:
+                    if (self.fs_cache is not None and
+                            fs_cache_time is not None):
                         # Try first from the file-system cache.
                         fs_key = _make_fs_cache_key(key)
-                        logger.debug("'%s' not found in cache, trying the "
-                                     "file-system: %s" % (key, fs_key))
-                        try:
+                        if self.fs_cache.isValid(fs_key, fs_cache_time):
+                            logger.debug("'%s' found in file-system cache." %
+                                         key)
                             item_raw = self.fs_cache.read(fs_key)
                             item = json.loads(item_raw)
                             self.cache.put(key, item)
                             return item
-                        except:
-                            pass
 
                     # Look into the mem-cache.
                     logger.debug("'%s' not found in cache, must build." % key)

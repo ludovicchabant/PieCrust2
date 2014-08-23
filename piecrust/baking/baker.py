@@ -127,7 +127,7 @@ class PageBaker(object):
             do_bake = True
             if not self.force and prev_record_entry:
                 try:
-                    in_path_time = os.path.getmtime(page.path)
+                    in_path_time = page.path_mtime
                     out_path_time = os.path.getmtime(out_path)
                     if out_path_time > in_path_time:
                         do_bake = False
@@ -157,6 +157,8 @@ class PageBaker(object):
                 ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
                         pagination_filter, custom_data)
             except Exception as ex:
+                if self.app.debug:
+                    logger.exception(ex)
                 raise Exception("Error baking page '%s' for URL '%s'." %
                         (page.ref_spec, uri)) from ex
 

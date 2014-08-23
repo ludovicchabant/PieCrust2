@@ -7,6 +7,7 @@ import hashlib
 import logging
 import datetime
 import dateutil.parser
+from werkzeug.utils import cached_property
 from piecrust.configuration import (Configuration, ConfigurationError,
         parse_config_header)
 from piecrust.environment import PHASE_PAGE_PARSING
@@ -36,7 +37,6 @@ class Page(object):
         self.source = source
         self.source_metadata = source_metadata
         self.rel_path = rel_path
-        self.path = source.resolveRef(rel_path)
         self._config = None
         self._raw_content = None
         self._datetime = None
@@ -48,6 +48,14 @@ class Page(object):
     @property
     def ref_spec(self):
         return '%s:%s' % (self.source.name, self.rel_path)
+
+    @cached_property
+    def path(self):
+        return self.source.resolveRef(self.rel_path)
+
+    @cached_property
+    def path_mtime(self):
+        return os.path.getmtime(self.path)
 
     @property
     def config(self):
@@ -79,7 +87,7 @@ class Page(object):
                     page_time = datetime.time(0, 0, 0)
                 self._datetime = datetime.datetime.combine(page_date, page_time)
             else:
-                self._datetime = datetime.datetime.fromtimestamp(os.path.getmtime(self.path))
+                self._datetime = datetime.datetime.fromtimestamp(self.path_mtime)
         return self._datetime
 
     @datetime.setter
@@ -96,7 +104,7 @@ class Page(object):
         eis = self.app.env.exec_info_stack
         eis.pushPage(self, PHASE_PAGE_PARSING, None)
         try:
-            config, content = load_page(self.app, self.path)
+            config, content = load_page(self.app, self.path, self.path_mtime)
             self._config = config
             self._raw_content = content
         finally:
@@ -154,9 +162,9 @@ def json_save_segments(segments):
     return data
 
 
-def load_page(app, path):
+def load_page(app, path, path_mtime=None):
     try:
-        return _do_load_page(app, path)
+        return _do_load_page(app, path, path_mtime)
     except Exception as e:
         logger.exception("Error loading page: %s" %
                 os.path.relpath(path, app.root_dir))
@@ -164,7 +172,7 @@ def load_page(app, path):
         raise PageLoadingError(path, e).with_traceback(traceback)
 
 
-def _do_load_page(app, path):
+def _do_load_page(app, path, path_mtime):
     exec_info = app.env.exec_info_stack.current_page_info
     if exec_info is None:
         raise Exception("Loading page '%s' but not execution context has "
@@ -173,7 +181,7 @@ def _do_load_page(app, path):
     # Check the cache first.
     cache = app.cache.getCache('pages')
     cache_path = "%s.json" % hashlib.md5(path.encode('utf8')).hexdigest()
-    page_time = os.path.getmtime(path)
+    page_time = path_mtime or os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
         exec_info.was_cache_valid = True
         cache_data = json.loads(cache.read(cache_path))
