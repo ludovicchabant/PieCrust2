@@ -76,6 +76,9 @@ class Server(object):
 
         # Create the app for this request.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
+        app.config.set('site/root', '/')
+        app.config.set('site/pretty_urls', True)
+        app.config.set('server/is_serving', True)
 
         # We'll serve page assets directly from where they are.
         app.env.base_asset_url_format = '/_asset/%path%'
