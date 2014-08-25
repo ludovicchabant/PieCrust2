@@ -106,10 +106,12 @@ class Environment(object):
         self.page_repository = MemCache()
         self.rendered_segments_repository = MemCache()
         self.base_asset_url_format = '%uri%'
+        self._use_rendered_segments_fs_cache = False
 
     def initialize(self, app):
-        cache = app.cache.getCache('renders')
-        self.rendered_segments_repository.fs_cache = cache
+        if self._use_rendered_segments_fs_cache:
+            cache = app.cache.getCache('renders')
+            self.rendered_segments_repository.fs_cache = cache
 
 
 class StandardEnvironment(Environment):
