@@ -36,6 +36,13 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         day = metadata.get('day')
         slug = metadata.get('slug')
 
+        if year is not None:
+            year = int(year)
+        if month is not None:
+            month = int(month)
+        if day is not None:
+            day = int(day)
+
         ext = metadata.get('ext')
         if ext is None:
             if len(self.supported_extensions) == 1:
@@ -44,9 +51,9 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 ext = self.default_auto_format
 
         replacements = {
-                'year': year,
-                'month': month,
-                'day': day,
+                'year': '%04d' % year,
+                'month': '%02d' % month,
+                'day': '%02d' % day,
                 'slug': slug,
                 'ext': ext
                 }
@@ -86,10 +93,6 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 'slug': '(?P<slug>.*)',
                 'ext': '(?P<ext>.*)'
                 }
-        #sanitized_fs_endpoint_path = (self.fs_endpoint_path.
-        #        replace('\\', '/').rstrip('/'))
-        #pattern = (re.escape(sanitized_fs_endpoint_path) + '/' +
-        #        self.path_format % regex_repl)
         pattern = self.path_format % regex_repl + '$'
         m = re.search(pattern, path.replace('\\', '/'))
         if not m:
