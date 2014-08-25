@@ -88,7 +88,7 @@ class PrepareCommand(ChefCommand):
                 logger.debug("Skipping source '%s' because it's a theme "
                              "source." % src.name)
                 continue
-            p = subparsers.add_parser(src.name)
+            p = subparsers.add_parser(src.item_name)
             src.setupPrepareParser(p, app)
             p.set_defaults(source=src)
 
