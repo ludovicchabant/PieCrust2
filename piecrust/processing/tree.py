@@ -34,9 +34,9 @@ class ProcessingTreeNode(object):
 
     def getProcessor(self):
         if self._processor is None:
-            _, ext = os.path.splitext(self.path)
+            _, filename = os.path.split(self.path)
             for p in self.available_procs:
-                if p.supportsExtension(ext):
+                if p.matches(filename):
                     self._processor = p
                     self.available_procs.remove(p)
                     break

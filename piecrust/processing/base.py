@@ -36,7 +36,7 @@ class Processor(object):
     def onPipelineEnd(self, pipeline):
         pass
 
-    def supportsExtension(self, ext):
+    def matches(self, filename):
         return False
 
     def getDependencies(self, path):
@@ -56,7 +56,7 @@ class CopyFileProcessor(Processor):
         super(CopyFileProcessor, self).__init__()
         self.priority = PRIORITY_LAST
 
-    def supportsExtension(self, ext):
+    def matches(self, filename):
         return True
 
     def getOutputFilenames(self, filename):
@@ -74,8 +74,11 @@ class SimpleFileProcessor(Processor):
         super(SimpleFileProcessor, self).__init__()
         self.extensions = extensions or {}
 
-    def supportsExtension(self, ext):
-        return ext.lstrip('.') in self.extensions
+    def matches(self, filename):
+        for ext in self.extensions:
+            if filename.endswith('.' + ext):
+                return True
+        return False
 
     def getOutputFilenames(self, filename):
         basename, ext = os.path.splitext(filename)
