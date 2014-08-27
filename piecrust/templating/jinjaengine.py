@@ -54,17 +54,28 @@ class JinjaTemplateEngine(TemplateEngine):
             raise TemplateNotFoundError()
         return tpl.render(data)
 
-
     def _ensureLoaded(self):
         if self.env:
             return
+
+        autoescape = self.app.config.get('jinja/auto_escape')
+        if autoescape is None:
+            autoescape = self.app.config.get('twig/auto_escape')
+        if autoescape is None:
+            autoescape = True
+
+        logger.debug("Creating Jinja environment with folders: %s" %
+                self.app.templates_dirs)
         loader = FileSystemLoader(self.app.templates_dirs)
+        extensions = [
+                PieCrustHighlightExtension,
+                PieCrustCacheExtension]
+        if autoescape:
+            extensions.append('jinja2.ext.autoescape')
         self.env = PieCrustEnvironment(
                 self.app,
                 loader=loader,
-                extensions=['jinja2.ext.autoescape',
-                            PieCrustHighlightExtension,
-                            PieCrustCacheExtension])
+                extensions=extensions)
 
 
 class PieCrustEnvironment(Environment):
