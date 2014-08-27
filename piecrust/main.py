@@ -179,6 +179,11 @@ def _run_chef(pre_args):
     result = parser.parse_args()
     logger.debug(format_timed(start_time, 'initialized PieCrust', colored=False))
 
+    # Print the help if no command was specified.
+    if not hasattr(result, 'func'):
+        parser.print_help()
+        return 0
+
     # Run the command!
     ctx = CommandContext(app, parser, result)
     exit_code = result.func(ctx)
