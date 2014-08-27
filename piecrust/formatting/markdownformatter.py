@@ -18,11 +18,18 @@ class MarkdownFormatter(Formatter):
         if self._extensions is not None:
             return
 
-        extensions = self.app.config.get('markdown/extensions')
+        config = self.app.config.get('markdown')
+        if config is None:
+            config = {}
+        elif not isinstance(config, dict):
+            raise Exception("The `markdown` configuration setting must be "
+                            "a dictionary.")
+
+        extensions = config.get('extensions')
         if extensions is None:
             extensions = []
         # Compatibility with PieCrust 1.x
-        if self.app.config.get('markdown/use_markdown_extra'):
+        if config.get('use_markdown_extra'):
             extensions.append('extra')
         self._extensions = extensions
 
