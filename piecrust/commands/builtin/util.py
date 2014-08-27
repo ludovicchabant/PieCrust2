@@ -114,3 +114,20 @@ class PrepareCommand(ChefCommand):
             f.write('---\n')
             f.write("This is a new page!\n")
 
+
+class ImportCommand(ChefCommand):
+    def __init__(self):
+        super(ImportCommand, self).__init__()
+        self.name = 'import'
+        self.description = "Imports content from another CMS into PieCrust."
+
+    def setupParser(self, parser, app):
+        subparsers = parser.add_subparsers()
+        for i in app.plugin_loader.getImporters():
+            p = subparsers.add_parser(i.name, help=i.description)
+            i.setupParser(p, app)
+            p.set_defaults(sub_func=i.checkedImportWebsite)
+
+    def run(self, ctx):
+        ctx.args.sub_func(ctx)
+

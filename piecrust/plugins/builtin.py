@@ -1,11 +1,13 @@
+from piecrust.commands.base import HelpCommand
 from piecrust.commands.builtin.baking import (BakeCommand, ShowRecordCommand)
 from piecrust.commands.builtin.info import (RootCommand, ShowConfigCommand,
         FindCommand, ShowRoutesCommand, ShowPathsCommand)
 from piecrust.commands.builtin.serving import (ServeCommand)
 from piecrust.commands.builtin.util import (InitCommand, PurgeCommand,
-        PrepareCommand)
+        PrepareCommand, ImportCommand)
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
 from piecrust.formatting.markdownformatter import MarkdownFormatter
+from piecrust.importing.jekyll import JekyllImporter
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
 from piecrust.processing.less import LessProcessor
@@ -24,6 +26,8 @@ class BuiltInPlugin(PieCrustPlugin):
     def getCommands(self):
         return [
                 InitCommand(),
+                ImportCommand(),
+                HelpCommand(),
                 RootCommand(),
                 PurgeCommand(),
                 ShowConfigCommand(),
@@ -63,4 +67,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 CopyFileProcessor(),
                 LessProcessor(),
                 SitemapProcessor()]
+
+    def getImporters(self):
+        return [
+                JekyllImporter()]
 
