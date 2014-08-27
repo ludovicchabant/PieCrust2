@@ -512,7 +512,7 @@ class PieCrust(object):
             if isinstance(conf_dirs, str):
                 dirs.append(os.path.join(self.root_dir, conf_dirs))
             else:
-                dirs += [p for p in conf_dirs if os.path.join(self.root_dir, p)]
+                dirs += [os.path.join(self.root_dir, p) for p in conf_dirs]
 
         # Add the default directory if it exists.
         default_dir = os.path.join(self.root_dir, default_rel_dir)
