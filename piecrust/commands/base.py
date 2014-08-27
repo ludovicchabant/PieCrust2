@@ -1,4 +1,5 @@
 import logging
+import argparse
 import functools
 from piecrust.pathutil import SiteNotFoundError
 
@@ -7,10 +8,10 @@ logger = logging.getLogger(__name__)
 
 
 class CommandContext(object):
-    def __init__(self, app, args):
+    def __init__(self, app, parser, args):
         self.app = app
+        self.parser = parser
         self.args = args
-        self.result = 0
 
 
 class ChefCommand(object):
@@ -23,14 +24,13 @@ class ChefCommand(object):
         raise NotImplementedError()
 
     def run(self, ctx):
-        raise NotImplementedError()
+        raise NotImplementedError("Command '%s' doesn't implement the `run` "
+                "method." % type(self))
 
-    def _runFromChef(self, app, res):
-        if app.root_dir is None and self.requires_website:
+    def checkedRun(self, ctx):
+        if ctx.app.root_dir is None and self.requires_website:
             raise SiteNotFoundError()
-        ctx = CommandContext(app, res)
-        self.run(ctx)
-        return ctx.result
+        return self.run(ctx)
 
 
 class ExtendableChefCommand(ChefCommand):
@@ -44,7 +44,7 @@ class ExtendableChefCommand(ChefCommand):
         for e in self._extensions:
             p = subparsers.add_parser(e.name, help=e.description)
             e.setupParser(p, app)
-            p.set_defaults(func=e._runFromChef)
+            p.set_defaults(func=e.checkedRun)
 
     def _loadExtensions(self, app):
         if self._extensions is not None:
@@ -62,6 +62,50 @@ class ChefCommandExtension(ChefCommand):
 
     def supports(self, app):
         return True
+
+
+class HelpCommand(ChefCommand):
+    def __init__(self):
+        super(HelpCommand, self).__init__()
+        self.name = 'help'
+        self.description = "Prints help about PieCrust's chef."
+        self._topic_providers = {}
+
+    @property
+    def has_topics(self):
+        return any(self._topic_providers)
+
+    def addTopic(self, name, provider):
+        self._topic_providers[name] = provider
+
+    def getTopicNames(self):
+        return self._topic_providers.keys()
+
+    def setupParser(self, parser, app):
+        parser.add_argument('topic', nargs='?',
+                help="The command name or topic on which to get help.")
+
+    def run(self, ctx):
+        topic = ctx.args.topic
+
+        if topic is None:
+            ctx.parser.print_help()
+            return 0
+
+        if topic in self._topic_providers:
+            print(self._topic_providers[topic].getHelpTopic(topic, ctx.app))
+            return 0
+
+        for c in ctx.app.plugin_loader.getCommands():
+            if c.name == topic:
+                fake = argparse.ArgumentParser(
+                        prog='%s %s' % (ctx.parser.prog, c.name),
+                        description=c.description)
+                c.setupParser(fake, ctx.app)
+                fake.print_help()
+                return 0
+
+        raise Exception("No such command or topic: %s" % topic)
 
 
 class _WrappedCommand(ChefCommand):

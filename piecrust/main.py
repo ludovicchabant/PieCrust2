@@ -6,6 +6,7 @@ import argparse
 import colorama
 from piecrust.app import PieCrust, PieCrustConfiguration, APP_VERSION
 from piecrust.chefutil import format_timed, log_friendly_exception
+from piecrust.commands.base import CommandContext
 from piecrust.environment import StandardEnvironment
 from piecrust.pathutil import SiteNotFoundError, find_app_root
 from piecrust.plugins.base import PluginLoader
@@ -151,6 +152,7 @@ def _run_chef(pre_args):
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
+            prog='chef',
             description="The PieCrust chef manages your website.")
     parser.add_argument('--version', action='version', version=('%(prog)s ' + APP_VERSION))
     parser.add_argument('--root', help="The root directory of the website.")
@@ -166,13 +168,19 @@ def _run_chef(pre_args):
     for c in commands:
         p = subparsers.add_parser(c.name, help=c.description)
         c.setupParser(p, app)
-        p.set_defaults(func=c._runFromChef)
+        p.set_defaults(func=c.checkedRun)
+    help_cmd = next(filter(lambda c: c.name == 'help', commands), None)
+    if help_cmd and help_cmd.has_topics:
+        parser.epilog = ("Additional help topics: " +
+                ', '.join(help_cmd.getTopicNames()))
+
 
     # Parse the command line.
     result = parser.parse_args()
     logger.debug(format_timed(start_time, 'initialized PieCrust', colored=False))
 
     # Run the command!
-    exit_code = result.func(app, result)
+    ctx = CommandContext(app, parser, result)
+    exit_code = result.func(ctx)
     return exit_code
 
