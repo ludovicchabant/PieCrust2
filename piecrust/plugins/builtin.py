@@ -8,6 +8,7 @@ from piecrust.commands.builtin.util import (InitCommand, PurgeCommand,
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
 from piecrust.formatting.markdownformatter import MarkdownFormatter
 from piecrust.importing.jekyll import JekyllImporter
+from piecrust.importing.piecrust import PieCrust1Importer
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
 from piecrust.processing.less import LessProcessor
@@ -70,5 +71,6 @@ class BuiltInPlugin(PieCrustPlugin):
 
     def getImporters(self):
         return [
-                JekyllImporter()]
+                JekyllImporter(),
+                PieCrust1Importer()]
 

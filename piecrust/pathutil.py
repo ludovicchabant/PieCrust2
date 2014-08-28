@@ -1,6 +1,7 @@
 import re
 import os
 import os.path
+import fnmatch
 
 
 re_terminal_path = re.compile(r'[/\\]|(\w\:)')
@@ -29,4 +30,20 @@ def find_app_root(cwd=None):
         if not cwd or re_terminal_path.match(cwd):
             raise SiteNotFoundError(cwd)
     return cwd
+
+
+def multi_fnmatch_filter(names, patterns, modifier=None, inverse=True):
+    res = []
+    for n in names:
+        matches = False
+        test_n = modifier(n) if modifier else n
+        for p in patterns:
+            if fnmatch.fnmatch(test_n, p):
+                matches = True
+                break
+        if matches and not inverse:
+            res.append(n)
+        elif not matches and inverse:
+            res.append(n)
+    return res
 

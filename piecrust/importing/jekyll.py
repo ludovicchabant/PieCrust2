@@ -5,54 +5,46 @@ import shutil
 import yaml
 import logging
 from piecrust.configuration import parse_config_header
-from piecrust.importing.base import Importer
+from piecrust.importing.base import FileWalkingImporter
 from piecrust.uriutil import multi_replace
 
 
 logger = logging.getLogger(__name__)
 
 
-class JekyllImporter(Importer):
+class JekyllImporter(FileWalkingImporter):
     def __init__(self):
         super(JekyllImporter, self).__init__()
         self.name = 'jekyll'
         self.description = "Imports content from a Jekyll or Octopress blog."
 
     def setupParser(self, parser, app):
+        super(JekyllImporter, self).setupParser(parser, app)
         parser.add_argument('root_dir',
                 help="The root directory of the Jekyll or Octopress website.")
 
     def importWebsite(self, app, args):
         logger.debug("Importing Jekyll site from: %s" % args.root_dir)
-        for dirpath, dirnames, filenames in os.walk(args.root_dir):
-            dirnames[:] = list(filter(lambda i: not i[0] == '.', dirnames))
-            for fn in filenames:
-                if fn[0] == '.':
-                    continue
-
-                full_fn = os.path.join(dirpath, fn)
-                rel_fn = os.path.relpath(full_fn, args.root_dir)
-                if rel_fn.startswith('.' + os.sep):
-                    rel_fn = fn
-
-                logger.debug("- %s" % rel_fn)
-                if rel_fn == '_config.yml':
-                    self.convertConfig(app, full_fn)
-                elif rel_fn.startswith('_layouts'):
-                    self.convertLayout(app, full_fn, rel_fn[len('_layouts/'):])
-                elif rel_fn.startswith('_includes'):
-                    self.convertInclude(app, full_fn, rel_fn[len('_includes/'):])
-                elif rel_fn.startswith('_posts'):
-                    self.convertPost(app, full_fn, rel_fn[len('_posts/'):])
-                else:
-                    with open(full_fn, 'rb') as fp:
-                        firstline = fp.read(3)
-                    if firstline == '---':
-                        self.convertPage(app, full_fn, rel_fn)
-                    else:
-                        self.convertStatic(app, full_fn, rel_fn)
-
+        self._startWalk(args.root_dir, args.exclude, app)
         logger.info("The Jekyll website was successfully imported.")
+
+    def _importFile(self, full_fn, rel_fn, app):
+        logger.debug("- %s" % rel_fn)
+        if rel_fn == '_config.yml':
+            self.convertConfig(app, full_fn)
+        elif rel_fn.startswith('_layouts'):
+            self.convertLayout(app, full_fn, rel_fn[len('_layouts/'):])
+        elif rel_fn.startswith('_includes'):
+            self.convertInclude(app, full_fn, rel_fn[len('_includes/'):])
+        elif rel_fn.startswith('_posts'):
+            self.convertPost(app, full_fn, rel_fn[len('_posts/'):])
+        else:
+            with open(full_fn, 'rb') as fp:
+                firstline = fp.read(3)
+            if firstline == '---':
+                self.convertPage(app, full_fn, rel_fn)
+            else:
+                self.convertStatic(app, full_fn, rel_fn)
 
     def convertConfig(self, app, src_path):
         logger.debug("  Converting configuration file.")
