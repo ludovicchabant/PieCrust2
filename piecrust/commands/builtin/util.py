@@ -127,7 +127,8 @@ class ImportCommand(ChefCommand):
             p = subparsers.add_parser(i.name, help=i.description)
             i.setupParser(p, app)
             p.set_defaults(sub_func=i.checkedImportWebsite)
+            p.set_defaults(sub_requires_website=i.requires_website)
 
-    def run(self, ctx):
+    def checkedRun(self, ctx):
         ctx.args.sub_func(ctx)
 

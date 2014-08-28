@@ -12,6 +12,7 @@ class Importer(object):
     def __init__(self):
         self.name = None
         self.description = None
+        self.requires_website = True
 
     def setupParser(self, parser, app):
         raise NotImplementedError()
@@ -20,7 +21,7 @@ class Importer(object):
         raise NotImplementedError()
 
     def checkedImportWebsite(self, ctx):
-        if ctx.app.root_dir is None:
+        if ctx.app.root_dir is None and self.requires_website:
             raise SiteNotFoundError()
         self.importWebsite(ctx.app, ctx.args)
         return 0
