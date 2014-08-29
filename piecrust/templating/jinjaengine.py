@@ -5,7 +5,9 @@ import strict_rfc3339
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from jinja2.exceptions import TemplateSyntaxError
 from jinja2.ext import Extension, Markup
+from jinja2.lexer import Token, describe_token
 from jinja2.nodes import CallBlock, Const
+from compressinja.html import HtmlCompressor, StreamProcessContext
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
@@ -69,7 +71,8 @@ class JinjaTemplateEngine(TemplateEngine):
         loader = FileSystemLoader(self.app.templates_dirs)
         extensions = [
                 PieCrustHighlightExtension,
-                PieCrustCacheExtension]
+                PieCrustCacheExtension,
+                PieCrustSpacelessExtension]
         if autoescape:
             extensions.append('jinja2.ext.autoescape')
         self.env = PieCrustEnvironment(
@@ -86,6 +89,8 @@ class PieCrustEnvironment(Environment):
         self.globals.update({
                 'fail': raise_exception})
         self.filters.update({
+                'keys': get_dict_keys,
+                'values': get_dict_values,
                 'paginate': self._paginate,
                 'formatwith': self._formatWith,
                 'markdown': lambda v: self._formatWith(v, 'markdown'),
@@ -138,6 +143,18 @@ class PieCrustEnvironment(Environment):
 
 def raise_exception(msg):
     raise Exception(msg)
+
+
+def get_dict_keys(value):
+    if isinstance(value, list):
+        return [i[0] for i in value]
+    return value.keys()
+
+
+def get_dict_values(value):
+    if isinstance(value, list):
+        return [i[1] for i in value]
+    return value.values()
 
 
 def add_no_cache_parameter(value, param_name='t', param_value=None):
@@ -251,7 +268,7 @@ class PieCrustHighlightExtension(Extension):
 
 
 class PieCrustCacheExtension(Extension):
-    tags = set(['pccache'])
+    tags = set(['pccache', 'cache'])
 
     def __init__(self, environment):
         super(PieCrustCacheExtension, self).__init__(environment)
@@ -273,7 +290,8 @@ class PieCrustCacheExtension(Extension):
 
         # now we parse the body of the cache block up to `endpccache` and
         # drop the needle (which would always be `endpccache` in that case)
-        body = parser.parse_statements(['name:endpccache'], drop_needle=True)
+        body = parser.parse_statements(['name:endpccache', 'name:endcache'],
+                drop_needle=True)
 
         # now return a `CallBlock` node that calls our _cache_support
         # helper method on this extension.
@@ -292,6 +310,47 @@ class PieCrustCacheExtension(Extension):
         rv = caller()
         self.environment.piecrust_cache[key] = rv
         return rv
+
+
+class PieCrustSpacelessExtension(HtmlCompressor):
+    """ A re-implementation of `SelectiveHtmlCompressor` so that we can
+        both use `strip` or `spaceless` in templates.
+    """
+    def filter_stream(self, stream):
+        ctx = StreamProcessContext(stream)
+        strip_depth = 0
+        while 1:
+            if stream.current.type == 'block_begin':
+                for tk in ['strip', 'spaceless']:
+                    change = self._processToken(ctx, stream, tk)
+                    if change != 0:
+                        strip_depth += change
+                        if strip_depth < 0:
+                            ctx.fail('Unexpected tag end%s' % tk)
+                        break
+            if strip_depth > 0 and stream.current.type == 'data':
+                ctx.token = stream.current
+                value = self.normalize(ctx)
+                yield Token(stream.current.lineno, 'data', value)
+            else:
+                yield stream.current
+            next(stream)
+
+    def _processToken(self, ctx, stream, test_token):
+        change = 0
+        if (stream.look().test('name:%s' % test_token) or
+                stream.look().test('name:end%s' % test_token)):
+            stream.skip()
+            if stream.current.value == test_token:
+                change = 1
+            else:
+                change = -1
+            stream.skip()
+            if stream.current.type != 'block_end':
+                ctx.fail('expected end of block, got %s' %
+                         describe_token(stream.current))
+            stream.skip()
+        return change
 
 
 def php_format_to_strftime_format(fmt):
