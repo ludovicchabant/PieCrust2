@@ -1,6 +1,8 @@
 import re
 import logging
+import collections
 import yaml
+from yaml.constructor import ConstructorError
 
 
 logger = logging.getLogger(__name__)
@@ -114,10 +116,29 @@ def parse_config_header(text):
     m = header_regex.match(text)
     if m is not None:
         header = str(m.group('header'))
-        config = yaml.load(header, Loader=yaml.BaseLoader)
+        config = yaml.load(header, Loader=OrderedDictYAMLLoader)
         offset = m.end()
     else:
         config = {}
         offset = 0
     return config, offset
+
+
+class OrderedDictYAMLLoader(yaml.BaseLoader):
+    """ A YAML loader that loads mappings into ordered dictionaries.
+    """
+    def construct_mapping(self, node, deep=False):
+        if not isinstance(node, yaml.MappingNode):
+            raise ConstructorError(None, None,
+                    "expected a mapping node, but found %s" % node.id,
+                    node.start_mark)
+        mapping = collections.OrderedDict()
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, collections.Hashable):
+                raise ConstructorError("while constructing a mapping", node.start_mark,
+                        "found unhashable key", key_node.start_mark)
+            value = self.construct_object(value_node, deep=deep)
+            mapping[key] = value
+        return mapping
 

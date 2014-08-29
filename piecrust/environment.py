@@ -3,6 +3,7 @@ import time
 import json
 import logging
 import threading
+import collections
 import repoze.lru
 
 
@@ -40,7 +41,8 @@ class MemCache(object):
                             logger.debug("'%s' found in file-system cache." %
                                          key)
                             item_raw = self.fs_cache.read(fs_key)
-                            item = json.loads(item_raw)
+                            item = json.loads(item_raw,
+                                    object_pairs_hook=collections.OrderedDict)
                             self.cache.put(key, item)
                             return item
 

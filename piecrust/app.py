@@ -4,6 +4,7 @@ import os.path
 import codecs
 import hashlib
 import logging
+import collections
 import yaml
 from werkzeug.utils import cached_property
 from piecrust import (APP_VERSION,
@@ -15,7 +16,8 @@ from piecrust import (APP_VERSION,
 from piecrust.cache import ExtensibleCache, NullCache, NullExtensibleCache
 from piecrust.plugins.base import PluginLoader
 from piecrust.environment import StandardEnvironment
-from piecrust.configuration import Configuration, ConfigurationError, merge_dicts
+from piecrust.configuration import (Configuration, ConfigurationError,
+        OrderedDictYAMLLoader, merge_dicts)
 from piecrust.routing import Route
 from piecrust.sources.base import REALM_USER, REALM_THEME
 from piecrust.taxonomies import Taxonomy
@@ -64,7 +66,8 @@ class PieCrustConfiguration(Configuration):
         if self.cache.isValid('config.json', path_times):
             logger.debug("Loading configuration from cache...")
             config_text = self.cache.read('config.json')
-            self._values = json.loads(config_text)
+            self._values = json.loads(config_text,
+                    object_pairs_hook=collections.OrderedDict)
 
             actual_cache_key = self._values.get('__cache_key')
             if actual_cache_key == cache_key:
@@ -77,7 +80,8 @@ class PieCrustConfiguration(Configuration):
         logger.debug("Loading configuration from: %s" % self.paths)
         for i, p in enumerate(self.paths):
             with codecs.open(p, 'r', 'utf-8') as fp:
-                loaded_values = yaml.load(fp.read())
+                loaded_values = yaml.load(fp.read(),
+                        Loader=OrderedDictYAMLLoader)
             if loaded_values is None:
                 loaded_values = {}
             for fixup in self.fixups:

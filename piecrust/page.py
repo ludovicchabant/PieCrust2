@@ -7,6 +7,7 @@ import hashlib
 import logging
 import datetime
 import dateutil.parser
+import collections
 from werkzeug.utils import cached_property
 from piecrust.configuration import (Configuration, ConfigurationError,
         parse_config_header)
@@ -184,7 +185,8 @@ def _do_load_page(app, path, path_mtime):
     page_time = path_mtime or os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
         exec_info.was_cache_valid = True
-        cache_data = json.loads(cache.read(cache_path))
+        cache_data = json.loads(cache.read(cache_path),
+                object_pairs_hook=collections.OrderedDict)
         config = PageConfiguration(values=cache_data['config'],
                 validate=False)
         content = json_load_segments(cache_data['content'])

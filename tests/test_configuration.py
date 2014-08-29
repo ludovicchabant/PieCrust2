@@ -1,6 +1,9 @@
 import copy
+import yaml
 import pytest
-from piecrust.configuration import Configuration, merge_dicts
+from collections import OrderedDict
+from piecrust.configuration import (Configuration, OrderedDictYAMLLoader,
+        merge_dicts)
 
 
 @pytest.mark.parametrize('values, expected', [
@@ -102,4 +105,20 @@ def test_config_merge():
                 }
             }
     assert config.get() == expected
+
+
+def test_ordered_loader():
+    sample = """
+one:
+    two: fish
+    red: fish
+    blue: fish
+two:
+    a: yes
+    b: no
+    c: null
+"""
+    data = yaml.load(sample, Loader=OrderedDictYAMLLoader)
+    assert type(data) is OrderedDict
+    assert list(data['one'].keys()) == ['two', 'red', 'blue']
 
