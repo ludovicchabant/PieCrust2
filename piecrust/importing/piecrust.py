@@ -3,6 +3,7 @@ import os.path
 import re
 import shutil
 import logging
+import yaml
 from piecrust.importing.base import FileWalkingImporter
 
 
@@ -35,14 +36,7 @@ class PieCrust1Importer(FileWalkingImporter):
         exclude += ['_cache', '_counter']
         self._startWalk(root_dir, exclude, root_dir, args.upgrade)
         if args.upgrade:
-            content_dir = os.path.join(root_dir, '_content')
-            file_count = 0
-            for _, __, filenames in os.walk(content_dir):
-                file_count += len(filenames)
-            if file_count == 0:
-                shutil.rmtree(content_dir)
-            else:
-                logger.warning("Can't delete `_content` directory, files have been left.")
+            self._cleanEmptyDirectories(root_dir)
         logger.info("The PieCrust website was successfully imported.")
 
     def _importFile(self, full_fn, rel_fn, out_root_dir, is_move):
@@ -81,7 +75,36 @@ class PieCrust1Importer(FileWalkingImporter):
             if is_move:
                 os.remove(full_fn)
 
+    def _cleanEmptyDirectories(self, root_dir):
+        for item in os.listdir(root_dir):
+            if not os.path.isdir(item):
+                continue
+
+            file_count = 0
+            item_path = os.path.join(root_dir, item)
+            for _, __, filenames in os.walk(item_path):
+                file_count += len(filenames)
+            if file_count == 0:
+                logger.debug("Deleting empty directory: %s" % item)
+                shutil.rmtree(item_path)
+
     def convertConfig(self, content):
+        config = yaml.load(content)
+        sitec = config.setdefault('site', {})
+        if 'templates_dirs' in sitec:
+            tdc = sitec['templates_dirs']
+            cl = len('_content/')
+            if isinstance(tdc, str) and re.match(r'^_content[/\\]', tdc):
+                sitec['templates_dirs'] = tdc[cl:]
+            elif isinstance(tdc, list):
+                sitec['templates_dirs'] = list(map(
+                    lambda d: d[cl:] if re.match(r'^_content[/\\]', d) else d,
+                    tdc))
+
+        jinjac = config.setdefault('jinja', {})
+        jinjac['twig_compatibility'] = True
+
+        content = yaml.dump(config, default_flow_style=False)
         return content
 
     def convertPage(self, content):
