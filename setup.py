@@ -111,9 +111,21 @@ def write_version(version):
     f.close()
 
 
-# Always generate an up to date version.
-version = generate_version()
-write_version(version)
+# Always try to generate an up to date version.
+# Otherwise, fall back on an (hopefully) existing version file.
+try:
+    version = generate_version()
+    write_version(version)
+except:
+    version = None
+
+if version is None:
+    try:
+        from piecrust.__version__ import APP_VERSION
+        version = APP_VERSION
+    except ImportError:
+        raise Exception("Can't get version from either a version file or "
+                        "from the repository.")
 
 
 setup(name="piecrust",
