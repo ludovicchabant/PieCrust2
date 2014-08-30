@@ -128,7 +128,7 @@ if version is None:
                         "from the repository.")
 
 
-setup(name="piecrust",
+setup(name="PieCrust",
         version=version,
         description="A powerful static website generator and lightweight CMS.",
         long_description=read('README.rst') + '\n\n' + read('CHANGELOG.rst'),
