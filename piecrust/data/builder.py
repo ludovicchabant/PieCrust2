@@ -1,5 +1,6 @@
 import time
 import logging
+from piecrust import APP_VERSION
 from piecrust.configuration import merge_dicts
 from piecrust.data.assetor import Assetor
 from piecrust.data.debug import build_debug_info
@@ -75,22 +76,16 @@ def build_layout_data(page, page_data, contents):
     return data
 
 
-try:
-    from piecrust.__version__ import VERSION
-except ImportError:
-    from piecrust import APP_VERSION as VERSION
-
-
 class PieCrustData(object):
     debug_render = ['version', 'url', 'branding', 'debug_info']
     debug_render_invoke = ['version', 'url', 'branding', 'debug_info']
     debug_render_redirect = {'debug_info': '_debugRenderDebugInfo'}
 
     def __init__(self):
-        self.version = VERSION
+        self.version = APP_VERSION
         self.url = 'http://bolt80.com/piecrust/'
         self.branding = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
-                'http://bolt80.com/piecrust/', VERSION)
+                'http://bolt80.com/piecrust/', APP_VERSION)
         self._page = None
         self._data = None
 

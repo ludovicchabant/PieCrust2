@@ -4,7 +4,8 @@ import os.path
 import logging
 import argparse
 import colorama
-from piecrust.app import PieCrust, PieCrustConfiguration, APP_VERSION
+from piecrust import APP_VERSION
+from piecrust.app import PieCrust, PieCrustConfiguration
 from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.commands.base import CommandContext
 from piecrust.environment import StandardEnvironment

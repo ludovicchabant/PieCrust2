@@ -1,6 +1,4 @@
 
-APP_VERSION = '2.0.0alpha'
-
 CACHE_DIR = '_cache'
 ASSETS_DIR = 'assets'
 TEMPLATES_DIR = 'templates'
@@ -18,4 +16,9 @@ DEFAULT_PLUGIN_SOURCE = 'http://bitbucket.org/ludovicchabant/'
 DEFAULT_THEME_SOURCE = 'http://bitbucket.org/ludovicchabant/'
 
 PIECRUST_URL = 'http://bolt80.com/piecrust/'
+
+try:
+    from piecrust.__version__ import APP_VERSION
+except ImportError:
+    APP_VERSION = 'unknown'
 
