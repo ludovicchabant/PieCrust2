@@ -2,6 +2,7 @@ syntax: glob
 *.pyc
 venv
 tags
+build/lib
 build/messages/_cache
 dist
 piecrust.egg-info
