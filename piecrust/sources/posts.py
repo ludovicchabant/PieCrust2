@@ -114,10 +114,25 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         parser.add_argument('slug', help="The URL slug for the new post.")
 
     def buildMetadata(self, args):
-        today = datetime.date.today()
-        year, month, day = today.year, today.month, today.day
+        dt = datetime.date.today()
         if args.date:
-            year, month, day = [s for s in args.date.split('/') if int(s)]
+            if args.date == 'today':
+                pass # Keep the default we had.
+            elif args.date == 'tomorrow':
+                dt += datetime.timedelta(days=1)
+            elif args.date.startswith('+'):
+                try:
+                    dt += datetime.timedelta(days=int(args.date.lstrip('+')))
+                except ValueError:
+                    raise Exception("Date offsets must be numbers.")
+            else:
+                try:
+                    year, month, day = [int(s) for s in args.date.split('/')]
+                except ValueError:
+                    raise Exception("Dates must be of the form: YEAR/MONTH/DAY.")
+                dt = datetime.date(year, month, day)
+
+        year, month, day = dt.year, dt.month, dt.day
         return {'year': year, 'month': month, 'day': day, 'slug': args.slug}
 
     def _checkFsEndpointPath(self):
