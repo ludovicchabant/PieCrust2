@@ -124,7 +124,7 @@ def parse_config_header(text):
     return config, offset
 
 
-class OrderedDictYAMLLoader(yaml.BaseLoader):
+class OrderedDictYAMLLoader(yaml.SafeLoader):
     """ A YAML loader that loads mappings into ordered dictionaries.
     """
     def construct_mapping(self, node, deep=False):
