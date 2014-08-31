@@ -26,7 +26,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 13
+CACHE_VERSION = 14
 
 
 class VariantNotFoundError(Exception):

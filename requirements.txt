@@ -13,4 +13,5 @@ pytest-mock==0.2.0
 python-dateutil==2.2
 repoze.lru==0.6
 six==1.7.3
+smartypants==1.8.6
 strict-rfc3339==0.4

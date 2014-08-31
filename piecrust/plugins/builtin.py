@@ -7,6 +7,7 @@ from piecrust.commands.builtin.util import (InitCommand, PurgeCommand,
         PrepareCommand, ImportCommand)
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
 from piecrust.formatting.markdownformatter import MarkdownFormatter
+from piecrust.formatting.smartypantsformatter import SmartyPantsFormatter
 from piecrust.importing.jekyll import JekyllImporter
 from piecrust.importing.piecrust import PieCrust1Importer
 from piecrust.plugins.base import PieCrustPlugin
@@ -61,7 +62,8 @@ class BuiltInPlugin(PieCrustPlugin):
 
     def getFormatters(self):
         return [
-                MarkdownFormatter()]
+                MarkdownFormatter(),
+                SmartyPantsFormatter()]
 
     def getProcessors(self):
         return [

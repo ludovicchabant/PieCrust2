@@ -11,6 +11,7 @@ class MarkdownFormatter(Formatter):
         self._extensions = None
 
     def render(self, format_name, txt):
+        assert format_name in self.FORMAT_NAMES
         self._ensureInitialized()
         return markdown(txt, extensions=self._extensions)
 
