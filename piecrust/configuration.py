@@ -127,6 +127,20 @@ def parse_config_header(text):
 class OrderedDictYAMLLoader(yaml.SafeLoader):
     """ A YAML loader that loads mappings into ordered dictionaries.
     """
+    def __init__(self, *args, **kwargs):
+        super(OrderedDictYAMLLoader, self).__init__(*args, **kwargs)
+
+        self.add_constructor(u'tag:yaml.org,2002:map',
+                type(self).construct_yaml_map)
+        self.add_constructor(u'tag:yaml.org,2002:omap',
+                type(self).construct_yaml_map)
+
+    def construct_yaml_map(self, node):
+        data = collections.OrderedDict()
+        yield data
+        value = self.construct_mapping(node)
+        data.update(value)
+
     def construct_mapping(self, node, deep=False):
         if not isinstance(node, yaml.MappingNode):
             raise ConstructorError(None, None,
