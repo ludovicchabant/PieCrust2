@@ -1,0 +1,8 @@
+*.pyc
+venv/
+build/lib
+build/messages/_cache
+dist/
+piecrust.egg-info/
+piecrust/__version__.py
+

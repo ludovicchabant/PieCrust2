@@ -55,10 +55,15 @@ class GenerateVersionCommand(Command):
 def generate_version():
     """ Generate a version file from the source control information.
         (this is loosely based on what Mercurial does)"""
-    if not os.path.isdir(os.path.join(os.path.dirname(__file__), '.hg')):
+    if os.path.isdir(os.path.join(os.path.dirname(__file__), '.hg')):
+        return generate_version_from_mercurial()
+    elif os.path.isdir(os.path.join(os.path.dirname(__file__), '.git')):
+        return generate_version_from_git()
+    else:
         raise Exception("Can't generate version number: this is not a "
                         "Mercurial repository.")
 
+def generate_version_from_mercurial():
     try:
         # Get the version we're currently on. Also see if we have local
         # changes.
@@ -88,7 +93,7 @@ def generate_version():
                 # Let's just do as if we were on the tag.
                 version = tag
             else:
-                version = '%s-%s.%s' % (tag, dist, hgid)
+                version = '%s-%s-%s' % (tag, dist, hgid)
 
         if has_local_changes:
             version += time.strftime('+%Y%m%d')
@@ -97,6 +102,21 @@ def generate_version():
     except OSError:
         raise Exception("Can't generate version number: Mercurial isn't "
                         "installed, or in the PATH.")
+    except Exception as ex:
+        raise Exception("Can't generate version number: %s" % ex)
+
+
+def generate_version_from_git():
+    try:
+        cmd = ['git', 'describe', '--tags', '--dirty=+']
+        version, err = runcmd(cmd)
+        version = version.decode('utf8').strip()
+        if version.endswith('+'):
+            version += time.strftime('%Y%m%d')
+        return version
+    except OSError:
+        raise Exception("Can't generate version number: Git isn't installed, "
+                        "or in the PATH.")
     except Exception as ex:
         raise Exception("Can't generate version number: %s" % ex)
 
