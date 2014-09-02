@@ -1,3 +1,4 @@
+import re
 import time
 import logging
 from piecrust import APP_VERSION
@@ -103,11 +104,14 @@ class PieCrustData(object):
         return "The very thing you're looking at!"
 
 
+re_endpoint_sep = re.compile(r'[\/\.]')
+
+
 def build_site_data(page):
     app = page.app
     data = dict(app.config.get())
     for source in app.sources:
-        endpoint_bits = source.data_endpoint.split('/')
+        endpoint_bits = re_endpoint_sep.split(source.data_endpoint)
         endpoint = data
         for e in endpoint_bits[:-1]:
             if e not in endpoint:

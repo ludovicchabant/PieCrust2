@@ -122,7 +122,8 @@ class PieCrustConfiguration(Configuration):
                 'themes_sources': [DEFAULT_THEME_SOURCE],
                 'cache_time': 28800,
                 'display_errors': True,
-                'enable_debug_info': True
+                'enable_debug_info': True,
+                'use_default_content': True
                 }
         sitec = values.get('site')
         if sitec is None:
@@ -168,7 +169,14 @@ class PieCrustConfiguration(Configuration):
 
         # Figure out if we need to validate sources/routes, or auto-generate
         # them from simple blog settings.
-        if 'sources' not in sitec:
+        orig_sources = sitec.get('sources')
+        orig_routes = sitec.get('routes')
+        orig_taxonomies = sitec.get('taxonomies')
+        use_default_content = sitec.get('use_default_content')
+        if (orig_sources is None or orig_routes is None or
+                orig_taxonomies is None or use_default_content):
+
+            # Setup defaults for various settings.
             posts_fs = sitec.setdefault('posts_fs', DEFAULT_POSTS_FS)
             blogsc = sitec.setdefault('blogs', ['posts'])
 
@@ -179,10 +187,11 @@ class PieCrustConfiguration(Configuration):
             g_posts_filters = sitec.get('items_filters')
             g_date_format = sitec.get('date_format', DEFAULT_DATE_FORMAT)
 
+            # The normal pages and tags/categories.
             sourcesc = {}
             sourcesc['pages'] = {
                     'type': 'default',
-                    'data_endpoint': 'site/pages',
+                    'data_endpoint': 'site.pages',
                     'item_name': 'page'}
             sitec['sources'] = sourcesc
 
@@ -201,6 +210,7 @@ class PieCrustConfiguration(Configuration):
                     'term': 'category'}
             sitec['taxonomies'] = taxonomiesc
 
+            # Setup sources/routes/taxonomies for each blog.
             for blog_name in blogsc:
                 blogc = values.get(blog_name, {})
                 url_prefix = blog_name + '/'
@@ -247,6 +257,15 @@ class PieCrustConfiguration(Configuration):
                 routesc.append({'url': category_url, 'source': blog_name,
                         'taxonomy': 'categories',
                         'func': 'pccaturl(category)'})
+
+            # If the user defined some additional sources/routes/taxonomies,
+            # append them to the default ones.
+            if orig_sources:
+                sourcesc += orig_sources
+            if orig_routes:
+                routesc + orig_routes
+            if orig_taxonomies:
+                taxonomiesc += orig_taxonomies
 
         # Validate sources/routes.
         sourcesc = sitec.get('sources')
