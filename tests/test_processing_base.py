@@ -5,7 +5,7 @@ from .mockutil import mock_fs, mock_fs_scope
 
 
 def _get_pipeline(fs, **kwargs):
-    app = fs.getApp()
+    app = fs.getApp(cache=False)
     mounts = [os.path.join(app.root_dir, 'assets')]
     return ProcessorPipeline(app, mounts, fs.path('counter'),
             num_workers=1, **kwargs)

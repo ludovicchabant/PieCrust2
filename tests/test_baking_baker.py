@@ -1,7 +1,7 @@
 import os.path
 import pytest
-from piecrust.baking.baker import PageBaker
-from .mockutil import get_mock_app
+from piecrust.baking.baker import PageBaker, Baker
+from .mockutil import get_mock_app, mock_fs, mock_fs_scope
 
 
 @pytest.mark.parametrize('uri, page_num, pretty, expected', [
@@ -44,4 +44,30 @@ def test_get_output_path(uri, page_num, pretty, expected):
     expected = os.path.normpath(
             os.path.join('/destination', expected))
     assert expected == path
+
+
+def test_empty_bake():
+    fs = mock_fs()
+    with mock_fs_scope(fs):
+        assert not os.path.isdir(fs.path('kitchen/_counter'))
+        app = fs.getApp()
+        baker = Baker(app)
+        baker.bake()
+        assert os.path.isdir(fs.path('kitchen/_counter'))
+        structure = fs.getStructure('kitchen/_counter')
+        assert list(structure.keys()) == ['index.html']
+
+
+def test_simple_bake():
+    fs = (mock_fs()
+            .withPage('posts/2010-01-01_post1.md', {'layout': 'none', 'format': 'none'}, 'post one')
+            .withPage('pages/_index.md', {'layout': 'none', 'format': 'none'}, "something"))
+    with mock_fs_scope(fs):
+        app = fs.getApp()
+        baker = Baker(app)
+        baker.bake()
+        structure = fs.getStructure('kitchen/_counter')
+        assert structure == {
+                '2010': {'01': {'01': {'post1.html': 'post one'}}},
+                'index.html': 'something'}
 

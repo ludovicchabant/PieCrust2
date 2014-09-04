@@ -20,7 +20,7 @@ from .mockutil import mock_fs, mock_fs_scope
 def test_assets(fs, expected):
     with mock_fs_scope(fs):
         page = MagicMock()
-        page.app = fs.getApp()
+        page.app = fs.getApp(cache=False)
         page.app.env.base_asset_url_format = '%uri%'
         page.path = fs.path('/kitchen/pages/foo/bar.md')
         assetor = Assetor(page, '/foo/bar')
@@ -36,7 +36,7 @@ def test_missing_asset():
         fs = mock_fs().withPage('pages/foo/bar')
         with mock_fs_scope(fs):
             page = MagicMock()
-            page.app = fs.getApp()
+            page.app = fs.getApp(cache=False)
             page.path = fs.path('/kitchen/pages/foo/bar.md')
             assetor = Assetor(page, '/foo/bar')
             assetor['this_doesnt_exist']
@@ -50,7 +50,7 @@ def test_multiple_assets_with_same_name():
                 .withPageAsset('pages/foo/bar', 'one.jpg', 'one picture'))
         with mock_fs_scope(fs):
             page = MagicMock()
-            page.app = fs.getApp()
+            page.app = fs.getApp(cache=False)
             page.path = fs.path('/kitchen/pages/foo/bar.md')
             assetor = Assetor(page, '/foo/bar')
             assetor['one']

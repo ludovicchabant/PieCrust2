@@ -111,8 +111,9 @@ class TransitionalBakeRecord(object):
                 return prev
         return None
 
-    def getPreviousEntry(self, page, taxonomy_name=None, taxonomy_term=None):
-        key = _get_transition_key(page.source.name, page.rel_path,
+    def getPreviousEntry(self, source_name, rel_path, taxonomy_name=None,
+            taxonomy_term=None):
+        key = _get_transition_key(source_name, rel_path,
                 taxonomy_name, taxonomy_term)
         pair = self.transitions.get(key)
         if pair is not None:
