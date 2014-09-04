@@ -128,7 +128,6 @@ def build_site_data(page):
 def get_default_pagination_source(page):
     app = page.app
     source_name = page.config.get('source') or page.config.get('blog')
-    logger.debug("Got source name %s for page %s" % (source_name, page.path))
     if source_name is None:
         blog_names = app.config.get('site/blogs')
         if blog_names is not None:
