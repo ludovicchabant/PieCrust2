@@ -182,7 +182,8 @@ class PieCrustConfiguration(Configuration):
             sourcesc = {}
             sourcesc['pages'] = {
                     'type': 'default',
-                    'data_endpoint': 'site/pages',
+                    'ignore_missing_dir': True,
+                    'data_endpoint': 'site.pages',
                     'item_name': 'page'}
             sitec['sources'] = sourcesc
 
@@ -216,6 +217,7 @@ class PieCrustConfiguration(Configuration):
                 sourcesc[blog_name] = {
                         'type': 'posts/%s' % posts_fs,
                         'fs_endpoint': endpoint,
+                        'ignore_missing_dir': True,
                         'data_type': 'blog',
                         'item_name': item_name,
                         'items_per_page': items_per_page,

@@ -298,6 +298,8 @@ class SimplePageSource(PageSource):
     def buildPageFactories(self):
         logger.debug("Scanning for pages in: %s" % self.fs_endpoint_path)
         if not os.path.isdir(self.fs_endpoint_path):
+            if self.ignore_missing_dir:
+                return
             raise InvalidFileSystemEndpointError(self.name, self.fs_endpoint_path)
 
         for dirpath, dirnames, filenames in os.walk(self.fs_endpoint_path):

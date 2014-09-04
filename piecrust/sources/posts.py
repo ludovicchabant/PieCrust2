@@ -137,7 +137,10 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
 
     def _checkFsEndpointPath(self):
         if not os.path.isdir(self.fs_endpoint_path):
+            if self.ignore_missing_dir:
+                return False
             raise InvalidFileSystemEndpointError(self.name, self.fs_endpoint_path)
+        return True
 
     def _makeFactory(self, path, slug, year, month, day):
         path = path.replace('\\', '/')
@@ -159,6 +162,8 @@ class FlatPostsSource(PostsSource):
         super(FlatPostsSource, self).__init__(app, name, config)
 
     def buildPageFactories(self):
+        if not self._checkFsEndpointPath():
+            return
         logger.debug("Scanning for posts (flat) in: %s" % self.fs_endpoint_path)
         pattern = re.compile(r'(\d{4})-(\d{2})-(\d{2})_(.*)\.(\w+)$')
         _, __, filenames = next(os.walk(self.fs_endpoint_path))
@@ -185,6 +190,8 @@ class ShallowPostsSource(PostsSource):
         super(ShallowPostsSource, self).__init__(app, name, config)
 
     def buildPageFactories(self):
+        if not self._checkFsEndpointPath():
+            return
         logger.debug("Scanning for posts (shallow) in: %s" % self.fs_endpoint_path)
         year_pattern = re.compile(r'(\d{4})$')
         file_pattern = re.compile(r'(\d{2})-(\d{2})_(.*)\.(\w+)$')
@@ -222,6 +229,8 @@ class HierarchyPostsSource(PostsSource):
         super(HierarchyPostsSource, self).__init__(app, name, config)
 
     def buildPageFactories(self):
+        if not self._checkFsEndpointPath():
+            return
         logger.debug("Scanning for posts (hierarchy) in: %s" % self.fs_endpoint_path)
         year_pattern = re.compile(r'(\d{4})$')
         month_pattern = re.compile(r'(\d{2})$')
