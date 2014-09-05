@@ -75,20 +75,41 @@ class Page(object):
                 self._datetime = self.source_metadata['datetime']
             elif 'date' in self.source_metadata:
                 page_date = self.source_metadata['date']
-                timestr = self.config.get('time')
-                if timestr is not None:
+                page_time = self.config.get('time')
+                if page_time is not None:
+                    if isinstance(page_time, str):
+                        # Need to parse it...
+                        try:
+                            parsed_t = dateutil.parser.parse(page_time)
+                        except Exception as ex:
+                            raise ConfigurationError(
+                                    "Invalid time '%s' in page: %s" %
+                                    (page_time, self.path)) from ex
+                        page_time = datetime.time(parsed_t.hour,
+                                parsed_t.minute, parsed_t.second)
+
+                    elif isinstance(page_time, int):
+                        # Total seconds... convert to a time struct.
+                        delta = datetime.timedelta(seconds=page_time)
+                        dummy = datetime.datetime(1970, 1, 1)
+                        dummy += delta
+                        page_time = dummy.time()
+
                     try:
-                        time_dt = dateutil.parser.parse(timestr)
-                    except Exception as e:
+                        self._datetime = datetime.datetime.combine(
+                                page_date, page_time)
+                    except Exception as ex:
                         raise ConfigurationError(
-                                "Invalid time '%s' in page: %s" %
-                                (timestr, self.path), e)
-                    page_time = datetime.time(time_dt.hour, time_dt.minute, time_dt.second)
+                                "Invalid page time '%s' for: %s" % (
+                                    page_time, self.path)) from ex
                 else:
-                    page_time = datetime.time(0, 0, 0)
-                self._datetime = datetime.datetime.combine(page_date, page_time)
+                    self._datetime = datetime.datetime(
+                            page_date.year, page_date.month, page_date.day)
             else:
-                self._datetime = datetime.datetime.fromtimestamp(self.path_mtime)
+                self._datetime = datetime.datetime.fromtimestamp(
+                        self.path_mtime)
+                if self._datetime is None:
+                    raise Exception("Got null datetime from path! %s" % self.path)
         return self._datetime
 
     @datetime.setter
