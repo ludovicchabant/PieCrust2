@@ -1,6 +1,8 @@
 import os.path
 import logging
 import hashlib
+import fnmatch
+import datetime
 from piecrust.baking.baker import Baker
 from piecrust.baking.records import BakeRecord
 from piecrust.commands.base import ChefCommand
@@ -59,10 +61,13 @@ class ShowRecordCommand(ChefCommand):
         self.description = "Shows the bake record for a given output directory."
 
     def setupParser(self, parser, app):
-        parser.add_argument('output',
+        parser.add_argument('-o', '--output',
                 help="The output directory for which to show the bake record "
                      "(defaults to `_counter`)",
                 nargs='?')
+        parser.add_argument('-p', '--path',
+                help="A pattern that will be used to filter the relative path "
+                     "of entries to show.")
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
@@ -72,15 +77,26 @@ class ShowRecordCommand(ChefCommand):
             raise Exception("No record has been created for this output path. "
                             "Did you bake there yet?")
 
+        pattern = None
+        if ctx.args.path:
+            pattern = '*%s*' % ctx.args.path.strip('*')
+
         record = BakeRecord.load(record_cache.getCachePath(record_name))
         logging.info("Bake record for: %s" % record.out_dir)
-        logging.info("Last baked: %s" % record.bake_time)
+        logging.info("Last baked: %s" %
+                datetime.datetime.fromtimestamp(record.bake_time))
         logging.info("Entries:")
         for entry in record.entries:
+            if pattern:
+                rel_path = os.path.relpath(entry.path, ctx.app.root_dir)
+                if not fnmatch.fnmatch(entry.rel_path, pattern):
+                    continue
             logging.info(" - ")
-            logging.info("   path: %s" % entry.path)
-            logging.info("   source: %s" % entry.source_name)
-            logging.info("   config: %s" % entry.config)
-            logging.info("   base URL: %s" % entry.uri)
-            logging.info("   outputs: %s" % entry.out_paths)
+            logging.info("   path:      %s" % entry.path)
+            logging.info("   spec:      %s:%s" % (entry.source_name, entry.rel_path))
+            logging.info("   taxonomy:  %s:%s" % (entry.taxonomy_name, entry.taxonomy_term))
+            logging.info("   config:    %s" % entry.config)
+            logging.info("   out URLs:  %s" % entry.out_uris)
+            logging.info("   out paths: %s" % entry.out_paths)
+            logging.info("   used srcs: %s" % entry.used_source_names)
 
