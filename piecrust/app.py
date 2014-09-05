@@ -101,7 +101,7 @@ class PieCrustConfiguration(Configuration):
 
     def _validateAll(self, values):
         # Put all the defaults in the `site` section.
-        default_sitec = {
+        default_sitec = collections.OrderedDict({
                 'title': "Untitled PieCrust website",
                 'root': '/',
                 'default_format': DEFAULT_FORMAT,
@@ -124,16 +124,16 @@ class PieCrustConfiguration(Configuration):
                 'display_errors': True,
                 'enable_debug_info': True,
                 'use_default_content': True
-                }
+                })
         sitec = values.get('site')
         if sitec is None:
-            sitec = {}
+            sitec = collections.OrderedDict()
         for key, val in default_sitec.items():
             sitec.setdefault(key, val)
         values['site'] = sitec
 
         # Add a section for our cached information.
-        cachec = {}
+        cachec = collections.OrderedDict()
         values['__cache'] = cachec
 
         # Cache auto-format regexes.
@@ -188,7 +188,7 @@ class PieCrustConfiguration(Configuration):
             g_date_format = sitec.get('date_format', DEFAULT_DATE_FORMAT)
 
             # The normal pages and tags/categories.
-            sourcesc = {}
+            sourcesc = collections.OrderedDict()
             sourcesc['pages'] = {
                     'type': 'default',
                     'ignore_missing_dir': True,
@@ -203,7 +203,7 @@ class PieCrustConfiguration(Configuration):
                     'func': 'pcurl(path)'})
             sitec['routes'] = routesc
 
-            taxonomiesc = {}
+            taxonomiesc = collections.OrderedDict()
             taxonomiesc['tags'] = {
                     'multiple': True,
                     'term': 'tag'}
@@ -263,11 +263,11 @@ class PieCrustConfiguration(Configuration):
             # If the user defined some additional sources/routes/taxonomies,
             # append them to the default ones.
             if orig_sources:
-                sourcesc += orig_sources
+                sourcesc.update(orig_sources)
             if orig_routes:
                 routesc + orig_routes
             if orig_taxonomies:
-                taxonomiesc += orig_taxonomies
+                taxonomiesc.update(orig_taxonomies)
 
         # Validate sources/routes.
         sourcesc = sitec.get('sources')
