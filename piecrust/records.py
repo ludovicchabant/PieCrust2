@@ -1,30 +1,17 @@
 import os
 import os.path
+import pickle
 import logging
-from piecrust import APP_VERSION
 from piecrust.events import Event
-
-try:
-    import pickle as pickle
-except ImportError:
-    import pickle
 
 
 logger = logging.getLogger(__name__)
 
 
 class Record(object):
-    VERSION = 1
-
     def __init__(self):
-        self.app_version = None
-        self.record_version = None
         self.entries = []
         self.entry_added = Event()
-
-    def isVersionMatch(self):
-        return (self.app_version == APP_VERSION and
-                self.record_version == self.VERSION)
 
     def addEntry(self, entry):
         self.entries.append(entry)
@@ -42,6 +29,11 @@ class Record(object):
         odict = self.__dict__.copy()
         del odict['entry_added']
         return odict
+
+    def __setstate__(self, state):
+        for k, v in state.items():
+            setattr(self, k, v)
+        self.entry_added = Event()
 
     @staticmethod
     def load(path):

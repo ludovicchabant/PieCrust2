@@ -1,9 +1,14 @@
+import os.path
 import logging
+from piecrust import APP_VERSION
 from piecrust.sources.base import PageSource
 from piecrust.records import Record
 
 
 logger = logging.getLogger(__name__)
+
+
+RECORD_VERSION = 4
 
 
 def _get_transition_key(source_name, rel_path, taxonomy_name=None,
@@ -19,33 +24,43 @@ def _get_transition_key(source_name, rel_path, taxonomy_name=None,
 
 
 class BakeRecord(Record):
-    VERSION = 1
-
     def __init__(self):
         super(BakeRecord, self).__init__()
         self.out_dir = None
         self.bake_time = None
+        self.app_version = APP_VERSION
+        self.record_version = RECORD_VERSION
+
+    def hasLatestVersion(self):
+        return (self.app_version == APP_VERSION and
+                self.record_version == RECORD_VERSION)
+
+    def __setstate__(self, state):
+        state.setdefault('app_version', -1)
+        state.setdefault('record_version', -1)
+        super(BakeRecord, self).__setstate__(state)
+
+
+FLAG_NONE = 0
+FLAG_SOURCE_MODIFIED = 2**0
+FLAG_OVERRIDEN = 2**1
 
 
 class BakeRecordPageEntry(object):
-    def __init__(self, page=None):
-        self.path = None
-        self.rel_path = None
-        self.source_name = None
+    def __init__(self, factory, taxonomy_name=None, taxonomy_term=None):
+        self.path = factory.path
+        self.rel_path = factory.rel_path
+        self.source_name = factory.source.name
+        self.taxonomy_name = taxonomy_name
+        self.taxonomy_term = taxonomy_term
+        self.path_mtime = os.path.getmtime(factory.path)
+
+        self.flags = FLAG_NONE
         self.config = None
-        self.taxonomy_name = None
-        self.taxonomy_term = None
-        self.was_overriden = False
         self.out_uris = []
         self.out_paths = []
         self.used_source_names = set()
         self.used_taxonomy_terms = set()
-
-        if page:
-            self.path = page.path
-            self.rel_path = page.rel_path
-            self.source_name = page.source.name
-            self.config = page.config.get()
 
     @property
     def was_baked(self):
@@ -64,6 +79,11 @@ class BakeRecordPageEntry(object):
         if isinstance(source, PageSource):
             self.used_source_names.add(source.name)
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['path_mtime']
+        return state
+
 
 class TransitionalBakeRecord(object):
     DELETION_MISSING = 1
@@ -73,6 +93,7 @@ class TransitionalBakeRecord(object):
         self.previous = BakeRecord()
         self.current = BakeRecord()
         self.transitions = {}
+        self.incremental_count = 0
         if previous_path:
             self.loadPrevious(previous_path)
         self.current.entry_added += self._onCurrentEntryAdded
@@ -93,6 +114,9 @@ class TransitionalBakeRecord(object):
         self.current.save(current_path)
 
     def addEntry(self, entry):
+        if (self.previous.bake_time and
+                entry.path_mtime >= self.previous.bake_time):
+            entry.flags |= FLAG_SOURCE_MODIFIED
         self.current.addEntry(entry)
 
     def getOverrideEntry(self, factory, uri):
@@ -120,6 +144,10 @@ class TransitionalBakeRecord(object):
             return pair[0]
         return None
 
+    def getCurrentEntries(self, source_name):
+        return [e for e in self.current.entries
+                if e.source_name == source_name]
+
     def collapseRecords(self):
         for pair in self.transitions.values():
             prev = pair[0]
@@ -129,7 +157,9 @@ class TransitionalBakeRecord(object):
                 # This page wasn't baked, so the information from last
                 # time is still valid (we didn't get any information
                 # since we didn't bake).
-                cur.was_overriden = prev.was_overriden
+                cur.flags = prev.flags
+                if prev.config:
+                    cur.config = prev.config.copy()
                 cur.out_uris = list(prev.out_uris)
                 cur.out_paths = list(prev.out_paths)
                 cur.used_source_names = set(prev.used_source_names)

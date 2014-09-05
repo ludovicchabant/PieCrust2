@@ -6,7 +6,9 @@ import hashlib
 import logging
 import threading
 import urllib.request, urllib.error, urllib.parse
-from piecrust.baking.records import TransitionalBakeRecord, BakeRecordPageEntry
+from piecrust.baking.records import (TransitionalBakeRecord,
+        BakeRecordPageEntry,
+        FLAG_OVERRIDEN, FLAG_SOURCE_MODIFIED)
 from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause, AndBooleanClause)
@@ -76,7 +78,8 @@ class PageBaker(object):
 
         return os.path.normpath(os.path.join(*bake_path))
 
-    def bake(self, factory, route, taxonomy_name=None, taxonomy_term=None):
+    def bake(self, factory, route, record_entry,
+            taxonomy_name=None, taxonomy_term=None):
         pagination_filter = None
         custom_data = None
         if taxonomy_name and taxonomy_term:
@@ -117,39 +120,52 @@ class PageBaker(object):
             logger.debug("'%s' [%s] is overriden by '%s:%s'. Skipping" %
                     (factory.ref_spec, uri, override.source_name,
                         override.rel_path))
-            entry = BakeRecordPageEntry()
-            entry.path = factory.path
-            entry.rel_path = factory.rel_path
-            entry.source_name = factory.source.name
-            entry.was_overriden = True
-
-            if self.record:
-                self.record.addEntry(entry)
-
-            return entry
+            record_entry.flags |= FLAG_OVERRIDEN
+            return
 
         cur_sub = 1
         has_more_subs = True
+        force_this = self.force
         page = factory.buildPage()
-        cur_record_entry = BakeRecordPageEntry(page)
-        cur_record_entry.taxonomy_name = taxonomy_name
-        cur_record_entry.taxonomy_term = taxonomy_term
+        record_entry.config = page.config.get().copy()
         prev_record_entry = self.record.getPreviousEntry(
                 factory.source.name, factory.rel_path,
                 taxonomy_name, taxonomy_term)
 
         logger.debug("Baking '%s'..." % uri)
+
+        # If the current page is known to use pages from other sources,
+        # see if any of those got baked, or are going to be baked for some
+        # reason. If so, we need to bake this one too.
+        # (this happens for instance with the main page of a blog).
+        if prev_record_entry:
+            any_used_src_baked = False
+            used_src_names = list(prev_record_entry.used_source_names)
+            for src_name in used_src_names:
+                entries = self.record.getCurrentEntries(src_name)
+                for e in entries:
+                    if e.was_baked or e.flags & FLAG_SOURCE_MODIFIED:
+                        any_used_src_baked = True
+                        break
+                if any_used_src_baked:
+                    break
+            if any_used_src_baked:
+                logger.debug("'%s' is known to use sources %s, at least one "
+                             "of which got baked. Will force bake this page. "
+                             % (uri, used_src_names))
+                force_this = True
+
         while has_more_subs:
             sub_uri = self.getOutputUri(uri, cur_sub)
             out_path = self.getOutputPath(sub_uri)
 
             # Check for up-to-date outputs.
             do_bake = True
-            if not self.force and prev_record_entry:
+            if not force_this and prev_record_entry:
                 try:
-                    in_path_time = page.path_mtime
+                    in_path_time = record_entry.path_mtime
                     out_path_time = os.path.getmtime(out_path)
-                    if out_path_time > in_path_time:
+                    if out_path_time > in_path_time and not any_used_src_baked:
                         do_bake = False
                 except OSError:
                     # File doesn't exist, we'll need to bake.
@@ -202,22 +218,17 @@ class PageBaker(object):
                     shutil.copy(ap, dest_ap)
 
             # Record what we did and figure out if we have more work.
-            cur_record_entry.out_uris.append(sub_uri)
-            cur_record_entry.out_paths.append(out_path)
-            cur_record_entry.used_source_names |= ctx.used_source_names
-            cur_record_entry.used_taxonomy_terms |= ctx.used_taxonomy_terms
+            record_entry.out_uris.append(sub_uri)
+            record_entry.out_paths.append(out_path)
+            record_entry.used_source_names |= ctx.used_source_names
+            record_entry.used_taxonomy_terms |= ctx.used_taxonomy_terms
 
             has_more_subs = False
             if ctx.used_pagination is not None:
-                cur_record_entry.addUsedSource(ctx.used_pagination._source)
+                record_entry.addUsedSource(ctx.used_pagination._source)
                 if ctx.used_pagination.has_more:
                     cur_sub += 1
                     has_more_subs = True
-
-        if self.record:
-            self.record.addEntry(cur_record_entry)
-
-        return cur_record_entry
 
     def _bakeSingle(self, page, sub_uri, num, out_path,
             pagination_filter=None, custom_data=None):
@@ -314,6 +325,7 @@ class Baker(object):
         # Save the bake record.
         t = time.clock()
         record.current.bake_time = time.time()
+        record.current.out_dir = self.out_dir
         record.collapseRecords()
         record.saveCurrent(record_cache.getCachePath(record_name))
         logger.debug(format_timed(t, 'saved bake record', colored=False))
@@ -333,7 +345,8 @@ class Baker(object):
             # The configuration file was changed, or we're running a new
             # version of the app.
             reason = "not valid anymore"
-        elif not record.previous.bake_time:
+        elif (not record.previous.bake_time or
+                not record.previous.hasLatestVersion()):
             # We have no valid previous bake record.
             reason = "need bake record regeneration"
         else:
@@ -356,9 +369,11 @@ class Baker(object):
                 logger.debug("Cleaning baker cache: %s" % cache_dir)
                 shutil.rmtree(cache_dir)
             self.force = True
+            record.incremental_count = 0
             logger.info(format_timed(start_time,
                 "cleaned cache (reason: %s)" % reason))
         else:
+            record.incremental_count += 1
             logger.debug(format_timed(start_time, "cache is assumed valid",
                 colored=False))
 
@@ -381,8 +396,9 @@ class Baker(object):
                     logger.error("Can't get route for page: %s" % fac.ref_spec)
                     continue
 
-                logger.debug("Queuing: %s" % fac.ref_spec)
-                queue.addJob(BakeWorkerJob(fac, route))
+                entry = BakeRecordPageEntry(fac)
+                record.addEntry(entry)
+                queue.addJob(BakeWorkerJob(fac, route, entry))
 
         self._waitOnWorkerPool(pool, abort)
 
@@ -469,8 +485,10 @@ class Baker(object):
                             {tax.term_name: term})
                     logger.debug("Queuing: %s [%s, %s]" %
                             (fac.ref_spec, tax_name, term))
+                    entry = BakeRecordPageEntry(fac, tax_name, term)
+                    record.addEntry(entry)
                     queue.addJob(
-                            BakeWorkerJob(fac, route, tax_name, term))
+                            BakeWorkerJob(fac, route, entry, tax_name, term))
 
         self._waitOnWorkerPool(pool, abort)
 
@@ -527,32 +545,34 @@ class BakeScheduler(object):
         self._done_event = threading.Event()
 
     def addJob(self, job):
-        logger.debug("Adding job '%s:%s' to scheduler." % (
+        logger.debug("Queuing job '%s:%s'." % (
             job.factory.source.name, job.factory.rel_path))
         with self._lock:
             self.jobs.append(job)
         self._added_event.set()
 
     def onJobFinished(self, job):
-        logger.debug("Removing job '%s:%s' from scheduler." % (
+        logger.debug("Removing job '%s:%s'." % (
             job.factory.source.name, job.factory.rel_path))
         with self._lock:
             self._active_jobs.remove(job)
         self._done_event.set()
 
-    def getNextJob(self, timeout=None):
+    def getNextJob(self, wait_timeout=None, empty_timeout=None):
         self._added_event.clear()
         self._done_event.clear()
         job = self._doGetNextJob()
         while job in (self._EMPTY, self._WAIT):
-            if timeout is None:
-                return None
             if job == self._EMPTY:
+                if empty_timeout is None:
+                    return None
                 logger.debug("Waiting for a new job to be added...")
-                res = self._added_event.wait(timeout)
+                res = self._added_event.wait(empty_timeout)
             elif job == self._WAIT:
+                if wait_timeout is None:
+                    return None
                 logger.debug("Waiting for a job to be finished...")
-                res = self._done_event.wait(timeout)
+                res = self._done_event.wait(wait_timeout)
             if not res:
                 logger.debug("Timed-out. No job found.")
                 return None
@@ -573,6 +593,7 @@ class BakeScheduler(object):
                 job = self.jobs.pop(0)
                 if job == first_job:
                     # None of the jobs are ready... we need to wait.
+                    self.jobs.append(job)
                     return self._WAIT
 
             logger.debug("Job '%s:%s' is ready to go, moving to active "
@@ -586,6 +607,8 @@ class BakeScheduler(object):
         if not e:
             return True
         for sn in e.used_source_names:
+            if sn == job.factory.source.name:
+                continue
             if any(filter(lambda j: j.factory.source.name == sn, self.jobs)):
                 return False
             if any(filter(lambda j: j.factory.source.name == sn,
@@ -606,9 +629,11 @@ class BakeWorkerContext(object):
 
 
 class BakeWorkerJob(object):
-    def __init__(self, factory, route, taxonomy_name=None, taxonomy_term=None):
+    def __init__(self, factory, route, record_entry,
+            taxonomy_name=None, taxonomy_term=None):
         self.factory = factory
         self.route = route
+        self.record_entry = record_entry
         self.taxonomy_name = taxonomy_name
         self.taxonomy_term = taxonomy_term
 
@@ -628,7 +653,7 @@ class BakeWorker(threading.Thread):
 
     def run(self):
         while(not self.ctx.abort_event.is_set()):
-            job = self.ctx.work_queue.getNextJob()
+            job = self.ctx.work_queue.getNextJob(wait_timeout=1)
             if job is None:
                 logger.debug("[%d] No more work... shutting down." % self.wid)
                 break
@@ -648,16 +673,17 @@ class BakeWorker(threading.Thread):
     def _unsafeRun(self, job):
         start_time = time.clock()
 
-        bake_res = self._page_baker.bake(job.factory, job.route,
+        entry = job.record_entry
+        self._page_baker.bake(job.factory, job.route, entry,
                 taxonomy_name=job.taxonomy_name,
                 taxonomy_term=job.taxonomy_term)
 
-        if bake_res.was_baked:
-            uri = bake_res.out_uris[0]
+        if entry.was_baked:
+            uri = entry.out_uris[0]
             friendly_uri = uri if uri != '' else '[main page]'
             friendly_count = ''
-            if bake_res.num_subs > 1:
-                friendly_count = ' (%d pages)' % bake_res.num_subs
+            if entry.num_subs > 1:
+                friendly_count = ' (%d pages)' % entry.num_subs
             logger.info(format_timed(start_time, '[%d] %s%s' %
                     (self.wid, friendly_uri, friendly_count)))
 
