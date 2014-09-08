@@ -65,12 +65,13 @@ def main():
 
 class PreParsedChefArgs(object):
     def __init__(self, root=None, cache=True, debug=False, quiet=False,
-            log_file=None, config_variant=None):
+            log_file=None, log_debug=False, config_variant=None):
         self.root = root
         self.cache = cache
         self.debug = debug
         self.quiet = quiet
         self.log_file = log_file
+        self.log_debug = log_debug
         self.config_variant = config_variant
 
 
@@ -96,6 +97,8 @@ def _pre_parse_chef_args(argv):
         elif arg == '--log':
             res.log_file = argv[i + 1]
             ++i
+        elif arg == '--log-debug':
+            res.log_debug = True
         elif arg == '--no-cache':
             res.cache = False
         elif arg == '--debug':
@@ -115,17 +118,26 @@ def _pre_parse_chef_args(argv):
     colorama.init()
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
+    if res.debug or res.log_debug:
+        root_logger.setLevel(logging.DEBUG)
+
     log_handler = logging.StreamHandler(sys.stdout)
     if res.debug:
-        root_logger.setLevel(logging.DEBUG)
+        log_handler.setLevel(logging.DEBUG)
         log_handler.setFormatter(ColoredFormatter("[%(name)s] %(message)s"))
     else:
         if res.quiet:
-            root_logger.setLevel(logging.WARNING)
+            log_handler.setLevel(logging.WARNING)
+        else:
+            log_handler.setLevel(logging.INFO)
         log_handler.setFormatter(ColoredFormatter("%(message)s"))
     root_logger.addHandler(log_handler)
+
     if res.log_file:
-        root_logger.addHandler(logging.FileHandler(res.log_file, mode='w'))
+        file_handler = logging.FileHandler(res.log_file, mode='w')
+        root_logger.addHandler(file_handler)
+        if res.log_debug:
+            file_handler.setLevel(logging.DEBUG)
 
     return res
 
@@ -162,6 +174,7 @@ def _run_chef(pre_args):
     parser.add_argument('--no-cache', help="When applicable, disable caching.", action='store_true')
     parser.add_argument('--quiet', help="Print only important information.", action='store_true')
     parser.add_argument('--log', help="Send log messages to the specified file.")
+    parser.add_argument('--log-debug', help="Log debug messages to the log file.", action='store_true')
 
     commands = sorted(app.plugin_loader.getCommands(),
             key=lambda c: c.name)
