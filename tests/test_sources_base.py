@@ -1,7 +1,6 @@
 import os
 import pytest
 from piecrust.app import PieCrust
-from piecrust.sources.base import DefaultPageSource
 from .mockutil import mock_fs, mock_fs_scope
 
 
