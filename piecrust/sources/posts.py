@@ -205,7 +205,7 @@ class ShallowPostsSource(PostsSource):
             year = int(yd)
             year_dir = os.path.join(self.fs_endpoint_path, yd)
 
-            _, __, filenames = os.walk(year_dir)
+            _, __, filenames = next(os.walk(year_dir))
             for f in filenames:
                 match = file_pattern.match(f)
                 if match is None:
