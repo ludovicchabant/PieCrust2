@@ -54,13 +54,14 @@ def main():
     argv = sys.argv
     pre_args = _pre_parse_chef_args(argv)
     try:
-        return _run_chef(pre_args)
+        exit_code = _run_chef(pre_args)
     except Exception as ex:
         if pre_args.debug:
             logger.exception(ex)
         else:
             log_friendly_exception(logger, ex)
-        return 1
+        exit_code = 1
+    sys.exit(exit_code)
 
 
 class PreParsedChefArgs(object):
@@ -201,5 +202,10 @@ def _run_chef(pre_args):
     # Run the command!
     ctx = CommandContext(app, parser, result)
     exit_code = result.func(ctx)
+    if exit_code is None:
+        return 0
+    if not isinstance(exit_code, int):
+        logger.error("Got non-integer exit code: %s" % exit_code)
+        return -1
     return exit_code
 
