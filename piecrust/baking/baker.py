@@ -13,7 +13,8 @@ from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause, AndBooleanClause)
 from piecrust.processing.base import ProcessorPipeline
-from piecrust.rendering import PageRenderingContext, render_page
+from piecrust.rendering import (PageRenderingContext, render_page,
+        PASS_FORMATTING, PASS_RENDERING)
 from piecrust.sources.base import (PageFactory,
         REALM_NAMES, REALM_USER, REALM_THEME)
 
@@ -126,6 +127,7 @@ class PageBaker(object):
         cur_sub = 1
         has_more_subs = True
         force_this = self.force
+        invalidate_formatting = False
         page = factory.buildPage()
         record_entry.config = page.config.get().copy()
         prev_record_entry = self.record.getPreviousEntry(
@@ -139,21 +141,24 @@ class PageBaker(object):
         # reason. If so, we need to bake this one too.
         # (this happens for instance with the main page of a blog).
         if prev_record_entry:
-            any_used_src_baked = False
+            invalidated_render_passes = set()
             used_src_names = list(prev_record_entry.used_source_names)
-            for src_name in used_src_names:
+            for src_name, rdr_pass in used_src_names:
                 entries = self.record.getCurrentEntries(src_name)
                 for e in entries:
                     if e.was_baked or e.flags & FLAG_SOURCE_MODIFIED:
-                        any_used_src_baked = True
+                        invalidated_render_passes.add(rdr_pass)
                         break
-                if any_used_src_baked:
-                    break
-            if any_used_src_baked:
+            if len(invalidated_render_passes) > 0:
                 logger.debug("'%s' is known to use sources %s, at least one "
                              "of which got baked. Will force bake this page. "
                              % (uri, used_src_names))
                 force_this = True
+                if PASS_FORMATTING in invalidated_render_passes:
+                    logger.debug("Will invalidate cached formatting for '%s' "
+                                 "since sources were using during that pass."
+                                 % uri)
+                    invalidate_formatting = True
 
         while has_more_subs:
             sub_uri = self.getOutputUri(uri, cur_sub)
@@ -161,11 +166,11 @@ class PageBaker(object):
 
             # Check for up-to-date outputs.
             do_bake = True
-            if not force_this and prev_record_entry:
+            if not force_this:
                 try:
                     in_path_time = record_entry.path_mtime
                     out_path_time = os.path.getmtime(out_path)
-                    if out_path_time > in_path_time and not any_used_src_baked:
+                    if out_path_time > in_path_time:
                         do_bake = False
                 except OSError:
                     # File doesn't exist, we'll need to bake.
@@ -189,6 +194,11 @@ class PageBaker(object):
 
             # All good, proceed.
             try:
+                if invalidate_formatting:
+                    cache_key = '%s:%s' % (uri, cur_sub)
+                    self.app.env.rendered_segments_repository.invalidate(
+                            cache_key)
+
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
                         pagination_filter, custom_data)
@@ -212,7 +222,7 @@ class PageBaker(object):
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 if not os.path.isdir(out_assets_dir):
                     os.makedirs(out_assets_dir, 0o755)
-                for ap in ctx.used_assets._getAssetPaths():
+                for ap in ctx.used_assets:
                     dest_ap = os.path.join(out_assets_dir, os.path.basename(ap))
                     logger.debug("  %s -> %s" % (ap, dest_ap))
                     shutil.copy(ap, dest_ap)
@@ -224,11 +234,10 @@ class PageBaker(object):
             record_entry.used_taxonomy_terms |= ctx.used_taxonomy_terms
 
             has_more_subs = False
-            if ctx.used_pagination is not None:
-                record_entry.addUsedSource(ctx.used_pagination._source)
-                if ctx.used_pagination.has_more:
-                    cur_sub += 1
-                    has_more_subs = True
+            if (ctx.used_pagination is not None and
+                    ctx.used_pagination.has_more):
+                cur_sub += 1
+                has_more_subs = True
 
     def _bakeSingle(self, page, sub_uri, num, out_path,
             pagination_filter=None, custom_data=None):
@@ -370,6 +379,7 @@ class Baker(object):
                 shutil.rmtree(cache_dir)
             self.force = True
             record.incremental_count = 0
+            record.clearPrevious()
             logger.info(format_timed(start_time,
                 "cleaned cache (reason: %s)" % reason))
         else:
@@ -586,9 +596,15 @@ class BakeScheduler(object):
 
             job = self.jobs.pop(0)
             first_job = job
-            while not self._isJobReady(job):
-                logger.debug("Job '%s:%s' isn't ready yet." % (
-                        job.factory.source.name, job.factory.rel_path))
+            while True:
+                ready, wait_on_src = self._isJobReady(job)
+                if ready:
+                    break
+
+                logger.debug("Job '%s:%s' isn't ready yet: waiting on pages "
+                             "from source '%s' to finish baking." %
+                             (job.factory.source.name,
+                                 job.factory.rel_path, wait_on_src))
                 self.jobs.append(job)
                 job = self.jobs.pop(0)
                 if job == first_job:
@@ -605,16 +621,16 @@ class BakeScheduler(object):
         e = self.record.getPreviousEntry(job.factory.source.name,
                 job.factory.rel_path)
         if not e:
-            return True
-        for sn in e.used_source_names:
+            return (True, None)
+        for sn, rp in e.used_source_names:
             if sn == job.factory.source.name:
                 continue
             if any(filter(lambda j: j.factory.source.name == sn, self.jobs)):
-                return False
+                return (False, sn)
             if any(filter(lambda j: j.factory.source.name == sn,
                     self._active_jobs)):
-                return False
-        return True
+                return (False, sn)
+        return (True, None)
 
 
 class BakeWorkerContext(object):
@@ -653,12 +669,13 @@ class BakeWorker(threading.Thread):
 
     def run(self):
         while(not self.ctx.abort_event.is_set()):
-            job = self.ctx.work_queue.getNextJob(wait_timeout=1)
-            if job is None:
-                logger.debug("[%d] No more work... shutting down." % self.wid)
-                break
-
             try:
+                job = self.ctx.work_queue.getNextJob(wait_timeout=1)
+                if job is None:
+                    logger.debug("[%d] No more work... shutting down." %
+                            self.wid)
+                    break
+
                 self._unsafeRun(job)
                 logger.debug("[%d] Done with page." % self.wid)
                 self.ctx.work_queue.onJobFinished(job)

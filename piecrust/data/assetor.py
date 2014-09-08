@@ -57,10 +57,6 @@ class Assetor(object):
         self._cacheAssets()
         return map(lambda i: i[0], self._cache.values())
 
-    def _getAssetPaths(self):
-        self._cacheAssets()
-        return map(lambda i: i[1], self._cache.values())
-
     def _debugRenderAssetNames(self):
         self._cacheAssets()
         return list(self._cache.keys())
@@ -91,5 +87,6 @@ class Assetor(object):
 
         cpi = self._page.app.env.exec_info_stack.current_page_info
         if cpi is not None:
-            cpi.render_ctx.used_assets = self
+            used_assets = list(map(lambda i: i[1], self._cache.values()))
+            cpi.render_ctx.used_assets = used_assets
 

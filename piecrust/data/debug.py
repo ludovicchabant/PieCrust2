@@ -4,6 +4,7 @@ import html
 import logging
 import collections
 from piecrust import APP_VERSION, PIECRUST_URL
+from piecrust.page import FLAG_RAW_CACHE_VALID
 
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,6 @@ def build_debug_info(page, data):
 
 def _do_build_debug_info(page, data, output):
     app = page.app
-    exec_info = app.env.exec_info_stack.current_page_info
 
     print('<div id="piecrust-debug-info" style="%s">' % CSS_DEBUGINFO, file=output)
 
@@ -69,22 +69,18 @@ def _do_build_debug_info(page, data, output):
 
     # If we have some execution info in the environment,
     # add more information.
-    if exec_info:
-        if exec_info.was_cache_valid:
-            output.write('baked this morning')
-        else:
-            output.write('baked just now')
-
-        if app.cache.enabled:
-            if app.env.was_cache_cleaned:
-                output.write(', from a brand new cache')
-            else:
-                output.write(', from a valid cache')
-        else:
-            output.write(', with no cache')
-
+    if page.flags & FLAG_RAW_CACHE_VALID:
+        output.write('baked this morning')
     else:
-        output.write('no caching information available')
+        output.write('baked just now')
+
+    if app.cache.enabled:
+        if app.env.was_cache_cleaned:
+            output.write(', from a brand new cache')
+        else:
+            output.write(', from a valid cache')
+    else:
+        output.write(', with no cache')
 
     output.write(', ')
     if app.env.start_time != 0:

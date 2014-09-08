@@ -8,7 +8,7 @@ from piecrust.records import Record
 logger = logging.getLogger(__name__)
 
 
-RECORD_VERSION = 4
+RECORD_VERSION = 6
 
 
 def _get_transition_key(source_name, rel_path, taxonomy_name=None,
@@ -75,10 +75,6 @@ class BakeRecordPageEntry(object):
         return _get_transition_key(self.source_name, self.rel_path,
                 self.taxonomy_name, self.taxonomy_term)
 
-    def addUsedSource(self, source):
-        if isinstance(source, PageSource):
-            self.used_source_names.add(source.name)
-
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['path_mtime']
@@ -109,6 +105,9 @@ class TransitionalBakeRecord(object):
 
         for e in self.previous.entries:
             self.transitions[e.transition_key] = (e, None)
+
+    def clearPrevious(self):
+        self.previous = BakeRecord()
 
     def saveCurrent(self, current_path):
         self.current.save(current_path)

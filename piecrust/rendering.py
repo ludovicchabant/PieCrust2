@@ -3,7 +3,6 @@ import os.path
 import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
-from piecrust.environment import PHASE_PAGE_FORMATTING, PHASE_PAGE_RENDERING
 from piecrust.sources.base import PageSource
 from piecrust.uriutil import get_slug
 
@@ -33,6 +32,11 @@ class RenderedPage(object):
         return self.page.app
 
 
+PASS_NONE = 0
+PASS_FORMATTING = 1
+PASS_RENDERING = 2
+
+
 class PageRenderingContext(object):
     def __init__(self, page, uri, page_num=1):
         self.page = page
@@ -46,6 +50,7 @@ class PageRenderingContext(object):
         self.used_pagination = None
         self.used_source_names = set()
         self.used_taxonomy_terms = set()
+        self.current_pass = PASS_NONE
 
     @property
     def app(self):
@@ -66,15 +71,16 @@ class PageRenderingContext(object):
         if self.used_pagination is not None:
             raise Exception("Pagination has already been used.")
         self.used_pagination = paginator
+        self.addUsedSource(paginator._source)
 
     def addUsedSource(self, source):
         if isinstance(source, PageSource):
-            self.used_source_names.add(source.name)
+            self.used_source_names.add((source.name, self.current_pass))
 
 
 def render_page(ctx):
     eis = ctx.app.env.exec_info_stack
-    eis.pushPage(ctx.page, PHASE_PAGE_RENDERING, ctx)
+    eis.pushPage(ctx.page, ctx)
     try:
         page = ctx.page
 
@@ -87,6 +93,7 @@ def render_page(ctx):
             page_data.update(ctx.custom_data)
 
         # Render content segments.
+        ctx.current_pass = PASS_FORMATTING
         repo = ctx.app.env.rendered_segments_repository
         if repo:
             cache_key = '%s:%s' % (ctx.uri, ctx.page_num)
@@ -98,6 +105,7 @@ def render_page(ctx):
             contents = _do_render_page_segments(page, page_data)
 
         # Render layout.
+        ctx.current_pass = PASS_RENDERING
         layout_name = page.config.get('layout')
         if layout_name is None:
             layout_name = page.source.config.get('default_layout', 'default')
@@ -114,6 +122,7 @@ def render_page(ctx):
         rp.execution_info = eis.current_page_info
         return rp
     finally:
+        ctx.current_pass = PASS_NONE
         eis.popPage()
 
 
@@ -130,12 +139,14 @@ def render_page_segments(ctx):
 
 def _do_render_page_segments_from_ctx(ctx):
     eis = ctx.app.env.exec_info_stack
-    eis.pushPage(ctx.page, PHASE_PAGE_FORMATTING, ctx)
+    eis.pushPage(ctx.page, ctx)
+    ctx.current_pass = PASS_FORMATTING
     try:
         data_ctx = DataBuildingContext(ctx.page, ctx.uri, ctx.page_num)
         page_data = build_page_data(data_ctx)
         return _do_render_page_segments(ctx.page, page_data)
     finally:
+        ctx.current_pass = PASS_NONE
         eis.popPage()
 
 

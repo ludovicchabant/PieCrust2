@@ -11,7 +11,6 @@ import collections
 from werkzeug.utils import cached_property
 from piecrust.configuration import (Configuration, ConfigurationError,
         parse_config_header)
-from piecrust.environment import PHASE_PAGE_PARSING
 
 
 logger = logging.getLogger(__name__)
@@ -33,6 +32,10 @@ class PageConfiguration(Configuration):
         return values
 
 
+FLAG_NONE = 0
+FLAG_RAW_CACHE_VALID = 2**0
+
+
 class Page(object):
     def __init__(self, source, source_metadata, rel_path):
         self.source = source
@@ -40,6 +43,7 @@ class Page(object):
         self.rel_path = rel_path
         self._config = None
         self._raw_content = None
+        self._flags = FLAG_NONE
         self._datetime = None
 
     @property
@@ -57,6 +61,10 @@ class Page(object):
     @cached_property
     def path_mtime(self):
         return os.path.getmtime(self.path)
+
+    @property
+    def flags(self):
+        return self._flags
 
     @property
     def config(self):
@@ -123,14 +131,12 @@ class Page(object):
         if self._config is not None:
             return
 
-        eis = self.app.env.exec_info_stack
-        eis.pushPage(self, PHASE_PAGE_PARSING, None)
-        try:
-            config, content = load_page(self.app, self.path, self.path_mtime)
-            self._config = config
-            self._raw_content = content
-        finally:
-            eis.popPage()
+        config, content, was_cache_valid = load_page(self.app, self.path,
+                                                     self.path_mtime)
+        self._config = config
+        self._raw_content = content
+        if was_cache_valid:
+            self._flags |= FLAG_RAW_CACHE_VALID
 
 
 class PageLoadingError(Exception):
@@ -195,26 +201,19 @@ def load_page(app, path, path_mtime=None):
 
 
 def _do_load_page(app, path, path_mtime):
-    exec_info = app.env.exec_info_stack.current_page_info
-    if exec_info is None:
-        raise Exception("Loading page '%s' but not execution context has "
-                        "been created for it." % path)
-
     # Check the cache first.
     cache = app.cache.getCache('pages')
     cache_path = "%s.json" % hashlib.md5(path.encode('utf8')).hexdigest()
     page_time = path_mtime or os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
-        exec_info.was_cache_valid = True
         cache_data = json.loads(cache.read(cache_path),
                 object_pairs_hook=collections.OrderedDict)
         config = PageConfiguration(values=cache_data['config'],
                 validate=False)
         content = json_load_segments(cache_data['content'])
-        return config, content
+        return config, content, True
 
     # Nope, load the page from the source file.
-    exec_info.was_cache_valid = False
     logger.debug("Loading page configuration from: %s" % path)
     with codecs.open(path, 'r', 'utf-8') as fp:
         raw = fp.read()
@@ -235,7 +234,7 @@ def _do_load_page(app, path, path_mtime):
             'content': json_save_segments(content)}
     cache.write(cache_path, json.dumps(cache_data))
 
-    return config, content
+    return config, content, False
 
 
 segment_pattern = re.compile(

@@ -25,6 +25,16 @@ class MemCache(object):
         self.cache = repoze.lru.LRUCache(size)
         self.lock = threading.RLock()
         self.fs_cache = None
+        self._invalidated_fs_items = set()
+
+    def invalidate(self, key):
+        with self.lock:
+            logger.debug("Invalidating cache item '%s'." % key)
+            self.cache.invalidate(key)
+            if self.fs_cache:
+                logger.debug("Invalidating FS cache item '%s'." % key)
+                fs_key = _make_fs_cache_key(key)
+                self._invalidated_fs_items.add(fs_key)
 
     def get(self, key, item_maker, fs_cache_time=None):
         item = self.cache.get(key)
@@ -37,7 +47,8 @@ class MemCache(object):
                             fs_cache_time is not None):
                         # Try first from the file-system cache.
                         fs_key = _make_fs_cache_key(key)
-                        if self.fs_cache.isValid(fs_key, fs_cache_time):
+                        if (fs_key not in self._invalidated_fs_items and
+                                self.fs_cache.isValid(fs_key, fs_cache_time)):
                             logger.debug("'%s' found in file-system cache." %
                                          key)
                             item_raw = self.fs_cache.read(fs_key)
@@ -59,15 +70,9 @@ class MemCache(object):
         return item
 
 
-PHASE_PAGE_PARSING = 0
-PHASE_PAGE_FORMATTING = 1
-PHASE_PAGE_RENDERING = 2
-
-
 class ExecutionInfo(object):
-    def __init__(self, page, phase, render_ctx):
+    def __init__(self, page, render_ctx):
         self.page = page
-        self.phase = phase
         self.render_ctx = render_ctx
         self.was_cache_valid = False
         self.start_time = time.clock()
@@ -93,8 +98,11 @@ class ExecutionInfoStack(threading.local):
                 return True
         return False
 
-    def pushPage(self, page, phase, render_ctx):
-        self._page_stack.append(ExecutionInfo(page, phase, render_ctx))
+    def pushPage(self, page, render_ctx):
+        if len(self._page_stack) > 0:
+            top = self._page_stack[-1]
+            assert top.page is not page
+        self._page_stack.append(ExecutionInfo(page, render_ctx))
 
     def popPage(self):
         del self._page_stack[-1]
@@ -108,12 +116,10 @@ class Environment(object):
         self.page_repository = MemCache()
         self.rendered_segments_repository = MemCache()
         self.base_asset_url_format = '%uri%'
-        self._use_rendered_segments_fs_cache = False
 
     def initialize(self, app):
-        if self._use_rendered_segments_fs_cache:
-            cache = app.cache.getCache('renders')
-            self.rendered_segments_repository.fs_cache = cache
+        cache = app.cache.getCache('renders')
+        self.rendered_segments_repository.fs_cache = cache
 
 
 class StandardEnvironment(Environment):
