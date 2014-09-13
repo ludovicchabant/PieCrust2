@@ -17,3 +17,16 @@ def log_friendly_exception(logger, ex):
         indent += '  '
         ex = ex.__cause__
 
+
+def print_help_item(s, title, description, margin=4, align=25):
+    s.write(margin * ' ')
+    s.write(title)
+    spacer = (align - margin - len(title) - 1)
+    if spacer <= 0:
+        s.write("\n")
+        s.write(' ' * align)
+    else:
+        s.write(' ' * spacer)
+    s.write(description)
+    s.write("\n")
+

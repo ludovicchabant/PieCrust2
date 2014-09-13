@@ -38,13 +38,15 @@ class ExtendableChefCommand(ChefCommand):
         super(ExtendableChefCommand, self).__init__()
         self._extensions = None
 
-    def setupParser(self, parser, app):
+    def getExtensions(self, app):
         self._loadExtensions(app)
-        subparsers = parser.add_subparsers()
-        for e in self._extensions:
+        return self._extensions
+
+    def setupExtensionParsers(self, subparsers, app):
+        for e in self.getExtensions(app):
             p = subparsers.add_parser(e.name, help=e.description)
             e.setupParser(p, app)
-            p.set_defaults(func=e.checkedRun)
+            p.set_defaults(sub_func=e.checkedRun)
 
     def _loadExtensions(self, app):
         if self._extensions is not None:
@@ -55,35 +57,35 @@ class ExtendableChefCommand(ChefCommand):
                 self._extensions.append(e)
 
 
-class ChefCommandExtension(ChefCommand):
-    def __init__(self):
-        super(ChefCommandExtension, self).__init__()
-        self.command_name = '__unknown__'
+class ChefCommandExtension(object):
+    command_name = '__unknown__'
 
     def supports(self, app):
         return True
 
 
-class HelpCommand(ChefCommand):
+class HelpCommand(ExtendableChefCommand):
     def __init__(self):
         super(HelpCommand, self).__init__()
         self.name = 'help'
         self.description = "Prints help about PieCrust's chef."
-        self._topic_providers = {}
+        self._topic_providers = []
 
     @property
     def has_topics(self):
-        return any(self._topic_providers)
+        return len(self._topic_providers) > 0
 
-    def addTopic(self, name, provider):
-        self._topic_providers[name] = provider
-
-    def getTopicNames(self):
-        return self._topic_providers.keys()
+    def getTopics(self):
+        return [(n, d) for (n, d, e) in self._topic_providers]
 
     def setupParser(self, parser, app):
         parser.add_argument('topic', nargs='?',
                 help="The command name or topic on which to get help.")
+
+        extensions = self.getExtensions(app)
+        for ext in extensions:
+            for name, desc in ext.getHelpTopics():
+                self._topic_providers.append((name, desc, ext))
 
     def run(self, ctx):
         topic = ctx.args.topic
@@ -92,9 +94,10 @@ class HelpCommand(ChefCommand):
             ctx.parser.print_help()
             return 0
 
-        if topic in self._topic_providers:
-            print(self._topic_providers[topic].getHelpTopic(topic, ctx.app))
-            return 0
+        for name, desc, ext in self._topic_providers:
+            if name == topic:
+                print(ext.getHelpTopic(topic, ctx.app))
+                return 0
 
         for c in ctx.app.plugin_loader.getCommands():
             if c.name == topic:

@@ -1,3 +1,4 @@
+import io
 import sys
 import time
 import os.path
@@ -6,7 +7,8 @@ import argparse
 import colorama
 from piecrust import APP_VERSION
 from piecrust.app import PieCrust, PieCrustConfiguration
-from piecrust.chefutil import format_timed, log_friendly_exception
+from piecrust.chefutil import (format_timed, log_friendly_exception,
+        print_help_item)
 from piecrust.commands.base import CommandContext
 from piecrust.environment import StandardEnvironment
 from piecrust.pathutil import SiteNotFoundError, find_app_root
@@ -167,7 +169,8 @@ def _run_chef(pre_args):
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
             prog='chef',
-            description="The PieCrust chef manages your website.")
+            description="The PieCrust chef manages your website.",
+            formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--version', action='version', version=('%(prog)s ' + APP_VERSION))
     parser.add_argument('--root', help="The root directory of the website.")
     parser.add_argument('--config', help="The configuration variant to use for this command.")
@@ -179,15 +182,19 @@ def _run_chef(pre_args):
 
     commands = sorted(app.plugin_loader.getCommands(),
             key=lambda c: c.name)
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(title='list of commands')
     for c in commands:
         p = subparsers.add_parser(c.name, help=c.description)
         c.setupParser(p, app)
         p.set_defaults(func=c.checkedRun)
+
     help_cmd = next(filter(lambda c: c.name == 'help', commands), None)
     if help_cmd and help_cmd.has_topics:
-        parser.epilog = ("Additional help topics: " +
-                ', '.join(help_cmd.getTopicNames()))
+        with io.StringIO() as epilog:
+            epilog.write("additional help topics:\n")
+            for name, desc in help_cmd.getTopics():
+                print_help_item(epilog, name, desc)
+            parser.epilog = epilog.getvalue()
 
 
     # Parse the command line.
