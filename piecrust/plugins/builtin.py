@@ -2,9 +2,12 @@ from piecrust.commands.base import HelpCommand
 from piecrust.commands.builtin.baking import (BakeCommand, ShowRecordCommand)
 from piecrust.commands.builtin.info import (RootCommand, ShowConfigCommand,
         FindCommand, ShowRoutesCommand, ShowPathsCommand)
+from piecrust.commands.builtin.scaffolding import (PrepareCommand,
+        DefaultPrepareTemplatesCommandExtension,
+        DefaultPrepareTemplatesHelpTopic)
 from piecrust.commands.builtin.serving import (ServeCommand)
 from piecrust.commands.builtin.util import (InitCommand, PurgeCommand,
-        PrepareCommand, ImportCommand)
+        ImportCommand)
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
 from piecrust.formatting.markdownformatter import MarkdownFormatter
 from piecrust.formatting.smartypantsformatter import SmartyPantsFormatter
@@ -42,7 +45,9 @@ class BuiltInPlugin(PieCrustPlugin):
                 ServeCommand()]
 
     def getCommandExtensions(self):
-        return []
+        return [
+                DefaultPrepareTemplatesCommandExtension(),
+                DefaultPrepareTemplatesHelpTopic()]
 
     def getSources(self):
         return [
