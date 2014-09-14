@@ -93,7 +93,8 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 'slug': '(?P<slug>.*)',
                 'ext': '(?P<ext>.*)'
                 }
-        pattern = self.path_format % regex_repl + '$'
+        path_format_re = re.sub(r'([\-\.])', r'\\\1', self.path_format)
+        pattern = path_format_re % regex_repl + '$'
         m = re.search(pattern, path.replace('\\', '/'))
         if not m:
             raise Exception("Expected to be able to match path with path "
