@@ -48,8 +48,7 @@ class NullPieCrust:
         self.cache_dir = None
         self.config = PieCrustConfiguration()
         self.plugin_loader = PluginLoader(self)
-        self.env = StandardEnvironment()
-        self.env.initialize(self)
+        self.env = None
 
 
 def main():

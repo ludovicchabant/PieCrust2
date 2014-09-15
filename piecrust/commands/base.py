@@ -69,6 +69,7 @@ class HelpCommand(ExtendableChefCommand):
         super(HelpCommand, self).__init__()
         self.name = 'help'
         self.description = "Prints help about PieCrust's chef."
+        self.requires_website = False
         self._topic_providers = []
 
     @property
