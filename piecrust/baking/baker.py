@@ -22,6 +22,10 @@ from piecrust.sources.base import (PageFactory,
 logger = logging.getLogger(__name__)
 
 
+class BakingError(Exception):
+    pass
+
+
 class PageBaker(object):
     def __init__(self, app, out_dir, force=False, record=None,
             copy_assets=True):
@@ -114,7 +118,7 @@ class PageBaker(object):
         if override is not None:
             override_source = self.app.getSource(override.source_name)
             if override_source.realm == factory.source.realm:
-                raise Exception(
+                raise BakingError(
                         "Page '%s' maps to URL '%s' but is overriden by page"
                         "'%s:%s'." % (factory.ref_spec, uri,
                             override.source_name, override.rel_path))
@@ -205,7 +209,7 @@ class PageBaker(object):
             except Exception as ex:
                 if self.app.debug:
                     logger.exception(ex)
-                raise Exception("Error baking page '%s' for URL '%s'." %
+                raise BakingError("Error baking page '%s' for URL '%s'." %
                         (page.ref_spec, uri)) from ex
 
             # Copy page assets.
@@ -373,10 +377,12 @@ class Baker(object):
 
         if reason is not None:
             # We have to bake everything from scratch.
-            cache_dir = self.app.cache.getCacheDir('baker')
-            if os.path.isdir(cache_dir):
-                logger.debug("Cleaning baker cache: %s" % cache_dir)
-                shutil.rmtree(cache_dir)
+            for cache_name in self.app.cache.getCacheNames(
+                    except_names=['app']):
+                cache_dir = self.app.cache.getCacheDir(cache_name)
+                if os.path.isdir(cache_dir):
+                    logger.debug("Cleaning baker cache: %s" % cache_dir)
+                    shutil.rmtree(cache_dir)
             self.force = True
             record.incremental_count = 0
             record.clearPrevious()
@@ -539,7 +545,7 @@ class Baker(object):
             else:
                 for e in excs:
                     log_friendly_exception(logger, e)
-            raise Exception("Baking was aborted due to errors.")
+            raise BakingError("Baking was aborted due to errors.")
 
 
 class BakeScheduler(object):

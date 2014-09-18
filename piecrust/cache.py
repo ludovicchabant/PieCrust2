@@ -35,6 +35,12 @@ class ExtensibleCache(object):
     def getCacheDir(self, name):
         return os.path.join(self.base_dir, name)
 
+    def getCacheNames(self, except_names=None):
+        _, dirnames, __ = next(os.walk(self.base_dir))
+        if except_names is None:
+            return dirnames
+        return [dn for dn in dirnames if dn not in except_names]
+
 
 class SimpleCache(object):
     def __init__(self, base_dir):
