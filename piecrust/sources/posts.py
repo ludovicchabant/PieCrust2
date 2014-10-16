@@ -99,12 +99,19 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         if not m:
             raise Exception("Expected to be able to match path with path "
                             "format: %s" % path)
+
+        year = int(m.group('year'))
+        month = int(m.group('month'))
+        day = int(m.group('day'))
+        timestamp = datetime.date(year, month, day)
         fac_metadata = {
-                'year': m.group('year'),
-                'month': m.group('month'),
-                'day': m.group('day'),
-                'slug': m.group('slug')
+                'year': year,
+                'month': month,
+                'day': day,
+                'slug': m.group('slug'),
+                'date': timestamp
                 }
+
         rel_path = os.path.relpath(path, self.fs_endpoint_path)
         rel_path = rel_path.replace('\\', '/')
         return rel_path, fac_metadata
