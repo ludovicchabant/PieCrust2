@@ -17,7 +17,7 @@ from piecrust.cache import ExtensibleCache, NullCache, NullExtensibleCache
 from piecrust.plugins.base import PluginLoader
 from piecrust.environment import StandardEnvironment
 from piecrust.configuration import (Configuration, ConfigurationError,
-        OrderedDictYAMLLoader, merge_dicts)
+        ConfigurationLoader, merge_dicts)
 from piecrust.routing import Route
 from piecrust.sources.base import REALM_USER, REALM_THEME
 from piecrust.taxonomies import Taxonomy
@@ -81,7 +81,7 @@ class PieCrustConfiguration(Configuration):
         for i, p in enumerate(self.paths):
             with codecs.open(p, 'r', 'utf-8') as fp:
                 loaded_values = yaml.load(fp.read(),
-                        Loader=OrderedDictYAMLLoader)
+                        Loader=ConfigurationLoader)
             if loaded_values is None:
                 loaded_values = {}
             for fixup in self.fixups:

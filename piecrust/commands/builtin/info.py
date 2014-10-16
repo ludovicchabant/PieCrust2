@@ -2,6 +2,7 @@ import os.path
 import logging
 import fnmatch
 from piecrust.commands.base import ChefCommand
+from piecrust.configuration import ConfigurationDumper
 
 
 logger = logging.getLogger(__name__)
@@ -36,7 +37,8 @@ class ShowConfigCommand(ChefCommand):
         if show is not None:
             if isinstance(show, (dict, list)):
                 import yaml
-                out = yaml.safe_dump(show, default_flow_style=False)
+                out = yaml.dump(show, default_flow_style=False,
+                                Dumper=ConfigurationDumper)
                 logger.info(out)
             else:
                 logger.info(show)

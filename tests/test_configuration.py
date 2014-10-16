@@ -1,8 +1,9 @@
 import copy
+import datetime
 import yaml
 import pytest
 from collections import OrderedDict
-from piecrust.configuration import (Configuration, OrderedDictYAMLLoader,
+from piecrust.configuration import (Configuration, ConfigurationLoader,
         merge_dicts)
 
 
@@ -118,7 +119,25 @@ two:
     b: no
     c: null
 """
-    data = yaml.load(sample, Loader=OrderedDictYAMLLoader)
+    data = yaml.load(sample, Loader=ConfigurationLoader)
     assert type(data) is OrderedDict
     assert list(data['one'].keys()) == ['two', 'red', 'blue']
+
+
+def test_load_time1():
+    sample = """
+time: 21:35
+"""
+    data = yaml.load(sample, Loader=ConfigurationLoader)
+    assert type(data['time']) is int
+    assert data['time'] == (21 * 60 * 60 + 35 * 60)
+
+
+def test_load_time2():
+    sample = """
+time: 21:35:50
+"""
+    data = yaml.load(sample, Loader=ConfigurationLoader)
+    assert type(data['time']) is int
+    assert data['time'] == (21 * 60 * 60 + 35 * 60 + 50)
 

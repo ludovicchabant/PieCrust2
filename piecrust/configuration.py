@@ -116,7 +116,7 @@ def parse_config_header(text):
     m = header_regex.match(text)
     if m is not None:
         header = str(m.group('header'))
-        config = yaml.load(header, Loader=OrderedDictYAMLLoader)
+        config = yaml.load(header, Loader=ConfigurationLoader)
         offset = m.end()
     else:
         config = {}
@@ -124,16 +124,18 @@ def parse_config_header(text):
     return config, offset
 
 
-class OrderedDictYAMLLoader(yaml.SafeLoader):
+class ConfigurationLoader(yaml.SafeLoader):
     """ A YAML loader that loads mappings into ordered dictionaries.
     """
     def __init__(self, *args, **kwargs):
-        super(OrderedDictYAMLLoader, self).__init__(*args, **kwargs)
+        super(ConfigurationLoader, self).__init__(*args, **kwargs)
 
-        self.add_constructor(u'tag:yaml.org,2002:map',
+        self.add_constructor('tag:yaml.org,2002:map',
                 type(self).construct_yaml_map)
-        self.add_constructor(u'tag:yaml.org,2002:omap',
+        self.add_constructor('tag:yaml.org,2002:omap',
                 type(self).construct_yaml_map)
+        self.add_constructor('tag:yaml.org,2002:sexagesimal',
+                type(self).construct_yaml_time)
 
     def construct_yaml_map(self, node):
         data = collections.OrderedDict()
@@ -155,4 +157,50 @@ class OrderedDictYAMLLoader(yaml.SafeLoader):
             value = self.construct_object(value_node, deep=deep)
             mapping[key] = value
         return mapping
+
+    time_regexp = re.compile(
+            r'''^(?P<hour>[0-9][0-9]?)
+                :(?P<minute>[0-9][0-9])
+                (:(?P<second>[0-9][0-9])
+                (\.(?P<fraction>[0-9]+))?)?$''', re.X)
+
+    def construct_yaml_time(self, node):
+        self.construct_scalar(node)
+        match = self.time_regexp.match(node.value)
+        values = match.groupdict()
+        hour = int(values['hour'])
+        minute = int(values['minute'])
+        second = 0
+        if values['second']:
+            second = int(values['second'])
+        usec = 0
+        if values['fraction']:
+            usec = float('0.' + values['fraction'])
+        return second + minute * 60 + hour * 60 * 60 + usec
+
+
+ConfigurationLoader.add_implicit_resolver(
+        'tag:yaml.org,2002:sexagesimal',
+        re.compile(r'''^[0-9][0-9]?:[0-9][0-9]
+                    (:[0-9][0-9](\.[0-9]+)?)?$''', re.X),
+        list('0123456789'))
+
+
+# We need to add our `sexagesimal` resolver before the `int` one, which
+# already supports sexagesimal notation in YAML 1.1 (but not 1.2). However,
+# because we know we pretty much always want it for representing time, we
+# need a simple `12:30` to mean 45000, not 750. So that's why we override
+# the default behaviour.
+for ch in list('0123456789'):
+    ch_resolvers = ConfigurationLoader.yaml_implicit_resolvers[ch]
+    ch_resolvers.insert(0, ch_resolvers.pop())
+
+
+class ConfigurationDumper(yaml.SafeDumper):
+    def represent_ordered_dict(self, data):
+        return self.represent_mapping('tag:yaml.org,2002:omap', data)
+
+
+ConfigurationDumper.add_representer(collections.OrderedDict,
+        ConfigurationDumper.represent_ordered_dict)
 
