@@ -93,19 +93,25 @@ class Page(object):
                             raise ConfigurationError(
                                     "Invalid time '%s' in page: %s" %
                                     (page_time, self.path)) from ex
-                        page_time = datetime.time(parsed_t.hour,
-                                parsed_t.minute, parsed_t.second)
+                        page_time = datetime.timedelta(
+                                hours=parsed_t.hour,
+                                minutes=parsed_t.minute,
+                                seconds=parsed_t.second)
 
                     elif isinstance(page_time, int):
                         # Total seconds... convert to a time struct.
-                        delta = datetime.timedelta(seconds=page_time)
-                        dummy = datetime.datetime(1970, 1, 1)
-                        dummy += delta
-                        page_time = dummy.time()
+                        page_time = datetime.timedelta(seconds=page_time)
+
+                    elif not isinstance(page_time, datetime.timedelta):
+                        raise ConfigurationError(
+                                "Invalid time '%s' in page: %s" %
+                                (page_time, self.path))
 
                     try:
-                        self._datetime = datetime.datetime.combine(
-                                page_date, page_time)
+                        self._datetime = datetime.datetime(
+                                page_date.year,
+                                page_date.month,
+                                page_date.day) + page_time
                     except Exception as ex:
                         raise ConfigurationError(
                                 "Invalid page time '%s' for: %s" % (
