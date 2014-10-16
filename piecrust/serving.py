@@ -26,12 +26,14 @@ logger = logging.getLogger(__name__)
 
 class Server(object):
     def __init__(self, root_dir, host='localhost', port='8080',
-                 debug=False, static_preview=True):
+                 debug=False, static_preview=True,
+                 synchronous_asset_pipeline=True):
         self.root_dir = root_dir
         self.host = host
         self.port = port
         self.debug = debug
         self.static_preview = static_preview
+        self.synchronous_asset_pipeline = synchronous_asset_pipeline
         self._out_dir = None
         self._skip_patterns = None
         self._force_patterns = None
@@ -119,11 +121,13 @@ class Server(object):
         mounts = app.assets_dirs
         asset_in_path = entry.path
         asset_out_path = os.path.join(self._out_dir, rel_req_path)
-        pipeline = ProcessorPipeline(
-                app, mounts, self._out_dir,
-                skip_patterns=self._skip_patterns,
-                force_patterns=self._force_patterns)
-        pipeline.run(asset_in_path)
+
+        if self.synchronous_asset_pipeline:
+            pipeline = ProcessorPipeline(
+                    app, mounts, self._out_dir,
+                    skip_patterns=self._skip_patterns,
+                    force_patterns=self._force_patterns)
+            pipeline.run(asset_in_path)
 
         logger.debug("Serving %s" % asset_out_path)
         wrapper = wrap_file(environ, open(asset_out_path, 'rb'))
