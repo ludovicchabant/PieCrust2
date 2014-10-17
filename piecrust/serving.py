@@ -15,6 +15,7 @@ from jinja2 import FileSystemLoader, Environment
 from piecrust.app import PieCrust
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause)
+from piecrust.environment import StandardEnvironment
 from piecrust.page import Page
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import PageRenderingContext, render_page
@@ -22,6 +23,12 @@ from piecrust.sources.base import PageFactory, MODE_PARSING
 
 
 logger = logging.getLogger(__name__)
+
+
+class ServingEnvironment(StandardEnvironment):
+    def __init__(self):
+        super(ServingEnvironment, self).__init__()
+        del self.fs_caches['renders']
 
 
 class Server(object):
@@ -77,7 +84,8 @@ class Server(object):
             raise MethodNotAllowed()
 
         # Create the app for this request.
-        app = PieCrust(root_dir=self.root_dir, debug=self.debug)
+        env = ServingEnvironment()
+        app = PieCrust(root_dir=self.root_dir, debug=self.debug, env=env)
         app.config.set('site/root', '/')
         app.config.set('site/pretty_urls', True)
         app.config.set('server/is_serving', True)
