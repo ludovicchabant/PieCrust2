@@ -26,9 +26,30 @@ logger = logging.getLogger(__name__)
 
 
 class ServingEnvironment(StandardEnvironment):
+    pass
+
+
+class ServeRecord(object):
     def __init__(self):
-        super(ServingEnvironment, self).__init__()
-        del self.fs_caches['renders']
+        self.entries = {}
+
+    def addEntry(self, entry):
+        key = self._makeKey(entry.uri, entry.sub_num)
+        self.entries[key] = entry
+
+    def getEntry(self, uri, sub_num):
+        key = self._makeKey(uri, sub_num)
+        return self.entries.get(key)
+
+    def _makeKey(self, uri, sub_num):
+        return "%s:%s" % (uri, sub_num)
+
+
+class ServeRecordPageEntry(object):
+    def __init__(self, uri, sub_num):
+        self.uri = uri
+        self.sub_num = sub_num
+        self.used_source_names = set()
 
 
 class Server(object):
@@ -44,7 +65,8 @@ class Server(object):
         self._out_dir = None
         self._skip_patterns = None
         self._force_patterns = None
-        self._record = None
+        self._asset_record = None
+        self._page_record = None
         self._mimetype_map = load_mimetype_map()
 
     def run(self):
@@ -59,7 +81,8 @@ class Server(object):
                 app, mounts, self._out_dir,
                 skip_patterns=self._skip_patterns,
                 force_patterns=self._force_patterns)
-        self._record = pipeline.run()
+        self._asset_record = pipeline.run()
+        self._page_record = ServeRecord()
 
         # Run the WSGI app.
         wsgi_wrapper = WsgiServer(self)
@@ -84,8 +107,7 @@ class Server(object):
             raise MethodNotAllowed()
 
         # Create the app for this request.
-        env = ServingEnvironment()
-        app = PieCrust(root_dir=self.root_dir, debug=self.debug, env=env)
+        app = PieCrust(root_dir=self.root_dir, debug=self.debug)
         app.config.set('site/root', '/')
         app.config.set('site/pretty_urls', True)
         app.config.set('server/is_serving', True)
@@ -119,7 +141,7 @@ class Server(object):
     def _try_serve_asset(self, app, environ, request):
         logger.debug("Searching for asset with path: %s" % request.path)
         rel_req_path = request.path.lstrip('/').replace('/', os.sep)
-        entry = self._record.findEntry(rel_req_path)
+        entry = self._asset_record.findEntry(rel_req_path)
         if entry is None:
             return None
 
@@ -197,7 +219,7 @@ class Server(object):
                     "(looked in: %s)" %
                     (req_path, [r.source_name for r, _ in routes]))
 
-        # Build the page and render it.
+        # Build the page.
         fac = PageFactory(source, rel_path, fac_metadata)
         page = fac.buildPage()
         render_ctx = PageRenderingContext(page, req_path, page_num)
@@ -208,12 +230,28 @@ class Server(object):
             else:
                 flt.addClause(IsFilterClause(taxonomy.name, term_value))
             render_ctx.pagination_filter = flt
-
             render_ctx.custom_data = {
                     taxonomy.term_name: term_value}
+
+        # See if this page is known to use sources. If that's the case,
+        # just don't use cached rendered segments for that page (but still
+        # use them for pages that are included in it).
+        entry = self._page_record.getEntry(req_path, page_num)
+        if (taxonomy is not None or entry is None or
+                entry.used_source_names):
+            cache_key = '%s:%s' % (req_path, page_num)
+            app.env.rendered_segments_repository.invalidate(cache_key)
+
+        # Render the page.
         rendered_page = render_page(render_ctx)
         rp_content = rendered_page.content
 
+        if entry is None:
+            entry = ServeRecordPageEntry(req_path, page_num)
+            self._page_record.addEntry(entry)
+        entry.used_source_names = set(render_ctx.used_source_names)
+
+        # Profiling.
         if app.debug:
             now_time = time.clock()
             timing_info = ('%8.1f ms' %
@@ -221,7 +259,7 @@ class Server(object):
             rp_content = rp_content.replace('__PIECRUST_TIMING_INFORMATION__',
                     timing_info)
 
-        # Start response.
+        # Build the response.
         response = Response()
 
         etag = hashlib.md5(rp_content.encode('utf8')).hexdigest()
