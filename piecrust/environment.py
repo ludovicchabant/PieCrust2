@@ -3,6 +3,7 @@ import time
 import json
 import logging
 import threading
+import contextlib
 import collections
 import repoze.lru
 
@@ -23,12 +24,19 @@ class MemCache(object):
     """
     def __init__(self, size=2048):
         self.cache = repoze.lru.LRUCache(size)
-        self.lock = threading.RLock()
         self.fs_cache = None
         self._invalidated_fs_items = set()
+        self._lock = threading.RLock()
+
+    @contextlib.contextmanager
+    def startBatchGet(self):
+        logger.debug("Starting batch cache operation.")
+        with self._lock:
+            yield
+        logger.debug("Ending batch cache operation.")
 
     def invalidate(self, key):
-        with self.lock:
+        with self._lock:
             logger.debug("Invalidating cache item '%s'." % key)
             self.cache.invalidate(key)
             if self.fs_cache:
@@ -40,7 +48,7 @@ class MemCache(object):
         item = self.cache.get(key)
         if item is None:
             logger.debug("Acquiring lock for: %s" % key)
-            with self.lock:
+            with self._lock:
                 item = self.cache.get(key)
                 if item is None:
                     if (self.fs_cache is not None and
@@ -107,19 +115,27 @@ class ExecutionInfoStack(threading.local):
     def popPage(self):
         del self._page_stack[-1]
 
+    def clear(self):
+        self._page_stack = []
+
 
 class Environment(object):
     def __init__(self):
-        self.start_time = time.clock()
+        self.start_time = None
         self.exec_info_stack = ExecutionInfoStack()
         self.was_cache_cleaned = False
+        self.base_asset_url_format = '%uri%'
         self.page_repository = MemCache()
         self.rendered_segments_repository = MemCache()
         self.fs_caches = {
                 'renders': self.rendered_segments_repository}
-        self.base_asset_url_format = '%uri%'
 
     def initialize(self, app):
+        self.start_time = time.clock()
+        self.exec_info_stack.clear()
+        self.was_cache_cleaned = False
+        self.base_asset_url_format = '%uri%'
+
         for name, repo in self.fs_caches.items():
             cache = app.cache.getCache(name)
             repo.fs_cache = cache

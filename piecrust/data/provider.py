@@ -117,8 +117,7 @@ class BlogDataProvider(DataProvider):
             return self._yearly
 
         self._yearly = []
-        for fac in self._source.getPageFactories():
-            post = fac.buildPage()
+        for post in self._source.getPages():
             year = post.datetime.strftime('%Y')
 
             posts_this_year = next(
@@ -142,8 +141,7 @@ class BlogDataProvider(DataProvider):
             return self._monthly
 
         self._monthly = []
-        for fac in self._source.getPageFactories():
-            post = fac.buildPage()
+        for post in self._source.getPages():
             month = post.datetime.strftime('%B %Y')
 
             posts_this_month = next(
@@ -168,8 +166,7 @@ class BlogDataProvider(DataProvider):
             return self._taxonomies[tax_name]
 
         posts_by_tax_value = {}
-        for fac in self._source.getPageFactories():
-            post = fac.buildPage()
+        for post in self._source.getPages():
             tax_values = post.config.get(tax_name)
             if tax_values is None:
                 continue

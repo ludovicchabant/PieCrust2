@@ -65,11 +65,10 @@ class SitemapProcessor(SimpleFileProcessor):
             if source is None:
                 raise Exception("No such source: %s" % name)
 
-            for fac in source.getPageFactories():
-                route = self.app.getRoute(source.name, fac.metadata)
-                uri = route.getUri(fac.metadata)
+            for page in source.getPages():
+                route = self.app.getRoute(source.name, page.source_metadata)
+                uri = route.getUri(page.source_metadata)
 
-                page = fac.buildPage()
                 t = page.datetime.timestamp()
                 sm_cfg = page.config.get('sitemap')
 

@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 page_ref_pattern = re.compile(r'(?P<src>[\w]+)\:(?P<path>.*?)(;|$)')
 
 
+def build_pages(app, factories):
+    with app.env.page_repository.startBatchGet():
+        for f in factories:
+            yield f.buildPage()
+
+
 class PageNotFoundError(Exception):
     pass
 
@@ -207,6 +213,9 @@ class PageSource(object):
             return self.app.theme_dir
         return self.app.root_dir
 
+    def getPages(self):
+        return build_pages(self.app, self.getPageFactories())
+
     def getPageFactories(self):
         if self._factories is None:
             self._factories = list(self.buildPageFactories())
@@ -383,8 +392,7 @@ class SourceFactoryIterator(object):
                        # iterator chain. It acts as the end.
 
     def __iter__(self):
-        for factory in self.source.getPageFactories():
-            yield factory.buildPage()
+        return self.source.getPages()
 
 
 class DateSortIterator(object):
