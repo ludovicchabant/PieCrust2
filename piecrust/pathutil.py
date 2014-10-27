@@ -4,7 +4,7 @@ import os.path
 import fnmatch
 
 
-re_terminal_path = re.compile(r'[/\\]|(\w\:)')
+re_terminal_path = re.compile(r'^(\w\:)?[/\\]$')
 
 
 class SiteNotFoundError(Exception):
