@@ -56,7 +56,7 @@ class LessProcessor(SimpleFileProcessor):
 
         # On Windows, we need to run the process in a shell environment
         # otherwise it looks like `PATH` isn't taken into account.
-        shell=(platform.system() == 'Windows')
+        shell = (platform.system() == 'Windows')
         try:
             retcode = subprocess.call(args, shell=shell)
         except FileNotFoundError as ex:
