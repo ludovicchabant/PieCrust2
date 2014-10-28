@@ -16,6 +16,7 @@ from piecrust.importing.piecrust import PieCrust1Importer
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
 from piecrust.processing.less import LessProcessor
+from piecrust.processing.requirejs import RequireJSProcessor
 from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (FlatPostsSource, ShallowPostsSource,
@@ -74,6 +75,7 @@ class BuiltInPlugin(PieCrustPlugin):
         return [
                 CopyFileProcessor(),
                 LessProcessor(),
+                RequireJSProcessor(),
                 SitemapProcessor()]
 
     def getImporters(self):

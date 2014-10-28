@@ -36,7 +36,7 @@ class Processor(object):
     def onPipelineEnd(self, pipeline):
         pass
 
-    def matches(self, filename):
+    def matches(self, path):
         return False
 
     def getDependencies(self, path):
@@ -56,7 +56,7 @@ class CopyFileProcessor(Processor):
         super(CopyFileProcessor, self).__init__()
         self.priority = PRIORITY_LAST
 
-    def matches(self, filename):
+    def matches(self, path):
         return True
 
     def getOutputFilenames(self, filename):
@@ -74,9 +74,9 @@ class SimpleFileProcessor(Processor):
         super(SimpleFileProcessor, self).__init__()
         self.extensions = extensions or {}
 
-    def matches(self, filename):
+    def matches(self, path):
         for ext in self.extensions:
-            if filename.endswith('.' + ext):
+            if path.endswith('.' + ext):
                 return True
         return False
 
@@ -169,23 +169,26 @@ class ProcessorPipeline(object):
             self.processors))
 
     def run(self, src_dir_or_file=None):
-        record = ProcessorPipelineRecord()
+        # Invoke pre-processors.
+        for proc in self.processors:
+            proc.onPipelineStart(self)
+
+        # Sort our processors again in case the pre-process step involved
+        # patching the processors with some new ones.
+        self.processors.sort(key=lambda p: p.priority)
 
         # Create the workers.
         pool = []
         queue = Queue()
         abort = threading.Event()
         pipeline_lock = threading.Lock()
+        record = ProcessorPipelineRecord()
         for i in range(self.num_workers):
             ctx = ProcessingWorkerContext(self, record, queue, abort,
                     pipeline_lock)
             worker = ProcessingWorker(i, ctx)
             worker.start()
             pool.append(worker)
-
-        # Invoke pre-processors.
-        for proc in self.processors:
-            proc.onPipelineStart(self)
 
         if src_dir_or_file is not None:
             # Process only the given path.

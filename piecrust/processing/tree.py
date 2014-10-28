@@ -34,9 +34,8 @@ class ProcessingTreeNode(object):
 
     def getProcessor(self):
         if self._processor is None:
-            _, filename = os.path.split(self.path)
             for p in self.available_procs:
-                if p.matches(filename):
+                if p.matches(self.path):
                     self._processor = p
                     self.available_procs.remove(p)
                     break
@@ -85,7 +84,7 @@ class ProcessingTreeBuilder(object):
             # If the root tree node (and only that one) wants to bypass this
             # whole tree business, so be it.
             if proc.is_bypassing_structured_processing:
-                if proc != tree_root:
+                if cur_node != tree_root:
                     raise ProcessingTreeError("Only root processors can "
                             "bypass structured processing.")
                 break
@@ -145,7 +144,10 @@ class ProcessingTreeRunner(object):
             try:
                 start_time = time.clock()
                 proc.process(full_path, self.out_dir)
-                print_node(format_timed(start_time, "(bypassing structured processing)"))
+                print_node(
+                        node,
+                        format_timed(
+                            start_time, "(bypassing structured processing)"))
                 return True
             except Exception as e:
                 raise Exception("Error processing: %s" % node.path) from e
