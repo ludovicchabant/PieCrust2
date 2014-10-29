@@ -36,11 +36,16 @@ class RequireJSProcessor(Processor):
     def onPipelineStart(self, pipeline):
         super(RequireJSProcessor, self).onPipelineStart(pipeline)
 
+        if self._conf is None:
+            return
+
         logger.debug("Adding Javascript suppressor to build pipeline.")
         skip = _JavascriptSkipProcessor(self._conf['build_path'])
         pipeline.processors.append(skip)
 
     def matches(self, path):
+        if self._conf is None:
+            return False
         return path == self._conf['build_path']
 
     def getDependencies(self, path):
