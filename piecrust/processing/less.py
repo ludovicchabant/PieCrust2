@@ -30,13 +30,20 @@ class LessProcessor(SimpleFileProcessor):
         try:
             with open(map_path, 'r') as f:
                 dep_map = json.load(f)
-            source = dep_map.get('sources')
-            # The last one is always the file itself, so skip that. Also,
-            # make all paths absolute.
+
+            # Check the version, since the `sources` list has changed
+            # meanings over time.
+            if dep_map.get('version') != 3:
+                logger.warning("Unknown LESS map version. Force rebuilding.")
+                return FORCE_BUILD
+
+            # Get the sources, but make all paths absolute.
+            sources = dep_map.get('sources')
             path_dir = os.path.dirname(path)
             def _makeAbs(p):
                 return os.path.join(path_dir, p)
-            return list(map(_makeAbs, source[:-1]))
+            deps = list(map(_makeAbs, sources))
+            return [map_path] + deps
         except IOError:
             # Map file not found... rebuild.
             logger.debug("No map file found for LESS file '%s' at '%s'. "
@@ -82,7 +89,9 @@ class LessProcessor(SimpleFileProcessor):
                             "must be an array of arguments.")
 
     def _getMapPath(self, path):
-        map_name = "%s.map" % hashlib.md5(path.encode('utf8')).hexdigest()
+        map_name = "%s_%s.map" % (
+                os.path.basename(path),
+                hashlib.md5(path.encode('utf8')).hexdigest())
         map_path = os.path.join(self._map_dir, map_name)
         return map_path
 
