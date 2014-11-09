@@ -12,7 +12,6 @@ from piecrust.baking.records import (TransitionalBakeRecord,
 from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause, AndBooleanClause)
-from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import (PageRenderingContext, render_page,
         PASS_FORMATTING, PASS_RENDERING)
 from piecrust.sources.base import (PageFactory,
@@ -144,7 +143,7 @@ class PageBaker(object):
         # see if any of those got baked, or are going to be baked for some
         # reason. If so, we need to bake this one too.
         # (this happens for instance with the main page of a blog).
-        if prev_record_entry:
+        if prev_record_entry and prev_record_entry.was_baked_successfully:
             invalidated_render_passes = set()
             used_src_names = list(prev_record_entry.used_source_names)
             for src_name, rdr_pass in used_src_names:
@@ -266,13 +265,13 @@ class PageBaker(object):
 
 class Baker(object):
     def __init__(self, app, out_dir=None, force=False, portable=False,
-            no_assets=False):
+            no_assets=False, num_workers=4):
         self.app = app
         self.out_dir = out_dir or os.path.join(app.root_dir, '_counter')
         self.force = force
         self.portable = portable
         self.no_assets = no_assets
-        self.num_workers = app.config.get('baker/workers') or 4
+        self.num_workers = num_workers
 
         # Remember what taxonomy pages we should skip
         # (we'll bake them repeatedly later with each taxonomy term)
@@ -301,7 +300,9 @@ class Baker(object):
         # Load/create the bake record.
         record = TransitionalBakeRecord()
         record_cache = self.app.cache.getCache('baker')
-        record_name = (hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
+        record_name = (
+                'pages_' +
+                hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
                 '.record')
         if not self.force and record_cache.has(record_name):
             t = time.clock()
@@ -331,9 +332,8 @@ class Baker(object):
         # Bake taxonomies.
         self._bakeTaxonomies(record)
 
-        # Bake the assets.
-        if not self.no_assets:
-            self._bakeAssets(record)
+        # Delete files from the output.
+        self._handleDeletetions(record)
 
         # Save the bake record.
         t = time.clock()
@@ -345,8 +345,7 @@ class Baker(object):
 
         # All done.
         self.app.config.set('baker/is_baking', False)
-        logger.info('-------------------------');
-        logger.info(format_timed(start_time, 'done baking'));
+        logger.debug(format_timed(start_time, 'done baking'));
 
     def _handleCacheValidity(self, record):
         start_time = time.clock()
@@ -407,13 +406,16 @@ class Baker(object):
                             (source.name, fac.ref_spec))
                     continue
 
-                route = self.app.getRoute(source.name, fac.metadata)
-                if route is None:
-                    logger.error("Can't get route for page: %s" % fac.ref_spec)
-                    continue
-
                 entry = BakeRecordPageEntry(fac)
                 record.addEntry(entry)
+
+                route = self.app.getRoute(source.name, fac.metadata)
+                if route is None:
+                    entry.errors.append("Can't get route for page: %s" %
+                            fac.ref_spec)
+                    logger.error(entry.errors[-1])
+                    continue
+
                 queue.addJob(BakeWorkerJob(fac, route, entry))
 
         self._waitOnWorkerPool(pool, abort)
@@ -439,9 +441,11 @@ class Baker(object):
                 changed_terms = None
                 # Re-bake all taxonomy pages that include new or changed
                 # pages.
-                if not prev_entry and cur_entry and cur_entry.was_baked:
+                if (not prev_entry and cur_entry and
+                        cur_entry.was_baked_successfully):
                     changed_terms = cur_entry.config.get(tax.name)
-                elif prev_entry and cur_entry and cur_entry.was_baked:
+                elif (prev_entry and cur_entry and
+                        cur_entry.was_baked_successfully):
                     changed_terms = []
                     prev_terms = prev_entry.config.get(tax.name)
                     cur_terms = cur_entry.config.get(tax.name)
@@ -508,16 +512,11 @@ class Baker(object):
 
         self._waitOnWorkerPool(pool, abort)
 
-    def _bakeAssets(self, record):
-        mounts = self.app.assets_dirs
-        baker_params = self.app.config.get('baker') or {}
-        skip_patterns = baker_params.get('skip_patterns')
-        force_patterns = baker_params.get('force_patterns')
-        proc = ProcessorPipeline(
-                self.app, mounts, self.out_dir, force=self.force,
-                skip_patterns=skip_patterns, force_patterns=force_patterns,
-                num_workers=self.num_workers)
-        proc.run()
+    def _handleDeletetions(self, record):
+        for path, reason in record.getDeletions():
+            logger.debug("Removing '%s': %s" % (path, reason))
+            os.remove(path)
+            logger.info('[delete] %s' % path)
 
     def _createWorkerPool(self, record, pool_size=4):
         pool = []
@@ -697,11 +696,17 @@ class BakeWorker(threading.Thread):
         start_time = time.clock()
 
         entry = job.record_entry
-        self._page_baker.bake(job.factory, job.route, entry,
-                taxonomy_name=job.taxonomy_name,
-                taxonomy_term=job.taxonomy_term)
+        try:
+            self._page_baker.bake(job.factory, job.route, entry,
+                    taxonomy_name=job.taxonomy_name,
+                    taxonomy_term=job.taxonomy_term)
+        except BakingError as ex:
+            logger.debug("Got baking error. Adding it to the record.")
+            while ex:
+                entry.errors.append(str(ex))
+                ex = ex.__cause__
 
-        if entry.was_baked:
+        if entry.was_baked_successfully:
             uri = entry.out_uris[0]
             friendly_uri = uri if uri != '' else '[main page]'
             friendly_count = ''
@@ -709,4 +714,7 @@ class BakeWorker(threading.Thread):
                 friendly_count = ' (%d pages)' % entry.num_subs
             logger.info(format_timed(start_time, '[%d] %s%s' %
                     (self.wid, friendly_uri, friendly_count)))
+        elif entry.errors:
+            for e in entry.errors:
+                logger.error(e)
 

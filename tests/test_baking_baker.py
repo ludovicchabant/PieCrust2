@@ -1,6 +1,7 @@
 import os.path
 import pytest
 from piecrust.baking.baker import PageBaker, Baker
+from piecrust.baking.records import BakeRecord
 from .mockutil import get_mock_app, mock_fs, mock_fs_scope
 
 
@@ -70,4 +71,48 @@ def test_simple_bake():
         assert structure == {
                 '2010': {'01': {'01': {'post1.html': 'post one'}}},
                 'index.html': 'something'}
+
+def test_removed():
+    fs = (mock_fs()
+            .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page')
+            .withPage('pages/_index.md', {'layout': 'none', 'format': 'none'}, "something"))
+    with mock_fs_scope(fs):
+        app = fs.getApp()
+        baker = Baker(app)
+        baker.bake()
+        structure = fs.getStructure('kitchen/_counter')
+        assert structure == {
+                'foo.html': 'a foo page',
+                'index.html': 'something'}
+
+        os.remove(fs.path('kitchen/pages/foo.md'))
+        app = fs.getApp()
+        baker = Baker(app)
+        baker.bake()
+        structure = fs.getStructure('kitchen/_counter')
+        assert structure == {
+                'index.html': 'something'}
+
+def test_record_version_change():
+    fs = (mock_fs()
+            .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page'))
+    with mock_fs_scope(fs):
+        app = fs.getApp()
+        baker = Baker(app)
+        baker.bake()
+        mtime = os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
+
+        app = fs.getApp()
+        baker = Baker(app)
+        baker.bake()
+        assert mtime == os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
+
+        BakeRecord.RECORD_VERSION += 1
+        try:
+            app = fs.getApp()
+            baker = Baker(app)
+            baker.bake()
+            assert mtime < os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
+        finally:
+            BakeRecord.RECORD_VERSION -= 1
 

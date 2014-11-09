@@ -2,6 +2,7 @@ import os
 import time
 import os.path
 import logging
+from piecrust.chefutil import format_timed
 
 
 logger = logging.getLogger(__name__)
@@ -150,7 +151,8 @@ class ProcessingTreeRunner(object):
                             start_time, "(bypassing structured processing)"))
                 return True
             except Exception as e:
-                raise Exception("Error processing: %s" % node.path) from e
+                raise ProcessingTreeError("Error processing: %s" %
+                        node.path) from e
 
         # All outputs of a node must go to the same directory, so we can get
         # the output directory off of the first output.
@@ -239,7 +241,9 @@ class ProcessingTreeRunner(object):
                 node.setState(STATE_CLEAN, False)
 
         state = "dirty" if node.state == STATE_DIRTY else "clean"
-        logger.debug(format_timed(start_time, "Computed node dirtyness: %s" % state, node.level))
+        logger.debug(format_timed(start_time,
+                                  "Computed node dirtyness: %s" % state,
+                                  indent_level=node.level))
 
     def _getNodeBaseDir(self, node):
         if node.level == 0:
@@ -266,11 +270,4 @@ def print_node(node, message=None, recursive=False):
     if recursive:
         for o in node.outputs:
             print_node(o, None, True)
-
-
-def format_timed(start_time, message, indent_level=0):
-    end_time = time.clock()
-    indent = indent_level * '  '
-    build_time = '{0:8.1f} ms'.format((end_time - start_time) / 1000.0)
-    return "%s[%s] %s" % (indent, build_time, message)
 

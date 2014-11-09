@@ -46,6 +46,7 @@ class _MockFsEntryWriter(object):
 
     def __exit__(self, exc_type, exc_value, exc_tb):
         self._entry.contents = self._stream.getvalue()
+        self._entry.metadata['mtime'] = time.time()
         self._stream.close()
 
 
@@ -197,12 +198,13 @@ class mock_fs_scope(object):
         self._endMock()
 
     def _startMock(self):
+        # TODO: sadly, there seems to be no way to replace `open` everywhere?
         self._createMock('__main__.open', open, self._open, create=True)
-        # TODO: WTF, apparently the previous one doesn't really work?
         self._createMock('piecrust.records.open', open, self._open, create=True)
         self._createMock('codecs.open', codecs.open, self._codecsOpen)
         self._createMock('os.listdir', os.listdir, self._listdir)
         self._createMock('os.makedirs', os.makedirs, self._makedirs)
+        self._createMock('os.remove', os.remove, self._remove)
         self._createMock('os.path.isdir', os.path.isdir, self._isdir)
         self._createMock('os.path.isfile', os.path.isfile, self._isfile)
         self._createMock('os.path.islink', os.path.islink, self._islink)
@@ -271,6 +273,10 @@ class mock_fs_scope(object):
         if not path.replace('\\', '/').startswith('/' + self.root):
             raise Exception("Shouldn't create directory: %s" % path)
         self._fs._createDir(path)
+
+    def _remove(self, path):
+        path = os.path.normpath(path)
+        self._fs._deleteEntry(path)
 
     def _isdir(self, path):
         path = os.path.normpath(path)

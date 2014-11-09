@@ -5,7 +5,9 @@ import fnmatch
 import datetime
 from piecrust.baking.baker import Baker
 from piecrust.baking.records import BakeRecord
+from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
+from piecrust.processing.base import ProcessorPipeline
 
 
 logger = logging.getLogger(__name__)
@@ -32,19 +34,22 @@ class BakeCommand(ChefCommand):
                 action='store_true')
 
     def run(self, ctx):
-        baker = Baker(
-                ctx.app,
-                out_dir=ctx.args.output,
-                force=ctx.args.force,
-                portable=ctx.args.portable,
-                no_assets=ctx.args.no_assets)
         if ctx.args.portable:
             # Disable pretty URLs because there's likely not going to be
             # a web server to handle serving default documents.
             ctx.app.config.set('site/pretty_urls', False)
 
         try:
-            baker.bake()
+            # Bake the site sources.
+            self._bakeSources(ctx)
+
+            # Bake the assets.
+            if not ctx.args.no_assets:
+                self._bakeAssets(ctx)
+
+            # All done.
+            logger.info('-------------------------');
+            logger.info(format_timed(start_time, 'done baking'));
             return 0
         except Exception as ex:
             if ctx.app.debug:
@@ -52,6 +57,32 @@ class BakeCommand(ChefCommand):
             else:
                 logger.error(str(ex))
             return 1
+
+    def _bakeSources(self, ctx):
+        num_workers = ctx.app.config.get('baker/workers') or 4
+        baker = Baker(
+                ctx.app,
+                out_dir=ctx.args.output,
+                force=ctx.args.force,
+                portable=ctx.args.portable,
+                no_assets=ctx.args.no_assets,
+                num_workers=num_workers)
+        baker.bake()
+
+    def _bakeAssets(self, ctx):
+        mounts = ctx.app.assets_dirs
+        baker_params = ctx.app.config.get('baker') or {}
+        skip_patterns = baker_params.get('skip_patterns')
+        force_patterns = baker_params.get('force_patterns')
+        num_workers = ctx.app.config.get('baker/workers') or 4
+        proc = ProcessorPipeline(
+                ctx.app, mounts, ctx.args.output,
+                force=ctx.args.force,
+                skip_patterns=skip_patterns,
+                force_patterns=force_patterns,
+                num_workers=num_workers)
+        proc.run()
+
 
 
 class ShowRecordCommand(ChefCommand):
@@ -99,4 +130,6 @@ class ShowRecordCommand(ChefCommand):
             logging.info("   out URLs:  %s" % entry.out_uris)
             logging.info("   out paths: %s" % entry.out_paths)
             logging.info("   used srcs: %s" % entry.used_source_names)
+            if entry.errors:
+                logging.error("   errors: %s" % entry.errors)
 

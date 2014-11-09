@@ -1,14 +1,10 @@
 import os.path
 import logging
-from piecrust import APP_VERSION
 from piecrust.sources.base import PageSource
-from piecrust.records import Record
+from piecrust.records import Record, TransitionalRecord
 
 
 logger = logging.getLogger(__name__)
-
-
-RECORD_VERSION = 6
 
 
 def _get_transition_key(source_name, rel_path, taxonomy_name=None,
@@ -24,21 +20,12 @@ def _get_transition_key(source_name, rel_path, taxonomy_name=None,
 
 
 class BakeRecord(Record):
+    RECORD_VERSION = 8
+
     def __init__(self):
         super(BakeRecord, self).__init__()
         self.out_dir = None
         self.bake_time = None
-        self.app_version = APP_VERSION
-        self.record_version = RECORD_VERSION
-
-    def hasLatestVersion(self):
-        return (self.app_version == APP_VERSION and
-                self.record_version == RECORD_VERSION)
-
-    def __setstate__(self, state):
-        state.setdefault('app_version', -1)
-        state.setdefault('record_version', -1)
-        super(BakeRecord, self).__setstate__(state)
 
 
 FLAG_NONE = 0
@@ -57,6 +44,7 @@ class BakeRecordPageEntry(object):
 
         self.flags = FLAG_NONE
         self.config = None
+        self.errors = []
         self.out_uris = []
         self.out_paths = []
         self.used_source_names = set()
@@ -64,16 +52,15 @@ class BakeRecordPageEntry(object):
 
     @property
     def was_baked(self):
-        return len(self.out_paths) > 0
+        return len(self.out_paths) > 0 or len(self.errors) > 0
+
+    @property
+    def was_baked_successfully(self):
+        return len(self.out_paths) > 0 and len(self.errors) == 0
 
     @property
     def num_subs(self):
         return len(self.out_paths)
-
-    @property
-    def transition_key(self):
-        return _get_transition_key(self.source_name, self.rel_path,
-                self.taxonomy_name, self.taxonomy_term)
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -81,42 +68,20 @@ class BakeRecordPageEntry(object):
         return state
 
 
-class TransitionalBakeRecord(object):
-    DELETION_MISSING = 1
-    DELETION_CHANGED = 2
-
+class TransitionalBakeRecord(TransitionalRecord):
     def __init__(self, previous_path=None):
-        self.previous = BakeRecord()
-        self.current = BakeRecord()
-        self.transitions = {}
-        self.incremental_count = 0
-        if previous_path:
-            self.loadPrevious(previous_path)
-        self.current.entry_added += self._onCurrentEntryAdded
-
-    def loadPrevious(self, previous_path):
-        try:
-            self.previous = BakeRecord.load(previous_path)
-        except Exception as ex:
-            logger.debug("Error loading previous record: %s" % ex)
-            logger.debug("Will reset to an empty one.")
-            self.previous = BakeRecord()
-            return
-
-        for e in self.previous.entries:
-            self.transitions[e.transition_key] = (e, None)
-
-    def clearPrevious(self):
-        self.previous = BakeRecord()
-
-    def saveCurrent(self, current_path):
-        self.current.save(current_path)
+        super(TransitionalBakeRecord, self).__init__(BakeRecord,
+                                                     previous_path)
 
     def addEntry(self, entry):
         if (self.previous.bake_time and
                 entry.path_mtime >= self.previous.bake_time):
             entry.flags |= FLAG_SOURCE_MODIFIED
-        self.current.addEntry(entry)
+        super(TransitionalBakeRecord, self).addEntry(entry)
+
+    def getTransitionKey(self, entry):
+        return _get_transition_key(entry.source_name, entry.rel_path,
+                                   entry.taxonomy_name, entry.taxonomy_term)
 
     def getOverrideEntry(self, factory, uri):
         for pair in self.transitions.values():
@@ -148,10 +113,7 @@ class TransitionalBakeRecord(object):
                 if e.source_name == source_name]
 
     def collapseRecords(self):
-        for pair in self.transitions.values():
-            prev = pair[0]
-            cur = pair[1]
-
+        for prev, cur in self.transitions.values():
             if prev and cur and not cur.was_baked:
                 # This page wasn't baked, so the information from last
                 # time is still valid (we didn't get any information
@@ -161,20 +123,17 @@ class TransitionalBakeRecord(object):
                     cur.config = prev.config.copy()
                 cur.out_uris = list(prev.out_uris)
                 cur.out_paths = list(prev.out_paths)
+                cur.errors = list(prev.errors)
                 cur.used_source_names = set(prev.used_source_names)
                 cur.used_taxonomy_terms = set(prev.used_taxonomy_terms)
 
-    def _onCurrentEntryAdded(self, entry):
-        key = entry.transition_key
-        te = self.transitions.get(key)
-        if te is None:
-            logger.debug("Adding new record entry: %s" % key)
-            self.transitions[key] = (None, entry)
-            return
-
-        if te[1] is not None:
-            raise Exception("A current entry already exists for: %s" %
-                    key)
-        logger.debug("Setting current record entry: %s" % key)
-        self.transitions[key] = (te[0], entry)
+    def getDeletions(self):
+        for prev, cur in self.transitions.values():
+            if prev and not cur:
+                for p in prev.out_paths:
+                    yield (p, 'previous source file was removed')
+            elif prev and cur and cur.was_baked_successfully:
+                diff = set(prev.out_paths) - set(cur.out_paths)
+                for p in diff:
+                    yield (p, 'source file changed outputs')
 

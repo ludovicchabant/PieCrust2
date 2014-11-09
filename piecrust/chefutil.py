@@ -2,12 +2,13 @@ import time
 from colorama import Fore
 
 
-def format_timed(start_time, message, colored=True):
+def format_timed(start_time, message, indent_level=0, colored=True):
     end_time = time.clock()
+    indent = indent_level * '  '
     time_str = '%8.1f ms' % ((end_time - start_time) * 1000.0)
     if colored:
         return '[%s%s%s] %s' % (Fore.GREEN, time_str, Fore.RESET, message)
-    return '[%s] %s' % (time_str, message)
+    return '%s[%s] %s' % (indent, time_str, message)
 
 
 def log_friendly_exception(logger, ex):
