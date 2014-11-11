@@ -1,3 +1,4 @@
+import time
 import os.path
 import logging
 import hashlib
@@ -39,6 +40,7 @@ class BakeCommand(ChefCommand):
             # a web server to handle serving default documents.
             ctx.app.config.set('site/pretty_urls', False)
 
+        start_time = time.clock()
         try:
             # Bake the site sources.
             self._bakeSources(ctx)
