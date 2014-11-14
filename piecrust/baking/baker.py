@@ -208,8 +208,9 @@ class PageBaker(object):
             except Exception as ex:
                 if self.app.debug:
                     logger.exception(ex)
-                raise BakingError("Error baking page '%s' for URL '%s'." %
-                        (page.ref_spec, uri)) from ex
+                page_rel_path = os.path.relpath(page.path, self.app.root_dir)
+                raise BakingError("%s: error baking '%s'." %
+                        (page_rel_path, uri)) from ex
 
             # Copy page assets.
             if (cur_sub == 1 and self.copy_assets and
@@ -264,10 +265,11 @@ class PageBaker(object):
 
 
 class Baker(object):
-    def __init__(self, app, out_dir=None, force=False, portable=False,
+    def __init__(self, app, out_dir, force=False, portable=False,
             no_assets=False, num_workers=4):
+        assert app and out_dir
         self.app = app
-        self.out_dir = out_dir or os.path.join(app.root_dir, '_counter')
+        self.out_dir = out_dir
         self.force = force
         self.portable = portable
         self.no_assets = no_assets

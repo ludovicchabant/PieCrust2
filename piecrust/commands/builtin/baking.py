@@ -40,14 +40,17 @@ class BakeCommand(ChefCommand):
             # a web server to handle serving default documents.
             ctx.app.config.set('site/pretty_urls', False)
 
+        out_dir = (ctx.args.output or
+                   os.path.join(ctx.app.root_dir, '_counter'))
+
         start_time = time.clock()
         try:
             # Bake the site sources.
-            self._bakeSources(ctx)
+            self._bakeSources(ctx, out_dir)
 
             # Bake the assets.
             if not ctx.args.no_assets:
-                self._bakeAssets(ctx)
+                self._bakeAssets(ctx, out_dir)
 
             # All done.
             logger.info('-------------------------');
@@ -60,25 +63,24 @@ class BakeCommand(ChefCommand):
                 logger.error(str(ex))
             return 1
 
-    def _bakeSources(self, ctx):
+    def _bakeSources(self, ctx, out_dir):
         num_workers = ctx.app.config.get('baker/workers') or 4
         baker = Baker(
-                ctx.app,
-                out_dir=ctx.args.output,
+                ctx.app, out_dir,
                 force=ctx.args.force,
                 portable=ctx.args.portable,
                 no_assets=ctx.args.no_assets,
                 num_workers=num_workers)
         baker.bake()
 
-    def _bakeAssets(self, ctx):
+    def _bakeAssets(self, ctx, out_dir):
         mounts = ctx.app.assets_dirs
         baker_params = ctx.app.config.get('baker') or {}
         skip_patterns = baker_params.get('skip_patterns')
         force_patterns = baker_params.get('force_patterns')
         num_workers = ctx.app.config.get('baker/workers') or 4
         proc = ProcessorPipeline(
-                ctx.app, mounts, ctx.args.output,
+                ctx.app, mounts, out_dir,
                 force=ctx.args.force,
                 skip_patterns=skip_patterns,
                 force_patterns=force_patterns,
