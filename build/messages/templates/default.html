@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-    <title>You&#039;re Missing A Few Things</title>
+    <title>{{ page.title }}</title>
     <meta name="generator" content="PieCrust" />
 	<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Lobster">
 	<style>
@@ -41,6 +41,9 @@
         #content {
             margin: 2em 1em;
         }
+        .error-details {
+            color: #d11;
+        }
 		.note {
 			margin: 3em;
 			color: #888;
@@ -52,20 +55,16 @@
     <div id="container">
         <div id="header">
             <p id="preamble">A Message From The Kitchen:</p>
-			<h1>You&#039;re Missing A Few Things</h1>
+			<h1>{{ page.title }}</h1>
 		</div>
         <hr />
         <div id="content">
-            			<p>It looks like you're not meeting some of the requirements for running <strong>PieCrust</strong>:</p>
-
-<ul>
-<li>PHP 5.3+</li>
-</ul>
-
-<p>For more information, be sure to check out the <a href="http://bolt80.com/piecrust/doc">documentation</a>.</p>
-
-            		</div>
+            {% block content %}
+			{{ content|safe }}
+            {% endblock %}
+		</div>
         <hr />
-        	</div>
+        {% block footer %}{% endblock %}
+	</div>
 </body>
 </html>

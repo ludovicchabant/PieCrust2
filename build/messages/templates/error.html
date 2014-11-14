@@ -1,7 +1,19 @@
 {% extends "default.html" %}
 
+{% block content %}
+{{content|safe}}
+
+{% raw %}
+{% if details %}
+<div class="error-details">
+    {{ details|safe }}
+</div>
+{% endif %}
+{% endraw %}
+{% endblock %}
+
 {% block footer %}
-{% pcformat textile %}
+{% pcformat 'textile' %}
 p(note). You're seeing this because something wrong happend. To see detailed errors with callstacks, run chef with the @--debug@ parameter, append @?!debug@ to the URL, or initialize the @PieCrust@ object with @{'debug'=>true}@. On the other hand, to see you custom error pages, set the @site/display_errors@ setting  to @false@.
 {% endpcformat %}
 {% endblock %}
