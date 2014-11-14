@@ -4,6 +4,7 @@ import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
 from piecrust.sources.base import PageSource
+from piecrust.templating.base import TemplatingError
 from piecrust.uriutil import get_slug
 
 
@@ -164,8 +165,14 @@ def _do_render_page_segments(page, page_data):
         seg_text = ''
         for seg_part in seg.parts:
             part_format = seg_part.fmt or format_name
-            part_text = engine.renderString(seg_part.content, page_data,
-                    filename=page.path, line_offset=seg_part.line)
+            try:
+                part_text = engine.renderString(
+                        seg_part.content, page_data,
+                        filename=page.path)
+            except TemplatingError as err:
+                err.lineno += seg_part.line
+                raise err
+
             part_text = format_text(app, part_format, part_text)
             seg_text += part_text
         formatted_content[seg_name] = seg_text
@@ -211,12 +218,19 @@ def get_template_engine(app, engine_name):
             return engine
     return None
 
-def format_text(app, format_name, txt):
+def format_text(app, format_name, txt, exact_format=False):
+    if exact_format and not format_name:
+        raise Exception("You need to specify a format name.")
+
+    format_count = 0
     format_name = format_name or app.config.get('site/default_format')
     for fmt in app.plugin_loader.getFormatters():
         if fmt.FORMAT_NAMES is None or format_name in fmt.FORMAT_NAMES:
             txt = fmt.render(format_name, txt)
+            format_count += 1
             if fmt.OUTPUT_FORMAT is not None:
                 format_name = fmt.OUTPUT_FORMAT
+    if exact_format and format_count == 0:
+        raise Exception("No such format: %s" % format_name)
     return txt
 

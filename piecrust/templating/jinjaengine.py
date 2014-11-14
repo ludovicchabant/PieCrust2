@@ -1,5 +1,6 @@
 import re
 import time
+import os.path
 import logging
 import threading
 import strict_rfc3339
@@ -15,7 +16,8 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from piecrust.data.paginator import Paginator
 from piecrust.rendering import format_text
 from piecrust.routing import CompositeRouteFunction
-from piecrust.templating.base import TemplateEngine, TemplateNotFoundError
+from piecrust.templating.base import (TemplateEngine, TemplateNotFoundError,
+                                      TemplatingError)
 from piecrust.uriutil import multi_replace, get_first_sub_uri
 
 
@@ -30,18 +32,20 @@ class JinjaTemplateEngine(TemplateEngine):
     def __init__(self):
         self.env = None
 
-    def renderString(self, txt, data, filename=None, line_offset=0):
+    def renderString(self, txt, data, filename=None):
         self._ensureLoaded()
-        tpl = self.env.from_string(txt)
+
+        try:
+            tpl = self.env.from_string(txt)
+        except TemplateSyntaxError as tse:
+            raise self._getTemplatingError(tse, filename=filename)
+        except TemplateNotFound:
+            raise TemplateNotFoundError()
+
         try:
             return tpl.render(data)
         except TemplateSyntaxError as tse:
-            tse.lineno += line_offset
-            if filename:
-                tse.filename = filename
-            import sys
-            _, __, traceback = sys.exc_info()
-            raise tse.with_traceback(traceback)
+            raise self._getTemplatingError(tse)
 
     def renderFile(self, paths, data):
         self._ensureLoaded()
@@ -51,11 +55,25 @@ class JinjaTemplateEngine(TemplateEngine):
             try:
                 tpl = self.env.get_template(p)
                 break
+            except TemplateSyntaxError as tse:
+                raise self._getTemplatingError(tse)
             except TemplateNotFound:
                 pass
+
         if tpl is None:
             raise TemplateNotFoundError()
-        return tpl.render(data)
+
+        try:
+            return tpl.render(data)
+        except TemplateSyntaxError as tse:
+            raise self._getTemplatingError(tse)
+
+    def _getTemplatingError(self, tse, filename=None):
+        filename = tse.filename or filename
+        if filename and os.path.isabs(filename):
+            filename = os.path.relpath(filename, self.env.app.root_dir)
+        err = TemplatingError(str(tse), filename, tse.lineno)
+        raise err from tse
 
     def _ensureLoaded(self):
         if self.env:
@@ -74,6 +92,9 @@ class JinjaTemplateEngine(TemplateEngine):
                 PieCrustHighlightExtension,
                 PieCrustCacheExtension,
                 PieCrustSpacelessExtension]
+        twig_compatibility_mode = self.app.config.get('jinja/twig_compatibility')
+        if twig_compatibility_mode is None or twig_compatibility_mode is True:
+            extensions.append(PieCrustFormatExtension)
         if autoescape:
             extensions.append('jinja2.ext.autoescape')
         self.env = PieCrustEnvironment(
@@ -210,6 +231,28 @@ def get_date(value, fmt):
     return time.strftime(fmt, time.localtime(value))
 
 
+class PieCrustFormatExtension(Extension):
+    tags = set(['pcformat'])
+
+    def __init__(self, environment):
+        super(PieCrustFormatExtension, self).__init__(environment)
+
+    def parse(self, parser):
+        lineno = next(parser.stream).lineno
+        args = [parser.parse_expression()]
+        body = parser.parse_statements(['name:endpcformat'], drop_needle=True)
+        return CallBlock(self.call_method('_format', args),
+                         [], [], body).set_lineno(lineno)
+
+    def _format(self, format_name, caller=None):
+        body = caller()
+        text = format_text(self.environment.app,
+                           format_name,
+                           Markup(body.rstrip()).unescape(),
+                           exact_format=True)
+        return text
+
+
 class PieCrustHighlightExtension(Extension):
     tags = set(['highlight', 'geshi'])
 
@@ -240,7 +283,7 @@ class PieCrustHighlightExtension(Extension):
                                        drop_needle=True)
 
         return CallBlock(self.call_method('_highlight', args, kwargs),
-                               [], [], body).set_lineno(lineno)
+                         [], [], body).set_lineno(lineno)
 
     def _highlight(self, lang, line_numbers=False, use_classes=False,
             css_class=None, css_id=None, caller=None):
