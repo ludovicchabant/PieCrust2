@@ -109,6 +109,7 @@ class ProcessingContext(object):
 class ProcessorPipeline(object):
     def __init__(self, app, mounts, out_dir, force=False,
             skip_patterns=None, force_patterns=None, num_workers=4):
+        assert app and out_dir
         self.app = app
         self.mounts = mounts
         tmp_dir = app.cache_dir
