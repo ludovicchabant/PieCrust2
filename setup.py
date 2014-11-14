@@ -182,7 +182,8 @@ setup(name="PieCrust",
             'python-dateutil==2.2',
             'repoze.lru==0.6',
             'smartypants==1.8.6',
-            'strict-rfc3339==0.4'
+            'strict-rfc3339==0.4',
+            'textile==2.2.1'
             ],
         tests_require=[
             'pytest==2.6.1',
