@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-    <title>Can&#039;t find the sugar!</title>
+    <title>Can't find the sugar!</title>
     <meta name="generator" content="PieCrust" />
 	<link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Lobster">
 	<style>
@@ -41,6 +41,9 @@
         #content {
             margin: 2em 1em;
         }
+        .error-details {
+            color: #d11;
+        }
 		.note {
 			margin: 3em;
 			color: #888;
@@ -52,14 +55,20 @@
     <div id="container">
         <div id="header">
             <p id="preamble">A Message From The Kitchen:</p>
-			<h1>Can&#039;t find the sugar!</h1>
+			<h1>Can't find the sugar!</h1>
 		</div>
         <hr />
         <div id="content">
-            			<p>It looks like the page you were trying to access does not exist around here. Try going somewhere else.</p>
+            <p>It looks like the page you were trying to access does not exist around here. Try going somewhere else.</p>
 
-            		</div>
+
+{% if details %}
+<div class="error-details">
+    {{ details|safe }}
+</div>
+{% endif %}
+		</div>
         <hr />
-        	</div>
+        	<p class="note">You&#8217;re seeing this because something wrong happend. To see detailed errors with callstacks, run chef with the <code>--debug</code> parameter, append <code>?!debug</code> to the <span class="caps">URL</span>, or initialize the <code>PieCrust</code> object with <code>{'debug'=&gt;true}</code>. On the other hand, to see you custom error pages, set the <code>site/display_errors</code> setting  to <code>false</code>.</p>	</div>
 </body>
 </html>
