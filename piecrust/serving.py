@@ -146,17 +146,31 @@ class Server(object):
         logger.debug("Searching for asset with path: %s" % request.path)
         rel_req_path = request.path.lstrip('/').replace('/', os.sep)
         entry = self._asset_record.previous.findEntry(rel_req_path)
+        do_synchronous_process = True
+        mounts = app.assets_dirs
         if entry is None:
-            return None
+            # We don't know any asset that could have created this path,
+            # but we'll see if there's a new asset that could fit.
+            pipeline = ProcessorPipeline(
+                    app, mounts, self._out_dir,
+                    skip_patterns=self._skip_patterns,
+                    force_patterns=self._force_patterns)
+            record = pipeline.run(new_only=True)
+            entry = record.current.findEntry(rel_req_path)
+            if entry is None:
+                return None
+
+            logger.debug("Found new asset: %s" % entry.path)
+            self._asset_record.addEntry(entry)
+            do_synchronous_process = False
 
         # Yep, we know about this URL because we processed an asset that
         # maps to it... make sure it's up to date by re-processing it
         # before serving.
-        mounts = app.assets_dirs
         asset_in_path = entry.path
         asset_out_path = os.path.join(self._out_dir, rel_req_path)
 
-        if self.synchronous_asset_pipeline:
+        if self.synchronous_asset_pipeline and do_synchronous_process:
             pipeline = ProcessorPipeline(
                     app, mounts, self._out_dir,
                     skip_patterns=self._skip_patterns,
