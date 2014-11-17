@@ -4,6 +4,7 @@ venv
 tags
 build/lib
 build/messages/_cache
+build/messages/_counter
 dist
 piecrust.egg-info
 piecrust/__version__.py
