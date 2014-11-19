@@ -303,7 +303,6 @@ class Baker(object):
         record = TransitionalBakeRecord()
         record_cache = self.app.cache.getCache('baker')
         record_name = (
-                'pages_' +
                 hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
                 '.record')
         if not self.force and record_cache.has(record_name):

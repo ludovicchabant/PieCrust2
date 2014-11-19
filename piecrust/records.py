@@ -79,21 +79,37 @@ class TransitionalRecord(object):
             self.previous = self._record_class()
             return
 
-        for e in self.previous.entries:
-            key = self.getTransitionKey(e)
-            self.transitions[key] = (e, None)
+        self._rebuildTransitions()
+
+    def setPrevious(self, previous_record):
+        self.previous = previous_record
+        self._rebuildTransitions()
 
     def clearPrevious(self):
-        self.previous = self._record_class()
+        self.setPrevious(self._record_class())
 
     def saveCurrent(self, current_path):
         self.current.save(current_path)
+
+    def detach(self):
+        res = self.current
+        self.current.entry_added -= self._onCurrentEntryAdded
+        self.current = None
+        self.previous = None
+        self.transitions = {}
+        return res
 
     def addEntry(self, entry):
         self.current.addEntry(entry)
 
     def getTransitionKey(self, entry):
         raise NotImplementedError()
+
+    def _rebuildTransitions(self):
+        self.transitions = {}
+        for e in self.previous.entries:
+            key = self.getTransitionKey(e)
+            self.transitions[key] = (e, None)
 
     def _onCurrentEntryAdded(self, entry):
         key = self.getTransitionKey(entry)

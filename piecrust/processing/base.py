@@ -137,7 +137,9 @@ class ProcessorPipeline(object):
             lambda p: p.PROCESSOR_NAME in authorized_names,
             self.processors))
 
-    def run(self, src_dir_or_file=None, new_only=False):
+    def run(self, src_dir_or_file=None, *,
+            new_only=False, delete=True,
+            previous_record=None, save_record=True):
         # Invoke pre-processors.
         for proc in self.processors:
             proc.onPipelineStart(self)
@@ -148,16 +150,19 @@ class ProcessorPipeline(object):
 
         # Create the pipeline record.
         record = TransitionalProcessorPipelineRecord()
-        record_cache = self.app.cache.getCache('baker')
+        record_cache = self.app.cache.getCache('proc')
         record_name = (
-                'assets_' +
                 hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
                 '.record')
-        if not self.force and record_cache.has(record_name):
+        if previous_record:
+            record.setPrevious(previous_record)
+        elif not self.force and record_cache.has(record_name):
             t = time.clock()
             record.loadPrevious(record_cache.getCachePath(record_name))
             logger.debug(format_timed(t, 'loaded previous bake record',
-                    colored=False))
+                         colored=False))
+        logger.debug("Got %d entries in process record." %
+                len(record.previous.entries))
 
         # Create the workers.
         pool = []
@@ -204,7 +209,7 @@ class ProcessorPipeline(object):
             raise Exception("Worker pool was aborted.")
 
         # Handle deletions.
-        if not new_only:
+        if delete and not new_only:
             for path, reason in record.getDeletions():
                 logger.debug("Removing '%s': %s" % (path, reason))
                 os.remove(path)
@@ -214,15 +219,18 @@ class ProcessorPipeline(object):
         for proc in self.processors:
             proc.onPipelineEnd(self)
 
-        # Save the process record.
-        t = time.clock()
+        # Finalize the process record.
         record.current.process_time = time.time()
         record.current.out_dir = self.out_dir
         record.collapseRecords()
-        record.saveCurrent(record_cache.getCachePath(record_name))
-        logger.debug(format_timed(t, 'saved bake record', colored=False))
 
-        return record
+        # Save the process record.
+        if save_record:
+            t = time.clock()
+            record.saveCurrent(record_cache.getCachePath(record_name))
+            logger.debug(format_timed(t, 'saved bake record', colored=False))
+
+        return record.detach()
 
     def processDirectory(self, ctx, start_dir, new_only=False):
         for dirpath, dirnames, filenames in os.walk(start_dir):

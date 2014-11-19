@@ -16,7 +16,6 @@ from piecrust.app import PieCrust
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause)
 from piecrust.environment import StandardEnvironment
-from piecrust.page import Page
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import PageRenderingContext, render_page
 from piecrust.sources.base import PageFactory, MODE_PARSING
@@ -125,15 +124,21 @@ class Server(object):
         if response is not None:
             return response(environ, start_response)
 
-        # Nope. Let's hope it's an actual page.
+        # Nope. Let's see if it's an actual page.
+        # We trap any exception that says "there's no such page" so we can
+        # try another thing before bailing out. But we let any exception
+        # that says "something's wrong" through.
+        exc = None
         try:
             response = self._try_serve_page(app, environ, request)
             return response(environ, start_response)
-        except HTTPException as ex:
-            raise
         except (RouteNotFoundError, SourceNotFoundError) as ex:
             logger.exception(ex)
-            raise NotFound()
+            exc = NotFound(str(ex))
+        except NotFound as ex:
+            exc = ex
+        except HTTPException:
+            raise
         except Exception as ex:
             if app.debug:
                 logger.exception(ex)
@@ -142,41 +147,71 @@ class Server(object):
             logger.error(msg)
             raise InternalServerError(msg)
 
-    def _try_serve_asset(self, app, environ, request):
-        logger.debug("Searching for asset with path: %s" % request.path)
-        rel_req_path = request.path.lstrip('/').replace('/', os.sep)
-        entry = self._asset_record.previous.findEntry(rel_req_path)
-        do_synchronous_process = True
-        mounts = app.assets_dirs
-        if entry is None:
-            # We don't know any asset that could have created this path,
-            # but we'll see if there's a new asset that could fit.
-            pipeline = ProcessorPipeline(
-                    app, mounts, self._out_dir,
-                    skip_patterns=self._skip_patterns,
-                    force_patterns=self._force_patterns)
-            record = pipeline.run(new_only=True)
-            entry = record.current.findEntry(rel_req_path)
-            if entry is None:
-                return None
+        # Nothing worked so far... let's see if there's a new asset.
+        response = self._try_serve_new_asset(app, environ, request)
+        if response is not None:
+            return response(environ, start_response)
 
-            logger.debug("Found new asset: %s" % entry.path)
-            self._asset_record.addEntry(entry)
-            do_synchronous_process = False
+        # Nope. Raise the exception we had in store.
+        raise exc
+
+    def _try_serve_asset(self, app, environ, request):
+        logger.debug("Searching %d entries for asset with path: %s" %
+                (len(self._asset_record.entries), request.path))
+        rel_req_path = request.path.lstrip('/').replace('/', os.sep)
+        entry = self._asset_record.findEntry(rel_req_path)
+        if entry is None:
+            # We don't know any asset that could have created this path.
+            # It could be a new asset that the user just created, but we'll
+            # check for that later.
+            return None
 
         # Yep, we know about this URL because we processed an asset that
         # maps to it... make sure it's up to date by re-processing it
         # before serving.
+        mounts = app.assets_dirs
         asset_in_path = entry.path
         asset_out_path = os.path.join(self._out_dir, rel_req_path)
 
-        if self.synchronous_asset_pipeline and do_synchronous_process:
+        if self.synchronous_asset_pipeline:
+            logger.debug("Making sure '%s' is up-to-date." % asset_in_path)
             pipeline = ProcessorPipeline(
                     app, mounts, self._out_dir,
                     skip_patterns=self._skip_patterns,
-                    force_patterns=self._force_patterns)
-            pipeline.run(asset_in_path)
+                    force_patterns=self._force_patterns,
+                    num_workers=1)
+            r = pipeline.run(asset_in_path, delete=False, save_record=False,
+                             previous_record=self._asset_record)
+            assert len(r.entries) == 1
+            self._asset_record.replaceEntry(r.entries[0])
 
+        logger.debug("Serving %s" % asset_out_path)
+        wrapper = wrap_file(environ, open(asset_out_path, 'rb'))
+        response = Response(wrapper)
+        _, ext = os.path.splitext(rel_req_path)
+        response.mimetype = self._mimetype_map.get(
+                ext.lstrip('.'), 'text/plain')
+        return response
+
+    def _try_serve_new_asset(self, app, environ, request):
+        logger.debug("Searching for a new asset with path: %s" % request.path)
+        mounts = app.assets_dirs
+        pipeline = ProcessorPipeline(
+                app, mounts, self._out_dir,
+                skip_patterns=self._skip_patterns,
+                force_patterns=self._force_patterns)
+        r = pipeline.run(new_only=True, delete=False, save_record=False,
+                         previous_record=self._asset_record)
+        for e in r.entries:
+            self._asset_record.addEntry(e)
+
+        rel_req_path = request.path.lstrip('/').replace('/', os.sep)
+        entry = self._asset_record.findEntry(rel_req_path)
+        if entry is None:
+            return None
+
+        asset_out_path = os.path.join(self._out_dir, rel_req_path)
+        logger.debug("Found new asset: %s" % entry.path)
         logger.debug("Serving %s" % asset_out_path)
         wrapper = wrap_file(environ, open(asset_out_path, 'rb'))
         response = Response(wrapper)

@@ -21,6 +21,15 @@ class ProcessorPipelineRecord(Record):
                     return entry
         return None
 
+    def replaceEntry(self, new_entry):
+        for e in self.entries:
+            if (e.base_dir == new_entry.base_dir and
+                    e.rel_input == new_entry.rel_input):
+                e.flags = new_entry.flags
+                e.rel_outputs = list(new_entry.rel_outputs)
+                e.errors = list(new_entry.errors)
+                break
+
 
 FLAG_NONE = 0
 FLAG_PROCESSED = 2**0
