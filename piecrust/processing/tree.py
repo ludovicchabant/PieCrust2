@@ -106,7 +106,9 @@ class ProcessingTreeBuilder(object):
                 if proc.PROCESSOR_NAME != 'copy':
                     walk_stack.append(out_node)
 
-        logger.debug(format_timed(start_time, "Built processing tree for: %s" % path))
+        logger.debug(format_timed(
+            start_time, "Built processing tree for: %s" % path,
+            colored=False))
         return tree_root
 
 
@@ -148,7 +150,8 @@ class ProcessingTreeRunner(object):
                 print_node(
                         node,
                         format_timed(
-                            start_time, "(bypassing structured processing)"))
+                            start_time, "(bypassing structured processing)",
+                            colored=False))
                 return True
             except Exception as e:
                 raise ProcessingTreeError("Error processing: %s" %
@@ -243,7 +246,7 @@ class ProcessingTreeRunner(object):
         state = "dirty" if node.state == STATE_DIRTY else "clean"
         logger.debug(format_timed(start_time,
                                   "Computed node dirtyness: %s" % state,
-                                  indent_level=node.level))
+                                  indent_level=node.level, colored=False))
 
     def _getNodeBaseDir(self, node):
         if node.level == 0:
