@@ -53,12 +53,13 @@ class ServeRecordPageEntry(object):
 
 class Server(object):
     def __init__(self, root_dir, host='localhost', port='8080',
-                 debug=False, static_preview=True,
+                 debug=False, use_reloader=False, static_preview=True,
                  synchronous_asset_pipeline=True):
         self.root_dir = root_dir
         self.host = host
         self.port = port
         self.debug = debug
+        sefl.use_reloader = use_reloader or debug
         self.static_preview = static_preview
         self.synchronous_asset_pipeline = synchronous_asset_pipeline
         self._out_dir = None
@@ -86,7 +87,7 @@ class Server(object):
         # Run the WSGI app.
         wsgi_wrapper = WsgiServer(self)
         run_simple(self.host, self.port, wsgi_wrapper,
-                   use_debugger=True, use_reloader=True)
+                   use_debugger=self.debug, use_reloader=self.debug)
 
     def _run_request(self, environ, start_response):
         try:

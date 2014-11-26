@@ -19,12 +19,16 @@ class ServeCommand(ChefCommand):
         parser.add_argument('-a', '--address',
                 help="The host for the web server",
                 default='localhost')
+        parser.add_argument('--use-reloader',
+                help="Restart the server when PieCrust code changes",
+                action='store_true')
 
     def run(self, ctx):
         server = Server(
                 ctx.app.root_dir,
                 host=ctx.args.address,
                 port=ctx.args.port,
-                debug=ctx.args.debug)
+                debug=ctx.args.debug,
+                use_reloader=ctx.args.use_reloader)
         server.run()
 
