@@ -59,7 +59,7 @@ class Server(object):
         self.host = host
         self.port = port
         self.debug = debug
-        sefl.use_reloader = use_reloader or debug
+        self.use_reloader = use_reloader or debug
         self.static_preview = static_preview
         self.synchronous_asset_pipeline = synchronous_asset_pipeline
         self._out_dir = None
