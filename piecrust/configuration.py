@@ -19,6 +19,18 @@ class Configuration(object):
         else:
             self._values = None
 
+    def __contains__(self, key):
+        return self.has(key)
+
+    def __getitem__(self, key):
+        value = self.get(key)
+        if value is None:
+            raise KeyError()
+        return value
+
+    def __setitem__(self, key, value):
+        return self.set(key, value)
+
     def setAll(self, values, validate=True):
         if validate:
             self._validateAll(values)
@@ -65,8 +77,17 @@ class Configuration(object):
 
     def merge(self, other):
         self._ensureLoaded()
-        merge_dicts(self._values, other._values,
-                validator=self._validateValue)
+
+        if isinstance(other, dict):
+            other_values = other
+        elif isinstance(other, Configuration):
+            other_values = other._values
+        else:
+            raise Exception(
+                    "Unsupported value type to merge: %s" % type(other))
+
+        merge_dicts(self._values, other_values,
+                    validator=self._validateValue)
 
     def _ensureLoaded(self):
         if self._values is None:
