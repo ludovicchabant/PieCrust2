@@ -74,6 +74,14 @@ blockquote {
         {% if page.title %}
         <h1 class="page-title">{{ page.title }}</h1>
         {% endif %}
+        {% if page.tags %}
+        <div class="tags">
+            <span>Posted in</span>
+        {% for t in page.tags %}
+        <span class="tag"><a href="{{ pctagurl(t) }}">{{t}}</a>{% if not loop.last %}, {% endif %}</span>
+        {% endfor %}
+        </div>
+        {% endif %}
 
         {{ content|raw }}
         {% endblock %}
