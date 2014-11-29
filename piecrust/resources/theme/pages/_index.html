@@ -18,7 +18,7 @@ format: none
 
 <--markdown-->
 
-{% if not pagination.has_posts or not site.hide_quickstart %}
+{% if not pagination.has_posts and not site.hide_quickstart %}
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ Run `chef prepare post my-new-post-slug`, where `my-new-post-slug` is the [URL s
 To override this default home page, you can do one of the following:
 
 * Just hide this "quick start" section by setting the `hide_quickstart` property
-  to `true` in your site configuration. To do this, edit `_content/config.yml`
+  to `true` in your site configuration. To do this, edit `config.yml`
   and `hide_quickstart: true` under the `site` section.
 
 * Manually rewrite this page by creating `_content/pages/_index.md` or running
