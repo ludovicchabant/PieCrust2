@@ -107,7 +107,8 @@ class Server(object):
             raise MethodNotAllowed()
 
         # Create the app for this request.
-        app = PieCrust(root_dir=self.root_dir, debug=self.debug)
+        rq_debug = ('!debug' in request.args)
+        app = PieCrust(root_dir=self.root_dir, debug=(self.debug or rq_debug))
         app.config.set('site/root', '/')
         app.config.set('site/pretty_urls', True)
         app.config.set('server/is_serving', True)
