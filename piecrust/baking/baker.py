@@ -84,8 +84,9 @@ class PageBaker(object):
 
     def bake(self, factory, route, record_entry,
             taxonomy_name=None, taxonomy_term=None):
-        pagination_filter = None
         custom_data = None
+        pagination_filter = None
+        route_metadata = dict(factory.metadata)
         if taxonomy_name and taxonomy_term:
             # Must bake a taxonomy listing page... we'll have to add a
             # pagination filter for only get matching posts, and the output
@@ -108,10 +109,11 @@ class PageBaker(object):
                         taxonomy_term))
                 slugified_term = taxonomy_term
             custom_data = {tax.term_name: taxonomy_term}
-            uri = route.getUri({tax.term_name: slugified_term})
-        else:
-            # Normal page bake.
-            uri = route.getUri(factory.metadata)
+            route_metadata.update({tax.term_name: slugified_term})
+
+        # Generate the URL using the route.
+        page = factory.buildPage()
+        uri = route.getUri(route_metadata, page)
 
         override = self.record.getOverrideEntry(factory, uri)
         if override is not None:
@@ -131,7 +133,6 @@ class PageBaker(object):
         has_more_subs = True
         force_this = self.force
         invalidate_formatting = False
-        page = factory.buildPage()
         record_entry.config = page.config.get().copy()
         prev_record_entry = self.record.getPreviousEntry(
                 factory.source.name, factory.rel_path,

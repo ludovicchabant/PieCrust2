@@ -10,6 +10,11 @@ template_func_re = re.compile(r'^(?P<name>\w+)\((?P<first_arg>\w+)(?P<other_args
 template_func_arg_re = re.compile(r',\s*(?P<arg>\w+)')
 
 
+class IRouteMetadataProvider(object):
+    def getRouteMetadata(self):
+        raise NotImplementedError()
+
+
 class Route(object):
     """ Information about a route for a PieCrust application.
         Each route defines the "shape" of an URL and how it maps to
@@ -48,7 +53,10 @@ class Route(object):
     def isMatch(self, source_metadata):
         return True
 
-    def getUri(self, source_metadata):
+    def getUri(self, source_metadata, provider=None):
+        if provider:
+            source_metadata = dict(source_metadata)
+            source_metadata.update(provider.getRouteMetadata())
         #TODO: fix this hard-coded shit
         for key in ['year', 'month', 'day']:
             if key in source_metadata and isinstance(source_metadata[key], str):

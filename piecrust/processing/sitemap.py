@@ -67,7 +67,7 @@ class SitemapProcessor(SimpleFileProcessor):
 
             for page in source.getPages():
                 route = self.app.getRoute(source.name, page.source_metadata)
-                uri = route.getUri(page.source_metadata)
+                uri = route.getUri(page.source_metadata, page)
 
                 t = page.datetime.timestamp()
                 sm_cfg = page.config.get('sitemap')
