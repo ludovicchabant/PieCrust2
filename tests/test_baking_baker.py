@@ -50,11 +50,12 @@ def test_get_output_path(uri, page_num, pretty, expected):
 def test_empty_bake():
     fs = mock_fs()
     with mock_fs_scope(fs):
-        assert not os.path.isdir(fs.path('kitchen/_counter'))
+        out_dir = fs.path('kitchen/_counter')
+        assert not os.path.isdir(out_dir)
         app = fs.getApp()
-        baker = Baker(app)
+        baker = Baker(app, out_dir)
         baker.bake()
-        assert os.path.isdir(fs.path('kitchen/_counter'))
+        assert os.path.isdir(out_dir)
         structure = fs.getStructure('kitchen/_counter')
         assert list(structure.keys()) == ['index.html']
 
@@ -64,8 +65,9 @@ def test_simple_bake():
             .withPage('posts/2010-01-01_post1.md', {'layout': 'none', 'format': 'none'}, 'post one')
             .withPage('pages/_index.md', {'layout': 'none', 'format': 'none'}, "something"))
     with mock_fs_scope(fs):
+        out_dir = fs.path('kitchen/_counter')
         app = fs.getApp()
-        baker = Baker(app)
+        baker = Baker(app, out_dir)
         baker.bake()
         structure = fs.getStructure('kitchen/_counter')
         assert structure == {
@@ -77,8 +79,9 @@ def test_removed():
             .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page')
             .withPage('pages/_index.md', {'layout': 'none', 'format': 'none'}, "something"))
     with mock_fs_scope(fs):
+        out_dir = fs.path('kitchen/_counter')
         app = fs.getApp()
-        baker = Baker(app)
+        baker = Baker(app, out_dir)
         baker.bake()
         structure = fs.getStructure('kitchen/_counter')
         assert structure == {
@@ -87,7 +90,7 @@ def test_removed():
 
         os.remove(fs.path('kitchen/pages/foo.md'))
         app = fs.getApp()
-        baker = Baker(app)
+        baker = Baker(app, out_dir)
         baker.bake()
         structure = fs.getStructure('kitchen/_counter')
         assert structure == {
@@ -97,20 +100,21 @@ def test_record_version_change():
     fs = (mock_fs()
             .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page'))
     with mock_fs_scope(fs):
+        out_dir = fs.path('kitchen/_counter')
         app = fs.getApp()
-        baker = Baker(app)
+        baker = Baker(app, out_dir)
         baker.bake()
         mtime = os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
 
         app = fs.getApp()
-        baker = Baker(app)
+        baker = Baker(app, out_dir)
         baker.bake()
         assert mtime == os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
 
         BakeRecord.RECORD_VERSION += 1
         try:
             app = fs.getApp()
-            baker = Baker(app)
+            baker = Baker(app, out_dir)
             baker.bake()
             assert mtime < os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
         finally:
