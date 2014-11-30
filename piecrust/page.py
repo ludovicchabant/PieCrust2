@@ -79,51 +79,41 @@ class Page(object):
     @property
     def datetime(self):
         if self._datetime is None:
-            if 'datetime' in self.source_metadata:
-                self._datetime = self.source_metadata['datetime']
-            elif 'date' in self.source_metadata:
-                page_date = self.source_metadata['date']
-                page_time = self.config.get('time')
-                if page_time is not None:
-                    if isinstance(page_time, str):
-                        # Need to parse it...
-                        try:
-                            parsed_t = dateutil.parser.parse(page_time)
-                        except Exception as ex:
-                            raise ConfigurationError(
-                                    "Invalid time '%s' in page: %s" %
-                                    (page_time, self.path)) from ex
-                        page_time = datetime.timedelta(
-                                hours=parsed_t.hour,
-                                minutes=parsed_t.minute,
-                                seconds=parsed_t.second)
-
-                    elif isinstance(page_time, int):
-                        # Total seconds... convert to a time struct.
-                        page_time = datetime.timedelta(seconds=page_time)
-
-                    elif not isinstance(page_time, datetime.timedelta):
-                        raise ConfigurationError(
-                                "Invalid time '%s' in page: %s" %
-                                (page_time, self.path))
-
-                    try:
+            try:
+                if 'datetime' in self.source_metadata:
+                    # Get the date/time from the source.
+                    self._datetime = self.source_metadata['datetime']
+                elif 'date' in self.source_metadata:
+                    # Get the date from the source. Potentially get the
+                    # time from the page config.
+                    page_date = self.source_metadata['date']
+                    page_time = _parse_config_time(self.config.get('time'))
+                    if page_time is not None:
                         self._datetime = datetime.datetime(
                                 page_date.year,
                                 page_date.month,
                                 page_date.day) + page_time
-                    except Exception as ex:
-                        raise ConfigurationError(
-                                "Invalid page time '%s' for: %s" % (
-                                    page_time, self.path)) from ex
-                else:
+                    else:
+                        self._datetime = datetime.datetime(
+                                page_date.year, page_date.month, page_date.day)
+                elif 'date' in self.config:
+                    # Get the date from the page config, and maybe the
+                    # time too.
+                    page_date = _parse_config_date(self.config.get('date'))
                     self._datetime = datetime.datetime(
-                            page_date.year, page_date.month, page_date.day)
-            else:
-                self._datetime = datetime.datetime.fromtimestamp(
-                        self.path_mtime)
-                if self._datetime is None:
-                    raise Exception("Got null datetime from path! %s" % self.path)
+                            page_date.year,
+                            page_date.month,
+                            page_date.day)
+                    page_time = _parse_config_time(self.config.get('time'))
+                    if page_time is not None:
+                        self._datetime += page_time
+                else:
+                    # No idea what the date/time for this page is.
+                    self._datetime = datetime.datetime.fromtimestamp(0)
+            except Exception as ex:
+                raise Exception(
+                        "Error computing time for page: %s" %
+                        self.path) from ex
         return self._datetime
 
     @datetime.setter
@@ -139,10 +129,54 @@ class Page(object):
 
         config, content, was_cache_valid = load_page(self.app, self.path,
                                                      self.path_mtime)
+        if 'config' in self.source_metadata:
+            config.merge(self.source_metadata['config'])
+
         self._config = config
         self._raw_content = content
         if was_cache_valid:
             self._flags |= FLAG_RAW_CACHE_VALID
+
+
+def _parse_config_date(page_date):
+    if page_date is None:
+        return None
+
+    if isinstance(page_date, str):
+        try:
+            parsed_d = dateutil.parser.parse(page_date)
+        except Exception as ex:
+            raise ConfigurationError("Invalid date: %s" % page_date) from ex
+        return datetime.date(
+                year=parsed_d.year,
+                month=parsed_d.month,
+                day=parsed_d.day)
+
+    raise ConfigurationError("Invalid date: %s" % page_date)
+
+
+def _parse_config_time(page_time):
+    if page_time is None:
+        return None
+
+    if isinstance(page_time, datetime.timedelta):
+        return page_time
+
+    if isinstance(page_time, str):
+        try:
+            parsed_t = dateutil.parser.parse(page_time)
+        except Exception as ex:
+            raise ConfigurationError("Invalid time: %s" % page_time) from ex
+        return datetime.timedelta(
+                hours=parsed_t.hour,
+                minutes=parsed_t.minute,
+                seconds=parsed_t.second)
+
+    if isinstance(page_time, int):
+        # Total seconds... convert to a time struct.
+        return datetime.timedelta(seconds=page_time)
+
+    raise ConfigurationError("Invalid time: %s" % page_time)
 
 
 class PageLoadingError(Exception):
