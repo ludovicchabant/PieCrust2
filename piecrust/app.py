@@ -112,10 +112,10 @@ class PieCrustConfiguration(Configuration):
                 'timezone': False,
                 'locale': False,
                 'date_format': DEFAULT_DATE_FORMAT,
-                'auto_formats': {
-                    'html': '',
-                    'md': 'markdown',
-                    'textile': 'textile'},
+                'auto_formats': collections.OrderedDict([
+                    ('html', ''),
+                    ('md', 'markdown'),
+                    ('textile', 'textile')]),
                 'default_auto_format': 'md',
                 'pagination_suffix': '/%num%',
                 'plugins_sources': [DEFAULT_PLUGIN_SOURCE],
