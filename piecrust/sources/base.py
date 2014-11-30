@@ -177,10 +177,12 @@ class PageRef(object):
         if self._first_valid_path_index >= 0:
             return
         if self._first_valid_path_index == -1:
-            raise PageNotFoundError("No valid paths were found for page reference:" %
+            raise PageNotFoundError(
+                    "No valid paths were found for page reference: %s" %
                     self._page_ref)
 
         self._load()
+        self._first_valid_path_index = -1
         for i, path_info in enumerate(self._paths):
             if os.path.isfile(path_info[2]):
                 self._first_valid_path_index = i
