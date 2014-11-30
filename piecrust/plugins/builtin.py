@@ -22,6 +22,7 @@ from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (FlatPostsSource, ShallowPostsSource,
         HierarchyPostsSource)
+from piecrust.sources.autoconfig import AutoConfigSource
 from piecrust.templating.jinjaengine import JinjaTemplateEngine
 
 
@@ -56,7 +57,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 DefaultPageSource,
                 FlatPostsSource,
                 ShallowPostsSource,
-                HierarchyPostsSource]
+                HierarchyPostsSource,
+                AutoConfigSource]
 
     def getDataProviders(self):
         return [
