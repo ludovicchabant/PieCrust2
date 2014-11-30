@@ -516,8 +516,13 @@ class Baker(object):
     def _handleDeletetions(self, record):
         for path, reason in record.getDeletions():
             logger.debug("Removing '%s': %s" % (path, reason))
-            os.remove(path)
-            logger.info('[delete] %s' % path)
+            try:
+                os.remove(path)
+                logger.info('[delete] %s' % path)
+            except OSError:
+                # Not a big deal if that file had already been removed
+                # by the user.
+                pass
 
     def _createWorkerPool(self, record, pool_size=4):
         pool = []
