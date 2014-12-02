@@ -98,7 +98,7 @@ class Baker(object):
 
         # All done.
         self.app.config.set('baker/is_baking', False)
-        logger.debug(format_timed(start_time, 'done baking'));
+        logger.debug(format_timed(start_time, 'done baking'))
 
     def _handleCacheValidity(self, record):
         start_time = time.clock()
