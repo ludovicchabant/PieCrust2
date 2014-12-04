@@ -4,7 +4,7 @@ import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
 from piecrust.sources.base import PageSource
-from piecrust.templating.base import TemplatingError
+from piecrust.templating.base import TemplateNotFoundError, TemplatingError
 from piecrust.uriutil import get_slug
 
 
@@ -205,7 +205,12 @@ def render_layout(layout_name, page, layout_data):
     engine = get_template_engine(page.app, engine_name)
     if engine is None:
         raise PageRenderingError("No such template engine: %s" % engine_name)
-    output = engine.renderFile(full_names, layout_data)
+    try:
+        output = engine.renderFile(full_names, layout_data)
+    except TemplateNotFoundError as ex:
+        msg = "Can't find template for page: %s\n" % page.path
+        msg += "Looked for: %s" % ', '.join(full_names)
+        raise Exception(msg) from ex
     return output
 
 
