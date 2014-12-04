@@ -261,13 +261,18 @@ class PieCrustConfiguration(Configuration):
                         'func': 'pccaturl(category)'})
 
             # If the user defined some additional sources/routes/taxonomies,
-            # append them to the default ones.
+            # add them to the default ones. For routes, the order matters,
+            # though, so we make sure to add the user routes at the front
+            # of the list so they're evaluated first.
             if orig_sources:
                 sourcesc.update(orig_sources)
+            sitec['sources'] = sourcesc
             if orig_routes:
-                routesc + orig_routes
+                routesc = orig_routes + routesc
+            sitec['routes'] = routesc
             if orig_taxonomies:
                 taxonomiesc.update(orig_taxonomies)
+            sitec['taxonomies'] = taxonomiesc
 
         # Validate sources/routes.
         sourcesc = sitec.get('sources')
@@ -307,6 +312,7 @@ class PieCrustConfiguration(Configuration):
                 raise ConfigurationError("All sources in 'site/sources' must be dictionaries.")
             sc.setdefault('type', 'default')
             sc.setdefault('fs_endpoint', sn)
+            sc.setdefault('ignore_missing_dir', False)
             sc.setdefault('data_endpoint', sn)
             sc.setdefault('data_type', 'iterator')
             sc.setdefault('item_name', sn)
