@@ -23,6 +23,7 @@ from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (FlatPostsSource, ShallowPostsSource,
         HierarchyPostsSource)
 from piecrust.sources.autoconfig import AutoConfigSource
+from piecrust.sources.prose import ProseSource
 from piecrust.templating.jinjaengine import JinjaTemplateEngine
 
 
@@ -58,7 +59,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 FlatPostsSource,
                 ShallowPostsSource,
                 HierarchyPostsSource,
-                AutoConfigSource]
+                AutoConfigSource,
+                ProseSource]
 
     def getDataProviders(self):
         return [
