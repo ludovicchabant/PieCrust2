@@ -2,7 +2,7 @@ import os
 import os.path
 import logging
 from piecrust.sources.base import (
-        PageSource, IPreparingSource, SimplePaginationSourceMixin,
+        SimplePageSource, IPreparingSource, SimplePaginationSourceMixin,
         PageNotFoundError, InvalidFileSystemEndpointError,
         PageFactory, MODE_CREATING, MODE_PARSING)
 
@@ -10,17 +10,12 @@ from piecrust.sources.base import (
 logger = logging.getLogger(__name__)
 
 
-class AutoConfigSource(PageSource,
+class AutoConfigSource(SimplePageSource,
                        SimplePaginationSourceMixin):
     SOURCE_NAME = 'autoconfig'
-    PATH_FORMAT = '%(values)s/%(slug)s.%(ext)s'
 
     def __init__(self, app, name, config):
         super(AutoConfigSource, self).__init__(app, name, config)
-        self.fs_endpoint = config.get('fs_endpoint', name)
-        self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
-        self.supported_extensions = list(app.config.get('site/auto_formats').keys())
-        self.default_auto_format = app.config.get('site/default_auto_format')
         self.setting_name = config.get('setting_name', name)
         self.collapse_single_values = config.get('collapse_single_values', False)
         self.only_single_values = config.get('only_single_values', False)
@@ -53,10 +48,6 @@ class AutoConfigSource(PageSource,
         if self.collapse_single_values and len(values) == 1:
             values = values[0]
         return {self.setting_name: values}
-
-    def resolveRef(self, ref_path):
-        return os.path.normpath(
-                os.path.join(self.fs_endpoint_path, ref_path))
 
     def findPagePath(self, metadata, mode):
         for dirpath, dirnames, filenames in os.walk(self.fs_endpoint_path):
