@@ -26,7 +26,7 @@ class Route(object):
         self.uri_root = app.config.get('site/root').rstrip('/') + '/'
         self.uri_pattern = uri.lstrip('/')
         self.uri_format = route_re.sub(self._uriFormatRepl, self.uri_pattern)
-        p = route_re.sub(self._uriPatternRepl, self.uri_pattern)
+        p = route_re.sub(self._uriPatternRepl, self.uri_pattern) + '$'
         self.uri_re = re.compile(p)
         self.source_name = cfg['source']
         self.taxonomy = cfg.get('taxonomy')
