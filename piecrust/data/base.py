@@ -62,8 +62,9 @@ class LazyPageConfigData(object):
                 try:
                     self._values[name] = loader(self, name)
                 except Exception as ex:
-                    raise Exception("Error while loading attribute '%s' for: %s"
-                            % (name, self._page.rel_path)) from ex
+                    raise Exception(
+                            "Error while loading attribute '%s' for: %s" %
+                            (name, self._page.rel_path)) from ex
 
                 # We need to double-check `_loaders` here because
                 # the loader could have removed all loaders, which
@@ -90,8 +91,8 @@ class LazyPageConfigData(object):
         if self._loaders is None:
             self._loaders = {}
         if attr_name in self._loaders:
-            raise Exception("A loader has already been mapped for: %s" %
-                    attr_name)
+            raise Exception(
+                    "A loader has already been mapped for: %s" % attr_name)
         self._loaders[attr_name] = loader
 
     def _load(self):
@@ -101,7 +102,9 @@ class LazyPageConfigData(object):
         try:
             self._loadCustom()
         except Exception as ex:
-            raise Exception("Error while loading data for: %s" % self._page.rel_path) from ex
+            raise Exception(
+                    "Error while loading data for: %s" %
+                    self._page.rel_path) from ex
 
     def _loadCustom(self):
         pass
@@ -129,7 +132,8 @@ class PaginationData(LazyPageConfigData):
         page_url = self._get_uri()
         self.setValue('url', page_url)
         self.setValue('slug', get_slug(self._page.app, page_url))
-        self.setValue('timestamp',
+        self.setValue(
+                'timestamp',
                 time.mktime(self.page.datetime.timetuple()))
         date_format = self.page.app.config.get('site/date_format')
         if date_format:
@@ -156,12 +160,13 @@ class PaginationData(LazyPageConfigData):
         if do_render:
             uri = self._get_uri()
             try:
-                from piecrust.rendering import (PageRenderingContext,
-                        render_page_segments)
+                from piecrust.rendering import (
+                        PageRenderingContext, render_page_segments)
                 ctx = PageRenderingContext(self._page, uri)
                 segs = render_page_segments(ctx)
             except Exception as e:
-                raise Exception("Error rendering segments for '%s'" % uri) from e
+                raise Exception(
+                        "Error rendering segments for '%s'" % uri) from e
         else:
             segs = {}
             for name in self.page.config.get('segments'):

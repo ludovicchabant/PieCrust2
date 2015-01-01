@@ -99,7 +99,8 @@ def render_page(ctx):
         if repo:
             cache_key = '%s:%s' % (ctx.uri, ctx.page_num)
             page_time = page.path_mtime
-            contents = repo.get(cache_key,
+            contents = repo.get(
+                    cache_key,
                     lambda: _do_render_page_segments(page, page_data),
                     fs_cache_time=page_time)
         else:

@@ -19,14 +19,14 @@ class BakeScheduler(object):
 
     def addJob(self, job):
         logger.debug("Queuing job '%s:%s'." % (
-            job.factory.source.name, job.factory.rel_path))
+                job.factory.source.name, job.factory.rel_path))
         with self._lock:
             self.jobs.append(job)
         self._added_event.set()
 
     def onJobFinished(self, job):
         logger.debug("Removing job '%s:%s'." % (
-            job.factory.source.name, job.factory.rel_path))
+                job.factory.source.name, job.factory.rel_path))
         with self._lock:
             self._active_jobs.remove(job)
         self._done_event.set()
@@ -75,13 +75,15 @@ class BakeScheduler(object):
                     self.jobs.append(job)
                     return self._WAIT
 
-            logger.debug("Job '%s:%s' is ready to go, moving to active "
-                    "queue." % (job.factory.source.name, job.factory.rel_path))
+            logger.debug(
+                    "Job '%s:%s' is ready to go, moving to active queue." %
+                    (job.factory.source.name, job.factory.rel_path))
             self._active_jobs.append(job)
             return job
 
     def _isJobReady(self, job):
-        e = self.record.getPreviousEntry(job.factory.source.name,
+        e = self.record.getPreviousEntry(
+                job.factory.source.name,
                 job.factory.rel_path)
         if not e:
             return (True, None)
@@ -91,7 +93,7 @@ class BakeScheduler(object):
             if any(filter(lambda j: j.factory.source.name == sn, self.jobs)):
                 return (False, sn)
             if any(filter(lambda j: j.factory.source.name == sn,
-                    self._active_jobs)):
+                          self._active_jobs)):
                 return (False, sn)
         return (True, None)
 

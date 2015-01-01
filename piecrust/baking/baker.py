@@ -4,12 +4,13 @@ import shutil
 import hashlib
 import logging
 import threading
-from piecrust.baking.records import (TransitionalBakeRecord,
-        BakeRecordPageEntry)
+from piecrust.baking.records import (
+        TransitionalBakeRecord, BakeRecordPageEntry)
 from piecrust.baking.scheduler import BakeScheduler
 from piecrust.baking.single import (BakingError, PageBaker)
 from piecrust.chefutil import format_timed, log_friendly_exception
-from piecrust.sources.base import (PageFactory,
+from piecrust.sources.base import (
+        PageFactory,
         REALM_NAMES, REALM_USER, REALM_THEME)
 
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class Baker(object):
     def __init__(self, app, out_dir, force=False, portable=False,
-            no_assets=False, num_workers=4):
+                 no_assets=False, num_workers=4):
         assert app and out_dir
         self.app = app
         self.out_dir = out_dir
@@ -60,8 +61,9 @@ class Baker(object):
         if not self.force and record_cache.has(record_name):
             t = time.clock()
             record.loadPrevious(record_cache.getCachePath(record_name))
-            logger.debug(format_timed(t, 'loaded previous bake record',
-                colored=False));
+            logger.debug(format_timed(
+                    t, 'loaded previous bake record',
+                    colored=False))
 
         # Figure out if we need to clean the cache because important things
         # have changed.
@@ -138,12 +140,14 @@ class Baker(object):
             self.force = True
             record.incremental_count = 0
             record.clearPrevious()
-            logger.info(format_timed(start_time,
-                "cleaned cache (reason: %s)" % reason))
+            logger.info(format_timed(
+                    start_time,
+                    "cleaned cache (reason: %s)" % reason))
         else:
             record.incremental_count += 1
-            logger.debug(format_timed(start_time, "cache is assumed valid",
-                colored=False))
+            logger.debug(format_timed(
+                    start_time, "cache is assumed valid",
+                    colored=False))
 
     def _bakeRealm(self, record, realm, srclist):
         # Gather all page factories from the sources and queue them
@@ -155,7 +159,8 @@ class Baker(object):
             factories = source.getPageFactories()
             for fac in factories:
                 if fac.path in self.taxonomy_pages:
-                    logger.debug("Skipping taxonomy page: %s:%s" %
+                    logger.debug(
+                            "Skipping taxonomy page: %s:%s" %
                             (source.name, fac.ref_spec))
                     continue
 
@@ -164,8 +169,8 @@ class Baker(object):
 
                 route = self.app.getRoute(source.name, fac.metadata)
                 if route is None:
-                    entry.errors.append("Can't get route for page: %s" %
-                            fac.ref_spec)
+                    entry.errors.append(
+                            "Can't get route for page: %s" % fac.ref_spec)
                     logger.error(entry.errors[-1])
                     continue
 
@@ -238,25 +243,30 @@ class Baker(object):
                 if len(terms) == 0:
                     continue
 
-                logger.debug("Baking '%s' for source '%s': %s" %
+                logger.debug(
+                        "Baking '%s' for source '%s': %s" %
                         (tax_name, source_name, terms))
                 tax = self.app.getTaxonomy(tax_name)
                 route = self.app.getTaxonomyRoute(tax_name, source_name)
                 tax_page_ref = tax.getPageRef(source_name)
                 if not tax_page_ref.exists:
-                    logger.debug("No taxonomy page found at '%s', skipping." %
+                    logger.debug(
+                            "No taxonomy page found at '%s', skipping." %
                             tax.page_ref)
                     continue
 
                 tax_page_source = tax_page_ref.source
                 tax_page_rel_path = tax_page_ref.rel_path
-                logger.debug("Using taxonomy page: %s:%s" %
+                logger.debug(
+                        "Using taxonomy page: %s:%s" %
                         (tax_page_source.name, tax_page_rel_path))
 
                 for term in terms:
-                    fac = PageFactory(tax_page_source, tax_page_rel_path,
+                    fac = PageFactory(
+                            tax_page_source, tax_page_rel_path,
                             {tax.term_name: term})
-                    logger.debug("Queuing: %s [%s, %s]" %
+                    logger.debug(
+                            "Queuing: %s [%s, %s]" %
                             (fac.ref_spec, tax_name, term))
                     entry = BakeRecordPageEntry(fac, tax_name, term)
                     record.addEntry(entry)
@@ -281,7 +291,8 @@ class Baker(object):
         queue = BakeScheduler(record)
         abort = threading.Event()
         for i in range(pool_size):
-            ctx = BakeWorkerContext(self.app, self.out_dir, self.force,
+            ctx = BakeWorkerContext(
+                    self.app, self.out_dir, self.force,
                     record, queue, abort)
             worker = BakeWorker(i, ctx)
             pool.append(worker)
@@ -307,7 +318,7 @@ class Baker(object):
 
 class BakeWorkerContext(object):
     def __init__(self, app, out_dir, force, record, work_queue,
-            abort_event):
+                 abort_event):
         self.app = app
         self.out_dir = out_dir
         self.force = force
@@ -318,7 +329,7 @@ class BakeWorkerContext(object):
 
 class BakeWorkerJob(object):
     def __init__(self, factory, route, record_entry,
-            taxonomy_name=None, taxonomy_term=None):
+                 taxonomy_name=None, taxonomy_term=None):
         self.factory = factory
         self.route = route
         self.record_entry = record_entry
@@ -336,7 +347,8 @@ class BakeWorker(threading.Thread):
         self.wid = wid
         self.ctx = ctx
         self.abort_exception = None
-        self._page_baker = PageBaker(ctx.app, ctx.out_dir, ctx.force,
+        self._page_baker = PageBaker(
+                ctx.app, ctx.out_dir, ctx.force,
                 ctx.record)
 
     def run(self):
@@ -344,10 +356,10 @@ class BakeWorker(threading.Thread):
             try:
                 job = self.ctx.work_queue.getNextJob(wait_timeout=1)
                 if job is None:
-                    logger.debug("[%d] No more work... shutting down." %
+                    logger.debug(
+                            "[%d] No more work... shutting down." %
                             self.wid)
                     break
-
                 self._unsafeRun(job)
                 logger.debug("[%d] Done with page." % self.wid)
                 self.ctx.work_queue.onJobFinished(job)
@@ -364,7 +376,8 @@ class BakeWorker(threading.Thread):
 
         entry = job.record_entry
         try:
-            self._page_baker.bake(job.factory, job.route, entry,
+            self._page_baker.bake(
+                    job.factory, job.route, entry,
                     taxonomy_name=job.taxonomy_name,
                     taxonomy_term=job.taxonomy_term)
         except BakingError as ex:
@@ -379,7 +392,8 @@ class BakeWorker(threading.Thread):
             friendly_count = ''
             if entry.num_subs > 1:
                 friendly_count = ' (%d pages)' % entry.num_subs
-            logger.info(format_timed(start_time, '[%d] %s%s' %
+            logger.info(format_timed(
+                    start_time, '[%d] %s%s' %
                     (self.wid, friendly_uri, friendly_count)))
         elif entry.errors:
             for e in entry.errors:
