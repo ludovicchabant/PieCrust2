@@ -301,8 +301,18 @@ class Baker(object):
     def _waitOnWorkerPool(self, pool, abort):
         for w in pool:
             w.start()
-        for w in pool:
-            w.join()
+
+        try:
+            for w in pool:
+                w.join()
+        except KeyboardInterrupt:
+            logger.warning("Bake aborted by user... "
+                           "waiting for workers to stop.")
+            abort.set()
+            for w in pool:
+                w.join()
+            raise
+
         if abort.is_set():
             excs = [w.abort_exception for w in pool
                     if w.abort_exception is not None]
