@@ -70,7 +70,8 @@ class TransitionalRecord(object):
             previous_record_valid = False
 
         if self.previous.record_version != self._record_class.RECORD_VERSION:
-            logger.debug("Previous record has old version %d." %
+            logger.debug(
+                    "Previous record has old version %s." %
                     self.previous.record_version)
             logger.debug("Will reset to an empty one.")
             previous_record_valid = False
