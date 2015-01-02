@@ -112,12 +112,11 @@ class FindCommand(ChefCommand):
     def setupParser(self, parser, app):
         parser.add_argument(
                 'pattern',
-                help="The pattern to match with page slugs",
+                help="The pattern to match with page filenames",
                 nargs='?')
         parser.add_argument(
-                '--endpoint',
-                help="The endpoint(s) to look into",
-                nargs='+')
+                '-n', '--name',
+                help="Limit the search to sources matching this name")
         parser.add_argument(
                 '--full-path',
                 help="Return full paths instead of root-relative paths",
@@ -126,14 +125,28 @@ class FindCommand(ChefCommand):
                 '--metadata',
                 help="Return metadata about the page instead of just the path",
                 action='store_true')
+        parser.add_argument(
+                '--include-theme',
+                help="Include theme pages to the search",
+                action='store_true')
+        parser.add_argument(
+                '--exact',
+                help=("Match the exact given pattern, instead of any page "
+                      "containing the pattern"),
+                action='store_true')
 
     def run(self, ctx):
         pattern = ctx.args.pattern
         sources = list(ctx.app.sources)
-        if ctx.args.endpoint:
-            endpoints = ctx.args.endpoint
-            sources = [s for s in sources if s.endpoint in endpoints]
+        if not ctx.args.exact:
+            pattern = '*%s*' % pattern
+
         for src in sources:
+            if not ctx.args.include_theme and src.is_theme_source:
+                continue
+            if ctx.args.name and not fnmatch.fnmatch(src.name, ctx.args.name):
+                continue
+
             page_facs = src.getPageFactories()
             for pf in page_facs:
                 name = os.path.relpath(pf.path, ctx.app.root_dir)
