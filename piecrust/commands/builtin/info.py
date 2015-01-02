@@ -79,8 +79,10 @@ class ShowPathsCommand(ChefCommand):
         paths = ['theme_dir', 'templates_dirs', 'plugins_dirs', 'cache_dir']
         for p in paths:
             value = getattr(app, p)
-            if value is list:
-                logging.info("%s: %s" % (p, ', '.join(value)))
+            if isinstance(value, list):
+                logging.info("%s:" % p)
+                for v in value:
+                    logging.info("  - %s" % v)
             else:
                 logging.info("%s: %s" % (p, value))
 
