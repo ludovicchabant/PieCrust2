@@ -46,7 +46,8 @@ class PrepareCommand(ExtendableChefCommand):
                 continue
             p = subparsers.add_parser(
                     src.item_name,
-                    help="Creates an empty page in the '%s' source." % src.name)
+                    help=("Creates an empty page in the '%s' source." %
+                          src.name))
             src.setupPrepareParser(p, app)
             p.add_argument('-t', '--template', default='default',
                            help="The template to use, which will change the "
@@ -54,6 +55,10 @@ class PrepareCommand(ExtendableChefCommand):
             p.set_defaults(source=src)
 
     def run(self, ctx):
+        if not hasattr(ctx.args, 'source'):
+            raise Exception("No source specified. "
+                            "Please run `chef prepare -h` for usage.")
+
         app = ctx.app
         source = ctx.args.source
         metadata = source.buildMetadata(ctx.args)
@@ -61,7 +66,8 @@ class PrepareCommand(ExtendableChefCommand):
         path = source.resolveRef(rel_path)
         name, ext = os.path.splitext(path)
         if ext == '.*':
-            path = '%s.%s' % (name,
+            path = '%s.%s' % (
+                    name,
                     app.config.get('site/default_auto_format'))
         if os.path.exists(path):
             raise Exception("'%s' already exists." % path)
@@ -78,7 +84,7 @@ class PrepareCommand(ExtendableChefCommand):
 
         tpl_text = ext.getTemplate(ctx.app, tpl_name)
         title = (metadata.get('slug') or metadata.get('path') or
-                'Untitled page')
+                 'Untitled page')
         title = make_title(title)
         tokens = {
                 '%title%': title,
@@ -126,7 +132,7 @@ class DefaultPrepareTemplatesHelpTopic(ChefCommandExtension):
 
     def getHelpTopics(self):
         return [('scaffolding',
-            "Available templates for the 'prepare' command.")]
+                 "Available templates for the 'prepare' command.")]
 
     def getHelpTopic(self, topic, app):
         with io.StringIO() as tplh:
@@ -139,9 +145,10 @@ class DefaultPrepareTemplatesHelpTopic(ChefCommandExtension):
             help_list = tplh.getvalue()
 
         help_txt = (
-                textwrap.fill("Running the 'prepare' command will let "
-                "PieCrust setup a page for you in the correct place, with "
-                "some hopefully useful default text.") +
+                textwrap.fill(
+                    "Running the 'prepare' command will let "
+                    "PieCrust setup a page for you in the correct place, with "
+                    "some hopefully useful default text.") +
                 "\n\n" +
                 textwrap.fill("The following templates are available:") +
                 "\n\n" +
