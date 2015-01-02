@@ -25,10 +25,12 @@ class ShowConfigCommand(ChefCommand):
     def __init__(self):
         super(ShowConfigCommand, self).__init__()
         self.name = 'showconfig'
-        self.description = "Prints part of, or the entirety of, the website's configuration."
+        self.description = ("Prints part of, or the entirety of, "
+                            "the website's configuration.")
 
     def setupParser(self, parser, app):
-        parser.add_argument('path',
+        parser.add_argument(
+                'path',
                 help="The path to a config section or value",
                 nargs='?')
 
@@ -90,16 +92,20 @@ class FindCommand(ChefCommand):
         self.description = "Find pages in the website."
 
     def setupParser(self, parser, app):
-        parser.add_argument('pattern',
+        parser.add_argument(
+                'pattern',
                 help="The pattern to match with page slugs",
                 nargs='?')
-        parser.add_argument('--endpoint',
+        parser.add_argument(
+                '--endpoint',
                 help="The endpoint(s) to look into",
                 nargs='+')
-        parser.add_argument('--full-path',
+        parser.add_argument(
+                '--full-path',
                 help="Return full paths instead of root-relative paths",
                 action='store_true')
-        parser.add_argument('--metadata',
+        parser.add_argument(
+                '--metadata',
                 help="Return metadata about the page instead of just the path",
                 action='store_true')
 
