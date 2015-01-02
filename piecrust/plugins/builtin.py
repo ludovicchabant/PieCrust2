@@ -1,13 +1,16 @@
 from piecrust.commands.base import HelpCommand
-from piecrust.commands.builtin.baking import (BakeCommand, ShowRecordCommand)
-from piecrust.commands.builtin.info import (RootCommand, ShowConfigCommand,
-        FindCommand, ShowRoutesCommand, ShowPathsCommand)
-from piecrust.commands.builtin.scaffolding import (PrepareCommand,
+from piecrust.commands.builtin.baking import (
+        BakeCommand, ShowRecordCommand)
+from piecrust.commands.builtin.info import (
+        RootCommand, ShowConfigCommand,
+        FindCommand, ShowSourcesCommand, ShowRoutesCommand, ShowPathsCommand)
+from piecrust.commands.builtin.scaffolding import (
+        PrepareCommand,
         DefaultPrepareTemplatesCommandExtension,
         DefaultPrepareTemplatesHelpTopic)
 from piecrust.commands.builtin.serving import (ServeCommand)
-from piecrust.commands.builtin.util import (InitCommand, PurgeCommand,
-        ImportCommand)
+from piecrust.commands.builtin.util import (
+        InitCommand, PurgeCommand, ImportCommand)
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
 from piecrust.formatting.markdownformatter import MarkdownFormatter
 from piecrust.formatting.textileformatter import TextileFormatter
@@ -20,8 +23,8 @@ from piecrust.processing.less import LessProcessor
 from piecrust.processing.requirejs import RequireJSProcessor
 from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.sources.base import DefaultPageSource
-from piecrust.sources.posts import (FlatPostsSource, ShallowPostsSource,
-        HierarchyPostsSource)
+from piecrust.sources.posts import (
+        FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
 from piecrust.sources.autoconfig import AutoConfigSource
 from piecrust.sources.prose import ProseSource
 from piecrust.templating.jinjaengine import JinjaTemplateEngine
@@ -42,6 +45,7 @@ class BuiltInPlugin(PieCrustPlugin):
                 ShowConfigCommand(),
                 FindCommand(),
                 PrepareCommand(),
+                ShowSourcesCommand(),
                 ShowRoutesCommand(),
                 ShowPathsCommand(),
                 BakeCommand(),

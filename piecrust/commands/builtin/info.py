@@ -49,6 +49,22 @@ class ShowConfigCommand(ChefCommand):
             ctx.result = 1
 
 
+class ShowSourcesCommand(ChefCommand):
+    def __init__(self):
+        super(ShowSourcesCommand, self).__init__()
+        self.name = 'sources'
+        self.description = "Shows the sources defined for this website."
+
+    def setupParser(self, parser, app):
+        pass
+
+    def run(self, ctx):
+        for src in ctx.app.sources:
+            logger.info("%s:" % src.name)
+            logger.info("    type: %s" % src.config.get('type'))
+            logger.info("    class: %s" % type(src))
+
+
 class ShowRoutesCommand(ChefCommand):
     def __init__(self):
         super(ShowRoutesCommand, self).__init__()
