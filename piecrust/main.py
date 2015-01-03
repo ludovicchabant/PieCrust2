@@ -52,6 +52,16 @@ class NullPieCrust:
 
 
 def main():
+    if sys.platform == 'darwin':
+        # There's a bug on MacOSX that can cause Python to be confused
+        # about the locale. Let's try to fix that.
+        # See: http://bugs.python.org/issue18378
+        import locale
+        try:
+            locale.getdefaultlocale()
+        except ValueError:
+            locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
     argv = sys.argv
     pre_args = _pre_parse_chef_args(argv)
     try:
