@@ -16,22 +16,13 @@ class ProseSource(SimplePageSource,
         super(ProseSource, self).__init__(app, name, config)
         self.config_recipe = config.get('config', {})
 
-    def buildPageFactories(self):
-        factories = super(ProseSource, self).buildPageFactories()
-        for f in factories:
-            f.metadata['config'] = self._makeConfig(f.path)
-            logger.debug(f.__dict__)
-            yield f
+    def _populateMetadata(self, rel_path, metadata):
+        metadata['config'] = self._makeConfig(rel_path)
 
-    def findPagePath(self, metadata, mode):
-        rel_path, metadata = super(ProseSource, self).findPagePath(metadata, mode)
-        if rel_path:
-            metadata['config'] = self._makeConfig(self.resolveRef(rel_path))
-        return rel_path, metadata
-
-    def _makeConfig(self, path):
+    def _makeConfig(self, rel_path):
         c = dict(self.config_recipe)
         if c.get('title') == '%first_line%':
+            path = os.path.join(self.fs_endpoint_path, rel_path)
             c['title'] = get_first_line(path)
         return c
 

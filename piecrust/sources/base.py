@@ -317,19 +317,13 @@ class SimplePageSource(PageSource):
             rel_dirpath = os.path.relpath(dirpath, self.fs_endpoint_path)
             dirnames[:] = list(filter(self._filterPageDirname, dirnames))
             for f in filter(self._filterPageFilename, filenames):
-                slug, ext = os.path.splitext(os.path.join(rel_dirpath, f))
-                slug = slug.replace('\\', '/')
-                if ext.lstrip('.') not in self.supported_extensions:
-                    slug += ext
-                if slug.startswith('./') or slug.startswith('.\\'):
-                    slug = slug[2:]
-                if slug == '_index':
-                    slug = ''
-                metadata = {'path': slug}
                 fac_path = f
                 if rel_dirpath != '.':
                     fac_path = os.path.join(rel_dirpath, f)
+                slug = self._makeSlug(fac_path)
+                metadata = {'path': slug}
                 fac_path = fac_path.replace('\\', '/')
+                self._populateMetadata(fac_path, metadata)
                 yield PageFactory(self, fac_path, metadata)
 
     def resolveRef(self, ref_path):
@@ -337,8 +331,8 @@ class SimplePageSource(PageSource):
                 os.path.join(self.fs_endpoint_path, ref_path))
 
     def findPagePath(self, metadata, mode):
-        uri_path = metadata['path']
-        if uri_path == '':
+        uri_path = metadata.setdefault('path', '')
+        if not uri_path:
             uri_path = '_index'
         path = os.path.normpath(os.path.join(self.fs_endpoint_path, uri_path))
         _, ext = os.path.splitext(path)
@@ -348,10 +342,12 @@ class SimplePageSource(PageSource):
                 path = '%s.%s' % (path, self.default_auto_format)
             rel_path = os.path.relpath(path, self.fs_endpoint_path)
             rel_path = rel_path.replace('\\', '/')
+            self._populateMetadata(rel_path, metadata)
             return rel_path, metadata
 
         if ext == '':
-            paths_to_check = ['%s.%s' % (path, e)
+            paths_to_check = [
+                    '%s.%s' % (path, e)
                     for e in self.supported_extensions]
         else:
             paths_to_check = [path]
@@ -359,19 +355,32 @@ class SimplePageSource(PageSource):
             if os.path.isfile(path):
                 rel_path = os.path.relpath(path, self.fs_endpoint_path)
                 rel_path = rel_path.replace('\\', '/')
+                self._populateMetadata(rel_path, metadata)
                 return rel_path, metadata
 
         return None, None
+
+    def _makeSlug(self, rel_path):
+        slug, ext = os.path.splitext(rel_path)
+        slug = slug.replace('\\', '/')
+        if ext.lstrip('.') not in self.supported_extensions:
+            slug += ext
+        if slug.startswith('./') or slug.startswith('.\\'):
+            slug = slug[2:]
+        if slug == '_index':
+            slug = ''
+        return slug
 
     def _filterPageDirname(self, d):
         return not d.endswith('-assets')
 
     def _filterPageFilename(self, f):
-        name, ext = os.path.splitext(f)
         return (f[0] != '.' and   # .DS_store and other crap
                 f[-1] != '~' and  # Vim temp files and what-not
-                f not in ['Thumbs.db']) # Windows bullshit
+                f not in ['Thumbs.db'])  # Windows bullshit
 
+    def _populateMetadata(self, rel_path, metadata):
+        pass
 
 class DefaultPageSource(SimplePageSource, IPreparingSource,
         SimplePaginationSourceMixin):
