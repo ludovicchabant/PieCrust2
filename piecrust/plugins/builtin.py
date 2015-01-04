@@ -28,6 +28,7 @@ from piecrust.sources.posts import (
 from piecrust.sources.autoconfig import AutoConfigSource
 from piecrust.sources.prose import ProseSource
 from piecrust.templating.jinjaengine import JinjaTemplateEngine
+from piecrust.templating.pystacheengine import PystacheTemplateEngine
 
 
 class BuiltInPlugin(PieCrustPlugin):
@@ -73,7 +74,8 @@ class BuiltInPlugin(PieCrustPlugin):
 
     def getTemplateEngines(self):
         return [
-                JinjaTemplateEngine()]
+                JinjaTemplateEngine(),
+                PystacheTemplateEngine()]
 
     def getFormatters(self):
         return [
