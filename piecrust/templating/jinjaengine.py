@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class JinjaTemplateEngine(TemplateEngine):
     # Name `twig` is for backwards compatibility with PieCrust 1.x.
     ENGINE_NAMES = ['jinja', 'jinja2', 'twig']
-    EXTENSIONS = ['jinja', 'jinja2', 'twig']
+    EXTENSIONS = ['jinja', 'jinja2', 'twig', 'html']
 
     def __init__(self):
         self.env = None

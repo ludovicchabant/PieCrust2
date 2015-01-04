@@ -199,7 +199,6 @@ def render_layout(layout_name, page, layout_data):
     full_names = []
     for name in names:
         if '.' not in name:
-            full_names.append(name + '.html')
             for ext in default_exts:
                 full_names.append(name + ext)
         else:
