@@ -418,9 +418,8 @@ def find_routes(routes, uri):
     uri = uri.lstrip('/')
     res = []
     for route in routes:
-        m = route.matchUri(uri)
-        if m:
-            metadata = m.groupdict()
+        metadata = route.matchUri(uri)
+        if metadata:
             res.append((route, metadata))
     return res
 

@@ -76,11 +76,11 @@ class Route(object):
     def matchUri(self, uri):
         m = self.uri_re.match(uri)
         if m:
-            return m
+            return m.groupdict()
         if self.uri_re_no_path:
             m = self.uri_re_no_path.match(uri)
             if m:
-                return m
+                return m.groupdict()
         return None
 
     def getUri(self, source_metadata, provider=None):
