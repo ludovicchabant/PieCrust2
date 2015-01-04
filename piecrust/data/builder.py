@@ -5,7 +5,7 @@ from piecrust import APP_VERSION
 from piecrust.configuration import merge_dicts
 from piecrust.data.assetor import Assetor
 from piecrust.data.debug import build_debug_info
-from piecrust.data.linker import Linker
+from piecrust.data.linker import Linker, RecursiveLinker
 from piecrust.data.paginator import Paginator
 from piecrust.uriutil import get_slug, get_first_sub_uri
 
@@ -36,14 +36,15 @@ def build_page_data(ctx):
     paginator = Paginator(page, pgn_source, first_uri, ctx.page_num,
             ctx.pagination_filter)
     assetor = Assetor(page, first_uri)
-    linker = Linker(page)
+    flat_linker = Linker(page.source, page_path=page.rel_path)
+    recursive_linker = RecursiveLinker(page.source, page_path=page.rel_path)
     data = {
             'piecrust': pc_data,
             'page': dict(page.config.get()),
             'assets': assetor,
             'pagination': paginator,
-            'siblings': linker,
-            'family': linker
+            'siblings': flat_linker,
+            'family': recursive_linker
             }
     page_data = data['page']
     page_data['url'] = ctx.uri
