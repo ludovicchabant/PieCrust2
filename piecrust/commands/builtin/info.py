@@ -79,6 +79,7 @@ class ShowRoutesCommand(ChefCommand):
             logger.info("%s:" % route.uri_pattern)
             logger.info("    source: %s" % route.source_name)
             logger.info("    taxonomy: %s" % (route.taxonomy or ''))
+            logger.info("    regex: %s" % route.uri_re.pattern)
 
 
 class ShowPathsCommand(ChefCommand):
