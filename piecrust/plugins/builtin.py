@@ -7,6 +7,7 @@ from piecrust.commands.builtin.info import (
 from piecrust.commands.builtin.scaffolding import (
         PrepareCommand,
         DefaultPrepareTemplatesCommandExtension,
+        UserDefinedPrepareTemplatesCommandExtension,
         DefaultPrepareTemplatesHelpTopic)
 from piecrust.commands.builtin.serving import (ServeCommand)
 from piecrust.commands.builtin.util import (
@@ -56,6 +57,7 @@ class BuiltInPlugin(PieCrustPlugin):
     def getCommandExtensions(self):
         return [
                 DefaultPrepareTemplatesCommandExtension(),
+                UserDefinedPrepareTemplatesCommandExtension(),
                 DefaultPrepareTemplatesHelpTopic()]
 
     def getSources(self):

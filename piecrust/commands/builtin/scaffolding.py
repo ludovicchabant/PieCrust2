@@ -3,6 +3,7 @@ import os.path
 import re
 import io
 import time
+import glob
 import logging
 import textwrap
 from piecrust import RESOURCES_DIR
@@ -83,6 +84,8 @@ class PrepareCommand(ExtendableChefCommand):
             raise Exception("No such page template: %s" % tpl_name)
 
         tpl_text = ext.getTemplate(ctx.app, tpl_name)
+        if tpl_text is None:
+            raise Exception("Error loading template: %s" % tpl_name)
         title = (metadata.get('slug') or metadata.get('path') or
                  'Untitled page')
         title = make_title(title)
@@ -101,7 +104,7 @@ class PrepareCommand(ExtendableChefCommand):
 
 
 class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
-    """ Provides the default scaffolding tempaltes to the `prepare`
+    """ Provides the default scaffolding templates to the `prepare`
         command.
     """
     def __init__(self):
@@ -122,6 +125,40 @@ class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
         assert name in ['default', 'rss', 'atom']
         src_path = os.path.join(RESOURCES_DIR, 'prepare', '%s.html' % name)
         with open(src_path, 'r', encoding='utf8') as fp:
+            return fp.read()
+
+
+class UserDefinedPrepareTemplatesCommandExtension(ChefCommandExtension):
+    """ Provides user-defined scaffolding templates to the `prepare`
+        command.
+    """
+    def __init__(self):
+        super(UserDefinedPrepareTemplatesCommandExtension, self).__init__()
+        self.command_name = 'prepare'
+
+    def _getTemplatesDir(self, app):
+        return os.path.join(app.root_dir, 'scaffold/pages')
+
+    def supports(self, app):
+        return os.path.isdir(self._getTemplatesDir(app))
+
+    def getTemplateNames(self, app):
+        names = os.listdir(self._getTemplatesDir(app))
+        return map(lambda n: os.path.splitext(n)[0], names)
+
+    def getTemplateDescription(self, app, name):
+        return "User-defined template."
+
+    def getTemplate(self, app, name):
+        templates_dir = self._getTemplatesDir(app)
+        pattern = os.path.join(templates_dir, '%s.*' % name)
+        matches = glob.glob(pattern)
+        if not matches:
+            raise Exception("No such page scaffolding template: %s" % name)
+        if len(matches) > 1:
+            raise Exception(
+                    "More than one scaffolding template has name: %s" % name)
+        with open(matches[0], 'r', encoding='utf8') as fp:
             return fp.read()
 
 
