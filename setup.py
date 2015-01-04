@@ -63,6 +63,7 @@ def generate_version():
         raise Exception("Can't generate version number: this is not a "
                         "Mercurial repository.")
 
+
 def generate_version_from_mercurial():
     try:
         # Get the version we're currently on. Also see if we have local
@@ -93,10 +94,14 @@ def generate_version_from_mercurial():
                 # Let's just do as if we were on the tag.
                 version = tag
             else:
-                version = '%s-%s-%s' % (tag, dist, hgid)
+                version = '%s+%s.%s' % (tag, dist, hgid)
 
         if has_local_changes:
-            version += time.strftime('+%Y%m%d')
+            if '+' in version:
+                version += '.'
+            else:
+                version += '+'
+            version += time.strftime('%Y%m%d')
 
         return version
     except OSError:
