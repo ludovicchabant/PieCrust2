@@ -22,6 +22,7 @@ def test_find_routes(uri, route_specs, expected):
         m.source_name = rs['src']
         m.source_realm = rs.setdefault('realm', REALM_USER)
         m.uri_re = re.compile(rs['pat'])
+        m.matchUri = lambda u: m.uri_re.match(u)
         routes.append(m)
     matching = find_routes(routes, uri)
 
