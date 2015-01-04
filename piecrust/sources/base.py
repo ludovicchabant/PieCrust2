@@ -259,6 +259,17 @@ class IPreparingSource:
         raise NotImplementedError()
 
 
+class IListableSource:
+    def listPath(self, rel_path):
+        raise NotImplementedError()
+
+    def getDirpath(self, rel_path):
+        raise NotImplementedError()
+
+    def getBasename(self, rel_path):
+        raise NotImplementedError()
+
+
 class SimplePaginationSourceMixin(IPaginationSource):
     def getItemsPerPage(self):
         return self.config['items_per_page']
@@ -298,7 +309,7 @@ class ArraySource(PageSource, SimplePaginationSourceMixin):
             yield CachedPageFactory(p)
 
 
-class SimplePageSource(PageSource):
+class SimplePageSource(PageSource, IListableSource):
     def __init__(self, app, name, config):
         super(SimplePageSource, self).__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
@@ -360,6 +371,38 @@ class SimplePageSource(PageSource):
 
         return None, None
 
+    def listPath(self, rel_path):
+        path = os.path.join(self.fs_endpoint_path, rel_path)
+        names = sorted(os.listdir(path))
+        items = []
+        for name in names:
+            if os.path.isdir(os.path.join(path, name)):
+                if self._filterPageDirname(name):
+                    rel_subdir = os.path.join(rel_path, name)
+                    items.append((True, name, rel_subdir))
+            else:
+                if self._filterPageFilename(name):
+                    slug = self._makeSlug(os.path.join(rel_path, name))
+                    metadata = {'path': slug}
+
+                    fac_path = name
+                    if rel_path != '.':
+                        fac_path = os.path.join(rel_path, name)
+                    fac_path = fac_path.replace('\\', '/')
+
+                    self._populateMetadata(fac_path, metadata)
+                    fac = PageFactory(self, fac_path, metadata)
+                    items.append((False, name, fac))
+        return items
+
+    def getDirpath(self, rel_path):
+        return os.path.dirname(rel_path)
+
+    def getBasename(self, rel_path):
+        filename = os.path.basename(rel_path)
+        name, _ = os.path.splitext(filename)
+        return name
+
     def _makeSlug(self, rel_path):
         slug, ext = os.path.splitext(rel_path)
         slug = slug.replace('\\', '/')
@@ -382,8 +425,10 @@ class SimplePageSource(PageSource):
     def _populateMetadata(self, rel_path, metadata):
         pass
 
-class DefaultPageSource(SimplePageSource, IPreparingSource,
-        SimplePaginationSourceMixin):
+
+class DefaultPageSource(SimplePageSource,
+                        IPreparingSource, IListableSource,
+                        SimplePaginationSourceMixin):
     SOURCE_NAME = 'default'
 
     def __init__(self, app, name, config):
