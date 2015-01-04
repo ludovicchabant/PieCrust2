@@ -277,7 +277,10 @@ class Server(object):
         # Build the page.
         fac = PageFactory(source, rel_path, fac_metadata)
         page = fac.buildPage()
-        render_ctx = PageRenderingContext(page, req_path, page_num)
+        # We force the rendering of the page because it could not have
+        # changed, but include pages that did change.
+        render_ctx = PageRenderingContext(page, req_path, page_num,
+                                          force_render=True)
         if taxonomy is not None:
             flt = PaginationFilter()
             if taxonomy.is_multiple:

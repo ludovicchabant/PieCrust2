@@ -39,10 +39,11 @@ PASS_RENDERING = 2
 
 
 class PageRenderingContext(object):
-    def __init__(self, page, uri, page_num=1):
+    def __init__(self, page, uri, page_num=1, force_render=False):
         self.page = page
         self.uri = uri
         self.page_num = page_num
+        self.force_render = force_render
         self.pagination_source = None
         self.pagination_filter = None
         self.custom_data = None
@@ -96,7 +97,7 @@ def render_page(ctx):
         # Render content segments.
         ctx.current_pass = PASS_FORMATTING
         repo = ctx.app.env.rendered_segments_repository
-        if repo:
+        if repo and not ctx.force_render:
             cache_key = '%s:%s' % (ctx.uri, ctx.page_num)
             page_time = page.path_mtime
             contents = repo.get(
