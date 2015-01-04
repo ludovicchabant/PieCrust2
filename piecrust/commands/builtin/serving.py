@@ -22,13 +22,16 @@ class ServeCommand(ChefCommand):
         parser.add_argument('--use-reloader',
                 help="Restart the server when PieCrust code changes",
                 action='store_true')
+        parser.add_argument('--use-debugger',
+                help="Show the debugger when an error occurs",
+                action='store_true')
 
     def run(self, ctx):
         server = Server(
                 ctx.app.root_dir,
                 host=ctx.args.address,
                 port=ctx.args.port,
-                debug=ctx.args.debug,
+                debug=(ctx.args.debug or ctx.args.use_debugger),
                 use_reloader=ctx.args.use_reloader)
         server.run()
 
