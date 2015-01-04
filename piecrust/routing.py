@@ -26,13 +26,33 @@ class Route(object):
         self.uri_root = app.config.get('site/root').rstrip('/') + '/'
         self.uri_pattern = uri.lstrip('/')
         self.uri_format = route_re.sub(self._uriFormatRepl, self.uri_pattern)
+
+        # Get the straight-forward regex for matching this URI pattern.
         p = route_re.sub(self._uriPatternRepl, self.uri_pattern) + '$'
         self.uri_re = re.compile(p)
+
+        # If the URI pattern has a 'path'-type component, we'll need to match
+        # the versions for which that component is empty. So for instance if
+        # we have `/foo/%path:bar%`, we may need to match `/foo` (note the
+        # lack of a trailing slash). We have to build a special pattern (in
+        # this case without that trailing slash) to match those situations.
+        # (maybe there's a better way to do it but I can't think of any
+        # right now)
+        uri_pattern_no_path = (
+                route_re.sub(self._uriNoPathRepl, self.uri_pattern)
+                .replace('//', '/')
+                .rstrip('/'))
+        if uri_pattern_no_path != self.uri_pattern:
+            p = route_re.sub(self._uriPatternRepl, uri_pattern_no_path) + '$'
+            self.uri_re_no_path = re.compile(p)
+        else:
+            self.uri_re_no_path = None
+
         self.source_name = cfg['source']
         self.taxonomy = cfg.get('taxonomy')
-        self.required_source_metadata = []
+        self.required_source_metadata = set()
         for m in route_re.finditer(uri):
-            self.required_source_metadata.append(m.group('name'))
+            self.required_source_metadata.add(m.group('name'))
         self.template_func = None
         self.template_func_name = None
         self.template_func_args = []
@@ -50,8 +70,18 @@ class Route(object):
     def source_realm(self):
         return self.source.realm
 
-    def isMatch(self, source_metadata):
-        return True
+    def matchesMetadata(self, source_metadata):
+        return self.required_source_metadata.issubset(source_metadata.keys())
+
+    def matchUri(self, uri):
+        m = self.uri_re.match(uri)
+        if m:
+            return m
+        if self.uri_re_no_path:
+            m = self.uri_re_no_path.match(uri)
+            if m:
+                return m
+        return None
 
     def getUri(self, source_metadata, provider=None):
         if provider:
@@ -78,7 +108,14 @@ class Route(object):
         name = m.group('name')
         qualifier = m.group('qual')
         if qualifier == 'path':
-            return r'(?P<%s>.*)' % name
+            return r'(?P<%s>[^\?]*)' % name
+        return r'(?P<%s>[^/\?]+)' % name
+
+    def _uriNoPathRepl(self, m):
+        name = m.group('name')
+        qualifier = m.group('qual')
+        if qualifier == 'path':
+            return ''
         return r'(?P<%s>[^/\?]+)' % name
 
     def _createTemplateFunc(self, func_def):

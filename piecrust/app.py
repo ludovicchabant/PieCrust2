@@ -512,7 +512,7 @@ class PieCrust(object):
 
     def getRoute(self, source_name, source_metadata):
         for route in self.getRoutes(source_name, True):
-            if route.isMatch(source_metadata):
+            if route.matchesMetadata(source_metadata):
                 return route
         return None
 
