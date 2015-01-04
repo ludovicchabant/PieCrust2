@@ -19,6 +19,10 @@ class PageRenderingError(Exception):
     pass
 
 
+class TemplateEngineNotFound(Exception):
+    pass
+
+
 class RenderedPage(object):
     def __init__(self, page, uri, num=1):
         self.page = page
@@ -159,8 +163,6 @@ def _do_render_page_segments(page, page_data):
     format_name = page.config.get('format')
 
     engine = get_template_engine(app, engine_name)
-    if engine is None:
-        raise PageRenderingError("Can't find template engine '%s'." % engine_name)
 
     formatted_content = {}
     for seg_name, seg in page.raw_content.items():
@@ -192,7 +194,8 @@ def _do_render_page_segments(page, page_data):
 def render_layout(layout_name, page, layout_data):
     names = layout_name.split(',')
     default_template_engine = get_template_engine(page.app, None)
-    default_exts = ['.' + e.lstrip('.') for e in default_template_engine.EXTENSIONS]
+    default_exts = ['.' + e.lstrip('.')
+                    for e in default_template_engine.EXTENSIONS]
     full_names = []
     for name in names:
         if '.' not in name:
@@ -205,8 +208,7 @@ def render_layout(layout_name, page, layout_data):
     _, engine_name = os.path.splitext(full_names[0])
     engine_name = engine_name.lstrip('.')
     engine = get_template_engine(page.app, engine_name)
-    if engine is None:
-        raise PageRenderingError("No such template engine: %s" % engine_name)
+
     try:
         output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
@@ -223,7 +225,8 @@ def get_template_engine(app, engine_name):
     for engine in app.plugin_loader.getTemplateEngines():
         if engine_name in engine.ENGINE_NAMES:
             return engine
-    return None
+    raise TemplateEngineNotFound("No such template engine: %s" % engine_name)
+
 
 def format_text(app, format_name, txt, exact_format=False):
     if exact_format and not format_name:
