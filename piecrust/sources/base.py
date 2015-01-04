@@ -309,7 +309,8 @@ class ArraySource(PageSource, SimplePaginationSourceMixin):
             yield CachedPageFactory(p)
 
 
-class SimplePageSource(PageSource, IListableSource):
+class SimplePageSource(PageSource, IListableSource, IPreparingSource,
+                       SimplePaginationSourceMixin):
     def __init__(self, app, name, config):
         super(SimplePageSource, self).__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
@@ -353,7 +354,7 @@ class SimplePageSource(PageSource, IListableSource):
                 path = '%s.%s' % (path, self.default_auto_format)
             rel_path = os.path.relpath(path, self.fs_endpoint_path)
             rel_path = rel_path.replace('\\', '/')
-            self._populateMetadata(rel_path, metadata)
+            self._populateMetadata(rel_path, metadata, mode)
             return rel_path, metadata
 
         if ext == '':
@@ -366,7 +367,7 @@ class SimplePageSource(PageSource, IListableSource):
             if os.path.isfile(path):
                 rel_path = os.path.relpath(path, self.fs_endpoint_path)
                 rel_path = rel_path.replace('\\', '/')
-                self._populateMetadata(rel_path, metadata)
+                self._populateMetadata(rel_path, metadata, mode)
                 return rel_path, metadata
 
         return None, None
@@ -403,6 +404,12 @@ class SimplePageSource(PageSource, IListableSource):
         name, _ = os.path.splitext(filename)
         return name
 
+    def setupPrepareParser(self, parser, app):
+        parser.add_argument('uri', help='The URI for the new page.')
+
+    def buildMetadata(self, args):
+        return {'path': args.uri}
+
     def _makeSlug(self, rel_path):
         slug, ext = os.path.splitext(rel_path)
         slug = slug.replace('\\', '/')
@@ -422,23 +429,15 @@ class SimplePageSource(PageSource, IListableSource):
                 f[-1] != '~' and  # Vim temp files and what-not
                 f not in ['Thumbs.db'])  # Windows bullshit
 
-    def _populateMetadata(self, rel_path, metadata):
+    def _populateMetadata(self, rel_path, metadata, mode=None):
         pass
 
 
-class DefaultPageSource(SimplePageSource,
-                        IPreparingSource, IListableSource,
-                        SimplePaginationSourceMixin):
+class DefaultPageSource(SimplePageSource):
     SOURCE_NAME = 'default'
 
     def __init__(self, app, name, config):
         super(DefaultPageSource, self).__init__(app, name, config)
-
-    def setupPrepareParser(self, parser, app):
-        parser.add_argument('uri', help='The URI for the new page.')
-
-    def buildMetadata(self, args):
-        return {'path': args.uri}
 
 
 class SourceFactoryIterator(object):
