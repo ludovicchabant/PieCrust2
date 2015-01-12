@@ -139,7 +139,8 @@ class ShowRecordCommand(ChefCommand):
                                                   entry.taxonomy_term))
             logging.info("   config:    %s" % entry.config)
             logging.info("   out URLs:  %s" % entry.out_uris)
-            logging.info("   out paths: %s" % entry.out_paths)
+            logging.info("   out paths: %s" % [os.path.relpath(p, out_dir)
+                                               for p in entry.out_paths])
             logging.info("   used srcs: %s" % entry.used_source_names)
             if entry.errors:
                 logging.error("   errors: %s" % entry.errors)
