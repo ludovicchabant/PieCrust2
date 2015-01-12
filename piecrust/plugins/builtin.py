@@ -4,8 +4,6 @@ from piecrust.commands.builtin.baking import (
 from piecrust.commands.builtin.info import (
         RootCommand, ShowConfigCommand,
         FindCommand, ShowSourcesCommand, ShowRoutesCommand, ShowPathsCommand)
-from piecrust.commands.builtin.plugins import (
-        PluginsCommand)
 from piecrust.commands.builtin.scaffolding import (
         PrepareCommand,
         DefaultPrepareTemplatesCommandExtension,
@@ -56,8 +54,7 @@ class BuiltInPlugin(PieCrustPlugin):
                 ShowPathsCommand(),
                 BakeCommand(),
                 ShowRecordCommand(),
-                ServeCommand(),
-                PluginsCommand()]
+                ServeCommand()]
 
     def getCommandExtensions(self):
         return [
