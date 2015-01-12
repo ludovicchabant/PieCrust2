@@ -3,7 +3,7 @@ from piecrust.records import Record, TransitionalRecord
 
 
 class ProcessorPipelineRecord(Record):
-    RECORD_VERSION = 2
+    RECORD_VERSION = 3
 
     def __init__(self):
         super(ProcessorPipelineRecord, self).__init__()
@@ -34,6 +34,7 @@ class ProcessorPipelineRecord(Record):
 FLAG_NONE = 0
 FLAG_PROCESSED = 2**0
 FLAG_OVERRIDEN = 2**1
+FLAG_BYPASSED_STRUCTURED_PROCESSING = 2**2
 
 
 class ProcessorPipelineRecordEntry(object):
@@ -43,6 +44,7 @@ class ProcessorPipelineRecordEntry(object):
 
         self.flags = FLAG_NONE
         self.rel_outputs = []
+        self.proc_tree = None
         self.errors = []
 
     @property

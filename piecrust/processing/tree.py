@@ -274,3 +274,17 @@ def print_node(node, message=None, recursive=False):
         for o in node.outputs:
             print_node(o, None, True)
 
+
+def get_node_name_tree(node):
+    try:
+        proc_name = node.getProcessor().PROCESSOR_NAME
+    except ProcessorNotFoundError:
+        proc_name = 'n/a'
+
+    children = []
+    for o in node.outputs:
+        if not o.outputs:
+            continue
+        children.append(get_node_name_tree(o))
+    return (proc_name, children)
+

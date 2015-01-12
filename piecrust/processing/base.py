@@ -9,9 +9,11 @@ from queue import Queue, Empty
 from piecrust.chefutil import format_timed
 from piecrust.processing.records import (
         ProcessorPipelineRecordEntry, TransitionalProcessorPipelineRecord,
-        FLAG_PROCESSED, FLAG_OVERRIDEN)
-from piecrust.processing.tree import (ProcessingTreeBuilder,
-        ProcessingTreeRunner, ProcessingTreeError, STATE_DIRTY, print_node)
+        FLAG_PROCESSED, FLAG_OVERRIDEN, FLAG_BYPASSED_STRUCTURED_PROCESSING)
+from piecrust.processing.tree import (
+        ProcessingTreeBuilder, ProcessingTreeRunner, ProcessingTreeError,
+        STATE_DIRTY,
+        print_node, get_node_name_tree)
 
 
 logger = logging.getLogger(__name__)
@@ -324,6 +326,9 @@ class ProcessingWorker(threading.Thread):
         print_node(tree_root, recursive=True)
         leaves = tree_root.getLeaves()
         record_entry.rel_outputs = [l.path for l in leaves]
+        record_entry.proc_tree = get_node_name_tree(tree_root)
+        if tree_root.getProcessor().is_bypassing_structured_processing:
+            record_entry.flags |= FLAG_BYPASSED_STRUCTURED_PROCESSING
 
         force = (pipeline.force or previous_entry is None or
                  not previous_entry.was_processed_successfully)
