@@ -9,6 +9,8 @@ from piecrust.baking.records import BakeRecord
 from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
 from piecrust.processing.base import ProcessorPipeline
+from piecrust.processing.records import (
+        ProcessorPipelineRecord, FLAG_OVERRIDEN)
 
 
 logger = logging.getLogger(__name__)
@@ -112,15 +114,17 @@ class ShowRecordCommand(ChefCommand):
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
-        record_cache = ctx.app.cache.getCache('baker')
-        record_name = hashlib.md5(out_dir.encode('utf8')).hexdigest() + '.record'
-        if not record_cache.has(record_name):
-            raise Exception("No record has been created for this output path. "
-                            "Did you bake there yet?")
+        record_name = (hashlib.md5(out_dir.encode('utf8')).hexdigest() +
+                       '.record')
 
         pattern = None
         if ctx.args.path:
             pattern = '*%s*' % ctx.args.path.strip('*')
+
+        record_cache = ctx.app.cache.getCache('baker')
+        if not record_cache.has(record_name):
+            raise Exception("No record has been created for this output path. "
+                            "Did you bake there yet?")
 
         record = BakeRecord.load(record_cache.getCachePath(record_name))
         logging.info("Bake record for: %s" % record.out_dir)
@@ -144,4 +148,40 @@ class ShowRecordCommand(ChefCommand):
             logging.info("   used srcs: %s" % entry.used_source_names)
             if entry.errors:
                 logging.error("   errors: %s" % entry.errors)
+
+        record_cache = ctx.app.cache.getCache('proc')
+        if not record_cache.has(record_name):
+            return
+
+        record = ProcessorPipelineRecord.load(
+                record_cache.getCachePath(record_name))
+        logging.info("")
+        logging.info("Processing record for: %s" % record.out_dir)
+        logging.info("Last baked: %s" %
+                     datetime.datetime.fromtimestamp(record.process_time))
+        logging.info("Entries:")
+        for entry in record.entries:
+            if pattern:
+                if not fnmatch.fnmatch(entry.rel_input, pattern):
+                    continue
+            flags = ''
+            if entry.flags & FLAG_OVERRIDEN:
+                flags += 'overriden'
+            logger.info(" - ")
+            logger.info("   path:      %s" % entry.rel_input)
+            logger.info("   out paths: %s" % entry.rel_outputs)
+            logger.info("   flags:     %s" % flags)
+            logger.info("   proc tree: %s" % format_proc_tree(
+                    entry.proc_tree, 14*' '))
+            if entry.errors:
+                logger.error("   errors: %s" % entry.errors)
+
+
+def format_proc_tree(tree, margin='', level=0):
+    name, children = tree
+    res = '%s%s%s' % (margin if level > 0 else '', level * '  ', name)
+    if children:
+        for c in children:
+            res += format_proc_tree(c, margin, level + 1)
+    return res
 
