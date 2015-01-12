@@ -68,7 +68,7 @@ class LessProcessor(SimpleFileProcessor):
             retcode = subprocess.call(args, shell=shell)
         except FileNotFoundError as ex:
             logger.error("Tried running LESS processor with command: %s" %
-                    args)
+                         args)
             raise Exception("Error running LESS processor. "
                             "Did you install it?") from ex
         if retcode != 0:
@@ -82,8 +82,7 @@ class LessProcessor(SimpleFileProcessor):
 
         self._conf = self.app.config.get('less') or {}
         self._conf.setdefault('bin', 'lessc')
-        self._conf.setdefault('options',
-                ['--compress'])
+        self._conf.setdefault('options', ['--compress'])
         if not isinstance(self._conf['options'], list):
             raise Exception("The `less/options` configuration setting "
                             "must be an array of arguments.")
