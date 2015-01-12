@@ -134,6 +134,9 @@ class ProcessorPipeline(object):
         self.skip_patterns = make_re(self.skip_patterns)
         self.force_patterns = make_re(self.force_patterns)
 
+    def addSkipPatterns(self, patterns):
+        self.skip_patterns += make_re(patterns)
+
     def filterProcessors(self, authorized_names):
         self.processors = list(filter(
             lambda p: p.PROCESSOR_NAME in authorized_names,

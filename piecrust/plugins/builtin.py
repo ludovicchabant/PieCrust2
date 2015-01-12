@@ -4,6 +4,8 @@ from piecrust.commands.builtin.baking import (
 from piecrust.commands.builtin.info import (
         RootCommand, ShowConfigCommand,
         FindCommand, ShowSourcesCommand, ShowRoutesCommand, ShowPathsCommand)
+from piecrust.commands.builtin.plugins import (
+        PluginsCommand)
 from piecrust.commands.builtin.scaffolding import (
         PrepareCommand,
         DefaultPrepareTemplatesCommandExtension,
@@ -20,8 +22,10 @@ from piecrust.importing.jekyll import JekyllImporter
 from piecrust.importing.piecrust import PieCrust1Importer
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
+from piecrust.processing.compass import CompassProcessor
 from piecrust.processing.less import LessProcessor
 from piecrust.processing.requirejs import RequireJSProcessor
+from piecrust.processing.sass import SassProcessor
 from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (
@@ -52,7 +56,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 ShowPathsCommand(),
                 BakeCommand(),
                 ShowRecordCommand(),
-                ServeCommand()]
+                ServeCommand(),
+                PluginsCommand()]
 
     def getCommandExtensions(self):
         return [
@@ -88,7 +93,9 @@ class BuiltInPlugin(PieCrustPlugin):
     def getProcessors(self):
         return [
                 CopyFileProcessor(),
+                CompassProcessor(),
                 LessProcessor(),
+                SassProcessor(),
                 RequireJSProcessor(),
                 SitemapProcessor()]
 
