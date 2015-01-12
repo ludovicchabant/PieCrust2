@@ -135,7 +135,6 @@ class Server(object):
             response = self._try_serve_page(app, environ, request)
             return response(environ, start_response)
         except (RouteNotFoundError, SourceNotFoundError) as ex:
-            logger.exception(ex)
             exc = NotFound(str(ex))
         except NotFound as ex:
             exc = ex
@@ -166,6 +165,20 @@ class Server(object):
             # We don't know any asset that could have created this path.
             # It could be a new asset that the user just created, but we'll
             # check for that later.
+            # What we can do however is see if there's anything that already
+            # exists there, because it could have been created by a processor
+            # that bypasses structured processing (like e.g. the compass
+            # processor). In that case, just return that file, hoping it will
+            # be up-to-date.
+            full_path = os.path.join(self._out_dir, rel_req_path)
+            try:
+                response = self._make_wrapped_file_response(
+                        environ, full_path)
+                logger.debug("Didn't find record entry, but found existing "
+                             "output file at: %s" % rel_req_path)
+                return response
+            except OSError:
+                pass
             return None
 
         # Yep, we know about this URL because we processed an asset that
@@ -187,13 +200,7 @@ class Server(object):
             assert len(r.entries) == 1
             self._asset_record.replaceEntry(r.entries[0])
 
-        logger.debug("Serving %s" % asset_out_path)
-        wrapper = wrap_file(environ, open(asset_out_path, 'rb'))
-        response = Response(wrapper)
-        _, ext = os.path.splitext(rel_req_path)
-        response.mimetype = self._mimetype_map.get(
-                ext.lstrip('.'), 'text/plain')
-        return response
+        return self._make_wrapped_file_response(environ, asset_out_path)
 
     def _try_serve_new_asset(self, app, environ, request):
         logger.debug("Searching for a new asset with path: %s" % request.path)
@@ -214,13 +221,7 @@ class Server(object):
 
         asset_out_path = os.path.join(self._out_dir, rel_req_path)
         logger.debug("Found new asset: %s" % entry.path)
-        logger.debug("Serving %s" % asset_out_path)
-        wrapper = wrap_file(environ, open(asset_out_path, 'rb'))
-        response = Response(wrapper)
-        _, ext = os.path.splitext(rel_req_path)
-        response.mimetype = self._mimetype_map.get(
-                ext.lstrip('.'), 'text/plain')
-        return response
+        return self._make_wrapped_file_response(environ, asset_out_path)
 
     def _try_serve_page_asset(self, app, environ, request):
         if not request.path.startswith('/_asset/'):
@@ -230,13 +231,7 @@ class Server(object):
         if not os.path.isfile(full_path):
             return None
 
-        logger.debug("Serving %s" % full_path)
-        wrapper = wrap_file(environ, open(full_path, 'rb'))
-        response = Response(wrapper)
-        _, ext = os.path.splitext(full_path)
-        response.mimetype = self._mimetype_map.get(
-                ext.lstrip('.'), 'text/plain')
-        return response
+        return self._make_wrapped_file_response(environ, full_path)
 
     def _try_serve_page(self, app, environ, request):
         # Try to find what matches the requested URL.
@@ -370,6 +365,15 @@ class Server(object):
                                  "falling back to uncompressed.")
         response.set_data(rp_content)
 
+        return response
+
+    def _make_wrapped_file_response(self, environ, path):
+        logger.debug("Serving %s" % path)
+        wrapper = wrap_file(environ, open(path, 'rb'))
+        response = Response(wrapper)
+        _, ext = os.path.splitext(path)
+        response.mimetype = self._mimetype_map.get(
+                ext.lstrip('.'), 'text/plain')
         return response
 
     def _handle_error(self, exception, environ, start_response):
