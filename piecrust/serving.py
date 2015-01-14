@@ -91,13 +91,13 @@ class Server(object):
 
     def _run_request(self, environ, start_response):
         try:
-            return self._run_piecrust(environ, start_response)
+            return self._try_run_request(environ, start_response)
         except Exception as ex:
             if self.debug:
                 raise
             return self._handle_error(ex, environ, start_response)
 
-    def _run_piecrust(self, environ, start_response):
+    def _try_run_request(self, environ, start_response):
         request = Request(environ)
 
         # We don't support anything else than GET requests since we're
@@ -377,16 +377,19 @@ class Server(object):
         return response
 
     def _handle_error(self, exception, environ, start_response):
+        code = 500
         path = 'error'
-        if isinstance(exception, NotFound):
-            path += '404'
         description = str(exception)
         if isinstance(exception, HTTPException):
+            code = exception.code
             description = exception.description
+            if isinstance(exception, NotFound):
+                path += '404'
         env = Environment(loader=ErrorMessageLoader())
         template = env.get_template(path)
         context = {'details': description}
         response = Response(template.render(context), mimetype='text/html')
+        response.status_code = code
         return response(environ, start_response)
 
 
