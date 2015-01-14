@@ -18,13 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class Baker(object):
-    def __init__(self, app, out_dir, force=False, portable=False,
+    def __init__(self, app, out_dir, force=False,
                  no_assets=False, num_workers=4):
         assert app and out_dir
         self.app = app
         self.out_dir = out_dir
         self.force = force
-        self.portable = portable
         self.no_assets = no_assets
         self.num_workers = num_workers
 

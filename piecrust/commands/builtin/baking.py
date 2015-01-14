@@ -32,20 +32,11 @@ class BakeCommand(ChefCommand):
                 help="Force re-baking the entire website.",
                 action='store_true')
         parser.add_argument(
-                '--portable',
-                help="Uses relative paths for all URLs.",
-                action='store_true')
-        parser.add_argument(
                 '--no-assets',
                 help="Don't process assets (only pages).",
                 action='store_true')
 
     def run(self, ctx):
-        if ctx.args.portable:
-            # Disable pretty URLs because there's likely not going to be
-            # a web server to handle serving default documents.
-            ctx.app.config.set('site/pretty_urls', False)
-
         out_dir = (ctx.args.output or
                    os.path.join(ctx.app.root_dir, '_counter'))
 
@@ -74,7 +65,6 @@ class BakeCommand(ChefCommand):
         baker = Baker(
                 ctx.app, out_dir,
                 force=ctx.args.force,
-                portable=ctx.args.portable,
                 no_assets=ctx.args.no_assets,
                 num_workers=num_workers)
         baker.bake()
