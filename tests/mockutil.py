@@ -247,7 +247,6 @@ class mock_fs_scope(object):
         self._patchers.append(mock.patch(name, func, **kwargs))
 
     def _doOpen(self, orig_name, path, mode, *args, **kwargs):
-        print("Opening %s" % path)
         path = os.path.normpath(path)
         if path.startswith(resources_path):
             return self._originals[orig_name](path, mode, *args, **kwargs)
