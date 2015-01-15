@@ -70,10 +70,13 @@ class BakeCommand(ChefCommand):
         baker.bake()
 
     def _bakeAssets(self, ctx, out_dir):
-        mounts = ctx.app.assets_dirs
         baker_params = ctx.app.config.get('baker') or {}
-        skip_patterns = baker_params.get('skip_patterns')
-        force_patterns = baker_params.get('force_patterns')
+        mounts = (baker_params.get('assets_dirs') or
+                  ctx.app.assets_dirs)
+        skip_patterns = (baker_params.get('ignore') or
+                         baker_params.get('skip_patterns'))
+        force_patterns = (baker_params.get('force') or
+                          baker_params.get('force_patterns'))
         num_workers = ctx.app.config.get('baker/workers') or 4
         proc = ProcessorPipeline(
                 ctx.app, mounts, out_dir,

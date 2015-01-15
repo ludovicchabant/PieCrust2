@@ -102,8 +102,9 @@ class SimpleFileProcessor(Processor):
 
 
 class ProcessingContext(object):
-    def __init__(self, base_dir, job_queue, record=None):
+    def __init__(self, base_dir, mount_info, job_queue, record=None):
         self.base_dir = base_dir
+        self.mount_info = mount_info
         self.job_queue = job_queue
         self.record = record
 
@@ -126,6 +127,8 @@ class ProcessorPipeline(object):
         self.processors = app.plugin_loader.getProcessors()
         self.num_workers = num_workers
 
+        self.mounts = make_mount_info(self.mounts)
+
         self.skip_patterns += ['_cache', '_counter',
                 'theme_info.yml',
                 '.DS_Store', 'Thumbs.db',
@@ -138,7 +141,12 @@ class ProcessorPipeline(object):
         self.skip_patterns += make_re(patterns)
 
     def filterProcessors(self, authorized_names):
-        self.processors = list(filter(
+        if not authorized_names or authorized_names == '*':
+            return self.processors
+
+        if isinstance(authorized_names, str):
+            authorized_names = authorized_names.split(',')
+        return list(filter(
             lambda p: p.PROCESSOR_NAME in authorized_names,
             self.processors))
 
@@ -184,16 +192,17 @@ class ProcessorPipeline(object):
         if src_dir_or_file is not None:
             # Process only the given path.
             # Find out what mount point this is in.
-            for path in self.mounts:
+            for path, info in self.mounts.items():
                 if src_dir_or_file[:len(path)] == path:
                     base_dir = path
+                    mount_info = info
                     break
             else:
                 raise Exception("Input path '%s' is not part of any known "
                                 "mount point: %s" %
-                                (src_dir_or_file, self.mounts))
+                                (src_dir_or_file, self.mounts.keys()))
 
-            ctx = ProcessingContext(base_dir, queue, record)
+            ctx = ProcessingContext(base_dir, mount_info, queue, record)
             logger.debug("Initiating processing pipeline on: %s" % src_dir_or_file)
             if os.path.isdir(src_dir_or_file):
                 self.processDirectory(ctx, src_dir_or_file, new_only)
@@ -202,8 +211,8 @@ class ProcessorPipeline(object):
 
         else:
             # Process everything.
-            for path in self.mounts:
-                ctx = ProcessingContext(path, queue, record)
+            for path, info in self.mounts.items():
+                ctx = ProcessingContext(path, info, queue, record)
                 logger.debug("Initiating processing pipeline on: %s" % path)
                 self.processDirectory(ctx, path, new_only)
 
@@ -251,7 +260,7 @@ class ProcessorPipeline(object):
 
     def processFile(self, ctx, path, new_only=False):
         logger.debug("Queuing: %s" % path)
-        job = ProcessingWorkerJob(ctx.base_dir, path, new_only)
+        job = ProcessingWorkerJob(ctx.base_dir, ctx.mount_info, path, new_only)
         ctx.job_queue.put_nowait(job)
 
 
@@ -266,8 +275,9 @@ class ProcessingWorkerContext(object):
 
 
 class ProcessingWorkerJob(object):
-    def __init__(self, base_dir, path, new_only=False):
+    def __init__(self, base_dir, mount_info, path, new_only=False):
         self.base_dir = base_dir
+        self.mount_info = mount_info
         self.path = path
         self.new_only = new_only
 
@@ -318,8 +328,9 @@ class ProcessingWorker(threading.Thread):
                     '%s [not baked, overridden]' % rel_path))
             return
 
+        processors = pipeline.filterProcessors(job.mount_info['processors'])
         try:
-            builder = ProcessingTreeBuilder(pipeline.processors)
+            builder = ProcessingTreeBuilder(processors)
             tree_root = builder.build(rel_path)
         except ProcessingTreeError as ex:
             record_entry.errors.append(str(ex))
@@ -351,6 +362,19 @@ class ProcessingWorker(threading.Thread):
         except ProcessingTreeError as ex:
             record_entry.errors.append(str(ex))
             logger.error("Error processing %s: %s" % (rel_path, ex))
+
+
+def make_mount_info(mounts):
+    if isinstance(mounts, list):
+        mounts = {m: {} for m in mounts}
+
+    for name, info in mounts.items():
+        if not isinstance(info, dict):
+            raise Exception("Asset directory info for '%s' is not a "
+                            "dictionary." % name)
+        info.setdefault('processors', '*')
+
+    return mounts
 
 
 def make_re(patterns):
