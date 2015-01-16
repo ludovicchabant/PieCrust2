@@ -24,6 +24,9 @@ PRIORITY_NORMAL = 0
 PRIORITY_LAST = 1
 
 
+split_processor_names_re = re.compile(r'[ ,]+')
+
+
 class Processor(object):
     PROCESSOR_NAME = None
 
@@ -145,7 +148,22 @@ class ProcessorPipeline(object):
             return self.processors
 
         if isinstance(authorized_names, str):
-            authorized_names = authorized_names.split(',')
+            authorized_names = split_processor_names_re.split(authorized_names)
+
+        procs = []
+        has_star = '*' in authorized_names
+        for p in self.processors:
+            for name in authorized_names:
+                if name == p.PROCESSOR_NAME:
+                    procs.append(p)
+                    break
+                if name == ('-%s' % p.PROCESSOR_NAME):
+                    break
+            else:
+                if has_star:
+                    procs.append(p)
+        return procs
+
         return list(filter(
             lambda p: p.PROCESSOR_NAME in authorized_names,
             self.processors))
