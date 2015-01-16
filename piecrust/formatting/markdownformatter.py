@@ -29,6 +29,8 @@ class MarkdownFormatter(Formatter):
         extensions = config.get('extensions')
         if extensions is None:
             extensions = []
+        if isinstance(extensions, str):
+            extensions = [e.strip() for e in extensions.split(',')]
         # Compatibility with PieCrust 1.x
         if config.get('use_markdown_extra'):
             extensions.append('extra')
