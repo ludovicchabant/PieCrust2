@@ -39,7 +39,7 @@ class Configuration(object):
     def getAll(self):
         return self.get()
 
-    def get(self, key_path=None):
+    def get(self, key_path=None, default_value=None):
         self._ensureLoaded()
         if key_path is None:
             return self._values
@@ -48,7 +48,7 @@ class Configuration(object):
         for b in bits:
             cur = cur.get(b)
             if cur is None:
-                return None
+                return default_value
         return cur
 
     def set(self, key_path, value):

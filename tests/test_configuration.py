@@ -60,6 +60,26 @@ def test_config_has():
     assert config.has('baz') is False
 
 
+def test_config_deep_set_non_existing():
+    config = Configuration({'foo': 'bar'})
+    assert config.get('baz') is None
+    config.set('baz/or/whatever', 'something')
+    assert config.has('baz') is True
+    assert config.has('baz/or') is True
+    assert config.get('baz/or/whatever') == 'something'
+
+
+def test_config_deep_set_existing():
+    config = Configuration({'foo': 'bar', 'baz': {'wat': 'nothing'}})
+    assert config.has('baz') is True
+    assert config.get('baz/wat') == 'nothing'
+    assert config.get('baz/or') is None
+    config.set('baz/or/whatever', 'something')
+    assert config.has('baz') is True
+    assert config.has('baz/or') is True
+    assert config.get('baz/or/whatever') == 'something'
+
+
 @pytest.mark.parametrize('local, incoming, expected', [
         ({}, {}, {}),
         ({'foo': 'bar'}, {}, {'foo': 'bar'}),
