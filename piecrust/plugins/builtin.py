@@ -21,10 +21,13 @@ from piecrust.importing.piecrust import PieCrust1Importer
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
 from piecrust.processing.compass import CompassProcessor
+from piecrust.processing.compressors import (
+        CleanCssProcessor, UglifyJSProcessor)
 from piecrust.processing.less import LessProcessor
 from piecrust.processing.requirejs import RequireJSProcessor
 from piecrust.processing.sass import SassProcessor
 from piecrust.processing.sitemap import SitemapProcessor
+from piecrust.processing.util import ConcatProcessor
 from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (
         FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
@@ -90,11 +93,14 @@ class BuiltInPlugin(PieCrustPlugin):
     def getProcessors(self):
         return [
                 CopyFileProcessor(),
+                ConcatProcessor(),
                 CompassProcessor(),
                 LessProcessor(),
                 SassProcessor(),
                 RequireJSProcessor(),
-                SitemapProcessor()]
+                SitemapProcessor(),
+                CleanCssProcessor(),
+                UglifyJSProcessor()]
 
     def getImporters(self):
         return [
