@@ -18,14 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class Baker(object):
-    def __init__(self, app, out_dir, force=False,
-                 no_assets=False, num_workers=4):
+    def __init__(self, app, out_dir, force=False):
         assert app and out_dir
         self.app = app
         self.out_dir = out_dir
         self.force = force
-        self.no_assets = no_assets
-        self.num_workers = num_workers
+        self.num_workers = app.config.get('baker/workers', 4)
 
         # Remember what taxonomy pages we should skip
         # (we'll bake them repeatedly later with each taxonomy term)

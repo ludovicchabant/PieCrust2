@@ -113,45 +113,51 @@ class ProcessingContext(object):
 
 
 class ProcessorPipeline(object):
-    def __init__(self, app, mounts, out_dir, force=False,
-            skip_patterns=None, force_patterns=None, num_workers=4):
+    def __init__(self, app, out_dir, force=False):
         assert app and out_dir
         self.app = app
-        self.mounts = mounts
+        self.out_dir = out_dir
+        self.force = force
+
         tmp_dir = app.cache_dir
         if not tmp_dir:
             import tempfile
             tmp_dir = os.path.join(tempfile.gettempdir(), 'piecrust')
         self.tmp_dir = os.path.join(tmp_dir, 'proc')
-        self.out_dir = out_dir
-        self.force = force
-        self.skip_patterns = skip_patterns or []
-        self.force_patterns = force_patterns or []
-        self.processors = app.plugin_loader.getProcessors()
-        self.num_workers = num_workers
 
-        self.mounts = make_mount_info(self.mounts)
+        baker_params = app.config.get('baker') or {}
 
-        self.skip_patterns += ['_cache', '_counter',
+        assets_dirs = baker_params.get('assets_dirs', app.assets_dirs)
+        self.mounts = make_mount_info(assets_dirs)
+
+        self.num_workers = baker_params.get('workers', 4)
+
+        ignores = baker_params.get('ignore', [])
+        ignores += [
+                '_cache', '_counter',
                 'theme_info.yml',
                 '.DS_Store', 'Thumbs.db',
                 '.git*', '.hg*', '.svn']
+        self.skip_patterns = make_re(ignores)
+        self.force_patterns = make_re(baker_params.get('force', []))
 
-        self.skip_patterns = make_re(self.skip_patterns)
-        self.force_patterns = make_re(self.force_patterns)
+        self.processors = app.plugin_loader.getProcessors()
 
     def addSkipPatterns(self, patterns):
         self.skip_patterns += make_re(patterns)
 
     def filterProcessors(self, authorized_names):
-        if not authorized_names or authorized_names == '*':
+        self.processors = self.getFilteredProcessors(authorized_names)
+
+    def getFilteredProcessors(self, authorized_names):
+        if not authorized_names or authorized_names == 'all':
             return self.processors
 
         if isinstance(authorized_names, str):
             authorized_names = split_processor_names_re.split(authorized_names)
 
         procs = []
-        has_star = '*' in authorized_names
+        has_star = 'all' in authorized_names
         for p in self.processors:
             for name in authorized_names:
                 if name == p.PROCESSOR_NAME:
@@ -163,10 +169,6 @@ class ProcessorPipeline(object):
                 if has_star:
                     procs.append(p)
         return procs
-
-        return list(filter(
-            lambda p: p.PROCESSOR_NAME in authorized_names,
-            self.processors))
 
     def run(self, src_dir_or_file=None, *,
             new_only=False, delete=True,
@@ -346,7 +348,8 @@ class ProcessingWorker(threading.Thread):
                     '%s [not baked, overridden]' % rel_path))
             return
 
-        processors = pipeline.filterProcessors(job.mount_info['processors'])
+        processors = pipeline.getFilteredProcessors(
+                job.mount_info['processors'])
         try:
             builder = ProcessingTreeBuilder(processors)
             tree_root = builder.build(rel_path)
@@ -390,7 +393,7 @@ def make_mount_info(mounts):
         if not isinstance(info, dict):
             raise Exception("Asset directory info for '%s' is not a "
                             "dictionary." % name)
-        info.setdefault('processors', '*')
+        info.setdefault('processors', 'all -uglifyjs -cleancss')
 
     return mounts
 

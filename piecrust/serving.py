@@ -63,8 +63,6 @@ class Server(object):
         self.static_preview = static_preview
         self.synchronous_asset_pipeline = synchronous_asset_pipeline
         self._out_dir = None
-        self._skip_patterns = None
-        self._force_patterns = None
         self._asset_record = None
         self._page_record = None
         self._mimetype_map = load_mimetype_map()
@@ -73,14 +71,8 @@ class Server(object):
         # Bake all the assets so we know what we have, and so we can serve
         # them to the client. We need a temp app for this.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
-        mounts = app.assets_dirs
         self._out_dir = os.path.join(app.cache_dir, 'server')
-        self._skip_patterns = app.config.get('baker/skip_patterns')
-        self._force_patterns = app.config.get('baker/force_patterns')
-        pipeline = ProcessorPipeline(
-                app, mounts, self._out_dir,
-                skip_patterns=self._skip_patterns,
-                force_patterns=self._force_patterns)
+        pipeline = ProcessorPipeline(app, self._out_dir)
         self._asset_record = pipeline.run()
         self._page_record = ServeRecord()
 
@@ -184,17 +176,12 @@ class Server(object):
         # Yep, we know about this URL because we processed an asset that
         # maps to it... make sure it's up to date by re-processing it
         # before serving.
-        mounts = app.assets_dirs
         asset_in_path = entry.path
         asset_out_path = os.path.join(self._out_dir, rel_req_path)
 
         if self.synchronous_asset_pipeline:
             logger.debug("Making sure '%s' is up-to-date." % asset_in_path)
-            pipeline = ProcessorPipeline(
-                    app, mounts, self._out_dir,
-                    skip_patterns=self._skip_patterns,
-                    force_patterns=self._force_patterns,
-                    num_workers=1)
+            pipeline = ProcessorPipeline(app, self._out_dir)
             r = pipeline.run(asset_in_path, delete=False, save_record=False,
                              previous_record=self._asset_record)
             assert len(r.entries) == 1
@@ -204,11 +191,7 @@ class Server(object):
 
     def _try_serve_new_asset(self, app, environ, request):
         logger.debug("Searching for a new asset with path: %s" % request.path)
-        mounts = app.assets_dirs
-        pipeline = ProcessorPipeline(
-                app, mounts, self._out_dir,
-                skip_patterns=self._skip_patterns,
-                force_patterns=self._force_patterns)
+        pipeline = ProcessorPipeline(app, self._out_dir)
         r = pipeline.run(new_only=True, delete=False, save_record=False,
                          previous_record=self._asset_record)
         for e in r.entries:

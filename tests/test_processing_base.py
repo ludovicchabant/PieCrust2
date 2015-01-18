@@ -34,11 +34,10 @@ class NoopProcessor(SimpleFileProcessor):
         return True
 
 
-def _get_pipeline(fs, cache=True, **kwargs):
-    app = fs.getApp(cache=cache)
-    mounts = [os.path.join(app.root_dir, 'assets')]
-    return ProcessorPipeline(app, mounts, fs.path('counter'),
-            num_workers=1, **kwargs)
+def _get_pipeline(fs, app=None):
+    app = app or fs.getApp()
+    app.config.set('baker/num_workers', 1)
+    return ProcessorPipeline(app, fs.path('counter'))
 
 
 def test_empty():
@@ -172,15 +171,28 @@ def test_skip_pattern(patterns, expected):
             .withFile('kitchen/assets/_hidden.html', 'Shhh')
             .withFile('kitchen/assets/foo/_important.html', 'Important!'))
     with mock_fs_scope(fs):
-        pp = _get_pipeline(fs, skip_patterns=['/^_/'])
+        pp = _get_pipeline(fs)
+        pp.addSkipPatterns(patterns)
         pp.filterProcessors(['copy'])
-        expected = {}
-        assert expected == fs.getStructure('counter')
+        assert {} == fs.getStructure('counter')
         pp.run()
-        expected = {
-                'something.html': 'A test file.',
-                'foo': {
-                    '_important.html': 'Important!'}
-                }
         assert expected == fs.getStructure('counter')
+
+
+@pytest.mark.parametrize('names, expected', [
+        ('all', ['copy', 'concat', 'less', 'sass', 'sitemap']),
+        ('all -sitemap', ['copy', 'concat', 'less', 'sass']),
+        ('-sitemap -less -sass all', ['copy', 'concat']),
+        ('copy', ['copy']),
+        ('less sass', ['less', 'sass'])
+    ])
+def test_filter_processor(names, expected):
+    fs = mock_fs()
+    with mock_fs_scope(fs):
+        app = fs.getApp()
+        pp = _get_pipeline(fs, app=app)
+        pp.filterProcessors('copy concat less sass sitemap')
+        procs = pp.getFilteredProcessors(names)
+        actual = [p.PROCESSOR_NAME for p in procs]
+        assert sorted(actual) == sorted(expected)
 
