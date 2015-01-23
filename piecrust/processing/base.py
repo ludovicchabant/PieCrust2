@@ -246,7 +246,10 @@ class ProcessorPipeline(object):
         if delete and not new_only:
             for path, reason in record.getDeletions():
                 logger.debug("Removing '%s': %s" % (path, reason))
-                os.remove(path)
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
                 logger.info('[delete] %s' % path)
 
         # Invoke post-processors.
