@@ -128,7 +128,7 @@ class ProcessorPipeline(object):
         baker_params = app.config.get('baker') or {}
 
         assets_dirs = baker_params.get('assets_dirs', app.assets_dirs)
-        self.mounts = make_mount_info(assets_dirs)
+        self.mounts = make_mount_infos(assets_dirs, self.app.root_dir)
 
         self.num_workers = baker_params.get('workers', 4)
 
@@ -212,15 +212,17 @@ class ProcessorPipeline(object):
         if src_dir_or_file is not None:
             # Process only the given path.
             # Find out what mount point this is in.
-            for path, info in self.mounts.items():
+            for name, info in self.mounts.items():
+                path = info['path']
                 if src_dir_or_file[:len(path)] == path:
                     base_dir = path
                     mount_info = info
                     break
             else:
+                known_roots = [i['path'] for i in self.mounts.values()]
                 raise Exception("Input path '%s' is not part of any known "
                                 "mount point: %s" %
-                                (src_dir_or_file, self.mounts.keys()))
+                                (src_dir_or_file, known_roots))
 
             ctx = ProcessingContext(base_dir, mount_info, queue, record)
             logger.debug("Initiating processing pipeline on: %s" % src_dir_or_file)
@@ -231,7 +233,8 @@ class ProcessorPipeline(object):
 
         else:
             # Process everything.
-            for path, info in self.mounts.items():
+            for name, info in self.mounts.items():
+                path = info['path']
                 ctx = ProcessingContext(path, info, queue, record)
                 logger.debug("Initiating processing pipeline on: %s" % path)
                 self.processDirectory(ctx, path, new_only)
@@ -388,7 +391,7 @@ class ProcessingWorker(threading.Thread):
             logger.error("Error processing %s: %s" % (rel_path, ex))
 
 
-def make_mount_info(mounts):
+def make_mount_infos(mounts, root_dir):
     if isinstance(mounts, list):
         mounts = {m: {} for m in mounts}
 
@@ -397,6 +400,7 @@ def make_mount_info(mounts):
             raise Exception("Asset directory info for '%s' is not a "
                             "dictionary." % name)
         info.setdefault('processors', 'all -uglifyjs -cleancss')
+        info['path'] = os.path.join(root_dir, name)
 
     return mounts
 
