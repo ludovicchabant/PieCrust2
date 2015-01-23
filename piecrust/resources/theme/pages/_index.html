@@ -28,28 +28,30 @@ Since you don't seem to have any blog post or home page created yet, here's a
 quick reference of things you probably want to do next. All `chef` commands need
 to be run from inside your website's directory.
 
-For more information, refer to the [documentation][doc].
+For more information, refer to the [documentation][doc]. This message will go
+away as soon as you've written your first blog post, or after you set the
+`hide_quickstart` setting to `true` in the site configuration (_i.e._ in
+`config.yml` under the `site` section).
 
+### Create a new page
+
+Run `chef prepare page my-new-page`, where `my-new-page` is the [URL
+slug][slug] you want for your new page. This can contain sub-directories, like
+so: `about/my-new-page`.
 
 ### Create a new blog post
 
-Run `chef prepare post my-new-post-slug`, where `my-new-post-slug` is the [URL slug][slug] you want for your new post.
+Run `chef prepare post my-new-post-slug`, where `my-new-post-slug` is the [URL
+slug][slug] you want for your new post. Unlike pages, this shouldn't contain
+any sub-directories.
 
+### Bake your site
 
-### Change this page
+Run `chef bake`.
 
-To override this default home page, you can do one of the following:
+### Preview your site
 
-* Just hide this "quick start" section by setting the `hide_quickstart` property
-  to `true` in your site configuration. To do this, edit `config.yml`
-  and `hide_quickstart: true` under the `site` section.
-
-* Manually rewrite this page by creating `_content/pages/_index.md` or running
-  `chef prepare page _index`.
-
-* Install a theme with `chef themes install theme-name`, where `theme-name` is
-  the name of a theme. You can list existing official themes with `chef themes
-  find`.
+Run `chef serve`, and point your browser to `http://localhost:8080`.
 
 
 [piecrust]: {{ piecrust.url }}
