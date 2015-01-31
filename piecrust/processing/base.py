@@ -171,8 +171,7 @@ class ProcessorPipeline(object):
         return procs
 
     def run(self, src_dir_or_file=None, *,
-            new_only=False, delete=True,
-            previous_record=None, save_record=True):
+            delete=True, previous_record=None, save_record=True):
         # Invoke pre-processors.
         for proc in self.processors:
             proc.onPipelineStart(self)
@@ -227,9 +226,9 @@ class ProcessorPipeline(object):
             ctx = ProcessingContext(base_dir, mount_info, queue, record)
             logger.debug("Initiating processing pipeline on: %s" % src_dir_or_file)
             if os.path.isdir(src_dir_or_file):
-                self.processDirectory(ctx, src_dir_or_file, new_only)
+                self.processDirectory(ctx, src_dir_or_file)
             elif os.path.isfile(src_dir_or_file):
-                self.processFile(ctx, src_dir_or_file, new_only)
+                self.processFile(ctx, src_dir_or_file)
 
         else:
             # Process everything.
@@ -237,7 +236,7 @@ class ProcessorPipeline(object):
                 path = info['path']
                 ctx = ProcessingContext(path, info, queue, record)
                 logger.debug("Initiating processing pipeline on: %s" % path)
-                self.processDirectory(ctx, path, new_only)
+                self.processDirectory(ctx, path)
 
         # Wait on all workers.
         for w in pool:
@@ -246,7 +245,7 @@ class ProcessorPipeline(object):
             raise Exception("Worker pool was aborted.")
 
         # Handle deletions.
-        if delete and not new_only:
+        if delete:
             for path, reason in record.getDeletions():
                 logger.debug("Removing '%s': %s" % (path, reason))
                 try:
@@ -272,7 +271,7 @@ class ProcessorPipeline(object):
 
         return record.detach()
 
-    def processDirectory(self, ctx, start_dir, new_only=False):
+    def processDirectory(self, ctx, start_dir):
         for dirpath, dirnames, filenames in os.walk(start_dir):
             rel_dirpath = os.path.relpath(dirpath, start_dir)
             dirnames[:] = [d for d in dirnames
@@ -281,12 +280,11 @@ class ProcessorPipeline(object):
             for filename in filenames:
                 if re_matchany(filename, self.skip_patterns, rel_dirpath):
                     continue
-                self.processFile(ctx, os.path.join(dirpath, filename),
-                                 new_only)
+                self.processFile(ctx, os.path.join(dirpath, filename))
 
-    def processFile(self, ctx, path, new_only=False):
+    def processFile(self, ctx, path):
         logger.debug("Queuing: %s" % path)
-        job = ProcessingWorkerJob(ctx.base_dir, ctx.mount_info, path, new_only)
+        job = ProcessingWorkerJob(ctx.base_dir, ctx.mount_info, path)
         ctx.job_queue.put_nowait(job)
 
 
@@ -301,11 +299,10 @@ class ProcessingWorkerContext(object):
 
 
 class ProcessingWorkerJob(object):
-    def __init__(self, base_dir, mount_info, path, new_only=False):
+    def __init__(self, base_dir, mount_info, path):
         self.base_dir = base_dir
         self.mount_info = mount_info
         self.path = path
-        self.new_only = new_only
 
 
 class ProcessingWorker(threading.Thread):
@@ -339,8 +336,6 @@ class ProcessingWorker(threading.Thread):
 
         rel_path = os.path.relpath(job.path, job.base_dir)
         previous_entry = record.getPreviousEntry(rel_path)
-        if job.new_only and previous_entry:
-            return
 
         record_entry = ProcessorPipelineRecordEntry(job.base_dir, rel_path)
         record.addEntry(record_entry)
