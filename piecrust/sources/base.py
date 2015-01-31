@@ -340,7 +340,7 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
 
     def resolveRef(self, ref_path):
         return os.path.normpath(
-                os.path.join(self.fs_endpoint_path, ref_path))
+                os.path.join(self.fs_endpoint_path, ref_path.lstrip("\\/")))
 
     def findPagePath(self, metadata, mode):
         uri_path = metadata.setdefault('path', '')
@@ -373,7 +373,7 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
         return None, None
 
     def listPath(self, rel_path):
-        path = os.path.join(self.fs_endpoint_path, rel_path)
+        path = os.path.join(self.fs_endpoint_path, rel_path.lstrip("\\/"))
         names = sorted(os.listdir(path))
         items = []
         for name in names:
