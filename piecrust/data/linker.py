@@ -1,6 +1,7 @@
 import logging
 import collections
-from piecrust.data.base import PaginationData
+from piecrust.data.base import PaginationData, IPaginationSource
+from piecrust.data.iterators import PageIterator
 from piecrust.sources.base import IListableSource, build_pages
 
 
@@ -20,6 +21,27 @@ class LinkedPageData(PaginationData):
         return False
 
 
+class LinkedPageDataIterator(object):
+    def __init__(self, items):
+        self._items = list(items)
+        self._index = -1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self._index += 1
+        if self._index >= len(self._items):
+            raise StopIteration()
+        return self._items[self._index]
+
+    def sort(self, name):
+        def key_getter(item):
+            return item[name]
+        self._items = sorted(self._item, key=key_getter)
+        return self
+
+
 class Linker(object):
     debug_render_doc = """Provides access to sibling and children pages."""
 
@@ -33,7 +55,7 @@ class Linker(object):
 
     def __iter__(self):
         self._load()
-        return iter(self._cache.values())
+        return LinkedPageDataIterator(self._cache.values())
 
     def __getattr__(self, name):
         self._load()
@@ -85,21 +107,31 @@ class Linker(object):
 
 
 class RecursiveLinker(Linker):
-    def __init__(self, source, page_path):
-        super(RecursiveLinker, self).__init__(source, page_path=page_path)
+    def __init__(self, source, *args, **kwargs):
+        super(RecursiveLinker, self).__init__(source, *args, **kwargs)
 
     def __iter__(self):
+        return iter(PageIterator(self._iterateLinkers()))
+
+    def siblings(self):
+        return PageIterator(self._iterateLinkers(0))
+
+    def frompath(self, rel_path):
+        return RecursiveLinker(self.source, name='.', dir_path=rel_path)
+
+    def _iterateLinkers(self, max_depth=-1):
         self._load()
         if not self._is_listable:
             return
-        yield from walk_linkers(self)
+        yield from walk_linkers(self, 0, max_depth)
 
 
-def walk_linkers(linker):
+def walk_linkers(linker, depth=0, max_depth=-1):
     linker._load()
     for item in linker._cache.values():
         if item.is_dir:
-            yield from walk_linkers(item)
+            if max_depth < 0 or depth + 1 <= max_depth:
+                yield from walk_linkers(item, depth + 1, max_depth)
         else:
             yield item
 
