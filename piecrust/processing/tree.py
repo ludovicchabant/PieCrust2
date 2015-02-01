@@ -24,6 +24,16 @@ class ProcessorNotFoundError(ProcessingTreeError):
     pass
 
 
+class ProcessorError(ProcessingTreeError):
+    def __init__(self, proc_name, in_path, *args):
+        super(ProcessorError, self).__init__(*args)
+        self.proc_name = proc_name
+        self.in_path = in_path
+
+    def __str__(self):
+        return "Processor %s failed on: %s" % (self.proc_name, self.in_path)
+
+
 class ProcessingTreeNode(object):
     def __init__(self, path, available_procs, level=0):
         self.path = path
@@ -154,8 +164,7 @@ class ProcessingTreeRunner(object):
                             colored=False))
                 return True
             except Exception as e:
-                raise ProcessingTreeError("Error processing: %s" %
-                        node.path) from e
+                raise ProcessorError(proc.PROCESSOR_NAME, full_path) from e
 
         # All outputs of a node must go to the same directory, so we can get
         # the output directory off of the first output.
@@ -183,7 +192,7 @@ class ProcessingTreeRunner(object):
                 print_node(node, "-> %s [clean]" % out_dir)
                 return False
         except Exception as e:
-            raise Exception("Error processing: %s" % node.path) from e
+            raise ProcessorError(proc.PROCESSOR_NAME, full_path) from e
 
     def _computeNodeState(self, node):
         if node.state != STATE_UNKNOWN:

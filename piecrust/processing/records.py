@@ -9,6 +9,7 @@ class ProcessorPipelineRecord(Record):
         super(ProcessorPipelineRecord, self).__init__()
         self.out_dir = None
         self.process_time = None
+        self.success = False
 
     def hasOverrideEntry(self, rel_path):
         return self.findEntry(rel_path) is not None

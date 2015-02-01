@@ -40,19 +40,20 @@ class BakeCommand(ChefCommand):
         out_dir = (ctx.args.output or
                    os.path.join(ctx.app.root_dir, '_counter'))
 
+        success = True
         start_time = time.clock()
         try:
             # Bake the site sources.
-            self._bakeSources(ctx, out_dir)
+            success = success & self._bakeSources(ctx, out_dir)
 
             # Bake the assets.
             if not ctx.args.no_assets:
-                self._bakeAssets(ctx, out_dir)
+                success = success & self._bakeAssets(ctx, out_dir)
 
             # All done.
             logger.info('-------------------------')
             logger.info(format_timed(start_time, 'done baking'))
-            return 0
+            return 0 if success else 1
         except Exception as ex:
             if ctx.app.debug:
                 logger.exception(ex)
@@ -65,12 +66,14 @@ class BakeCommand(ChefCommand):
                 ctx.app, out_dir,
                 force=ctx.args.force)
         baker.bake()
+        return True
 
     def _bakeAssets(self, ctx, out_dir):
         proc = ProcessorPipeline(
                 ctx.app, out_dir,
                 force=ctx.args.force)
-        proc.run()
+        record = proc.run()
+        return record.success
 
 
 class ShowRecordCommand(ChefCommand):

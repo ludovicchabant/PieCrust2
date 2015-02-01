@@ -11,7 +11,8 @@ from piecrust.processing.records import (
         ProcessorPipelineRecordEntry, TransitionalProcessorPipelineRecord,
         FLAG_PROCESSED, FLAG_OVERRIDEN, FLAG_BYPASSED_STRUCTURED_PROCESSING)
 from piecrust.processing.tree import (
-        ProcessingTreeBuilder, ProcessingTreeRunner, ProcessingTreeError,
+        ProcessingTreeBuilder, ProcessingTreeRunner,
+        ProcessingTreeError, ProcessorError,
         STATE_DIRTY,
         print_node, get_node_name_tree)
 
@@ -239,8 +240,10 @@ class ProcessorPipeline(object):
                 self.processDirectory(ctx, path)
 
         # Wait on all workers.
+        record.current.success = True
         for w in pool:
             w.join()
+            record.current.success &= w.success
         if abort.is_set():
             raise Exception("Worker pool was aborted.")
 
@@ -310,6 +313,7 @@ class ProcessingWorker(threading.Thread):
         super(ProcessingWorker, self).__init__()
         self.wid = wid
         self.ctx = ctx
+        self.success = True
 
     def run(self):
         while(not self.ctx.abort_event.is_set()):
@@ -320,11 +324,13 @@ class ProcessingWorker(threading.Thread):
                 break
 
             try:
-                self._unsafeRun(job)
+                success = self._unsafeRun(job)
                 logger.debug("[%d] Done with file." % self.wid)
                 self.ctx.work_queue.task_done()
+                self.success &= success
             except Exception as ex:
                 self.ctx.abort_event.set()
+                self.success = False
                 logger.error("[%d] Critical error, aborting." % self.wid)
                 logger.exception(ex)
                 break
@@ -347,7 +353,7 @@ class ProcessingWorker(threading.Thread):
             record_entry.flags |= FLAG_OVERRIDEN
             logger.info(format_timed(start_time,
                     '%s [not baked, overridden]' % rel_path))
-            return
+            return True
 
         processors = pipeline.getFilteredProcessors(
                 job.mount_info['processors'])
@@ -355,9 +361,12 @@ class ProcessingWorker(threading.Thread):
             builder = ProcessingTreeBuilder(processors)
             tree_root = builder.build(rel_path)
         except ProcessingTreeError as ex:
-            record_entry.errors.append(str(ex))
-            logger.error("Error processing %s: %s" % (rel_path, ex))
-            return
+            msg = str(ex)
+            logger.error("Error processing %s: %s" % (rel_path, msg))
+            while ex:
+                record_entry.errors.append(str(ex))
+                ex = ex.__cause__
+            return False
 
         print_node(tree_root, recursive=True)
         leaves = tree_root.getLeaves()
@@ -380,10 +389,18 @@ class ProcessingWorker(threading.Thread):
                     pipeline.out_dir, self.ctx.pipeline_lock)
             if runner.processSubTree(tree_root):
                 record_entry.flags |= FLAG_PROCESSED
-                logger.info(format_timed(start_time, "[%d] %s" % (self.wid, rel_path)))
+                logger.info(format_timed(
+                    start_time, "[%d] %s" % (self.wid, rel_path)))
+            return True
         except ProcessingTreeError as ex:
-            record_entry.errors.append(str(ex))
-            logger.error("Error processing %s: %s" % (rel_path, ex))
+            msg = str(ex)
+            if isinstance(ex, ProcessorError):
+                msg = str(ex.__cause__)
+            logger.error("Error processing %s: %s" % (rel_path, msg))
+            while ex:
+                record_entry.errors.append(str(ex))
+                ex = ex.__cause__
+            return False
 
 
 def make_mount_infos(mounts, root_dir):
