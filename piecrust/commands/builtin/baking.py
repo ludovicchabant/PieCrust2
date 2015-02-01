@@ -108,10 +108,15 @@ class ShowRecordCommand(ChefCommand):
             raise Exception("No record has been created for this output path. "
                             "Did you bake there yet?")
 
+        # Show the bake record.
         record = BakeRecord.load(record_cache.getCachePath(record_name))
         logging.info("Bake record for: %s" % record.out_dir)
         logging.info("Last baked: %s" %
                      datetime.datetime.fromtimestamp(record.bake_time))
+        if record.success:
+            logging.info("Status: success")
+        else:
+            logging.error("Status: failed")
         logging.info("Entries:")
         for entry in record.entries:
             if pattern:
@@ -135,12 +140,17 @@ class ShowRecordCommand(ChefCommand):
         if not record_cache.has(record_name):
             return
 
+        # Show the pipeline record.
         record = ProcessorPipelineRecord.load(
                 record_cache.getCachePath(record_name))
         logging.info("")
         logging.info("Processing record for: %s" % record.out_dir)
         logging.info("Last baked: %s" %
                      datetime.datetime.fromtimestamp(record.process_time))
+        if record.success:
+            logging.info("Status: success")
+        else:
+            logging.error("Status: failed")
         logging.info("Entries:")
         for entry in record.entries:
             if pattern:
