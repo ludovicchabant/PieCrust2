@@ -65,8 +65,8 @@ class BakeCommand(ChefCommand):
         baker = Baker(
                 ctx.app, out_dir,
                 force=ctx.args.force)
-        baker.bake()
-        return True
+        record = baker.bake()
+        return record.success
 
     def _bakeAssets(self, ctx, out_dir):
         proc = ProcessorPipeline(

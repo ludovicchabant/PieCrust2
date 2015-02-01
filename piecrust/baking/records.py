@@ -20,12 +20,13 @@ def _get_transition_key(source_name, rel_path, taxonomy_name=None,
 
 
 class BakeRecord(Record):
-    RECORD_VERSION = 8
+    RECORD_VERSION = 9
 
     def __init__(self):
         super(BakeRecord, self).__init__()
         self.out_dir = None
         self.bake_time = None
+        self.success = True
 
 
 FLAG_NONE = 0

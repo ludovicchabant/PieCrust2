@@ -61,6 +61,7 @@ class Baker(object):
             logger.debug(format_timed(
                     t, 'loaded previous bake record',
                     colored=False))
+        record.current.success = True
 
         # Figure out if we need to clean the cache because important things
         # have changed.
@@ -98,6 +99,8 @@ class Baker(object):
         # All done.
         self.app.config.set('baker/is_baking', False)
         logger.debug(format_timed(start_time, 'done baking'))
+
+        return record.detach()
 
     def _handleCacheValidity(self, record):
         start_time = time.clock()
@@ -173,7 +176,8 @@ class Baker(object):
 
                 queue.addJob(BakeWorkerJob(fac, route, entry))
 
-        self._waitOnWorkerPool(pool, abort)
+        success = self._waitOnWorkerPool(pool, abort)
+        record.current.success &= success
 
     def _bakeTaxonomies(self, record):
         logger.debug("Baking taxonomies")
@@ -270,7 +274,8 @@ class Baker(object):
                     queue.addJob(
                             BakeWorkerJob(fac, route, entry, tax_name, term))
 
-        self._waitOnWorkerPool(pool, abort)
+        success = self._waitOnWorkerPool(pool, abort)
+        record.current.success &= success
 
     def _handleDeletetions(self, record):
         for path, reason in record.getDeletions():
@@ -299,9 +304,11 @@ class Baker(object):
         for w in pool:
             w.start()
 
+        success = True
         try:
             for w in pool:
                 w.join()
+                success &= w.success
         except KeyboardInterrupt:
             logger.warning("Bake aborted by user... "
                            "waiting for workers to stop.")
@@ -321,6 +328,8 @@ class Baker(object):
                 for e in excs:
                     log_friendly_exception(logger, e)
             raise BakingError("Baking was aborted due to errors.")
+
+        return success
 
 
 class BakeWorkerContext(object):
@@ -354,6 +363,7 @@ class BakeWorker(threading.Thread):
         self.wid = wid
         self.ctx = ctx
         self.abort_exception = None
+        self.success = True
         self._page_baker = PageBaker(
                 ctx.app, ctx.out_dir, ctx.force,
                 ctx.record)
@@ -367,12 +377,14 @@ class BakeWorker(threading.Thread):
                             "[%d] No more work... shutting down." %
                             self.wid)
                     break
-                self._unsafeRun(job)
+                success = self._unsafeRun(job)
                 logger.debug("[%d] Done with page." % self.wid)
                 self.ctx.work_queue.onJobFinished(job)
+                self.success &= success
             except Exception as ex:
                 self.ctx.abort_event.set()
                 self.abort_exception = ex
+                self.success = False
                 logger.debug("[%d] Critical error, aborting." % self.wid)
                 if self.ctx.app.debug:
                     logger.exception(ex)
@@ -393,6 +405,11 @@ class BakeWorker(threading.Thread):
                 entry.errors.append(str(ex))
                 ex = ex.__cause__
 
+        if entry.errors:
+            for e in entry.errors:
+                logger.error(e)
+            return False
+
         if entry.was_baked_successfully:
             uri = entry.out_uris[0]
             friendly_uri = uri if uri != '' else '[main page]'
@@ -402,7 +419,6 @@ class BakeWorker(threading.Thread):
             logger.info(format_timed(
                     start_time, '[%d] %s%s' %
                     (self.wid, friendly_uri, friendly_count)))
-        elif entry.errors:
-            for e in entry.errors:
-                logger.error(e)
+
+        return True
 
