@@ -72,9 +72,17 @@ class Server(object):
         self._out_dir = os.path.join(app.cache_dir, 'server')
         self._page_record = ServeRecord()
 
-        pipeline = ProcessorPipeline(app, self._out_dir)
-        loop = ProcessingLoop(pipeline)
-        loop.start()
+        if (not self.use_reloader or
+                os.environ.get('WERKZEUG_RUN_MAIN') == 'true'):
+            # We don't want to run the processing loop here if this isn't
+            # the actual process that does the serving. In most cases it is,
+            # but if we're using Werkzeug's reloader, then it won't be the
+            # first time we get there... it will only be the correct process
+            # the second time, when the reloading process is spawned, with the
+            # `WERKZEUG_RUN_MAIN` variable set.
+            pipeline = ProcessorPipeline(app, self._out_dir)
+            loop = ProcessingLoop(pipeline)
+            loop.start()
 
         # Run the WSGI app.
         wsgi_wrapper = WsgiServer(self)
