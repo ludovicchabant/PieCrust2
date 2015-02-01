@@ -3,7 +3,7 @@ from piecrust.records import Record, TransitionalRecord
 
 
 class ProcessorPipelineRecord(Record):
-    RECORD_VERSION = 3
+    RECORD_VERSION = 4
 
     def __init__(self):
         super(ProcessorPipelineRecord, self).__init__()
