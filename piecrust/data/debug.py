@@ -14,12 +14,11 @@ css_id_re = re.compile(r'[^\w\d\-]+')
 
 
 # CSS for the debug window.
-CSS_DEBUGINFO = """
+CSS_DEBUGWINDOW = """
 text-align: left;
+font-family: serif;
 font-style: normal;
-padding: 1em;
-background: #a42;
-color: #fff;
+font-weight: normal;
 position: fixed;
 width: 50%;
 bottom: 0;
@@ -27,6 +26,17 @@ right: 0;
 overflow: auto;
 max-height: 50%;
 box-shadow: 0 0 10px #633;
+"""
+
+CSS_PIPELINESTATUS = """
+background: #fff;
+color: #a22;
+"""
+
+CSS_DEBUGINFO = """
+padding: 1em;
+background: #a42;
+color: #fff;
 """
 
 # HTML elements.
@@ -62,10 +72,16 @@ def build_debug_info(page, data):
 def _do_build_debug_info(page, data, output):
     app = page.app
 
-    print('<div id="piecrust-debug-info" style="%s">' % CSS_DEBUGINFO, file=output)
+    print('<div id="piecrust-debug-info" style="%s">' % CSS_DEBUGWINDOW,
+          file=output)
 
-    print('<div>', file=output)
-    print('<p style="%s"><strong>PieCrust %s</strong> &mdash; ' % (CSS_P, APP_VERSION), file=output)
+    print('<div id="piecrust-debug-info-pipeline-status" style="%s">' %
+          CSS_PIPELINESTATUS, file=output)
+    print('</div>', file=output)
+
+    print('<div style="%s">' % CSS_DEBUGINFO, file=output)
+    print('<p style="%s"><strong>PieCrust %s</strong> &mdash; ' %
+          (CSS_P, APP_VERSION), file=output)
 
     # If we have some execution info in the environment,
     # add more information.
@@ -92,7 +108,7 @@ def _do_build_debug_info(page, data, output):
     print('</div>', file=output)
 
     if data:
-        print('<div>', file=output)
+        print('<div style="%s padding-top: 0;">' % CSS_DEBUGINFO, file=output)
         print(('<p style="%s cursor: pointer;" onclick="var l = '
                          'document.getElementById(\'piecrust-debug-details\'); '
                          'if (l.style.display == \'none\') l.style.display = '
@@ -121,6 +137,9 @@ def _do_build_debug_info(page, data, output):
         print('</div>', file=output)
 
     print('</div>', file=output)
+
+    print('<script src="/__piecrust_static/piecrust-debug-info.js"></script>',
+            file=output)
 
 
 class DebugDataRenderer(object):
