@@ -32,8 +32,12 @@ class BakeCommand(ChefCommand):
                 help="Force re-baking the entire website.",
                 action='store_true')
         parser.add_argument(
-                '--no-assets',
-                help="Don't process assets (only pages).",
+                '--assets-only',
+                help="Only bake the assets (don't bake the web pages).",
+                action='store_true')
+        parser.add_argument(
+                '--html-only',
+                help="Only bake HTML files (don't run the asset pipeline).",
                 action='store_true')
 
     def run(self, ctx):
@@ -44,10 +48,11 @@ class BakeCommand(ChefCommand):
         start_time = time.clock()
         try:
             # Bake the site sources.
-            success = success & self._bakeSources(ctx, out_dir)
+            if not ctx.args.assets_only:
+                success = success & self._bakeSources(ctx, out_dir)
 
             # Bake the assets.
-            if not ctx.args.no_assets:
+            if not ctx.args.html_only:
                 success = success & self._bakeAssets(ctx, out_dir)
 
             # All done.
