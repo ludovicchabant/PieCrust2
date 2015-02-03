@@ -10,7 +10,9 @@ from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.processing.records import (
-        ProcessorPipelineRecord, FLAG_OVERRIDEN)
+        ProcessorPipelineRecord,
+        FLAG_PREPARED, FLAG_PROCESSED, FLAG_OVERRIDEN,
+        FLAG_BYPASSED_STRUCTURED_PROCESSING)
 
 
 logger = logging.getLogger(__name__)
@@ -161,9 +163,15 @@ class ShowRecordCommand(ChefCommand):
             if pattern:
                 if not fnmatch.fnmatch(entry.rel_input, pattern):
                     continue
-            flags = ''
+            flags = []
+            if entry.flags & FLAG_PREPARED:
+                flags.append('prepared')
+            if entry.flags & FLAG_PROCESSED:
+                flags.append('processed')
             if entry.flags & FLAG_OVERRIDEN:
-                flags += 'overriden'
+                flags.append('overriden')
+            if entry.flags & FLAG_BYPASSED_STRUCTURED_PROCESSING:
+                flags.append('external')
             logger.info(" - ")
             logger.info("   path:      %s" % entry.rel_input)
             logger.info("   out paths: %s" % entry.rel_outputs)
@@ -176,7 +184,7 @@ class ShowRecordCommand(ChefCommand):
 
 def format_proc_tree(tree, margin='', level=0):
     name, children = tree
-    res = '%s%s%s' % (margin if level > 0 else '', level * '  ', name)
+    res = '%s%s+ %s\n' % (margin if level > 0 else '', level * '  ', name)
     if children:
         for c in children:
             res += format_proc_tree(c, margin, level + 1)

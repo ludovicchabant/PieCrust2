@@ -9,7 +9,8 @@ from queue import Queue, Empty
 from piecrust.chefutil import format_timed
 from piecrust.processing.records import (
         ProcessorPipelineRecordEntry, TransitionalProcessorPipelineRecord,
-        FLAG_PROCESSED, FLAG_OVERRIDEN, FLAG_BYPASSED_STRUCTURED_PROCESSING)
+        FLAG_PREPARED, FLAG_PROCESSED, FLAG_OVERRIDEN,
+        FLAG_BYPASSED_STRUCTURED_PROCESSING)
 from piecrust.processing.tree import (
         ProcessingTreeBuilder, ProcessingTreeRunner,
         ProcessingTreeError, ProcessorError,
@@ -18,6 +19,9 @@ from piecrust.processing.tree import (
 
 
 logger = logging.getLogger(__name__)
+
+
+re_ansicolors = re.compile('\033\\[\d+m')
 
 
 PRIORITY_FIRST = -1
@@ -103,6 +107,14 @@ class SimpleFileProcessor(Processor):
 
     def _doProcess(self, in_path, out_path):
         raise NotImplementedError()
+
+
+class ExternalProcessException(Exception):
+    def __init__(self, stderr_data):
+        self.stderr_data = stderr_data
+
+    def __str__(self):
+        return self.stderr_data
 
 
 class ProcessingContext(object):
@@ -360,9 +372,10 @@ class ProcessingWorker(threading.Thread):
         try:
             builder = ProcessingTreeBuilder(processors)
             tree_root = builder.build(rel_path)
+            record_entry.flags |= FLAG_PREPARED
         except ProcessingTreeError as ex:
             msg = str(ex)
-            logger.error("Error processing %s: %s" % (rel_path, msg))
+            logger.error("Error preparing %s:\n%s" % (rel_path, msg))
             while ex:
                 record_entry.errors.append(str(ex))
                 ex = ex.__cause__
@@ -396,9 +409,10 @@ class ProcessingWorker(threading.Thread):
             msg = str(ex)
             if isinstance(ex, ProcessorError):
                 msg = str(ex.__cause__)
-            logger.error("Error processing %s: %s" % (rel_path, msg))
+            logger.error("Error processing %s:\n%s" % (rel_path, msg))
             while ex:
-                record_entry.errors.append(str(ex))
+                msg = re_ansicolors.sub('', str(ex))
+                record_entry.errors.append(msg)
                 ex = ex.__cause__
             return False
 

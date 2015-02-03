@@ -1,11 +1,13 @@
 import os
 import os.path
+import sys
 import json
 import hashlib
 import logging
 import platform
 import subprocess
-from piecrust.processing.base import SimpleFileProcessor
+from piecrust.processing.base import (
+        SimpleFileProcessor, ExternalProcessException)
 from piecrust.processing.tree import FORCE_BUILD
 
 
@@ -65,15 +67,19 @@ class LessProcessor(SimpleFileProcessor):
         # otherwise it looks like `PATH` isn't taken into account.
         shell = (platform.system() == 'Windows')
         try:
-            retcode = subprocess.call(args, shell=shell)
+            proc = subprocess.Popen(
+                    args, shell=shell,
+                    stderr=subprocess.PIPE)
+            stdout_data, stderr_data = proc.communicate()
         except FileNotFoundError as ex:
             logger.error("Tried running LESS processor with command: %s" %
                          args)
             raise Exception("Error running LESS processor. "
                             "Did you install it?") from ex
-        if retcode != 0:
-            raise Exception("Error occured in LESS compiler. Please check "
-                            "log messages above for more information.")
+        if proc.returncode != 0:
+            raise ExternalProcessException(
+                    stderr_data.decode(sys.stderr.encoding))
+
         return True
 
     def _ensureInitialized(self):

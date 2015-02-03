@@ -33,9 +33,10 @@ class ProcessorPipelineRecord(Record):
 
 
 FLAG_NONE = 0
-FLAG_PROCESSED = 2**0
-FLAG_OVERRIDEN = 2**1
-FLAG_BYPASSED_STRUCTURED_PROCESSING = 2**2
+FLAG_PREPARED = 2**0
+FLAG_PROCESSED = 2**1
+FLAG_OVERRIDEN = 2**2
+FLAG_BYPASSED_STRUCTURED_PROCESSING = 2**3
 
 
 class ProcessorPipelineRecordEntry(object):
@@ -53,8 +54,13 @@ class ProcessorPipelineRecordEntry(object):
         return os.path.join(self.base_dir, self.rel_input)
 
     @property
+    def was_prepared(self):
+        return bool(self.flags & FLAG_PREPARED)
+
+    @property
     def was_processed(self):
-        return bool(self.flags & FLAG_PROCESSED)
+        return (self.was_prepared and
+                (bool(self.flags & FLAG_PROCESSED) or len(self.errors) > 0))
 
     @property
     def was_processed_successfully(self):
