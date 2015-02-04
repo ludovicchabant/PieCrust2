@@ -26,6 +26,9 @@ from piecrust.sources.base import PageFactory, MODE_PARSING
 logger = logging.getLogger(__name__)
 
 
+_sse_abort = threading.Event()
+
+
 class ServingEnvironment(StandardEnvironment):
     pass
 
@@ -444,6 +447,9 @@ class PipelineStatusServerSideEventProducer(object):
                 logger.debug("Closing pipeline status SSE, timeout reached.")
                 outstr = 'event: pipeline_timeout\ndata: bye\n\n'
                 yield bytes(outstr, 'utf8')
+                break
+
+            if _sse_abort.is_set():
                 break
 
             try:

@@ -1,5 +1,5 @@
 import logging
-from piecrust.serving import Server
+from piecrust.serving import Server, _sse_abort
 from piecrust.commands.base import ChefCommand
 
 
@@ -48,10 +48,13 @@ class ServeCommand(ChefCommand):
 
         if ctx.args.wsgi == 'werkzeug':
             from werkzeug.serving import run_simple
-            run_simple(host, port, app,
-                       threaded=True,
-                       use_debugger=debug,
-                       use_reloader=ctx.args.use_reloader)
+            try:
+                run_simple(host, port, app,
+                           threaded=True,
+                           use_debugger=debug,
+                           use_reloader=ctx.args.use_reloader)
+            finally:
+                _sse_abort.set()
 
         elif ctx.args.wsgi == 'gunicorn':
             from gunicorn.app.base import BaseApplication
