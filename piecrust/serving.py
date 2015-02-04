@@ -125,11 +125,13 @@ class Server(object):
             return response(environ, start_response)
 
         # Create the app for this request.
-        rq_debug = ('!debug' in request.args)
-        app = PieCrust(root_dir=self.root_dir, debug=(self.debug or rq_debug))
+        app = PieCrust(root_dir=self.root_dir, debug=self.debug)
         app.config.set('site/root', '/')
         app.config.set('site/pretty_urls', True)
         app.config.set('server/is_serving', True)
+        if (app.config.get('site/enable_debug_info') and
+                '!debug' in request.args):
+            app.config.set('site/show_debug_info', True)
 
         # We'll serve page assets directly from where they are.
         app.env.base_asset_url_format = '/_asset/%path%'

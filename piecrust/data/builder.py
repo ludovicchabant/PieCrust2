@@ -59,7 +59,7 @@ def build_page_data(ctx):
 
     # Do this at the end because we want all the data to be ready to be
     # displayed in the debugger window.
-    if (app.debug and app.config.get('site/enable_debug_info') and
+    if (app.config.get('site/show_debug_info') and
             not app.config.get('baker/is_baking')):
         pc_data._enableDebugInfo(page, data)
 

@@ -123,6 +123,7 @@ class PieCrustConfiguration(Configuration):
                 'cache_time': 28800,
                 'display_errors': True,
                 'enable_debug_info': True,
+                'show_debug_info': False,
                 'use_default_content': True
                 })
         sitec = values.get('site')
