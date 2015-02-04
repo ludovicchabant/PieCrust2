@@ -26,6 +26,8 @@ class Route(object):
         self.uri_root = app.config.get('site/root').rstrip('/') + '/'
         self.uri_pattern = uri.lstrip('/')
         self.uri_format = route_re.sub(self._uriFormatRepl, self.uri_pattern)
+        if app.config.get('site/show_debug_info'):
+            self.uri_format += '?!debug'
 
         # Get the straight-forward regex for matching this URI pattern.
         p = route_re.sub(self._uriPatternRepl, self.uri_pattern) + '$'
