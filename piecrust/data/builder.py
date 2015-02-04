@@ -34,16 +34,14 @@ def build_page_data(ctx):
     pc_data = PieCrustData()
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
     paginator = Paginator(page, pgn_source, first_uri, ctx.page_num,
-            ctx.pagination_filter)
+                          ctx.pagination_filter)
     assetor = Assetor(page, first_uri)
-    flat_linker = Linker(page.source, page_path=page.rel_path)
     recursive_linker = RecursiveLinker(page.source, page_path=page.rel_path)
     data = {
             'piecrust': pc_data,
             'page': dict(page.config.get()),
             'assets': assetor,
             'pagination': paginator,
-            'siblings': flat_linker,
             'family': recursive_linker
             }
     page_data = data['page']
