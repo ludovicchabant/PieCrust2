@@ -26,6 +26,9 @@ class IPaginationSource(object):
     def getPaginationFilter(self, page):
         raise NotImplementedError()
 
+    def getSetting(self, item, setting_name):
+        raise NotImplementedError()
+
 
 class LazyPageConfigData(object):
     """ An object that represents the configuration header of a page,
@@ -44,16 +47,22 @@ class LazyPageConfigData(object):
     def page(self):
         return self._page
 
+    def get(self, name):
+        try:
+            return self._getValue(name)
+        except KeyError:
+            return None
+
     def __getattr__(self, name):
         try:
-            return self.getValue(name)
+            return self._getValue(name)
         except KeyError:
             raise AttributeError
 
     def __getitem__(self, name):
-        return self.getValue(name)
+        return self._getValue(name)
 
-    def getValue(self, name):
+    def _getValue(self, name):
         self._load()
 
         if self._loaders:
@@ -76,7 +85,10 @@ class LazyPageConfigData(object):
 
         return self._values[name]
 
-    def setValue(self, name, value):
+    def _setValue(self, name, value):
+        if self._values is None:
+            raise Exception("Can't call _setValue before this data has been "
+                            "loaded")
         self._values[name] = value
 
     def mapLoader(self, attr_name, loader):
@@ -130,17 +142,17 @@ class PaginationData(LazyPageConfigData):
 
     def _loadCustom(self):
         page_url = self._get_uri()
-        self.setValue('url', page_url)
-        self.setValue('slug', get_slug(self._page.app, page_url))
-        self.setValue(
+        self._setValue('url', page_url)
+        self._setValue('slug', get_slug(self._page.app, page_url))
+        self._setValue(
                 'timestamp',
                 time.mktime(self.page.datetime.timetuple()))
         date_format = self.page.app.config.get('site/date_format')
         if date_format:
-            self.setValue('date', self.page.datetime.strftime(date_format))
+            self._setValue('date', self.page.datetime.strftime(date_format))
 
         assetor = Assetor(self.page, page_url)
-        self.setValue('assets', assetor)
+        self._setValue('assets', assetor)
 
         segment_names = self.page.config.get('segments')
         for name in segment_names:
@@ -174,11 +186,11 @@ class PaginationData(LazyPageConfigData):
 
         for k, v in segs.items():
             self.mapLoader(k, None)
-            self.setValue(k, v)
+            self._setValue(k, v)
 
         if 'content.abstract' in segs:
-            self.setValue('content', segs['content.abstract'])
-            self.setValue('has_more', True)
+            self._setValue('content', segs['content.abstract'])
+            self._setValue('has_more', True)
             if name == 'content':
                 return segs['content.abstract']
 

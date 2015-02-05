@@ -294,6 +294,9 @@ class SimplePaginationSourceMixin(IPaginationSource):
             return f
         return None
 
+    def getSettingAccessor(self):
+        return lambda i, n: i.config.get(n)
+
 
 class ArraySource(PageSource, SimplePaginationSourceMixin):
     def __init__(self, app, inner_source, name='array', config=None):

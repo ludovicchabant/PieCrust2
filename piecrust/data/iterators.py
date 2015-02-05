@@ -80,16 +80,24 @@ class SettingSortIterator(object):
         self.it = it
         self.name = name
         self.reverse = reverse
-        self.value_accessor = value_accessor
+        self.value_accessor = value_accessor or self._default_value_accessor
 
     def __iter__(self):
         return iter(sorted(self.it, key=self._key_getter,
                            reverse=self.reverse))
 
     def _key_getter(self, item):
-        if self.value_accessor:
-            return self.value_accessor(item, self.name)
-        return item.config.get(self.name)
+        key = self.value_accessor(item, self.name)
+        if key is None:
+            return 0
+        return key
+
+    @staticmethod
+    def _default_value_accessor(item, name):
+        try:
+            return getattr(item, name)
+        except AttributeError:
+            return None
 
 
 class PaginationFilterIterator(object):
@@ -125,7 +133,7 @@ class PageIterator(object):
         # Apply any filter first, before we start sorting or slicing.
         if pagination_filter is not None:
             self._simpleNonSortedWrap(PaginationFilterIterator,
-                    pagination_filter)
+                                      pagination_filter)
 
         if offset > 0 or limit > 0:
             self.slice(offset, limit)
@@ -207,8 +215,11 @@ class PageIterator(object):
         self._ensureUnlocked()
         self._unload()
         if setting_name is not None:
+            accessor = None
+            if not isinstance(self._source, IPaginationSource):
+                accessor = self._source.getSettingAccessor()
             self._pages = SettingSortIterator(self._pages, setting_name,
-                                              reverse)
+                                              reverse, accessor)
         else:
             self._pages = NaturalSortIterator(self._pages, reverse)
         self._has_sorter = True
