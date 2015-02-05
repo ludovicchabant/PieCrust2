@@ -21,6 +21,29 @@ class LinkedPageData(PaginationData):
         return False
 
 
+class LinkerSource(IPaginationSource):
+    def __init__(self, pages):
+        self._pages = pages
+
+    def getItemsPerPage(self):
+        raise NotImplementedError()
+
+    def getSourceIterator(self):
+        return self._pages
+
+    def getSorterIterator(self, it):
+        return None
+
+    def getTailIterator(self, it):
+        return None
+
+    def getPaginationFilter(self, page):
+        return None
+
+    def getSettingAccessor(self):
+        return lambda i, n: i.get(n)
+
+
 class LinkedPageDataIterator(object):
     def __init__(self, items):
         self._items = list(items)
@@ -111,10 +134,22 @@ class RecursiveLinker(Linker):
         super(RecursiveLinker, self).__init__(source, *args, **kwargs)
 
     def __iter__(self):
-        return iter(PageIterator(self._iterateLinkers()))
+        return iter(self.pages)
 
-    def siblings(self):
-        return PageIterator(self._iterateLinkers(0))
+    def __getattr__(self, name):
+        if name == 'pages':
+            return self.getpages()
+        if name == 'siblings':
+            return self.getsiblings()
+        raise AttributeError()
+
+    def getpages(self):
+        src = LinkerSource(self._iterateLinkers())
+        return PageIterator(src)
+
+    def getsiblings(self):
+        src = LinkerSource(self._iterateLinkers(0))
+        return PageIterator(src)
 
     def frompath(self, rel_path):
         return RecursiveLinker(self.source, name='.', dir_path=rel_path)
