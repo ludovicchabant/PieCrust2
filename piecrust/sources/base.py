@@ -336,7 +336,7 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
                 if rel_dirpath != '.':
                     fac_path = os.path.join(rel_dirpath, f)
                 slug = self._makeSlug(fac_path)
-                metadata = {'path': slug}
+                metadata = {'slug': slug}
                 fac_path = fac_path.replace('\\', '/')
                 self._populateMetadata(fac_path, metadata)
                 yield PageFactory(self, fac_path, metadata)
@@ -346,10 +346,10 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
                 os.path.join(self.fs_endpoint_path, ref_path.lstrip("\\/")))
 
     def findPagePath(self, metadata, mode):
-        uri_path = metadata.setdefault('path', '')
+        uri_path = metadata.get('slug', '')
         if not uri_path:
             uri_path = '_index'
-        path = os.path.normpath(os.path.join(self.fs_endpoint_path, uri_path))
+        path = os.path.join(self.fs_endpoint_path, uri_path)
         _, ext = os.path.splitext(path)
 
         if mode == MODE_CREATING:
@@ -387,7 +387,7 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
             else:
                 if self._filterPageFilename(name):
                     slug = self._makeSlug(os.path.join(rel_path, name))
-                    metadata = {'path': slug}
+                    metadata = {'slug': slug}
 
                     fac_path = name
                     if rel_path != '.':
@@ -411,14 +411,14 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
         parser.add_argument('uri', help='The URI for the new page.')
 
     def buildMetadata(self, args):
-        return {'path': args.uri}
+        return {'slug': args.uri}
 
     def _makeSlug(self, rel_path):
         slug, ext = os.path.splitext(rel_path)
         slug = slug.replace('\\', '/')
         if ext.lstrip('.') not in self.supported_extensions:
             slug += ext
-        if slug.startswith('./') or slug.startswith('.\\'):
+        if slug.startswith('./'):
             slug = slug[2:]
         if slug == '_index':
             slug = ''

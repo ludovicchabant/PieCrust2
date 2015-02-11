@@ -26,7 +26,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 14
+CACHE_VERSION = 15
 
 
 class VariantNotFoundError(Exception):
@@ -199,9 +199,9 @@ class PieCrustConfiguration(Configuration):
 
             routesc = []
             routesc.append({
-                    'url': '/%path:path%',
+                    'url': '/%path:slug%',
                     'source': 'pages',
-                    'func': 'pcurl(path)'})
+                    'func': 'pcurl(slug)'})
             sitec['routes'] = routesc
 
             taxonomiesc = collections.OrderedDict()
@@ -302,9 +302,9 @@ class PieCrustConfiguration(Configuration):
                     'item_name': 'page',
                     'realm': REALM_THEME}
             sitec['routes'].append({
-                    'url': '/%path:path%',
+                    'url': '/%path:slug%',
                     'source': 'theme_pages',
-                    'func': 'pcurl(path)'})
+                    'func': 'pcurl(slug)'})
 
         # Sources have the `default` scanner by default, duh. Also, a bunch
         # of other default values for other configuration stuff.
