@@ -26,7 +26,7 @@ class IPaginationSource(object):
     def getPaginationFilter(self, page):
         raise NotImplementedError()
 
-    def getSetting(self, item, setting_name):
+    def getSettingAccessor(self):
         raise NotImplementedError()
 
 

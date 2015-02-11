@@ -216,7 +216,7 @@ class PageIterator(object):
         self._unload()
         if setting_name is not None:
             accessor = None
-            if not isinstance(self._source, IPaginationSource):
+            if isinstance(self._source, IPaginationSource):
                 accessor = self._source.getSettingAccessor()
             self._pages = SettingSortIterator(self._pages, setting_name,
                                               reverse, accessor)
