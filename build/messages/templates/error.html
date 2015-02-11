@@ -3,10 +3,18 @@
 {% block content %}
 {{content|safe}}
 
+{# The following is `raw` because we want it to be in the
+   produced page, so it can then be templated on the fly 
+   with the error messages #}
 {% raw %}
 {% if details %}
 <div class="error-details">
-    {{ details|safe }}
+    <p>Error details:</p>
+    <ul>
+    {% for desc in details %}
+        <li>{{ desc }}</li>
+    {% endfor %}
+    </ul>
 </div>
 {% endif %}
 {% endraw %}

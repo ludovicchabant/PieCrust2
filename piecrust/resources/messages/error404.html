@@ -64,7 +64,12 @@
 
 {% if details %}
 <div class="error-details">
-    {{ details|safe }}
+    <p>Error details:</p>
+    <ul>
+    {% for desc in details %}
+        <li>{{ desc }}</li>
+    {% endfor %}
+    </ul>
 </div>
 {% endif %}
 		</div>

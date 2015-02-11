@@ -149,7 +149,7 @@ class Server(object):
             response = self._try_serve_page(app, environ, request)
             return response(environ, start_response)
         except (RouteNotFoundError, SourceNotFoundError) as ex:
-            raise NotFound(str(ex))
+            raise NotFound(str(ex)) from ex
         except HTTPException:
             raise
         except Exception as ex:
@@ -158,7 +158,7 @@ class Server(object):
                 raise
             msg = str(ex)
             logger.error(msg)
-            raise InternalServerError(msg)
+            raise InternalServerError(msg) from ex
 
     def _try_special_request(self, environ, request):
         static_mount = '/__piecrust_static/'
@@ -245,8 +245,8 @@ class Server(object):
                     fac_metadata = {taxonomy.term_name: term_value}
                     break
         else:
-            raise SourceNotFoundError("Can't find path for: %s "
-                    "(looked in: %s)" %
+            raise SourceNotFoundError(
+                    "Can't find path for: %s (looked in: %s)" %
                     (req_path, [r.source_name for r, _ in routes]))
 
         # Build the page.
@@ -358,19 +358,35 @@ class Server(object):
 
     def _handle_error(self, exception, environ, start_response):
         code = 500
-        path = 'error'
-        description = str(exception)
         if isinstance(exception, HTTPException):
             code = exception.code
-            description = exception.description
-            if isinstance(exception, NotFound):
-                path += '404'
+
+        path = 'error'
+        if isinstance(exception, NotFound):
+            path += '404'
+
+        descriptions = self._get_exception_descriptions(exception)
+
         env = Environment(loader=ErrorMessageLoader())
         template = env.get_template(path)
-        context = {'details': description}
+        context = {'details': descriptions}
         response = Response(template.render(context), mimetype='text/html')
         response.status_code = code
         return response(environ, start_response)
+
+    def _get_exception_descriptions(self, exception):
+        desc = []
+        while exception is not None:
+            if isinstance(exception, HTTPException):
+                desc.append(exception.description)
+            else:
+                desc.append(str(exception))
+
+            inner_ex = exception.__cause__
+            if inner_ex is None:
+                inner_ex = exception.__context__
+            exception = inner_ex
+        return desc
 
 
 class RouteNotFoundError(Exception):
