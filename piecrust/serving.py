@@ -414,7 +414,7 @@ def find_routes(routes, uri):
     res = []
     for route in routes:
         metadata = route.matchUri(uri)
-        if metadata:
+        if metadata is not None:
             res.append((route, metadata))
     return res
 
