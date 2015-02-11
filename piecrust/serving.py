@@ -404,8 +404,8 @@ content_type_map = {
         'text': 'text/plain',
         'css': 'text/css',
         'xhtml': 'application/xhtml+xml',
-        'atom': 'application/atom+xml', # or 'text/xml'?
-        'rss': 'application/rss+xml',   # or 'text/xml'?
+        'atom': 'application/atom+xml',  # or 'text/xml'?
+        'rss': 'application/rss+xml',    # or 'text/xml'?
         'json': 'application/json'}
 
 
