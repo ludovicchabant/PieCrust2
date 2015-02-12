@@ -5,8 +5,9 @@ logger = logging.getLogger(__name__)
 
 
 class PaginationFilter(object):
-    def __init__(self):
+    def __init__(self, value_accessor=None):
         self.root_clause = None
+        self.value_accessor = value_accessor or self._default_value_accessor
 
     @property
     def is_empty(self):
@@ -23,7 +24,7 @@ class PaginationFilter(object):
     def pageMatches(self, page):
         if self.root_clause is None:
             return True
-        return self.root_clause.pageMatches(page)
+        return self.root_clause.pageMatches(self, page)
 
     def _ensureRootClause(self):
         if self.root_clause is None:
@@ -76,13 +77,19 @@ class PaginationFilter(object):
             else:
                 raise Exception("Unknown filter clause: %s" % key)
 
+    @staticmethod
+    def _default_value_accessor(item, name):
+        try:
+            return getattr(item, name)
+        except AttributeError:
+            return None
 
 
 class IFilterClause(object):
     def addClause(self, clause):
         raise NotImplementedError()
 
-    def pageMatches(self, page):
+    def pageMatches(self, fil, page):
         raise NotImplementedError()
 
 
@@ -96,11 +103,11 @@ class NotClause(IFilterClause):
                             "child clause.")
         self.child = clause
 
-    def pageMatches(self, page):
+    def pageMatches(self, fil, page):
         if self.child is None:
             raise Exception("'NOT' filtering clauses must have one child "
                             "clause.")
-        return not self.child.pageMatches(page)
+        return not self.child.pageMatches(fil, page)
 
 
 class BooleanClause(IFilterClause):
@@ -112,17 +119,17 @@ class BooleanClause(IFilterClause):
 
 
 class AndBooleanClause(BooleanClause):
-    def pageMatches(self, page):
+    def pageMatches(self, fil, page):
         for c in self.clauses:
-            if not c.pageMatches(page):
+            if not c.pageMatches(fil, page):
                 return False
         return True
 
 
 class OrBooleanClause(BooleanClause):
-    def pageMatches(self, page):
+    def pageMatches(self, fil, page):
         for c in self.clauses:
-            if c.pageMatches(page):
+            if c.pageMatches(fil, page):
                 return True
         return False
 
@@ -139,8 +146,8 @@ class SettingFilterClause(IFilterClause):
 
 
 class HasFilterClause(SettingFilterClause):
-    def pageMatches(self, page):
-        actual_value = page.config.get(self.name)
+    def pageMatches(self, fil, page):
+        actual_value = fil.value_accessor(page, self.name)
         if actual_value is None or not isinstance(actual_value, list):
             return False
 
@@ -151,8 +158,8 @@ class HasFilterClause(SettingFilterClause):
 
 
 class IsFilterClause(SettingFilterClause):
-    def pageMatches(self, page):
-        actual_value = page.config.get(self.name)
+    def pageMatches(self, fil, page):
+        actual_value = fil.value_accessor(page, self.name)
         if self.coercer:
             actual_value = self.coercer(actual_value)
         return actual_value == self.value

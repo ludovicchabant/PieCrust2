@@ -46,7 +46,7 @@ def test_natural_sort_reversed():
 class TestItem(object):
     def __init__(self, value):
         self.name = str(value)
-        self.config = {'foo': value}  # `config` makes it look like a `Page`.
+        self.foo = value
 
     def __eq__(self, other):
         return other.name == self.name

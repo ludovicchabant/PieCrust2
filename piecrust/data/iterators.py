@@ -46,23 +46,19 @@ class SliceIterator(object):
 
 
 class SettingFilterIterator(object):
-    def __init__(self, it, fil_conf, page_accessor=None):
+    def __init__(self, it, fil_conf, setting_accessor=None):
         self.it = it
         self.fil_conf = fil_conf
         self._fil = None
-        self.page_accessor = page_accessor
+        self.setting_accessor = setting_accessor
 
     def __iter__(self):
         if self._fil is None:
-            self._fil = PaginationFilter()
+            self._fil = PaginationFilter(self.setting_accessor)
             self._fil.addClausesFromConfig(self.fil_conf)
 
         for i in self.it:
-            if self.page_accessor:
-                page = self.page_accessor(i)
-            else:
-                page = i
-            if self._fil.pageMatches(page):
+            if self._fil.pageMatches(i):
                 yield i
 
 
@@ -174,19 +170,25 @@ class PageIterator(object):
         if name[:3] == 'is_' or name[:3] == 'in_':
             def is_filter(value):
                 conf = {'is_%s' % name[3:]: value}
-                return self._simpleNonSortedWrap(SettingFilterIterator, conf)
+                accessor = self._getSettingAccessor()
+                return self._simpleNonSortedWrap(SettingFilterIterator, conf,
+                                                 accessor)
             return is_filter
 
         if name[:4] == 'has_':
             def has_filter(value):
                 conf = {name: value}
-                return self._simpleNonSortedWrap(SettingFilterIterator, conf)
+                accessor = self._getSettingAccessor()
+                return self._simpleNonSortedWrap(SettingFilterIterator, conf,
+                                                 accessor)
             return has_filter
 
         if name[:5] == 'with_':
             def has_filter(value):
                 conf = {'has_%s' % name[5:]: value}
-                return self._simpleNonSortedWrap(SettingFilterIterator, conf)
+                accessor = self._getSettingAccessor()
+                return self._simpleNonSortedWrap(SettingFilterIterator, conf,
+                                                 accessor)
             return has_filter
 
         return self.__getattribute__(name)
@@ -209,15 +211,15 @@ class PageIterator(object):
             raise Exception("Couldn't find filter '%s' in the configuration "
                             "header for page: %s" %
                             (filter_name, self._current_page.path))
-        return self._simpleNonSortedWrap(SettingFilterIterator, filter_conf)
+        accessor = self._getSettingAccessor()
+        return self._simpleNonSortedWrap(SettingFilterIterator, filter_conf,
+                                         accessor)
 
     def sort(self, setting_name=None, reverse=False):
         self._ensureUnlocked()
         self._unload()
         if setting_name is not None:
-            accessor = None
-            if isinstance(self._source, IPaginationSource):
-                accessor = self._source.getSettingAccessor()
+            accessor = self._getSettingAccessor()
             self._pages = SettingSortIterator(self._pages, setting_name,
                                               reverse, accessor)
         else:
@@ -252,6 +254,12 @@ class PageIterator(object):
         self._unload()
         self._pages = it_class(self._pages, *args, **kwargs)
         return self
+
+    def _getSettingAccessor(self):
+        accessor = None
+        if isinstance(self._source, IPaginationSource):
+            accessor = self._source.getSettingAccessor()
+        return accessor
 
     def _ensureUnlocked(self):
         if self._locked:
