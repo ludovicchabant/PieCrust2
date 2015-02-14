@@ -85,7 +85,7 @@ class Route(object):
                 return m.groupdict()
         return None
 
-    def getUri(self, source_metadata, provider=None):
+    def getUri(self, source_metadata, provider=None, include_site_root=True):
         if provider:
             source_metadata = dict(source_metadata)
             source_metadata.update(provider.getRouteMetadata())
@@ -93,7 +93,10 @@ class Route(object):
         for key in ['year', 'month', 'day']:
             if key in source_metadata and isinstance(source_metadata[key], str):
                 source_metadata[key] = int(source_metadata[key])
-        return self.uri_root + (self.uri_format % source_metadata)
+        uri = self.uri_format % source_metadata
+        if include_site_root:
+            uri = self.uri_root + uri
+        return uri
 
     def _uriFormatRepl(self, m):
         name = m.group('name')

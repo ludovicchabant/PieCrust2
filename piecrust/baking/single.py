@@ -109,7 +109,7 @@ class PageBaker(object):
 
         # Generate the URL using the route.
         page = factory.buildPage()
-        uri = route.getUri(route_metadata, page)
+        uri = route.getUri(route_metadata, page, include_site_root=False)
 
         override = self.record.getOverrideEntry(factory, uri)
         if override is not None:
