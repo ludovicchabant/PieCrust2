@@ -74,7 +74,7 @@ class SitemapProcessor(SimpleFileProcessor):
 
                 args = {'url': uri, 'lastmod': strftime_iso8601(t)}
                 if sm_cfg:
-                    args.update(cm_cfg)
+                    args.update(sm_cfg)
 
                 self._writeEntry(args, fp)
 
