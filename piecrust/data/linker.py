@@ -9,21 +9,46 @@ logger = logging.getLogger(__name__)
 
 
 class LinkedPageData(PaginationData):
-    debug_render = ['name', 'is_dir', 'is_self']
+    """ Class whose instances get returned when iterating on a `Linker`
+        or `RecursiveLinker`. It's just like what gets usually returned by
+        `Paginator` and other page iterators, but with a few additional data
+        like hierarchical data.
+    """
+    debug_render = ['is_dir', 'is_self'] + PaginationData.debug_render
 
-    def __init__(self, name, page, is_self=False):
+    def __init__(self, page):
         super(LinkedPageData, self).__init__(page)
-        self.name = name
-        self.is_self = is_self
+        self.name = page.config.get('__linker_name')
+        self.is_self = page.config.get('__linker_is_self')
+        self.children = page.config.get('__linker_child')
+        self.is_dir = (self.children is not None)
+        self.is_page = True
 
-    @property
-    def is_dir(self):
-        return False
+        self.mapLoader('*', self._linkerChildLoader)
+
+    def _linkerChildLoader(self, name):
+        return getattr(self.children, name)
+
+
+class LinkedPageDataBuilderIterator(object):
+    """ Iterator that builds `LinkedPageData` out of pages.
+    """
+    def __init__(self, it):
+        self.it = it
+
+    def __iter__(self):
+        for item in self.it:
+            yield LinkedPageData(item)
 
 
 class LinkerSource(IPaginationSource):
-    def __init__(self, pages):
-        self._pages = pages
+    """ Source iterator that returns pages given by `Linker`.
+    """
+    def __init__(self, pages, orig_source):
+        self._pages = list(pages)
+        self._orig_source = None
+        if isinstance(orig_source, IPaginationSource):
+            self._orig_source = orig_source
 
     def getItemsPerPage(self):
         raise NotImplementedError()
@@ -32,141 +57,157 @@ class LinkerSource(IPaginationSource):
         return self._pages
 
     def getSorterIterator(self, it):
+        # We don't want to sort the pages -- we expect the original source
+        # to return hierarchical items in the order it wants already.
         return None
 
     def getTailIterator(self, it):
-        return None
+        return LinkedPageDataBuilderIterator(it)
 
     def getPaginationFilter(self, page):
         return None
 
     def getSettingAccessor(self):
-        return lambda i, n: i.get(n)
-
-
-class LinkedPageDataIterator(object):
-    def __init__(self, items):
-        self._items = list(items)
-        self._index = -1
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        self._index += 1
-        if self._index >= len(self._items):
-            raise StopIteration()
-        return self._items[self._index]
-
-    def sort(self, name):
-        def key_getter(item):
-            return item[name]
-        self._items = sorted(self._item, key=key_getter)
-        return self
+        if self._orig_source:
+            return self._orig_source.getSettingAccessor()
+        return None
 
 
 class Linker(object):
     debug_render_doc = """Provides access to sibling and children pages."""
 
     def __init__(self, source, *, name=None, dir_path=None, page_path=None):
-        self.source = source
+        self._source = source
         self._name = name
         self._dir_path = dir_path
         self._root_page_path = page_path
-        self._cache = None
-        self._is_listable = None
+        self._items = None
 
-    def __iter__(self):
-        self._load()
-        return LinkedPageDataIterator(self._cache.values())
-
-    def __getattr__(self, name):
-        self._load()
-        try:
-            return self._cache[name]
-        except KeyError:
-            raise AttributeError()
-
-    @property
-    def name(self):
-        if not self._name:
-            self._load()
-        return self._name
-
-    @property
-    def is_dir(self):
-        return True
-
-    @property
-    def is_self(self):
-        return False
-
-    def _load(self):
-        if self._cache is not None:
-            return
-
-        self._is_listable = isinstance(self.source, IListableSource)
-        if self._is_listable and self._root_page_path is not None:
-            if self._name is None:
-                self._name = self.source.getBasename(self._root_page_path)
-            if self._dir_path is None:
-                self._dir_path = self.source.getDirpath(self._root_page_path)
-
-        self._cache = collections.OrderedDict()
-        if not self._is_listable or self._dir_path is None:
-            return
-
-        items = self.source.listPath(self._dir_path)
-        with self.source.app.env.page_repository.startBatchGet():
-            for is_dir, name, data in items:
-                if is_dir:
-                    self._cache[name] = Linker(self.source,
-                                               name=name, dir_path=data)
-                else:
-                    page = data.buildPage()
-                    is_root_page = (self._root_page_path == data.rel_path)
-                    self._cache[name] = LinkedPageData(name, page,
-                                                       is_root_page)
-
-
-class RecursiveLinker(Linker):
-    def __init__(self, source, *args, **kwargs):
-        super(RecursiveLinker, self).__init__(source, *args, **kwargs)
+        self.is_dir = True
+        self.is_page = False
+        self.is_self = False
 
     def __iter__(self):
         return iter(self.pages)
 
     def __getattr__(self, name):
-        if name == 'pages':
-            return self.getpages()
-        if name == 'siblings':
-            return self.getsiblings()
-        raise AttributeError()
-
-    def getpages(self):
-        src = LinkerSource(self._iterateLinkers())
-        return PageIterator(src)
-
-    def getsiblings(self):
-        src = LinkerSource(self._iterateLinkers(0))
-        return PageIterator(src)
-
-    def frompath(self, rel_path):
-        return RecursiveLinker(self.source, name='.', dir_path=rel_path)
-
-    def _iterateLinkers(self, max_depth=-1):
         self._load()
-        if not self._is_listable:
+        try:
+            item = self._items[name]
+        except KeyError:
+            raise AttributeError()
+
+        if isinstance(item, Linker):
+            return item
+
+        return LinkedPageData(item)
+
+    @property
+    def name(self):
+        if self._name is None:
+            self._load()
+        return self._name
+
+    @property
+    def children(self):
+        return self._iterItems(0)
+
+    @property
+    def pages(self):
+        return self._iterItems(0, filter_page_items)
+
+    @property
+    def directories(self):
+        return self._iterItems(0, filter_directory_items)
+
+    @property
+    def all(self):
+        return self._iterItems()
+
+    @property
+    def allpages(self):
+        return self._iterItems(-1, filter_page_items)
+
+    @property
+    def alldirectories(self):
+        return self._iterItems(-1, filter_directory_items)
+
+    @property
+    def root(self):
+        return self.forpath('/')
+
+    def forpath(self, rel_path):
+        return Linker(self._source,
+                      name='.', dir_path=rel_path,
+                      page_path=self._root_page_path)
+
+    def _iterItems(self, max_depth=-1, filter_func=None):
+        items = walk_linkers(self, max_depth=max_depth,
+                             filter_func=filter_func)
+        src = LinkerSource(items, self._source)
+        return PageIterator(src)
+
+    def _load(self):
+        if self._items is not None:
             return
-        yield from walk_linkers(self, 0, max_depth)
+
+        is_listable = isinstance(self._source, IListableSource)
+        if not is_listable:
+            raise Exception("Source '%s' can't be listed." % self._source.name)
+
+        if self._root_page_path is not None:
+            if self._name is None:
+                self._name = self._source.getBasename(self._root_page_path)
+            if self._dir_path is None:
+                self._dir_path = self._source.getDirpath(self._root_page_path)
+
+        if self._dir_path is None:
+            raise Exception("This linker has no directory to start from.")
+
+        items = list(self._source.listPath(self._dir_path))
+        self._items = collections.OrderedDict()
+        with self._source.app.env.page_repository.startBatchGet():
+            for is_dir, name, data in items:
+                # If `is_dir` is true, `data` will be the directory's source
+                # path. If not, it will be a page factory.
+                if is_dir:
+                    item = Linker(self._source,
+                                  name=name, dir_path=data)
+                else:
+                    item = data.buildPage()
+                    item.config.set('__linker_name', name)
+                    item.config.set('__linker_is_self',
+                                    item.rel_path == self._root_page_path)
+
+                existing = self._items.get(name)
+                if existing is None:
+                    self._items[name] = item
+                elif is_dir:
+                    # The current item is a directory. The existing item
+                    # should be a page.
+                    existing.config.set('__linker_child', item)
+                else:
+                    # The current item is a page. The existing item should
+                    # be a directory.
+                    item.config.set('__linker_child', existing)
+                    self._items[name] = item
 
 
-def walk_linkers(linker, depth=0, max_depth=-1):
+def filter_page_items(item):
+    return not isinstance(item, Linker)
+
+
+def filter_directory_items(item):
+    return isinstance(item, linker)
+
+
+def walk_linkers(linker, depth=0, max_depth=-1, filter_func=None):
     linker._load()
-    for item in linker._cache.values():
-        if item.is_dir:
-            if max_depth < 0 or depth + 1 <= max_depth:
-                yield from walk_linkers(item, depth + 1, max_depth)
-        else:
+    for item in linker._items.values():
+        if not filter_func or filter_func(item):
             yield item
+
+        if (isinstance(item, Linker) and
+                (max_depth < 0 or depth + 1 <= max_depth)):
+            yield from walk_linkers(item, depth + 1, max_depth)
 

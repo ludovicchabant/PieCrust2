@@ -1,5 +1,5 @@
 import pytest
-from piecrust.data.linker import Linker, RecursiveLinker
+from piecrust.data.linker import Linker
 from .mockutil import mock_fs, mock_fs_scope
 
 
@@ -7,28 +7,32 @@ from .mockutil import mock_fs, mock_fs_scope
     'fs, page_path, expected',
     [
         (mock_fs().withPage('pages/foo'), 'foo.md',
-            [('/foo', True, False)]),
+            # is_dir, name, is_self, data
+            [(False, 'foo', True, '/foo')]),
         ((mock_fs()
                 .withPage('pages/foo')
                 .withPage('pages/bar')),
             'foo.md',
-            [('/bar', False, False), ('/foo', True, False)]),
+            [(False, 'bar', False, '/bar'), (False, 'foo', True, '/foo')]),
         ((mock_fs()
                 .withPage('pages/baz')
+                .withPage('pages/something')
                 .withPage('pages/something/else')
                 .withPage('pages/foo')
                 .withPage('pages/bar')),
             'foo.md',
-            [('/bar', False, False), ('/baz', False, False),
-                ('/foo', True, False), ('something', False, True)]),
+            [(False, 'bar', False, '/bar'),
+                (False, 'baz', False, '/baz'),
+                (False, 'foo', True, '/foo'),
+                (True, 'something', False, '/something')]),
         ((mock_fs()
                 .withPage('pages/something/else')
                 .withPage('pages/foo')
                 .withPage('pages/something/good')
                 .withPage('pages/bar')),
             'something/else.md',
-            [('/something/else', True, False),
-                ('/something/good', False, False)])
+            [(False, 'else', True, '/something/else'),
+                (False, 'good', False, '/something/good')])
     ])
 def test_linker_iteration(fs, page_path, expected):
     with mock_fs_scope(fs):
@@ -38,13 +42,12 @@ def test_linker_iteration(fs, page_path, expected):
         actual = list(iter(linker))
 
         assert len(actual) == len(expected)
-        for i, (a, e) in enumerate(zip(actual, expected)):
-            assert a.is_dir == e[2]
-            if a.is_dir:
-                assert a.name == e[0]
-            else:
-                assert a.url == e[0]
-                assert a.is_self == e[1]
+        for (a, e) in zip(actual, expected):
+            is_dir, name, is_self, url = e
+            assert a.is_dir == is_dir
+            assert a.name == name
+            assert a.is_self == is_self
+            assert a.url == url
 
 
 @pytest.mark.parametrize(
@@ -78,8 +81,8 @@ def test_recursive_linker_iteration(fs, page_path, expected):
     with mock_fs_scope(fs):
         app = fs.getApp()
         src = app.getSource('pages')
-        linker = RecursiveLinker(src, page_path=page_path)
-        actual = list(iter(linker))
+        linker = Linker(src, page_path=page_path)
+        actual = list(iter(linker.allpages))
 
         assert len(actual) == len(expected)
         for i, (a, e) in enumerate(zip(actual, expected)):
