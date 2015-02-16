@@ -36,7 +36,7 @@ def test_default_source_factories(fs, expected_paths, expected_slugs):
         facs = list(s.buildPageFactories())
         paths = [f.rel_path for f in facs]
         assert paths == expected_paths
-        slugs = [f.metadata['path'] for f in facs]
+        slugs = [f.metadata['slug'] for f in facs]
         assert slugs == expected_slugs
 
 
