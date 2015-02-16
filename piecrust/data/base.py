@@ -83,6 +83,16 @@ class LazyPageConfigData(object):
                     if len(self._loaders) == 0:
                         self._loaders = None
 
+            elif name not in self._values:
+                loader = self._loaders.get('*')
+                if loader is not None:
+                    try:
+                        self._values[name] = loader(self, name)
+                    except Exception as ex:
+                        raise Exception(
+                                "Error while loading attirbute '%s' for: %s" %
+                                (name, self._page.rel_path)) from ex
+
         return self._values[name]
 
     def _setValue(self, name, value):
