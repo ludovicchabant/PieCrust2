@@ -376,7 +376,8 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
         return None, None
 
     def listPath(self, rel_path):
-        path = os.path.join(self.fs_endpoint_path, rel_path.lstrip("\\/"))
+        rel_path = rel_path.lstrip('\\/')
+        path = os.path.join(self.fs_endpoint_path, rel_path)
         names = sorted(os.listdir(path))
         items = []
         for name in names:
@@ -396,6 +397,8 @@ class SimplePageSource(PageSource, IListableSource, IPreparingSource,
 
                     self._populateMetadata(fac_path, metadata)
                     fac = PageFactory(self, fac_path, metadata)
+
+                    name, _ = os.path.splitext(name)
                     items.append((False, name, fac))
         return items
 
