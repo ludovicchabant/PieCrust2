@@ -31,7 +31,8 @@ from piecrust.processing.util import ConcatProcessor
 from piecrust.sources.base import DefaultPageSource
 from piecrust.sources.posts import (
         FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
-from piecrust.sources.autoconfig import AutoConfigSource
+from piecrust.sources.autoconfig import (
+        AutoConfigSource, OrderedPageSource)
 from piecrust.sources.prose import ProseSource
 from piecrust.templating.jinjaengine import JinjaTemplateEngine
 from piecrust.templating.pystacheengine import PystacheTemplateEngine
@@ -72,6 +73,7 @@ class BuiltInPlugin(PieCrustPlugin):
                 ShallowPostsSource,
                 HierarchyPostsSource,
                 AutoConfigSource,
+                OrderedPageSource,
                 ProseSource]
 
     def getDataProviders(self):
