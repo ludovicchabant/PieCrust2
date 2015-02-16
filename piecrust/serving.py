@@ -194,7 +194,13 @@ class Server(object):
 
     def _try_serve_asset(self, environ, request):
         rel_req_path = request.path.lstrip('/').replace('/', os.sep)
-        full_path = os.path.join(self._out_dir, rel_req_path)
+        if request.path.startswith('/_cache/'):
+            # Some stuff needs to be served directly from the cache directory,
+            # like LESS CSS map files.
+            full_path = os.path.join(self.root_dir, rel_req_path)
+        else:
+            full_path = os.path.join(self._out_dir, rel_req_path)
+
         try:
             response = self._make_wrapped_file_response(
                     environ, full_path)

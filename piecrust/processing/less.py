@@ -56,8 +56,10 @@ class LessProcessor(SimpleFileProcessor):
         self._ensureInitialized()
 
         map_path = self._getMapPath(in_path)
-        map_path = os.path.relpath(map_path)
-        args = [self._conf['bin'], '--source-map=%s' % map_path]
+        map_url = '/' + os.path.relpath(map_path, self.app.root_dir)
+        args = [self._conf['bin'],
+                '--source-map=%s' % map_path,
+                '--source-map-url=%s' % map_url]
         args += self._conf['options']
         args.append(in_path)
         args.append(out_path)
