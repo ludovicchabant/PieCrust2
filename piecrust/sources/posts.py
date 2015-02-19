@@ -4,10 +4,12 @@ import re
 import glob
 import logging
 import datetime
-from piecrust.sources.base import (PageSource, IPreparingSource,
-        SimplePaginationSourceMixin,
-        PageNotFoundError, InvalidFileSystemEndpointError,
-        PageFactory, MODE_CREATING, MODE_PARSING)
+from piecrust.sources.base import (
+        PageSource, InvalidFileSystemEndpointError, PageFactory,
+        MODE_CREATING, MODE_PARSING)
+from piecrust.sources.interfaces import IPreparingSource
+from piecrust.sources.mixins import SimplePaginationSourceMixin
+from piecrust.sources.pageref import PageNotFoundError
 
 
 logger = logging.getLogger(__name__)

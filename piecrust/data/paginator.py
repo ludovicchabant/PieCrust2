@@ -1,9 +1,9 @@
 import math
 import logging
 from werkzeug.utils import cached_property
-from piecrust.data.base import IPaginationSource
 from piecrust.data.filters import PaginationFilter
 from piecrust.data.iterators import PageIterator
+from piecrust.sources.interfaces import IPaginationSource
 
 
 logger = logging.getLogger(__name__)

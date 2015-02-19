@@ -1,16 +1,14 @@
 import os
 import os.path
 import logging
-from piecrust.sources.base import (
-        SimplePageSource, SimplePaginationSourceMixin,
-        MODE_CREATING)
+from piecrust.sources.base import MODE_CREATING
+from piecrust.sources.default import DefaultPageSource
 
 
 logger = logging.getLogger(__name__)
 
 
-class ProseSource(SimplePageSource,
-                  SimplePaginationSourceMixin):
+class ProseSource(DefaultPageSource):
     SOURCE_NAME = 'prose'
 
     def __init__(self, app, name, config):

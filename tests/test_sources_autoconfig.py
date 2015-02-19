@@ -88,10 +88,16 @@ def test_autoconfig_fails_if_multiple_folders():
             (mock_fs(), [], []),
             (mock_fs().withPage('test/something.md'),
                 ['something.md'],
-                [{'slug': 'something', 'config': {'foo': 0}}]),
+                [{'slug': 'something',
+                    'config': {'foo': 0, 'foo_trail': [0]}}]),
             (mock_fs().withPage('test/08_something.md'),
                 ['08_something.md'],
-                [{'slug': 'something', 'config': {'foo': 8}}])
+                [{'slug': 'something',
+                    'config': {'foo': 8, 'foo_trail': [8]}}]),
+            (mock_fs().withPage('test/02_there/08_something.md'),
+                ['02_there/08_something.md'],
+                [{'slug': 'there/something',
+                    'config': {'foo': 8, 'foo_trail': [2, 8]}}]),
             ])
 def test_ordered_source_factories(fs, expected_paths, expected_metadata):
     site_config = {
@@ -120,22 +126,27 @@ def test_ordered_source_factories(fs, expected_paths, expected_metadata):
             (mock_fs(), 'missing', None, None),
             (mock_fs().withPage('test/something.md'),
                 'something', 'something.md',
-                {'slug': 'something', 'config': {'foo': 0}}),
+                {'slug': 'something',
+                    'config': {'foo': 0, 'foo_trail': [0]}}),
             (mock_fs().withPage('test/bar/something.md'),
                 'bar/something', 'bar/something.md',
-                {'slug': 'bar/something', 'config': {'foo': 0}}),
+                {'slug': 'bar/something',
+                    'config': {'foo': 0, 'foo_trail': [0]}}),
             (mock_fs().withPage('test/42_something.md'),
                 'something', '42_something.md',
-                {'slug': 'something', 'config': {'foo': 42}}),
+                {'slug': 'something',
+                    'config': {'foo': 42, 'foo_trail': [42]}}),
             (mock_fs().withPage('test/bar/42_something.md'),
                 'bar/something', 'bar/42_something.md',
-                {'slug': 'bar/something', 'config': {'foo': 42}}),
+                {'slug': 'bar/something',
+                    'config': {'foo': 42, 'foo_trail': [42]}}),
 
             ((mock_fs()
                 .withPage('test/42_something.md')
                 .withPage('test/43_other_something.md')),
                 'something', '42_something.md',
-                {'slug': 'something', 'config': {'foo': 42}}),
+                {'slug': 'something',
+                    'config': {'foo': 42, 'foo_trail': [42]}}),
             ])
 def test_ordered_source_find(fs, route_path, expected_path,
                              expected_metadata):
@@ -152,7 +163,7 @@ def test_ordered_source_find(fs, route_path, expected_path,
     with mock_fs_scope(fs):
         app = fs.getApp()
         s = app.getSource('test')
-        route_metadata = {'path': route_path}
+        route_metadata = {'slug': route_path}
         fac_path, metadata = s.findPagePath(route_metadata, MODE_PARSING)
         assert fac_path == expected_path
         assert metadata == expected_metadata

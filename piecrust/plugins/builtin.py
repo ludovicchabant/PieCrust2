@@ -28,7 +28,7 @@ from piecrust.processing.requirejs import RequireJSProcessor
 from piecrust.processing.sass import SassProcessor
 from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.processing.util import ConcatProcessor
-from piecrust.sources.base import DefaultPageSource
+from piecrust.sources.default import DefaultPageSource
 from piecrust.sources.posts import (
         FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
 from piecrust.sources.autoconfig import (

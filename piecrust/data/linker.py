@@ -1,8 +1,9 @@
 import logging
 import collections
-from piecrust.data.base import PaginationData, IPaginationSource
+from piecrust.data.base import PaginationData
 from piecrust.data.iterators import PageIterator
-from piecrust.sources.base import IListableSource, build_pages
+from piecrust.sources.base import build_pages
+from piecrust.sources.interfaces import IPaginationSource, IListableSource
 
 
 logger = logging.getLogger(__name__)

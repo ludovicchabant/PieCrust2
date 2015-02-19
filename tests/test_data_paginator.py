@@ -1,7 +1,7 @@
 import math
 import pytest
-from piecrust.data.base import IPaginationSource
 from piecrust.data.paginator import Paginator
+from piecrust.sources.interfaces import IPaginationSource
 
 
 class MockSource(list, IPaginationSource):

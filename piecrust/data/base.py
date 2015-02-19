@@ -7,29 +7,6 @@ from piecrust.uriutil import get_slug
 logger = logging.getLogger(__name__)
 
 
-class IPaginationSource(object):
-    """ Defines the interface for a source that can be used as the data
-        for an iterator or a pagination.
-    """
-    def getItemsPerPage(self):
-        raise NotImplementedError()
-
-    def getSourceIterator(self):
-        raise NotImplementedError()
-
-    def getSorterIterator(self, it):
-        raise NotImplementedError()
-
-    def getTailIterator(self, it):
-        raise NotImplementedError()
-
-    def getPaginationFilter(self, page):
-        raise NotImplementedError()
-
-    def getSettingAccessor(self):
-        raise NotImplementedError()
-
-
 class LazyPageConfigData(object):
     """ An object that represents the configuration header of a page,
         but also allows for additional data. It's meant to be exposed

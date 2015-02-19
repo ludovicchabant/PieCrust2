@@ -1,7 +1,7 @@
 import os
 import pytest
 from piecrust.app import PieCrust
-from piecrust.sources.base import PageRef, PageNotFoundError
+from piecrust.sources.pageref import PageRef, PageNotFoundError
 from .mockutil import mock_fs, mock_fs_scope
 
 

@@ -1,4 +1,4 @@
-from piecrust.sources.base import PageRef, PageNotFoundError
+from piecrust.sources.pageref import PageRef, PageNotFoundError
 
 
 class Taxonomy(object):

@@ -9,7 +9,8 @@ import textwrap
 from piecrust import RESOURCES_DIR
 from piecrust.chefutil import print_help_item
 from piecrust.commands.base import ExtendableChefCommand, ChefCommandExtension
-from piecrust.sources.base import IPreparingSource, MODE_CREATING
+from piecrust.sources.base import MODE_CREATING
+from piecrust.sources.interfaces import IPreparingSource
 from piecrust.uriutil import multi_replace
 
 

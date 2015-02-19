@@ -1,7 +1,7 @@
 import logging
-from piecrust.data.base import IPaginationSource
 from piecrust.data.filters import PaginationFilter
 from piecrust.events import Event
+from piecrust.sources.interfaces import IPaginationSource
 
 
 logger = logging.getLogger(__name__)

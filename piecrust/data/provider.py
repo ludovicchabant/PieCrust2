@@ -1,6 +1,6 @@
 import time
 from piecrust.data.iterators import PageIterator
-from piecrust.sources.base import ArraySource
+from piecrust.sources.array import ArraySource
 
 
 class DataProvider(object):
