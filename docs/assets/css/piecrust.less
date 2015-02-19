@@ -1,0 +1,285 @@
+// Imports
+// Core variables and mixins
+@import "../../bower_components/bootstrap/less/variables.less";
+@import "../../bower_components/bootstrap/less/mixins.less";
+
+// Reset and dependencies
+@import "../../bower_components/bootstrap/less/normalize.less";
+@import "../../bower_components/bootstrap/less/print.less";
+@import "../../bower_components/bootstrap/less/glyphicons.less";
+
+// Core CSS
+@import "../../bower_components/bootstrap/less/scaffolding.less";
+@import "../../bower_components/bootstrap/less/type.less";
+@import "../../bower_components/bootstrap/less/code.less";
+@import "../../bower_components/bootstrap/less/grid.less";
+@import "../../bower_components/bootstrap/less/forms.less";
+@import "../../bower_components/bootstrap/less/buttons.less";
+
+// Components
+@import "../../bower_components/bootstrap/less/component-animations.less";
+@import "../../bower_components/bootstrap/less/navs.less";
+@import "../../bower_components/bootstrap/less/navbar.less";
+
+// Utility classes
+@import "../../bower_components/bootstrap/less/utilities.less";
+@import "../../bower_components/bootstrap/less/responsive-utilities.less";
+
+
+// Variables
+@font-size-base:          17px;
+@font-family-base:        @font-family-serif;
+
+
+// Dividers
+.pc-divider-img(@offset-x, @offset-y) {
+    .hidden-xs();
+    content: " ";
+    background-image: url("/img/dividers.png");
+    background-repeat: no-repeat;
+    background-position: -@offset-x -@offset-y;
+    display: inline-block;
+    width: 100px;
+    height: 50px;
+}
+.pc-divider(@offset) {
+    &::before {
+        .pc-divider-img(0, @offset);
+        margin-right: 0.5em;
+    }
+    &::after {
+        .pc-divider-img(100px, @offset);
+        margin-left: 0.5em;
+    }
+}
+
+.pc-divider1() {
+    .pc-divider(0);
+}
+
+.pc-divider1-white() {
+    .pc-divider(50px);
+}
+
+.pc-divider2() {
+    .pc-divider(100px);
+}
+
+.pc-divider3() {
+    .pc-divider(150px);
+}
+
+
+// Icons
+@pc-icon-width: 128px;
+
+
+// Decorators
+.pc-decorator(@img-name, @margin-left) {
+    margin-left: @pc-icon-width;
+    &::before {
+        content: " ";
+        background-image: url(@img-name);
+        background-repeat: no-repeat;
+        display: block;
+        float: left;
+        width: 128px;
+        height: 92px;
+        margin-left: -(@pc-icon-width + @margin-left);
+    }
+}
+
+.pc-banner(@img-name) {
+    background-image: url(@img-name);
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}
+
+.pc-banner-header(@img-name) {
+    .pc-banner(@img-name);
+    padding: 3em 0;
+    margin-bottom: 3em;
+    text-align: center;
+    color: black;
+}
+
+// Customizations
+.navbar {
+    margin-bottom: 0;
+}
+a.navbar-brand {
+    font-family: Lobster, serif;
+}
+
+h1 {
+    font-family: Lobster, serif;
+    font-size: 2em;
+    margin-top: 0;
+    margin-bottom: 0.375em;
+    text-shadow: #fff 0 0 1em, #fff 0 0 0.1em;
+}
+h1.site-title {
+    font-size: 5em;
+    text-align: center;
+}
+@media (min-width: @screen-sm-min) {
+    h1 {
+        font-size: 3em;
+    }
+}
+@media (min-width: @screen-md-min) {
+    h1 {
+        font-size: 4em;
+    }
+}
+
+h2 {
+    font-family: Lobster, serif;
+    font-size: 2.2em;
+}
+
+blockquote {
+    font-size: @font-size-base;
+    border-left: 5px solid @brand-info;
+}
+@media (min-width: @screen-sm-min) {
+    blockquote {
+        .pc-decorator('/img/cake.png', 5px + @line-height-computed);
+    }
+}
+
+header.page-title h1 {
+    .pc-divider(150px);
+    text-align: center;
+    margin: 0.5em auto 1em;
+}
+
+footer {
+    .container;
+    font-size: 0.8em;
+    text-align: center;
+    margin: 2em;
+}
+
+
+// Splash-page
+header.splash {
+    .pc-banner("/img/header2-bg.jpg");
+    color: black;
+}
+.splash {
+    h1 {
+        .text-hide();
+    }
+
+    h2 {
+        .pc-divider2();
+        margin: 1em 0;
+        text-align: center;
+    }
+
+    .splash-logo {
+        background-image: url('/img/logo.png');
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: contain;
+        height: 275px;
+    }
+    @media (min-width: @screen-sm-min) {
+        .splash-logo {
+            height: 325px;
+        }
+    }
+    @media (min-width: @screen-md-min) {
+        .splash-logo {
+            height: 375px;
+        }
+    }
+
+    .splash-main {
+        font-size: 1.1em;
+        margin: 1em 0.5em 0 0.5em;
+        padding-bottom: 2em;
+
+        p {
+            margin: 0;
+            text-shadow: #fff 0 0 1em, #fff 0 0 0.1em;
+        }
+    }
+    @media (min-width: @screen-sm-min) {
+        .splash-main {
+            font-size: 1.3em;
+            margin: 1em 2em 0 2em;
+        }
+    }
+    @media (min-width: @screen-md-min) {
+        .splash-main {
+            font-size: 1.5em;
+            width: 50%;
+            margin: 1em auto 0 auto;
+        }
+    }
+
+    .splash-icon {
+        display: block;
+        margin: 0 auto;
+    }
+}
+.splash.splash-chalkboard {
+    background: url("/img/chalkboard-bg.jpg");
+    color: white;
+    padding: 0.25em 0 3em 0;
+    margin: 0;
+
+    h2 {
+        .pc-divider1-white();
+    }
+}
+
+
+// Getting-Started
+header.tutorial {
+    .pc-banner-header("/img/header5-bg.jpg");
+}
+
+
+// Documentation
+header.documentation {
+    .pc-banner-header("/img/header10-bg.jpg");
+}
+
+.pc-docnav() {
+    list-style-type: none;
+    padding: 0;
+}
+
+ul.doc-level1 {
+    .pc-docnav();
+
+    &>li {
+        margin-bottom: 1em;
+    }
+    &>li>a {
+        font-size: 1.1em;
+        font-weight: bold;
+    }
+}
+
+ul.doc-level2 {
+    .pc-docnav();
+}
+
+
+// Code
+header.code {
+    .pc-banner-header("/img/header7-bg.jpg");
+}
+
+
+// Support
+header.support {
+    .pc-banner-header("/img/header9-bg.jpg");
+}
+
+

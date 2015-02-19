@@ -6,6 +6,10 @@ build/lib
 build/messages/_cache
 build/messages/_counter
 dist
+docs/_cache
+docs/_counter
+docs/bower_components
+docs/node_modules
 piecrust.egg-info
 piecrust/__version__.py
 

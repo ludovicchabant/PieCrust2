@@ -1,0 +1,61 @@
+{% import "google.html" as google %}
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="author" content="Ludovic Chabant">
+    <meta name="generator" content="PieCrust {{ piecrust.version }}" />
+    <meta name="description" content="PieCrust, a simple website engine and static website generator" />
+
+    <title>{% if page.title %}{{ page.title }} &mdash; {% endif %}PieCrust</title>
+    {{ google.webfonts('Lobster') }}
+    <link rel="stylesheet" href="{{ site.root }}css/piecrust.css" type="text/css" />
+    <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+</head>
+<body data-spy="scroll">
+    <div id="wrapper">
+        <nav class="navbar navbar-default" role="navigation">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#piecrust-menu">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="{{site.root}}">PieCrust</a>
+                </div>
+                <div class="collapse navbar-collapse" id="piecrust-menu">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li><a href="{{ pcurl('getting-started') }}">Getting Started</a></li>
+                        <li><a href="{{ pcurl('docs') }}">Documentation</a></li>
+                        <li><a href="{{ pcurl('code') }}">Code</a></li>
+                        <li><a href="{{ pcurl('support') }}">Support</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        {% block header %}
+        <header{% if page.header_class %} class="{{page.header_class}}"{% endif %}>
+            <h1>{{ page.title }}</h1>
+        </header>
+        {% endblock %}
+        {% block content %}
+        <section class="container" id="content">
+        {{ content|raw }}
+        </section>
+        {% endblock %}
+        <footer>
+            <p>&copy;2014 &mdash; {{ piecrust.branding|raw }}</p>
+        </footer>
+    </div>
+    {{ piecrust.debug_info|raw }}
+    <script src="{{ site.root }}js/piecrust.js"></script>
+    {% if baker.is_baking %}
+    {{ google.analytics("UA-3426592-10") }}
+    {% endif %}
+</body>
+</html>

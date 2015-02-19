@@ -1,0 +1,51 @@
+# Basic stuff.
+site:
+    title: PieCrust
+    author: Ludovic Chabant
+    tagline: Freshly baked sites & documents since 2006
+    description: A static website generator and flat-file CMS
+    pretty_urls: true
+    sources:
+        docs:
+            type: ordered
+            data_endpoint: site.docs
+            default_layout: doc
+    routes:
+        -
+            url: /docs/%path:slug%
+            source: docs
+            func: docurl(path)
+
+baker:
+    assets_dirs:
+        assets:
+            # Ignore stuff that will get concatenated into the main JS file.
+            ignore: js/piecrust
+
+smartypants:
+    enable: true
+
+# This is 2015, come on Markdown.
+markdown:
+    extensions: abbr, fenced_code, footnotes, smart_strong
+
+# Need Foundation for CSS/JS. Install with Bower.
+sass:
+    load_paths:
+        - bower_components/foundation/scss
+
+# Using the Sass compiler directly now, but here's how it would look
+# like if we were using the whole Compass machinery instead.
+compass:
+    enable: false
+    options: --css-dir %out_dir%/css --generated-images-path %out_dir%/img
+
+# Config variants.
+variants:
+    # Enable compressors when baking the docs for publishing.
+    dist:
+        baker:
+            assets_dirs:
+                assets:
+                    processors: all
+

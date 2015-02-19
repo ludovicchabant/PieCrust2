@@ -1,0 +1,14 @@
+# humanstxt.org/
+# The humans responsible & technology colophon
+
+# AUTHORS
+
+Ludovic Chabant -- @ludovicchabant
+
+# TECHNOLOGY
+
+PieCrust -- http://bolt80.com/piecrust
+
+# THANKS
+
+
