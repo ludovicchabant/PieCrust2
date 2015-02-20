@@ -14,7 +14,7 @@ site:
         -
             url: /docs/%path:slug%
             source: docs
-            func: docurl(path)
+            func: docurl(slug)
 
 baker:
     assets_dirs:

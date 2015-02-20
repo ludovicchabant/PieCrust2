@@ -20,8 +20,8 @@ Here are some common pages most people will want to read:
   [configure it][4].
 
 
- [2]: {{pcurl('tutorial/your-first-blog')}}
- [3]: {{pcurl('general/creating-websites')}}
- [4]: {{pcurl('general/website-config')}}
+ [2]: {{docurl('tutorial/your-first-blog')}}
+ [3]: {{docurl('general/creating-websites')}}
+ [4]: {{docurl('general/website-config')}}
 
 
