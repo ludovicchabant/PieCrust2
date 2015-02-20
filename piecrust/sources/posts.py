@@ -53,9 +53,9 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 ext = self.default_auto_format
 
         replacements = {
-                'year': '%04d' % year,
-                'month': '%02d' % month,
-                'day': '%02d' % day,
+                'year': '%04d' % year if year is not None else None,
+                'month': '%02d' % month if month is not None else None,
+                'day': '%02d' % day if day is not None else None,
                 'slug': slug,
                 'ext': ext
                 }
