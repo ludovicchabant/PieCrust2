@@ -9,6 +9,33 @@ from piecrust.sources.interfaces import IPaginationSource, IListableSource
 logger = logging.getLogger(__name__)
 
 
+class PageLinkerData(object):
+    """ Entry template data to get access to related pages from a given
+        root page.
+    """
+    def __init__(self, source, page_path):
+        self._linker = Linker(source, page_path)
+
+    @property
+    def siblings(self):
+        return self._linker
+
+    @property
+    def children(self):
+        self._linker._load()
+        print("GOT ", self._linker._items.keys())
+        if self._linker._self_item is None:
+            return None
+        return self._linker._self_item.config.get('__linker_child')
+
+    @property
+    def root(self):
+        return self._linker.root
+
+    def forpath(self, rel_path):
+        return self._linker.forpath(rel_path)
+
+
 class LinkedPageData(PaginationData):
     """ Class whose instances get returned when iterating on a `Linker`
         or `RecursiveLinker`. It's just like what gets usually returned by
@@ -77,12 +104,13 @@ class LinkerSource(IPaginationSource):
 class Linker(object):
     debug_render_doc = """Provides access to sibling and children pages."""
 
-    def __init__(self, source, *, name=None, dir_path=None, page_path=None):
+    def __init__(self, source, root_page_path, *, name=None, dir_path=None):
         self._source = source
+        self._root_page_path = root_page_path
         self._name = name
         self._dir_path = dir_path
-        self._root_page_path = page_path
         self._items = None
+        self._self_item = None
 
         self.is_dir = True
         self.is_page = False
@@ -138,9 +166,8 @@ class Linker(object):
         return self.forpath('/')
 
     def forpath(self, rel_path):
-        return Linker(self._source,
-                      name='.', dir_path=rel_path,
-                      page_path=self._root_page_path)
+        return Linker(self._source, self._root_page_path,
+                      name='.', dir_path=rel_path)
 
     def _iterItems(self, max_depth=-1, filter_func=None):
         items = walk_linkers(self, max_depth=max_depth,
@@ -156,11 +183,10 @@ class Linker(object):
         if not is_listable:
             raise Exception("Source '%s' can't be listed." % self._source.name)
 
-        if self._root_page_path is not None:
-            if self._name is None:
-                self._name = self._source.getBasename(self._root_page_path)
-            if self._dir_path is None:
-                self._dir_path = self._source.getDirpath(self._root_page_path)
+        if self._name is None:
+            self._name = self._source.getBasename(self._root_page_path)
+        if self._dir_path is None:
+            self._dir_path = self._source.getDirpath(self._root_page_path)
 
         if self._dir_path is None:
             raise Exception("This linker has no directory to start from.")
@@ -172,13 +198,15 @@ class Linker(object):
                 # If `is_dir` is true, `data` will be the directory's source
                 # path. If not, it will be a page factory.
                 if is_dir:
-                    item = Linker(self._source,
+                    item = Linker(self._source, self._root_page_path,
                                   name=name, dir_path=data)
                 else:
                     item = data.buildPage()
+                    is_self = (item.rel_path == self._root_page_path)
                     item.config.set('__linker_name', name)
-                    item.config.set('__linker_is_self',
-                                    item.rel_path == self._root_page_path)
+                    item.config.set('__linker_is_self', is_self)
+                    if is_self:
+                        self._self_item = item
 
                 existing = self._items.get(name)
                 if existing is None:
