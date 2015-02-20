@@ -254,10 +254,12 @@ class OrderedPageSource(AutoConfigSourceBase):
         items = []
         names = sorted(os.listdir(path))
         for name in names:
+            clean_name = self.re_pattern.sub('', name)
+            clean_name, _ = os.path.splitext(clean_name)
             if os.path.isdir(os.path.join(path, name)):
                 if filter_page_dirname(name):
                     rel_subdir = os.path.join(rel_path, name)
-                    items.append((True, name, rel_subdir))
+                    items.append((True, clean_name, rel_subdir))
             else:
                 if filter_page_filename(name):
                     slug = self._makeSlug(os.path.join(rel_path, name))
@@ -272,7 +274,7 @@ class OrderedPageSource(AutoConfigSourceBase):
                     fac = PageFactory(self, fac_path, metadata)
 
                     name, _ = os.path.splitext(name)
-                    items.append((False, name, fac))
+                    items.append((False, clean_name, fac))
         return items
 
     def _makeSlug(self, rel_path):
