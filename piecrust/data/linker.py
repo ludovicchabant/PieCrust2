@@ -23,7 +23,6 @@ class PageLinkerData(object):
     @property
     def children(self):
         self._linker._load()
-        print("GOT ", self._linker._items.keys())
         if self._linker._self_item is None:
             return None
         return self._linker._self_item.config.get('__linker_child')
