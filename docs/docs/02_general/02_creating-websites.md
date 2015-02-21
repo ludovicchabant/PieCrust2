@@ -2,9 +2,18 @@
 title: Creating Websites
 ---
 
-A PieCrust website is really just a directory with a special structure.
+A PieCrust website is really just a directory with a special structure. The very
+basic structure is a directory with a `config.yml` file in it -- but that would
+be just an empty website that uses the default theme!
 
-For a default website configuration, it will look a bit like this:
+    <root>
+      +--- config.yml
+
+You can create that directory with the configuration file in it yourself, but
+the `chef init` command can also do it for you.
+
+Once you've started filling it up with contents and assets -- and assuming a
+default website configuration -- it will look a bit like this:
 
     <root>
       |---- assets/
