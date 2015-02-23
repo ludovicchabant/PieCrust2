@@ -136,15 +136,19 @@ class PieCrustConfiguration(Configuration):
 
         # Cache auto-format regexes.
         if not isinstance(sitec['auto_formats'], dict):
-            raise ConfigurationError("The 'site/auto_formats' setting must be a dictionary.")
+            raise ConfigurationError("The 'site/auto_formats' setting must be "
+                                     "a dictionary.")
         html_auto_format = sitec['auto_formats']
         if not html_auto_format:
             sitec['auto_formats']['html'] = sitec['default_format']
         cachec['auto_formats_re'] = r"\.(%s)$" % (
                 '|'.join(
-                        [re.escape(i) for i in list(sitec['auto_formats'].keys())]))
+                        [re.escape(i) for i in
+                            list(sitec['auto_formats'].keys())]))
         if sitec['default_auto_format'] not in sitec['auto_formats']:
-            raise ConfigurationError("Default auto-format '%s' is not declared." % sitec['default_auto_format'])
+            raise ConfigurationError("Default auto-format '%s' is not "
+                                     "declared." %
+                                     sitec['default_auto_format'])
 
         # Cache pagination suffix regex and format.
         pgn_suffix = sitec['pagination_suffix']
@@ -292,9 +296,11 @@ class PieCrustConfiguration(Configuration):
         if not routesc:
             raise ConfigurationError("There are no routes defined.")
         if not isinstance(sourcesc, dict):
-            raise ConfigurationError("The 'site/sources' setting must be a dictionary.")
+            raise ConfigurationError("The 'site/sources' setting must be a "
+                                     "dictionary.")
         if not isinstance(routesc, list):
-            raise ConfigurationError("The 'site/routes' setting must be a list.")
+            raise ConfigurationError("The 'site/routes' setting must be a "
+                                     "list.")
 
         # Add the theme page source if no sources were defined in the theme
         # configuration itself.
@@ -319,7 +325,8 @@ class PieCrustConfiguration(Configuration):
         # of other default values for other configuration stuff.
         for sn, sc in sourcesc.items():
             if not isinstance(sc, dict):
-                raise ConfigurationError("All sources in 'site/sources' must be dictionaries.")
+                raise ConfigurationError("All sources in 'site/sources' must "
+                                         "be dictionaries.")
             sc.setdefault('type', 'default')
             sc.setdefault('fs_endpoint', sn)
             sc.setdefault('ignore_missing_dir', False)
@@ -334,17 +341,19 @@ class PieCrustConfiguration(Configuration):
         # values, etc.
         for rc in routesc:
             if not isinstance(rc, dict):
-                raise ConfigurationError("All routes in 'site/routes' must be dictionaries.")
+                raise ConfigurationError("All routes in 'site/routes' must be "
+                                         "dictionaries.")
             rc_url = rc.get('url')
             if not rc_url:
-                raise ConfigurationError("All routes in 'site/routes' must have an 'url'.")
+                raise ConfigurationError("All routes in 'site/routes' must "
+                                         "have an 'url'.")
             if rc_url[0] != '/':
                 raise ConfigurationError("Route URLs must start with '/'.")
             if rc.get('source') is None:
                 raise ConfigurationError("Routes must specify a source.")
             if rc['source'] not in list(sourcesc.keys()):
-                raise ConfigurationError("Route is referencing unknown source: %s" %
-                        rc['source'])
+                raise ConfigurationError("Route is referencing unknown "
+                                         "source: %s" % rc['source'])
             rc.setdefault('taxonomy', None)
             rc.setdefault('page_suffix', '/%num%')
 
@@ -366,7 +375,6 @@ class PieCrustConfiguration(Configuration):
                 raise ConfigurationError(
                         "Source '%s' is using a reserved endpoint name: %s" %
                         (name, endpoint))
-
 
         # Done validating!
         return values
