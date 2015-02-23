@@ -108,9 +108,7 @@ class PieCrustConfiguration(Configuration):
                 'default_template_engine': DEFAULT_TEMPLATE_ENGINE,
                 'enable_gzip': True,
                 'pretty_urls': False,
-                'slugify': 'transliterate|lowercase',
-                'timezone': False,
-                'locale': False,
+                'trailing_slash': False,
                 'date_format': DEFAULT_DATE_FORMAT,
                 'auto_formats': collections.OrderedDict([
                     ('html', ''),
@@ -121,7 +119,6 @@ class PieCrustConfiguration(Configuration):
                 'plugins_sources': [DEFAULT_PLUGIN_SOURCE],
                 'themes_sources': [DEFAULT_THEME_SOURCE],
                 'cache_time': 28800,
-                'display_errors': True,
                 'enable_debug_info': True,
                 'show_debug_info': False,
                 'use_default_content': True
@@ -149,10 +146,22 @@ class PieCrustConfiguration(Configuration):
         if sitec['default_auto_format'] not in sitec['auto_formats']:
             raise ConfigurationError("Default auto-format '%s' is not declared." % sitec['default_auto_format'])
 
-        # Cache pagination suffix regex.
-        pgn_suffix = re.escape(sitec['pagination_suffix'])
-        pgn_suffix = pgn_suffix.replace("\\%num\\%", "(?P<num>\\d+)") + '$'
-        cachec['pagination_suffix_re'] = pgn_suffix
+        # Cache pagination suffix regex and format.
+        pgn_suffix = sitec['pagination_suffix']
+        if len(pgn_suffix) == 0 or pgn_suffix[0] != '/':
+            raise ConfigurationError("The 'site/pagination_suffix' setting "
+                                     "must start with a slash.")
+        if '%num%' not in pgn_suffix:
+            raise ConfigurationError("The 'site/pagination_suffix' setting "
+                                     "must contain the '%num%' placeholder.")
+
+        pgn_suffix_fmt = pgn_suffix.replace('%num%', '%(num)d')
+        cachec['pagination_suffix_format'] = pgn_suffix_fmt
+
+        pgn_suffix_re = re.escape(pgn_suffix)
+        pgn_suffix_re = (pgn_suffix_re.replace("\\%num\\%", "(?P<num>\\d+)") +
+                         '$')
+        cachec['pagination_suffix_re'] = pgn_suffix_re
 
         # Make sure plugins and theme sources are lists.
         if not isinstance(sitec['plugins_sources'], list):

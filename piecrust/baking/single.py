@@ -33,34 +33,6 @@ class PageBaker(object):
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.pagination_suffix = app.config.get('site/pagination_suffix')
 
-    def getOutputUri(self, uri, num):
-        suffix = self.pagination_suffix.replace('%num%', str(num))
-        if self.pretty_urls:
-            # Output will be:
-            # - `uri/name`
-            # - `uri/name/2`
-            # - `uri/name.ext`
-            # - `uri/name.ext/2`
-            if num <= 1:
-                return uri
-            return uri + suffix
-        else:
-            # Output will be:
-            # - `uri/name.html`
-            # - `uri/name/2.html`
-            # - `uri/name.ext`
-            # - `uri/name/2.ext`
-            if uri == '/':
-                if num <= 1:
-                    return '/'
-                return '/' + suffix.lstrip('/')
-            else:
-                if num <= 1:
-                    return uri
-                #TODO: watch out for tags with dots in them.
-                base_uri, ext = os.path.splitext(uri)
-                return base_uri + suffix + ext
-
     def getOutputPath(self, uri):
         bake_path = [self.out_dir]
         decoded_uri = urllib.parse.unquote(uri.lstrip('/'))
@@ -109,7 +81,8 @@ class PageBaker(object):
 
         # Generate the URL using the route.
         page = factory.buildPage()
-        uri = route.getUri(route_metadata, page, include_site_root=False)
+        uri = route.getUri(route_metadata, provider=page,
+                           include_site_root=False)
 
         override = self.record.getOverrideEntry(factory, uri)
         if override is not None:
@@ -161,7 +134,8 @@ class PageBaker(object):
                     invalidate_formatting = True
 
         while has_more_subs:
-            sub_uri = self.getOutputUri(uri, cur_sub)
+            sub_uri = route.getUri(route_metadata, sub_num=cur_sub,
+                                   provider=page, include_site_root=False)
             out_path = self.getOutputPath(sub_uri)
 
             # Check for up-to-date outputs.

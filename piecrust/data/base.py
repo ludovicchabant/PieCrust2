@@ -125,7 +125,7 @@ class PaginationData(LazyPageConfigData):
         route = page.app.getRoute(page.source.name, page.source_metadata)
         if route is None:
             raise Exception("Can't get route for page: %s" % page.path)
-        return route.getUri(page.source_metadata, page)
+        return route.getUri(page.source_metadata, provider=page)
 
     def _loadCustom(self):
         page_url = self._get_uri()

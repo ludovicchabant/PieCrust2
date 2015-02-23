@@ -130,7 +130,6 @@ class Server(object):
         # Create the app for this request.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
         app.config.set('site/root', '/')
-        app.config.set('site/pretty_urls', True)
         app.config.set('server/is_serving', True)
         if (app.config.get('site/enable_debug_info') and
                 '!debug' in request.args):

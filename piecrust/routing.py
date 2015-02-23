@@ -1,4 +1,5 @@
 import re
+import os.path
 import logging
 
 
@@ -8,6 +9,7 @@ logger = logging.getLogger(__name__)
 route_re = re.compile(r'%((?P<qual>path):)?(?P<name>\w+)%')
 template_func_re = re.compile(r'^(?P<name>\w+)\((?P<first_arg>\w+)(?P<other_args>.*)\)\s*$')
 template_func_arg_re = re.compile(r',\s*(?P<arg>\w+)')
+ugly_url_cleaner = re.compile(r'\.html$')
 
 
 class IRouteMetadataProvider(object):
@@ -22,15 +24,22 @@ class Route(object):
     """
     def __init__(self, app, cfg):
         self.app = app
-        uri = cfg['url']
+
+        self.pretty_urls = app.config.get('site/pretty_urls')
+        self.trailing_slash = app.config.get('site/trailing_slash')
+        self.pagination_suffix_format = app.config.get(
+                '__cache/pagination_suffix_format')
         self.uri_root = app.config.get('site/root').rstrip('/') + '/'
+
+        uri = cfg['url']
         self.uri_pattern = uri.lstrip('/')
         self.uri_format = route_re.sub(self._uriFormatRepl, self.uri_pattern)
         if app.config.get('site/show_debug_info'):
             self.uri_format += '?!debug'
 
         # Get the straight-forward regex for matching this URI pattern.
-        p = route_re.sub(self._uriPatternRepl, self.uri_pattern) + '$'
+        re_suffix = '$'
+        p = route_re.sub(self._uriPatternRepl, self.uri_pattern) + re_suffix
         self.uri_re = re.compile(p)
 
         # If the URI pattern has a 'path'-type component, we'll need to match
@@ -76,6 +85,11 @@ class Route(object):
         return self.required_source_metadata.issubset(source_metadata.keys())
 
     def matchUri(self, uri):
+        if not self.pretty_urls:
+            uri = ugly_url_cleaner.sub('', uri)
+        elif self.trailing_slash:
+            uri = uri.rstrip('/')
+
         m = self.uri_re.match(uri)
         if m:
             return m.groupdict()
@@ -85,17 +99,50 @@ class Route(object):
                 return m.groupdict()
         return None
 
-    def getUri(self, source_metadata, provider=None, include_site_root=True):
+    def getUri(self, source_metadata, *, sub_num=1, provider=None,
+               include_site_root=True):
         if provider:
             source_metadata = dict(source_metadata)
             source_metadata.update(provider.getRouteMetadata())
+
         #TODO: fix this hard-coded shit
         for key in ['year', 'month', 'day']:
             if key in source_metadata and isinstance(source_metadata[key], str):
                 source_metadata[key] = int(source_metadata[key])
+
         uri = self.uri_format % source_metadata
+        suffix = None
+        if sub_num > 1:
+            # Note that we know the pagination suffix starts with a slash.
+            suffix = self.pagination_suffix_format % sub_num
+
+        if self.pretty_urls:
+            # Output will be:
+            # - `subdir/name`
+            # - `subdir/name/2`
+            # - `subdir/name.ext`
+            # - `subdir/name.ext/2`
+            if suffix:
+                uri = uri.rstrip('/') + suffix
+            if self.trailing_slash:
+                uri = uri.rstrip('/') + '/'
+        else:
+            # Output will be:
+            # - `subdir/name.html`
+            # - `subdir/name/2.html`
+            # - `subdir/name.ext`
+            # - `subdir/name/2.ext`
+            base_uri, ext = os.path.splitext(uri)
+            if not ext:
+                ext = '.html'
+            if suffix:
+                uri = base_uri + suffix + ext
+            else:
+                uri = base_uri + ext
+
         if include_site_root:
             uri = self.uri_root + uri
+
         return uri
 
     def _uriFormatRepl(self, m):
