@@ -1,0 +1,33 @@
+{% extends "default.html" %}
+
+{% block header %}
+<header class="documentation">
+    <h1>{{ page.title }}</h1>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="col-md-8">
+    {{ content|raw }}
+    </section>
+    <aside class="col-md-4">
+        <ul class="doc-level1">
+        {% for p in family.root %}
+        {% if p.is_dir and p.is_page %}
+            <li><a href="{{p.url}}">{{p.title}}</a>
+                <ul class="doc-level2">
+                {% for p2 in p.children %}
+                    <li><a href="{{p2.url}}">{{p2.title}}</a></li>
+                {% endfor %}
+                </ul>
+            </li>
+        {% elif not p.is_dir and p.order %}
+            <li><a href="{{p.url}}">{{p.title}}</a></li>
+        {% endif %}
+        {% endfor %}
+        </ul>
+    </aside>
+</div>
+{% endblock %}
+

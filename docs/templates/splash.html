@@ -1,0 +1,56 @@
+{% extends "default.html" %}
+
+{% block header %}
+<header class="splash">
+    <h1>PieCurst</h1>
+    <div class="splash-logo">
+    </div>
+    <div class="splash-main">
+        {{main|safe}}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<section class="splash splash-chalkboard">
+    <div class="container">
+        <h2>Chef's Features</h2>
+        <div class="row">
+            <div class="col-sm-6 col-md-4">
+                <img class="splash-icon" src="/img/cake-white.png" />
+                {{simple|safe}}
+            </div>
+            <div class="col-sm-6 col-md-4">
+                <img class="splash-icon hidden-xs" src="/img/chef-hat-white.png" />
+                {{bake|safe}}
+            </div>
+            <div class="clearfix visible-sm-block"></div>
+            <div class="col-sm-6 col-md-4">
+                <img class="splash-icon hidden-sm" src="/img/whisk-white.png" />
+                {{ingr|safe}}
+            </div>
+            <div class="clearfix visible-md-block visible-lg-block"></div>
+            <div class="col-sm-6 col-md-4">
+                {{oven|safe}}
+            </div>
+            <div class="clearfix visible-sm-block"></div>
+            <div class="col-sm-6 col-md-4">
+                <img class="splash-icon visible-xs" src="/img/chef-hat-white.png" />
+                {{fast|safe}}
+            </div>
+            <div class="col-sm-6 col-md-4">
+                {{carte|safe}}
+            </div>
+        </div>
+    </div>
+</section>
+<section class="splash splash-board">
+    <div class="container">
+        <div class="row">
+            <div class="col-xs-12 col-md-8 col-md-offset-2">
+                {{startnow|safe}}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
