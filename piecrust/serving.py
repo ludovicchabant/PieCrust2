@@ -8,6 +8,7 @@ import queue
 import os.path
 import hashlib
 import logging
+import datetime
 import threading
 from werkzeug.exceptions import (
         NotFound, MethodNotAllowed, InternalServerError, HTTPException)
@@ -169,7 +170,7 @@ class Server(object):
             full_path = os.path.join(mount, rel_req_path)
             try:
                 response = self._make_wrapped_file_response(
-                        environ, full_path)
+                        environ, request, full_path)
                 return response
             except OSError:
                 pass
@@ -202,7 +203,7 @@ class Server(object):
 
         try:
             response = self._make_wrapped_file_response(
-                    environ, full_path)
+                    environ, request, full_path)
             return response
         except OSError:
             pass
@@ -216,7 +217,7 @@ class Server(object):
         if not os.path.isfile(full_path):
             return None
 
-        return self._make_wrapped_file_response(environ, full_path)
+        return self._make_wrapped_file_response(environ, request, full_path)
 
     def _try_serve_page(self, app, environ, request):
         # Try to find what matches the requested URL.
@@ -352,11 +353,23 @@ class Server(object):
 
         return response
 
-    def _make_wrapped_file_response(self, environ, path):
+    def _make_wrapped_file_response(self, environ, request, path):
         logger.debug("Serving %s" % path)
+
+        # Check if we can return a 304 status code.
+        mtime = os.path.getmtime(path)
+        etag_str = '%s$$%s' % (path, mtime)
+        etag = hashlib.md5(etag_str.encode('utf8')).hexdigest()
+        if etag in request.if_none_match:
+            response = Response()
+            response.status_code = 304
+            return response
+
         wrapper = wrap_file(environ, open(path, 'rb'))
         response = Response(wrapper)
         _, ext = os.path.splitext(path)
+        response.set_etag(etag)
+        response.last_modified = datetime.datetime.fromtimestamp(mtime)
         response.mimetype = self._mimetype_map.get(
                 ext.lstrip('.'), 'text/plain')
         return response
