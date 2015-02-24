@@ -114,7 +114,7 @@ class Route(object):
         suffix = None
         if sub_num > 1:
             # Note that we know the pagination suffix starts with a slash.
-            suffix = self.pagination_suffix_format % sub_num
+            suffix = self.pagination_suffix_format % {'num': sub_num}
 
         if self.pretty_urls:
             # Output will be:
@@ -123,7 +123,10 @@ class Route(object):
             # - `subdir/name.ext`
             # - `subdir/name.ext/2`
             if suffix:
-                uri = uri.rstrip('/') + suffix
+                if uri == '':
+                    uri = suffix.lstrip('/')
+                else:
+                    uri = uri.rstrip('/') + suffix
             if self.trailing_slash:
                 uri = uri.rstrip('/') + '/'
         else:
@@ -132,13 +135,17 @@ class Route(object):
             # - `subdir/name/2.html`
             # - `subdir/name.ext`
             # - `subdir/name/2.ext`
-            base_uri, ext = os.path.splitext(uri)
-            if not ext:
-                ext = '.html'
-            if suffix:
-                uri = base_uri + suffix + ext
+            if uri == '':
+                if suffix:
+                    uri = suffix.lstrip('/') + '.html'
             else:
-                uri = base_uri + ext
+                base_uri, ext = os.path.splitext(uri)
+                if not ext:
+                    ext = '.html'
+                if suffix:
+                    uri = base_uri + suffix + ext
+                else:
+                    uri = base_uri + ext
 
         if include_site_root:
             uri = self.uri_root + uri

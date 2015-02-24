@@ -39,14 +39,10 @@ class PageBaker(object):
         if self.pretty_urls:
             bake_path.append(decoded_uri)
             bake_path.append('index.html')
+        elif decoded_uri == '':
+            bake_path.append('index.html')
         else:
-            name, ext = os.path.splitext(decoded_uri)
-            if decoded_uri == '':
-                bake_path.append('index.html')
-            elif ext:
-                bake_path.append(decoded_uri)
-            else:
-                bake_path.append(decoded_uri + '.html')
+            bake_path.append(decoded_uri)
 
         return os.path.normpath(os.path.join(*bake_path))
 
