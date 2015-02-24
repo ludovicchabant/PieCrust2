@@ -66,7 +66,7 @@ class SimplePaginationSourceMixin(IPaginationSource):
 
     def getPaginationFilter(self, page):
         conf = (page.config.get('items_filters') or
-                page.app.config.get('site/items_filters'))
+                self.config.get('items_filters'))
         if conf == 'none' or conf == 'nil' or conf == '':
             conf = None
         if conf is not None:

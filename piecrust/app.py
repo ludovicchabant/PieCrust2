@@ -173,14 +173,6 @@ class PieCrustConfiguration(Configuration):
         if not isinstance(sitec['themes_sources'], list):
             sitec['themes_sources'] = [sitec['themes_sources']]
 
-        # Setup values for posts/items.
-        ipp = sitec.get('posts_per_page')
-        if ipp is not None:
-            sitec.setdefault('items_per_page', ipp)
-        pf = sitec.get('posts_filters')
-        if pf is not None:
-            sitec.setdefault('items_filters', pf)
-
         # Figure out if we need to validate sources/routes, or auto-generate
         # them from simple blog settings.
         orig_sources = sitec.get('sources')
@@ -197,8 +189,8 @@ class PieCrustConfiguration(Configuration):
             g_post_url = sitec.get('post_url', '%year%/%month%/%day%/%slug%')
             g_tag_url = sitec.get('tag_url', 'tag/%tag%')
             g_category_url = sitec.get('category_url', '%category%')
-            g_posts_per_page = sitec.get('items_per_page', 5)
-            g_posts_filters = sitec.get('items_filters')
+            g_posts_per_page = sitec.get('posts_per_page', 5)
+            g_posts_filters = sitec.get('posts_filters')
             g_date_format = sitec.get('date_format', DEFAULT_DATE_FORMAT)
 
             # The normal pages and tags/categories.
