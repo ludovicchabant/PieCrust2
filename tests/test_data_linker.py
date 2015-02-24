@@ -37,8 +37,9 @@ from .mockutil import mock_fs, mock_fs_scope
 def test_linker_iteration(fs, page_path, expected):
     with mock_fs_scope(fs):
         app = fs.getApp()
+        app.config.set('site/pretty_urls', True)
         src = app.getSource('pages')
-        linker = Linker(src, page_path=page_path)
+        linker = Linker(src, page_path)
         actual = list(iter(linker))
 
         assert len(actual) == len(expected)
@@ -80,8 +81,9 @@ def test_linker_iteration(fs, page_path, expected):
 def test_recursive_linker_iteration(fs, page_path, expected):
     with mock_fs_scope(fs):
         app = fs.getApp()
+        app.config.set('site/pretty_urls', True)
         src = app.getSource('pages')
-        linker = Linker(src, page_path=page_path)
+        linker = Linker(src, page_path)
         actual = list(iter(linker.allpages))
 
         assert len(actual) == len(expected)
