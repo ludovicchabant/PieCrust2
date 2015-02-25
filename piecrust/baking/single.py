@@ -17,6 +17,14 @@ from piecrust.sources.base import (PageFactory,
 logger = logging.getLogger(__name__)
 
 
+def copy_public_page_config(config):
+    res = config.get().copy()
+    for k in list(res.keys()):
+        if k.startswith('__'):
+            del res[k]
+    return res
+
+
 class BakingError(Exception):
     pass
 
@@ -98,7 +106,7 @@ class PageBaker(object):
         has_more_subs = True
         force_this = self.force
         invalidate_formatting = False
-        record_entry.config = page.config.get().copy()
+        record_entry.config = copy_public_page_config(page.config)
         prev_record_entry = self.record.getPreviousEntry(
                 factory.source.name, factory.rel_path,
                 taxonomy_name, taxonomy_term)
