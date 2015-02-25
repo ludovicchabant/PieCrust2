@@ -7,6 +7,10 @@ from .mockutil import mock_fs, mock_fs_scope
         'fs, src_config, expected_paths, expected_metadata',
         [
             (mock_fs(), {}, [], []),
+            (mock_fs().withPage('test/_index.md'),
+                {},
+                ['_index.md'],
+                [{'slug': '', 'config': {'foo': []}}]),
             (mock_fs().withPage('test/something.md'),
                 {},
                 ['something.md'],
@@ -86,6 +90,10 @@ def test_autoconfig_fails_if_multiple_folders():
         'fs, expected_paths, expected_metadata',
         [
             (mock_fs(), [], []),
+            (mock_fs().withPage('test/_index.md'),
+                ['_index.md'],
+                [{'slug': '',
+                    'config': {'foo': 0, 'foo_trail': [0]}}]),
             (mock_fs().withPage('test/something.md'),
                 ['something.md'],
                 [{'slug': 'something',

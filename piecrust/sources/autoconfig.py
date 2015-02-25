@@ -82,7 +82,19 @@ class AutoConfigSourceBase(PageSource, SimplePaginationSourceMixin,
         return name
 
     def _makeSlug(self, rel_path):
-        raise NotImplementedError()
+        slug = rel_path.replace('\\', '/')
+        slug = self._cleanSlug(slug)
+        slug, ext = os.path.splitext(slug)
+        if ext.lstrip('.') not in self.supported_extensions:
+            slug += ext
+        if slug.startswith('./'):
+            slug = slug[2:]
+        if slug == '_index':
+            slug = ''
+        return slug
+
+    def _cleanSlug(self, slug):
+        return slug
 
     def _extractConfigFragment(self, rel_path):
         raise NotImplementedError()
@@ -104,12 +116,6 @@ class AutoConfigSource(AutoConfigSourceBase):
                                                  False)
         self.supported_extensions = list(
                 app.config.get('site/auto_formats').keys())
-
-    def _makeSlug(self, rel_path):
-        slug, ext = os.path.splitext(os.path.basename(rel_path))
-        if ext.lstrip('.') not in self.supported_extensions:
-            slug += ext
-        return slug
 
     def _extractConfigFragment(self, rel_path):
         if rel_path == '.':
@@ -168,6 +174,9 @@ class AutoConfigSource(AutoConfigSourceBase):
                     name, _ = os.path.splitext(name)
                     items.append((False, name, fac))
         return items
+
+    def _cleanSlug(self, slug):
+        return os.path.basename(slug)
 
 
 class OrderedPageSource(AutoConfigSourceBase):
@@ -277,12 +286,8 @@ class OrderedPageSource(AutoConfigSourceBase):
                     items.append((False, clean_name, fac))
         return items
 
-    def _makeSlug(self, rel_path):
-        slug, ext = os.path.splitext(rel_path)
-        if ext.lstrip('.') not in self.supported_extensions:
-            slug += ext
-        slug = self.re_pattern.sub(r'\1', slug)
-        return slug
+    def _cleanSlug(self, slug):
+        return self.re_pattern.sub(r'\1', slug)
 
     def _extractConfigFragment(self, rel_path):
         values = []
