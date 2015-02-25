@@ -44,6 +44,8 @@ compass:
 variants:
     # Enable compressors when baking the docs for publishing.
     dist:
+        site:
+            root: /piecrust/v2/
         baker:
             assets_dirs:
                 assets:
