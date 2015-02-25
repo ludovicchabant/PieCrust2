@@ -28,6 +28,9 @@ By convention, PieCrust's core systems only look for settings in the `site`
 section. Other settings, like formatter or template engine specific settings,
 will be found in other sections.
 
+You can see all the available settings on the [website configuration reference
+page][wc]
 
 [yaml]: http://en.wikipedia.org/wiki/YAML
+[wc]: {{docurl('reference/website-configuration')}}
 

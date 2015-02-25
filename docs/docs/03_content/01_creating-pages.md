@@ -1,0 +1,67 @@
+---
+title: Creating Pages
+---
+
+In PieCrust, creating pages is a matter of creating a text file in the correct
+place with the correct name. This mostly depends on the [page sources][src]
+you're using, but we can go over how it works for the sources involved in the
+[default content model][dcm].
+
+We will also go over the `chef prepare` command, which semi-automates the
+process of creating pages.
+
+
+[src]: {{docurl('content-model/sources')}}
+[dcm]: {{docurl('content-model/default-model')}}
+
+
+## Overview
+
+All pages sources have a _file-system endpoint_, which is usually a
+sub-directory of you website's root directory. They will look for pages inside
+that endpoint, and load any file that matches that source's naming convention.
+
+Generally speaking, page sources will load any files that:
+
+* have a `.html` extension.
+* have an extension listed in the `site/auto_formats` website setting (by
+  default, those are `.md` and `.textile`, for Markdown and Textile formatted
+  pages respectively).
+
+
+## Simple pages
+
+When using the default content model, PieCrust will load simple pages out of the
+`pages/` endpoint. The relative path of a page from the `pages/` directory will
+be that page's _slug_, _i.e._ its URL, minus the site's root, and minus any
+optional arguments.
+
+Since there are often no arguments, and the default's site root is `/`, it's
+pretty much the same as the page's URL. So a page located at
+`pages/cooks/ludovic` will have an URL of `/cooks/ludovic`.
+
+> Running `chef prepare page cooks/ludovic` will create that page for you, which
+> means you don't have to bother with creating intermediate sub-directories or
+> whatnot.
+
+
+## Blog posts
+
+When using the default content model, PieCrust will load blog posts out of the
+`posts/` endpoint. There are different naming conventions available depending on
+the `site/posts_fs` setting:
+
+* `flat`: `YYYY-MM-DD_post-slug.ext`
+* `shallow`: `YYYY/MM-DD_post-slug.ext`
+* `hierarchy`: `YYYY/MM/DD_post-slug.ext`
+
+Where:
+
+* `YYYY`, `MM`, and `DD` are the year, month, and day of the post,
+respectively.
+* `post-slug` is, well, the post's slug (_i.e._ the part of the URL that comes
+  after the site's root).
+* `ext` is an extension that's either `html`, or something in the site's
+  auto-formats (usually `md` for Markdown texts and `textile` for Textile
+  texts).
+
