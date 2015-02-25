@@ -35,7 +35,7 @@
 .pc-divider-img(@offset-x, @offset-y) {
     .hidden-xs();
     content: " ";
-    background-image: url("/img/dividers.png");
+    background-image: url("../img/dividers.png");
     background-repeat: no-repeat;
     background-position: -@offset-x -@offset-y;
     display: inline-block;
@@ -145,7 +145,7 @@ blockquote {
 }
 @media (min-width: @screen-sm-min) {
     blockquote {
-        .pc-decorator('/img/cake.png', 5px + @line-height-computed);
+        .pc-decorator('../img/cake.png', 5px + @line-height-computed);
     }
 }
 
@@ -165,7 +165,7 @@ footer {
 
 // Splash-page
 header.splash {
-    .pc-banner("/img/header2-bg.jpg");
+    .pc-banner("../img/header2-bg.jpg");
     color: black;
 }
 .splash {
@@ -180,7 +180,7 @@ header.splash {
     }
 
     .splash-logo {
-        background-image: url('/img/logo.png');
+        background-image: url('../img/logo.png');
         background-repeat: no-repeat;
         background-position: center center;
         background-size: contain;
@@ -227,7 +227,7 @@ header.splash {
     }
 }
 .splash.splash-chalkboard {
-    background: url("/img/chalkboard-bg.jpg");
+    background: url("../img/chalkboard-bg.jpg");
     color: white;
     padding: 0.25em 0 3em 0;
     margin: 0;
@@ -240,13 +240,13 @@ header.splash {
 
 // Getting-Started
 header.tutorial {
-    .pc-banner-header("/img/header5-bg.jpg");
+    .pc-banner-header("../img/header5-bg.jpg");
 }
 
 
 // Documentation
 header.documentation {
-    .pc-banner-header("/img/header10-bg.jpg");
+    .pc-banner-header("../img/header10-bg.jpg");
 }
 
 .pc-docnav() {
@@ -273,13 +273,13 @@ ul.doc-level2 {
 
 // Code
 header.code {
-    .pc-banner-header("/img/header7-bg.jpg");
+    .pc-banner-header("../img/header7-bg.jpg");
 }
 
 
 // Support
 header.support {
-    .pc-banner-header("/img/header9-bg.jpg");
+    .pc-banner-header("../img/header9-bg.jpg");
 }
 
 
