@@ -7,7 +7,8 @@ import logging
 import collections
 import yaml
 from werkzeug.utils import cached_property
-from piecrust import (APP_VERSION,
+from piecrust import (
+        APP_VERSION, RESOURCES_DIR,
         CACHE_DIR, TEMPLATES_DIR, ASSETS_DIR,
         PLUGINS_DIR, THEME_DIR,
         CONFIG_PATH, THEME_CONFIG_PATH,
@@ -471,7 +472,7 @@ class PieCrust(object):
         td = self._get_dir(THEME_DIR)
         if td is not None:
             return td
-        return os.path.join(os.path.dirname(__file__), 'resources', 'theme')
+        return os.path.join(RESOURCES_DIR, 'theme')
 
     @cached_property
     def cache_dir(self):
