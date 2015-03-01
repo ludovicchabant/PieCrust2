@@ -10,6 +10,7 @@ from piecrust.commands.builtin.scaffolding import (
         UserDefinedPrepareTemplatesCommandExtension,
         DefaultPrepareTemplatesHelpTopic)
 from piecrust.commands.builtin.serving import (ServeCommand)
+from piecrust.commands.builtin.themes import (ThemesCommand)
 from piecrust.commands.builtin.util import (
         InitCommand, PurgeCommand, ImportCommand)
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
@@ -56,6 +57,7 @@ class BuiltInPlugin(PieCrustPlugin):
                 ShowSourcesCommand(),
                 ShowRoutesCommand(),
                 ShowPathsCommand(),
+                ThemesCommand(),
                 BakeCommand(),
                 ShowRecordCommand(),
                 ServeCommand()]
