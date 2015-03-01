@@ -14,7 +14,10 @@ def format_timed(start_time, message, indent_level=0, colored=True):
 def log_friendly_exception(logger, ex):
     indent = ''
     while ex:
-        logger.error('%s%s' % (indent, str(ex)))
+        ex_msg = str(ex)
+        if not ex_msg:
+            ex_msg = '%s exception was thrown' % type(ex).__name__
+        logger.error('%s%s' % (indent, ex_msg))
         indent += '  '
         ex = ex.__cause__
 
