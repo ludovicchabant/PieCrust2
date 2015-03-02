@@ -139,8 +139,10 @@ and your margins and whatnot. Besides fighting CSS and browser inconsistencies,
 you'll also probably refer a lot to the [Jinja templating documentation][jinja]
 for your template logic, unless you end up using [another template engine][tpl].
 
-In the [third and last part of this tutorial][part3], we'll look at PieCrust's
-built-in asset pipeline, by writing some CSS code.
+## Next steps
+
+In the [third part of this tutorial][part3], we'll look at PieCrust's built-in
+asset pipeline, by writing some CSS code.
 
 
 [part1]: {{docurl('tutorial/your-first-blog')}}
