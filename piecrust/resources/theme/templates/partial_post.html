@@ -4,9 +4,9 @@
         <small>{{ post.date }}
             {% if post.tags %}
             in 
-            {% for t in post.tags %}
+            {% for t in post.tags -%}
             <a href="{{ pctagurl(t) }}">{{ t }}</a>{% if not loop.last %}, {% endif %}
-            {% endfor %}
+            {%- endfor %}
             {% endif %}
             {% if post.category %}
             | <a href="{{ pccaturl(post.category) }}">{{ post.category }}</a>
@@ -14,6 +14,6 @@
         </small>
     </header>
     <section>
-        {{ post.content|raw }}
+        {{ post.content|safe }}
     </section>
 </article>

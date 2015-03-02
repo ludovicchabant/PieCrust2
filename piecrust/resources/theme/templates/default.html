@@ -77,20 +77,20 @@ blockquote {
         {% if page.tags %}
         <div class="tags">
             <span>Posted in</span>
-        {% for t in page.tags %}
-        <span class="tag"><a href="{{ pctagurl(t) }}">{{t}}</a>{% if not loop.last %}, {% endif %}</span>
-        {% endfor %}
+        {% for t in page.tags -%}
+            <span class="tag"><a href="{{ pctagurl(t) }}">{{t}}</a>{% if not loop.last %}, {% endif %}</span>
+        {%- endfor %}
         </div>
         {% endif %}
 
-        {{ content|raw }}
+        {{ content|safe }}
         {% endblock %}
     </section>
     <footer>
         {% block footer %}
         {% endblock %}
-        {{ piecrust.debug_info|raw }}
-        <p>{{ piecrust.branding|raw }}</p>
+        {{ piecrust.debug_info|safe }}
+        <p>{{ piecrust.branding|safe }}</p>
     </footer>
   </div>
 </body>
