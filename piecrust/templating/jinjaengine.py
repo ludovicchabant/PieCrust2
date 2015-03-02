@@ -91,10 +91,8 @@ class JinjaTemplateEngine(TemplateEngine):
         extensions = [
                 PieCrustHighlightExtension,
                 PieCrustCacheExtension,
-                PieCrustSpacelessExtension]
-        twig_compatibility_mode = self.app.config.get('jinja/twig_compatibility')
-        if twig_compatibility_mode is None or twig_compatibility_mode is True:
-            extensions.append(PieCrustFormatExtension)
+                PieCrustSpacelessExtension,
+                PieCrustFormatExtension]
         if autoescape:
             extensions.append('jinja2.ext.autoescape')
         self.env = PieCrustEnvironment(
@@ -105,11 +103,38 @@ class JinjaTemplateEngine(TemplateEngine):
 
 class PieCrustEnvironment(Environment):
     def __init__(self, app, *args, **kwargs):
-        super(PieCrustEnvironment, self).__init__(*args, **kwargs)
         self.app = app
-        self.auto_reload = True
+
+        # Before we create the base Environement, let's figure out the options
+        # we want to pass to it.
+        twig_compatibility_mode = app.config.get('jinja/twig_compatibility')
+
+        # Disable auto-reload when we're baking.
+        if app.config.get('baker/is_baking'):
+            kwargs.setdefault('auto_reload', False)
+
+        # Let the user override most Jinja options via the site config.
+        for name in ['block_start_string', 'block_end_string',
+                     'variable_start_string', 'variable_end_string',
+                     'comment_start_string', 'comment_end_string',
+                     'line_statement_prefix', 'line_comment_prefix',
+                     'trim_blocks', 'lstrip_blocks',
+                     'newline_sequence', 'keep_trailing_newline']:
+            val = app.config.get('jinja/' + name)
+            if val is not None:
+                kwargs.setdefault(name, val)
+
+        # Twig trims blocks.
+        if twig_compatibility_mode is True:
+            self.trim_blocks = True
+
+        # All good! Create the Environment.
+        super(PieCrustEnvironment, self).__init__(*args, **kwargs)
+
+        # Now add globals and filters.
         self.globals.update({
                 'fail': raise_exception})
+
         self.filters.update({
                 'keys': get_dict_keys,
                 'values': get_dict_values,
@@ -124,15 +149,11 @@ class PieCrustEnvironment(Environment):
                 'titlecase': title_case,
                 'atomdate': get_atom_date,
                 'date': get_date})
-        # Backwards compatibility with PieCrust 1.x.
-        self.globals.update({
-                'pcfail': raise_exception})
 
         # Backwards compatibility with Twig.
-        twig_compatibility_mode = app.config.get('jinja/twig_compatibility')
-        if twig_compatibility_mode is None or twig_compatibility_mode is True:
-            self.trim_blocks = True
+        if twig_compatibility_mode is True:
             self.filters['raw'] = self.filters['safe']
+            self.globals['pcfail'] = raise_exception
 
         # Add route functions.
         for route in app.routes:
