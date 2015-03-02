@@ -45,14 +45,14 @@
         {% endblock %}
         {% block content %}
         <section class="container" id="content">
-        {{ content|raw }}
+        {{ content|safe }}
         </section>
         {% endblock %}
         <footer>
-            <p>&copy;2014 &mdash; {{ piecrust.branding|raw }}</p>
+            <p>&copy;2014 &mdash; {{ piecrust.branding|safe }}</p>
         </footer>
     </div>
-    {{ piecrust.debug_info|raw }}
+    {{ piecrust.debug_info|safe }}
     <script src="{{ site.root }}js/piecrust.js"></script>
     {% if baker.is_baking %}
     {{ google.analytics("UA-3426592-10") }}
