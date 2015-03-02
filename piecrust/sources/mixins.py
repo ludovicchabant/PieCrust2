@@ -2,7 +2,7 @@ import os
 import os.path
 import logging
 from piecrust.data.base import PaginationData
-from piecrust.data.filters import PaginationFilter
+from piecrust.data.filters import PaginationFilter, page_value_accessor
 from piecrust.sources.base import PageFactory
 from piecrust.sources.interfaces import IPaginationSource, IListableSource
 
@@ -44,10 +44,6 @@ class PaginationDataBuilderIterator(object):
                 yield PaginationData(page)
 
 
-def page_setting_accessor(item, name):
-    return item.config.get(name)
-
-
 class SimplePaginationSourceMixin(IPaginationSource):
     """ Implements the `IPaginationSource` interface in a standard way that
         should fit most page sources.
@@ -70,13 +66,13 @@ class SimplePaginationSourceMixin(IPaginationSource):
         if conf == 'none' or conf == 'nil' or conf == '':
             conf = None
         if conf is not None:
-            f = PaginationFilter()
+            f = PaginationFilter(value_accessor=page_value_accessor)
             f.addClausesFromConfig(conf)
             return f
         return None
 
     def getSettingAccessor(self):
-        return page_setting_accessor
+        return page_value_accessor
 
 
 class SimpleListableSourceMixin(IListableSource):

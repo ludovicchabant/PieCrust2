@@ -17,7 +17,8 @@ from werkzeug.wsgi import ClosingIterator, wrap_file
 from jinja2 import FileSystemLoader, Environment
 from piecrust.app import PieCrust
 from piecrust.data.filters import (
-        PaginationFilter, HasFilterClause, IsFilterClause)
+        PaginationFilter, HasFilterClause, IsFilterClause,
+        page_value_accessor)
 from piecrust.environment import StandardEnvironment
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import PageRenderingContext, render_page
@@ -263,7 +264,7 @@ class Server(object):
         render_ctx = PageRenderingContext(page, req_path, page_num,
                                           force_render=True)
         if taxonomy is not None:
-            flt = PaginationFilter()
+            flt = PaginationFilter(value_accessor=page_value_accessor)
             if taxonomy.is_multiple:
                 flt.addClause(HasFilterClause(taxonomy.name, term_value))
             else:

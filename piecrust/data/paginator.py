@@ -1,7 +1,7 @@
 import math
 import logging
 from werkzeug.utils import cached_property
-from piecrust.data.filters import PaginationFilter
+from piecrust.data.filters import PaginationFilter, page_value_accessor
 from piecrust.data.iterators import PageIterator
 from piecrust.sources.interfaces import IPaginationSource
 
@@ -197,7 +197,7 @@ class Paginator(object):
         self._iterator._iter_event += self._onIteration
 
     def _getPaginationFilter(self):
-        f = PaginationFilter()
+        f = PaginationFilter(value_accessor=page_value_accessor)
 
         if self._pgn_filter is not None:
             f.addClause(self._pgn_filter.root_clause)

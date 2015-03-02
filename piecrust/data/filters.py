@@ -4,6 +4,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def page_value_accessor(page, name):
+    return page.config.get(name)
+
+
 class PaginationFilter(object):
     def __init__(self, value_accessor=None):
         self.root_clause = None

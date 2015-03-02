@@ -7,7 +7,8 @@ import urllib.parse
 import urllib.request
 from piecrust.baking.records import FLAG_OVERRIDEN, FLAG_SOURCE_MODIFIED
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
-        IsFilterClause, AndBooleanClause)
+        IsFilterClause, AndBooleanClause,
+        page_value_accessor)
 from piecrust.rendering import (PageRenderingContext, render_page,
         PASS_FORMATTING, PASS_RENDERING)
 from piecrust.sources.base import (PageFactory,
@@ -64,7 +65,8 @@ class PageBaker(object):
             # pagination filter for only get matching posts, and the output
             # URL will be a bit different.
             tax = self.app.getTaxonomy(taxonomy_name)
-            pagination_filter = PaginationFilter()
+            pagination_filter = PaginationFilter(
+                    value_accessor=page_value_accessor)
             if tax.is_multiple:
                 if isinstance(taxonomy_term, tuple):
                     abc = AndBooleanClause()

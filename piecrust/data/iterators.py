@@ -54,7 +54,7 @@ class SettingFilterIterator(object):
 
     def __iter__(self):
         if self._fil is None:
-            self._fil = PaginationFilter(self.setting_accessor)
+            self._fil = PaginationFilter(value_accessor=self.setting_accessor)
             self._fil.addClausesFromConfig(self.fil_conf)
 
         for i in self.it:
