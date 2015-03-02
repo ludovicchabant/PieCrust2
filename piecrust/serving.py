@@ -300,7 +300,7 @@ class Server(object):
         entry.used_source_names = set(render_ctx.used_source_names)
 
         # Profiling.
-        if app.debug:
+        if app.config.get('site/show_debug_info'):
             now_time = time.clock()
             timing_info = ('%8.1f ms' %
                     ((now_time - app.env.start_time) * 1000.0))
