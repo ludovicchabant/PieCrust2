@@ -38,12 +38,15 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         day = metadata.get('day')
         slug = metadata.get('slug')
 
-        if year is not None:
-            year = int(year)
-        if month is not None:
-            month = int(month)
-        if day is not None:
-            day = int(day)
+        try:
+            if year is not None:
+                year = int(year)
+            if month is not None:
+                month = int(month)
+            if day is not None:
+                day = int(day)
+        except ValueError:
+            return None, None
 
         ext = metadata.get('ext')
         if ext is None:
