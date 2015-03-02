@@ -78,12 +78,14 @@ Last, the page's templated and formatted contents are put inside a _layout_
 example page is using the `simple` layout, and if we assume the file
 `templates/simple.html` looks like this:
 
+    {%raw%}
     <html>
     <head><title>{{page.title}}</title></head>
     <body>
-    {{content|raw}}
+    {{content|safe}}
     </body>
     </html>
+    {%endraw%}
 
 ...then our final page will be:
 
