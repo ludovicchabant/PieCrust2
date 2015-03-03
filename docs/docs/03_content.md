@@ -10,7 +10,7 @@ place, you may want to read up on the [content model documentation][cm].
 [cm]: {{docurl('content-model')}}
 
 
-{% for part in family.children %}
+{% for part in family.children -%}
 * [{{part.title}}]({{part.url}})
 {% endfor %}
 

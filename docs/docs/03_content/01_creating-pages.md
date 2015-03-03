@@ -11,14 +11,10 @@ We will also go over the `chef prepare` command, which semi-automates the
 process of creating pages.
 
 
-[src]: {{docurl('content-model/sources')}}
-[dcm]: {{docurl('content-model/default-model')}}
-
-
 ## Overview
 
 All pages sources have a _file-system endpoint_, which is usually a
-sub-directory of you website's root directory. They will look for pages inside
+sub-directory of your website's root directory. They will look for pages inside
 that endpoint, and load any file that matches that source's naming convention.
 
 Generally speaking, page sources will load any files that:
@@ -28,8 +24,14 @@ Generally speaking, page sources will load any files that:
   default, those are `.md` and `.textile`, for Markdown and Textile formatted
   pages respectively).
 
+Different sources have different conventions -- mostly naming of the page files.
+We'll look at how it works for the sources in the [default content model][dcm].
+To learn about other sources, see the [page sources reference][srcref].
 
-## Simple pages
+
+## Default content model pages
+
+### Simple pages
 
 When using the default content model, PieCrust will load simple pages out of the
 `pages/` endpoint. The relative path of a page from the `pages/` directory will
@@ -45,7 +47,7 @@ pretty much the same as the page's URL. So a page located at
 > whatnot.
 
 
-## Blog posts
+### Blog posts
 
 When using the default content model, PieCrust will load blog posts out of the
 `posts/` endpoint. There are different naming conventions available depending on
@@ -64,4 +66,13 @@ respectively.
 * `ext` is an extension that's either `html`, or something in the site's
   auto-formats (usually `md` for Markdown texts and `textile` for Textile
   texts).
+
+> Running `chef prepare post my-new-blog-post` will create a new blog post with
+> a slug of `my-new-blog-post`, dated today. This makes it quick to write a new
+> blog post!
+
+
+[src]: {{docurl('content-model/sources')}}
+[dcm]: {{docurl('content-model/default-model')}}
+[srcref]: {{docurl('reference/sources')}}
 
