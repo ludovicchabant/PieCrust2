@@ -126,7 +126,7 @@ class PieCrustEnvironment(Environment):
 
         # Twig trims blocks.
         if twig_compatibility_mode is True:
-            self.trim_blocks = True
+            kwargs['trim_blocks'] = True
 
         # All good! Create the Environment.
         super(PieCrustEnvironment, self).__init__(*args, **kwargs)
