@@ -3,6 +3,7 @@ import pytest
 from piecrust.app import PieCrust
 from piecrust.sources.pageref import PageRef, PageNotFoundError
 from .mockutil import mock_fs, mock_fs_scope
+from .pathutil import slashfix
 
 
 @pytest.mark.parametrize('fs, expected_paths, expected_slugs', [
@@ -108,15 +109,16 @@ def test_page_ref(page_ref, expected_source_name, expected_rel_path,
         app = fs.getApp()
         r = PageRef(app, page_ref)
 
-        assert r.possible_paths == [os.path.join(fs.path('/kitchen'), p)
-                                    for p in expected_possible_paths]
+        assert r.possible_paths == slashfix(
+                [os.path.join(fs.path('/kitchen'), p)
+                    for p in expected_possible_paths])
 
         assert r.exists
         assert r.source_name == expected_source_name
         assert r.source == app.getSource(expected_source_name)
         assert r.rel_path == expected_rel_path
-        assert r.path == fs.path(os.path.join(
-                'kitchen', expected_source_name, expected_rel_path))
+        assert r.path == slashfix(fs.path(os.path.join(
+                'kitchen', expected_source_name, expected_rel_path)))
 
 
 def test_page_ref_with_missing_source():

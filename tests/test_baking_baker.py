@@ -1,3 +1,4 @@
+import time
 import os.path
 import pytest
 from piecrust.baking.baker import PageBaker, Baker
@@ -105,6 +106,7 @@ def test_record_version_change():
         baker = Baker(app, out_dir)
         baker.bake()
         mtime = os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
+        time.sleep(1)
 
         app = fs.getApp()
         baker = Baker(app, out_dir)

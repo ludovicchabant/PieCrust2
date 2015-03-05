@@ -1,6 +1,7 @@
 import pytest
 from piecrust.sources.base import MODE_PARSING
 from .mockutil import mock_fs, mock_fs_scope
+from .pathutil import slashfix
 
 
 @pytest.mark.parametrize(
@@ -64,7 +65,7 @@ def test_autoconfig_source_factories(fs, src_config, expected_paths,
         s = app.getSource('test')
         facs = list(s.buildPageFactories())
         paths = [f.rel_path for f in facs]
-        assert paths == expected_paths
+        assert paths == slashfix(expected_paths)
         metadata = [f.metadata for f in facs]
         assert metadata == expected_metadata
 
@@ -123,7 +124,7 @@ def test_ordered_source_factories(fs, expected_paths, expected_metadata):
         s = app.getSource('test')
         facs = list(s.buildPageFactories())
         paths = [f.rel_path for f in facs]
-        assert paths == expected_paths
+        assert paths == slashfix(expected_paths)
         metadata = [f.metadata for f in facs]
         assert metadata == expected_metadata
 
@@ -173,6 +174,6 @@ def test_ordered_source_find(fs, route_path, expected_path,
         s = app.getSource('test')
         route_metadata = {'slug': route_path}
         fac_path, metadata = s.findPagePath(route_metadata, MODE_PARSING)
-        assert fac_path == expected_path
+        assert fac_path == slashfix(expected_path)
         assert metadata == expected_metadata
 

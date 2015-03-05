@@ -150,7 +150,7 @@ class PageBaker(object):
                 try:
                     in_path_time = record_entry.path_mtime
                     out_path_time = os.path.getmtime(out_path)
-                    if out_path_time > in_path_time:
+                    if out_path_time >= in_path_time:
                         do_bake = False
                 except OSError:
                     # File doesn't exist, we'll need to bake.

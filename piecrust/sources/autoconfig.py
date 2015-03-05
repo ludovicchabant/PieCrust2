@@ -186,7 +186,7 @@ class OrderedPageSource(AutoConfigSourceBase):
     """
     SOURCE_NAME = 'ordered'
 
-    re_pattern = re.compile(r'(^|/)(?P<num>\d+)_')
+    re_pattern = re.compile(r'(^|[/\\])(?P<num>\d+)_')
 
     def __init__(self, app, name, config):
         config['capture_mode'] = 'path'
