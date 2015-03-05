@@ -26,7 +26,9 @@ def build_base_url(app, uri, rel_assets_path):
             {
                 '%path%': rel_assets_path,
                 '%uri%': uri})
-    return base_url.rstrip('/') + '/'
+    # TEMP HACK
+    # TODO: looks like we can get here with differently formatted URLs... :(
+    return app.config.get('site/root') + base_url.strip('/') + '/'
 
 
 class Assetor(object):
