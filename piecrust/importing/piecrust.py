@@ -104,6 +104,14 @@ class PieCrust1Importer(FileWalkingImporter):
         jinjac = config.setdefault('jinja', {})
         jinjac['twig_compatibility'] = True
 
+        if 'baker' in config:
+            if 'skip_patterns' in config['baker']:
+                config['baker']['ignore'] = config['baker']['skip_patterns']
+                del config['baker']['skip_patterns']
+            if 'force_patterns' in config['baker']:
+                config['baker']['force'] = config['baker']['force_patterns']
+                del config['baker']['force_patterns']
+
         content = yaml.dump(config, default_flow_style=False)
         return content
 
