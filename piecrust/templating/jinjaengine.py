@@ -133,7 +133,8 @@ class PieCrustEnvironment(Environment):
 
         # Now add globals and filters.
         self.globals.update({
-                'fail': raise_exception})
+                'fail': raise_exception,
+                'highlight_css': get_highlight_css})
 
         self.filters.update({
                 'keys': get_dict_keys,
@@ -330,6 +331,10 @@ class PieCrustHighlightExtension(Extension):
 
         code = highlight(Markup(body.rstrip()).unescape(), lexer, formatter)
         return code
+
+
+def get_highlight_css(class_name='.highlight'):
+    return HtmlFormatter().get_style_defs(class_name)
 
 
 class PieCrustCacheExtension(Extension):
