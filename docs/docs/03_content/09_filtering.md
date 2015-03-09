@@ -36,4 +36,5 @@ available filter clauses.
 [it]: {{docurl('content/iterators')}}
 [pag]: {{docurl('content/pagination')}}
 [ass]: {{docurl('content/assets')}}
+[tpldata]: {{docurl('reference/templating-data')}}
 
