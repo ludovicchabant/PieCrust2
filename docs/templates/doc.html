@@ -1,5 +1,13 @@
 {% extends "default.html" %}
 
+{% block head %}
+{% if page.needs_pygments %}
+    <style type="text/css">
+    {{highlight_css()}}
+    </style>
+{% endif %}
+{% endblock %}
+
 {% block header %}
 <header class="documentation">
     <h1>{{ page.title }}</h1>
