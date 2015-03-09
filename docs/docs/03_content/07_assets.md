@@ -31,6 +31,16 @@ the page file, with a `-assets` suffix. For instance, if you have a page at
 Then, on the page, you can access those assets with the assets variable and the
 name of the asset (without the extension):
 
+    {%raw%}
     ![map to our place]({{ assets.map }})
     ![our place]({{ assets['street-view'] }})
+    {%endraw%}
+
+You can also loop over a page's assets:
+
+    {%raw%}
+    {% for a in assets %}
+    <img src="{{a}}" alt="" />
+    {% endfor %}
+    {%endraw%}
 
