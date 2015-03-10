@@ -9,10 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class Importer(object):
-    def __init__(self):
-        self.name = None
-        self.description = None
-        self.requires_website = True
+    name = None
+    description = None
+    requires_website = True
 
     def setupParser(self, parser, app):
         raise NotImplementedError()
@@ -23,8 +22,7 @@ class Importer(object):
     def checkedImportWebsite(self, ctx):
         if ctx.app.root_dir is None and self.requires_website:
             raise SiteNotFoundError()
-        self.importWebsite(ctx.app, ctx.args)
-        return 0
+        return self.importWebsite(ctx.app, ctx.args)
 
 
 class FileWalkingImporter(Importer):

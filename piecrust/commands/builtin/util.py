@@ -74,6 +74,8 @@ class ImportCommand(ChefCommand):
     def setupParser(self, parser, app):
         subparsers = parser.add_subparsers()
         for i in app.plugin_loader.getImporters():
+            if not i.__class__.name:
+                raise Exception("Importer '%s' has no name set." % type(i))
             p = subparsers.add_parser(i.name, help=i.description)
             i.setupParser(p, app)
             p.set_defaults(sub_func=i.checkedImportWebsite)

@@ -13,10 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class JekyllImporter(FileWalkingImporter):
-    def __init__(self):
-        super(JekyllImporter, self).__init__()
-        self.name = 'jekyll'
-        self.description = "Imports content from a Jekyll or Octopress blog."
+    name = 'jekyll'
+    description = "Imports content from a Jekyll or Octopress blog."
 
     def setupParser(self, parser, app):
         super(JekyllImporter, self).setupParser(parser, app)

@@ -11,11 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class PieCrust1Importer(FileWalkingImporter):
-    def __init__(self):
-        super(PieCrust1Importer, self).__init__()
-        self.name = 'piecrust1'
-        self.description = "Imports content from a PieCrust 1 website."
-        self.requires_website = False
+    name = 'piecrust1'
+    description = "Imports content from a PieCrust 1 website."
+    requires_website = False
 
     def setupParser(self, parser, app):
         super(PieCrust1Importer, self).setupParser(parser, app)
