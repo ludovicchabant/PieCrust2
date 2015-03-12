@@ -80,18 +80,22 @@ def get_slug(app, uri):
     return uri.lstrip('/')
 
 
-def get_first_sub_uri(app, uri):
+def split_sub_uri(app, uri):
     pretty_urls = app.config.get('site/pretty_urls')
     if not pretty_urls:
         uri, ext = os.path.splitext(uri)
 
+    page_num = 1
     pgn_suffix_re = app.config.get('__cache/pagination_suffix_re')
     m = re.search(pgn_suffix_re, uri)
     if m:
         uri = uri[:m.start()]
+        if uri == '':
+            uri = '/'
+        page_num = int(m.group('num'))
 
     if not pretty_urls:
         uri += ext
 
-    return uri
+    return (uri, page_num)
 

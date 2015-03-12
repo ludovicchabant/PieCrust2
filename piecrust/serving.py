@@ -23,6 +23,7 @@ from piecrust.environment import StandardEnvironment
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import PageRenderingContext, render_page
 from piecrust.sources.base import PageFactory, MODE_PARSING
+from piecrust.uriutil import split_sub_uri
 
 
 logger = logging.getLogger(__name__)
@@ -222,13 +223,7 @@ class Server(object):
 
     def _try_serve_page(self, app, environ, request):
         # Try to find what matches the requested URL.
-        req_path = request.path
-        page_num = 1
-        pgn_suffix_re = app.config.get('__cache/pagination_suffix_re')
-        pgn_suffix_m = re.search(pgn_suffix_re, request.path)
-        if pgn_suffix_m:
-            req_path = request.path[:pgn_suffix_m.start()]
-            page_num = int(pgn_suffix_m.group('num'))
+        req_path, page_num = split_sub_uri(app, request.path)
 
         routes = find_routes(app.routes, req_path)
         if len(routes) == 0:

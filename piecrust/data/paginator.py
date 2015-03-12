@@ -212,7 +212,7 @@ class Paginator(object):
     def _getPageUri(self, index):
         uri = self._uri
         if index > 1:
-            if uri != '':
+            if not uri.endswith('/'):
                 uri += '/'
             uri += str(index)
         return uri
