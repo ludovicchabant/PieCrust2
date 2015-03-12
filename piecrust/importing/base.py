@@ -1,7 +1,10 @@
 import os.path
+import shutil
 import codecs
 import logging
 import yaml
+from urllib.parse import urlparse
+from urllib.request import urlopen
 from piecrust.pathutil import SiteNotFoundError, multi_fnmatch_filter
 
 
@@ -57,9 +60,9 @@ class FileWalkingImporter(Importer):
                 self._importFile(full_fn, rel_fn, *args, **kwargs)
 
 
-def create_page(app, endpoint_dir, slug, metadata, content):
-    path = os.path.join(app.root_dir, endpoint_dir, slug)
-    logging.debug("Creating page: %s" % os.path.relpath(path, app.root_dir))
+def create_page(app, rel_path, metadata, content):
+    path = os.path.join(app.root_dir, rel_path)
+    logging.info("Creating page: %s" % rel_path)
     header = yaml.dump(metadata)
     os.makedirs(os.path.dirname(path), 0o755, True)
     with codecs.open(path, 'w', encoding='utf8') as fp:
@@ -67,4 +70,17 @@ def create_page(app, endpoint_dir, slug, metadata, content):
         fp.write(header)
         fp.write("---\n")
         fp.write(content)
+
+
+def download_asset(app, url, rel_path=None, skip_if_exists=True):
+    if rel_path is None:
+        parsed_url = urlparse(url)
+        rel_path = 'assets/' + parsed_url.path.lstrip('/')
+    path = os.path.join(app.root_dir, rel_path)
+    if skip_if_exists and os.path.exists(path):
+        return
+    logger.info("Downloading %s" % rel_path)
+    os.makedirs(os.path.dirname(path), 0o755, True)
+    with urlopen(url) as resp, open(path, 'wb') as fp:
+        shutil.copyfileobj(resp, fp)
 
