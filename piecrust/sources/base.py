@@ -69,7 +69,8 @@ class PageSource(object):
     def __init__(self, app, name, config):
         self.app = app
         self.name = name
-        self.config = config
+        self.config = config or {}
+        self.config.setdefault('realm', REALM_USER)
         self._factories = None
         self._provider_type = None
 
