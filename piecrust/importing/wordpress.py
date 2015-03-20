@@ -2,8 +2,10 @@ import os.path
 import logging
 import datetime
 import yaml
-from urllib.parse import urlparse
+from collections import OrderedDict
 from piecrust import CONFIG_PATH
+from piecrust.configuration import (
+        ConfigurationLoader, ConfigurationDumper, merge_dicts)
 from piecrust.importing.base import Importer, create_page, download_asset
 from piecrust.sources.base import MODE_CREATING
 
@@ -11,20 +13,16 @@ from piecrust.sources.base import MODE_CREATING
 logger = logging.getLogger(__name__)
 
 
-class WordpressImporter(Importer):
-    name = 'wordpress'
-    description = "Imports a Wordpress blog."
-
+class WordpressImporterBase(Importer):
     def setupParser(self, parser, app):
         parser.add_argument(
-                '--posts_fs',
-                default="hierarchy",
-                choices=['flat', 'shallow', 'hierarchy'],
-                help="The blog file-system type to use.")
+                '--pages-source',
+                default="pages",
+                help="The source to store pages in.")
         parser.add_argument(
-                '--prefix',
-                default="wp_",
-                help="The SQL table prefix. Defaults to `wp_`.")
+                '--posts-source',
+                default="posts",
+                help="The source to store posts in.")
         parser.add_argument(
                 '--default-post-layout',
                 help="The default layout to use for posts.")
@@ -37,51 +35,113 @@ class WordpressImporter(Importer):
         parser.add_argument(
                 '--default-page-category',
                 help="The default category to use for pages.")
-        parser.add_argument(
-                'xml_or_db_url',
-                help=("The exported XML archive of the Wordpress site, or "
-                      "the URL of the SQL database.\n"
-                      "\n"
-                      "If an SQL database URL, it should be of the "
-                      "form:  type://user:password@server/database\n"
-                      "\n"
-                      "For example:\n"
-                      "mysql://user:password@example.org/my_database"))
 
     def importWebsite(self, app, args):
-        parsed_url = urlparse(args.xml_or_db_url)
-        if not parsed_url.scheme:
-            impl = _XmlImporter(app, args)
-        else:
-            impl = _SqlImporter(app, args)
+        impl = self._getImplementation(app, args)
         return impl.importWebsite()
 
+    def _getImplementation(self, app, args):
+        raise NotImplementedError()
 
-class _XmlImporter(object):
+
+class _ImporterBase(object):
+    def __init__(self, app, args):
+        self.app = app
+        self._cat_map = {}
+        self._author_map = {}
+        self._pages_source = app.getSource(args.pages_source)
+        self._posts_source = app.getSource(args.posts_source)
+
+    def importWebsite(self):
+        ctx = self._open()
+
+        # Site configuration.
+        logger.info("Generating site configuration...")
+        site_config = self._getSiteConfig(ctx)
+        site_config.setdefault('site', {})
+        site_config['site'].update({
+                'post_url': '%year%/%month%/%slug%',
+                'category_url': 'category/%category%'})
+
+        site_config_path = os.path.join(self.app.root_dir, CONFIG_PATH)
+        with open(site_config_path, 'r') as fp:
+            cfg_data = yaml.load(fp, Loader=ConfigurationLoader)
+
+        cfg_data = cfg_data or {}
+        merge_dicts(cfg_data, site_config)
+
+        with open(site_config_path, 'w') as fp:
+            yaml.dump(cfg_data, fp, default_flow_style=False,
+                      allow_unicode=True,
+                      Dumper=ConfigurationDumper)
+
+        # Content
+        for p in self._getPosts(ctx):
+            if p['type'] == 'attachment':
+                self._createAsset(p)
+            else:
+                self._createPost(p)
+
+        self._close(ctx)
+
+    def _open(self):
+        raise NotImplementedError()
+
+    def _close(self, ctx):
+        pass
+
+    def _getSiteConfig(self, ctx):
+        raise NotImplementedError()
+
+    def _getPosts(self, ctx):
+        raise NotImplementedError()
+
+    def _createAsset(self, asset_info):
+        download_asset(self.app, asset_info['url'])
+
+    def _createPost(self, post_info):
+        post_dt = post_info['datetime']
+        finder = {
+                'year': post_dt.year,
+                'month': post_dt.month,
+                'day': post_dt.day,
+                'slug': post_info['slug']}
+        if post_info['type'] == 'post':
+            source = self._posts_source
+        elif post_info['type'] == 'page':
+            source = self._pages_source
+        else:
+            raise Exception("Unknown post type: %s" % post_info['type'])
+        rel_path, fac_metadata = source.findPagePath(finder, MODE_CREATING)
+
+        metadata = post_info['metadata'].copy()
+        for name in ['title', 'author', 'status', 'post_id', 'post_guid',
+                     'description', 'categories']:
+            val = post_info.get(name)
+            if val is not None:
+                metadata[name] = val
+
+        content = post_info['content']
+        excerpt = post_info['excerpt']
+        text = content
+        if excerpt is not None and excerpt.strip() != '':
+            text = "%s\n\n---excerpt---\n\n%s" % (content, excerpt)
+
+        path = source.resolveRef(rel_path)
+        create_page(self.app, path, metadata, text)
+
+
+class _XmlImporter(_ImporterBase):
     ns_wp = {'wp': 'http://wordpress.org/export/1.2/'}
     ns_dc = {'dc': "http://purl.org/dc/elements/1.1/"}
     ns_excerpt = {'excerpt': "http://wordpress.org/export/1.2/excerpt/"}
     ns_content = {'content': "http://purl.org/rss/1.0/modules/content/"}
 
     def __init__(self, app, args):
-        self.app = app
-        self.path = args.xml_or_db_url
-        self.posts_fs = args.posts_fs
-        self._cat_map = {}
-        self._author_map = {}
+        super(_XmlImporter, self).__init__(app, args)
+        self.path = args.xml_path
 
-        for cls in self.app.plugin_loader.getSources():
-            if cls.SOURCE_NAME == ('posts/%s' % self.posts_fs):
-                src_config = {
-                        'type': 'posts/%s' % self.posts_fs,
-                        'fs_endpoint': 'posts',
-                        'data_type': 'blog'}
-                self.posts_source = cls(app, 'posts', src_config)
-                break
-        else:
-            raise Exception("No such posts file-system: " % self.posts_fs)
-
-    def importWebsite(self):
+    def _open(self):
         if not os.path.exists(self.path):
             raise Exception("No such file: %s" % self.path)
 
@@ -99,16 +159,17 @@ class _XmlImporter(object):
         tree = ET.fromstring(xml)
         channel = tree.find('channel')
 
+        return channel
+
+    def _getSiteConfig(self, channel):
         # Get basic site information
         title = find_text(channel, 'title')
         description = find_text(channel, 'description')
-        site_config = {
+        site_config = OrderedDict({
                 'site': {
                     'title': title,
-                    'description': description,
-                    'posts_fs': self.posts_fs}
-                }
-        logger.info("Importing '%s'" % title)
+                    'description': description}
+                })
 
         # Get authors' names.
         authors = {}
@@ -126,33 +187,31 @@ class _XmlImporter(object):
                                            self.ns_wp)}
         site_config['site']['authors'] = authors
 
-        # Other stuff.
-        site_config['site'].update({
-                'post_url': '%year%/%month%/%slug%',
-                'category_url': 'category/%category%'})
+        return site_config
 
-        logger.info("Generating site configuration...")
-        site_config_path = os.path.join(self.app.root_dir, CONFIG_PATH)
-        with open(site_config_path, 'w') as fp:
-            yaml.safe_dump(site_config, fp, default_flow_style=False,
-                           allow_unicode=True)
-
-        # Content.
+    def _getPosts(self, channel):
         for i in channel.findall('item'):
             post_type = find_text(i, 'wp:post_type', self.ns_wp)
             if post_type == 'attachment':
-                self._createAsset(i)
-            elif post_type == 'post':
-                self._createPost(i)
+                yield self._getAssetInfo(i)
+            else:
+                yield self._getPostInfo(i)
 
-        self._cat_map = None
-        self._author_map = None
-
-    def _createAsset(self, node):
+    def _getAssetInfo(self, node):
         url = find_text(node, 'wp:attachment_url', self.ns_wp)
-        download_asset(self.app, url)
+        return {'type': 'attachment', 'url': url}
 
-    def _getPageMetadata(self, node):
+    def _getPostInfo(self, node):
+        post_date_str = find_text(node, 'wp:post_date', self.ns_wp)
+        post_date = datetime.datetime.strptime(post_date_str,
+                                               '%Y-%m-%d %H:%M:%S')
+        post_name = find_text(node, 'wp:post_name', self.ns_wp)
+        post_type = find_text(node, 'wp:post_type', self.ns_wp)
+        post_info = {
+                'type': post_type,
+                'slug': post_name,
+                'datetime': post_date}
+
         title = find_text(node, 'title')
         creator = find_text(node, 'dc:creator', self.ns_dc)
         status = find_text(node, 'wp:status', self.ns_wp)
@@ -160,76 +219,47 @@ class _XmlImporter(object):
         guid = find_text(node, 'guid')
         description = find_text(node, 'description')
         # TODO: menu order, parent, password, sticky
-
-        categories = []
-        for c in node.findall('category'):
-            nicename = str(c.attrib.get('nicename'))
-            categories.append(nicename)
-
-        metadata = {
+        post_info.update({
                 'title': title,
                 'author': creator,
                 'status': status,
                 'post_id': post_id,
                 'post_guid': guid,
-                'description': description,
-                'categories': categories}
+                'description': description})
 
+        categories = []
+        for c in node.findall('category'):
+            nicename = str(c.attrib.get('nicename'))
+            categories.append(nicename)
+        post_info['categories'] = categories
+
+        metadata = {}
         for m in node.findall('wp:postmeta', self.ns_wp):
             key = find_text(m, 'wp:meta_key', self.ns_wp)
             metadata[key] = find_text(m, 'wp:meta_value', self.ns_wp)
+        post_info['metadata'] = metadata
 
-        return metadata
-
-    def _getPageContents(self, node):
         content = find_text(node, 'content:encoded', self.ns_content)
         excerpt = find_text(node, 'excerpt:encoded', self.ns_excerpt)
-        if not excerpt.strip():
-            return content
-        return "%s\n\n---excerpt---\n\n%s" % (content, excerpt)
+        post_info.update({
+                'content': content,
+                'excerpt': excerpt})
 
-    def _getPageInfo(self, node):
-        url = find_text(node, 'link')
-        post_date_str = find_text(node, 'wp:post_date', self.ns_wp)
-        post_date = datetime.datetime.strptime(post_date_str,
-                                               '%Y-%m-%d %H:%M:%S')
-        post_name = find_text(node, 'wp:post_name', self.ns_wp)
-        return {
-                'url': url,
-                'slug': post_name,
-                'datetime': post_date}
-
-    def _createPage(self, node):
-        info = self._getPageInfo(node)
-        rel_path = os.path.join('pages', info['slug'])
-        metadata = self._getPageMetadata(node)
-        contents = self._getPageContents(node)
-        create_page(self.app, rel_path, metadata, contents)
-
-    def _createPost(self, node):
-        info = self._getPageInfo(node)
-        post_dt = info['datetime']
-        finder = {
-                'year': post_dt.year,
-                'month': post_dt.month,
-                'day': post_dt.day,
-                'slug': info['slug']}
-        rel_path, fac_metadata = self.posts_source.findPagePath(
-                finder, MODE_CREATING)
-        rel_path = os.path.join('posts', rel_path)
-        metadata = self._getPageMetadata(node)
-        contents = self._getPageContents(node)
-        create_page(self.app, rel_path, metadata, contents)
+        return post_info
 
 
-class _SqlImporter(object):
-    def __init__(self, app, args):
-        self.app = app
-        self.db_url = args.xml_or_db_url
-        self.prefix = args.prefix
+class WordpressXmlImporter(WordpressImporterBase):
+    name = 'wordpress-xml'
+    description = "Imports a Wordpress blog from an exported XML archive."
 
-    def importWebsite(self):
-        raise NotImplementedError()
+    def setupParser(self, parser, app):
+        super(WordpressXmlImporter, self).setupParser(parser, app)
+        parser.add_argument(
+                'xml_path',
+                help="The path to the exported XML archive file.")
+
+    def _getImplementation(self, app, args):
+        return _XmlImporter(app, args)
 
 
 def find_text(parent, child_name, namespaces=None):

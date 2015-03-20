@@ -19,7 +19,7 @@ from piecrust.formatting.textileformatter import TextileFormatter
 from piecrust.formatting.smartypantsformatter import SmartyPantsFormatter
 from piecrust.importing.jekyll import JekyllImporter
 from piecrust.importing.piecrust import PieCrust1Importer
-from piecrust.importing.wordpress import WordpressImporter
+from piecrust.importing.wordpress import WordpressXmlImporter
 from piecrust.plugins.base import PieCrustPlugin
 from piecrust.processing.base import CopyFileProcessor
 from piecrust.processing.compass import CompassProcessor
@@ -109,7 +109,7 @@ class BuiltInPlugin(PieCrustPlugin):
 
     def getImporters(self):
         return [
-                WordpressImporter(),
+                PieCrust1Importer(),
                 JekyllImporter(),
-                PieCrust1Importer()]
+                WordpressXmlImporter()]
 
