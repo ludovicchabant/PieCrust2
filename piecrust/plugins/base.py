@@ -1,4 +1,8 @@
-import os
+import logging
+import importlib
+
+
+logger = logging.getLogger(__name__)
 
 
 class PieCrustPlugin(object):
@@ -94,16 +98,33 @@ class PluginLoader(object):
         self._plugins = [BuiltInPlugin()]
         self._pluginsMeta = {self._plugins[0].name: False}
 
-        for d in self.app.plugins_dirs:
-            _, dirs, __ = next(os.walk(d))
-            for dd in dirs:
-                self._loadPlugin(os.path.join(d, dd))
+        for p in self.app.config.get('site/plugins'):
+            self._loadPlugin(p)
 
         for plugin in self._plugins:
             plugin.initialize(self.app)
 
-    def _loadPlugin(self, plugin_dir):
-        pass
+    def _loadPlugin(self, plugin_name):
+        try:
+            mod = importlib.import_module(plugin_name)
+        except ImportError:
+            logger.error("Failed to load plugin '%s'.")
+            return
+
+        plugin_class = getattr(mod, '__piecrust_plugin__', None)
+        if plugin_class is None:
+            logger.error("Plugin '%s' doesn't specify any "
+                         "`__piecrust_plugin__` class." % plugin_name)
+            return
+
+        try:
+            plugin = plugin_class()
+        except Exception as ex:
+            logger.error("Failed to create plugin '%s': %s" %
+                         (plugin_name, ex))
+            return
+
+        self._plugins.append(plugin)
 
     def _getPluginComponents(self, name, initialize=False, order_key=None):
         if name in self._componentCache:
