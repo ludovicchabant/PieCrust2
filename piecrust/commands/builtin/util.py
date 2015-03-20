@@ -82,5 +82,8 @@ class ImportCommand(ChefCommand):
             p.set_defaults(sub_requires_website=i.requires_website)
 
     def checkedRun(self, ctx):
+        if not hasattr(ctx.args, 'sub_func'):
+            ctx.parser.parse_args(['import', '--help'])
+            return
         ctx.args.sub_func(ctx)
 
