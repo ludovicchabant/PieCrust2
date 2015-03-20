@@ -219,7 +219,10 @@ for ch in list('0123456789'):
 
 class ConfigurationDumper(yaml.SafeDumper):
     def represent_ordered_dict(self, data):
-        return self.represent_mapping('tag:yaml.org,2002:omap', data)
+        # Not a typo: we're using `map` and not `omap` because we don't want
+        # ugly type tags printed in the generated YAML markup, and because
+        # we always load maps into `OrderedDicts` anyway.
+        return self.represent_mapping('tag:yaml.org,2002:map', data)
 
 
 ConfigurationDumper.add_representer(collections.OrderedDict,
