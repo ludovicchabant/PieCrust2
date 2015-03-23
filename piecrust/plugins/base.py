@@ -96,8 +96,10 @@ class PluginLoader(object):
         from piecrust.plugins.builtin import BuiltInPlugin
         self._plugins = [BuiltInPlugin()]
 
-        for p in self.app.config.get('site/plugins'):
-            self._loadPlugin(p)
+        to_install = self.app.config.get('site/plugins')
+        if to_install:
+            for p in to_install:
+                self._loadPlugin(p)
 
         for plugin in self._plugins:
             plugin.initialize(self.app)
