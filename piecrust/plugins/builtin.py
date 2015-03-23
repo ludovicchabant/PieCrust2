@@ -4,6 +4,7 @@ from piecrust.commands.builtin.baking import (
 from piecrust.commands.builtin.info import (
         RootCommand, ShowConfigCommand,
         FindCommand, ShowSourcesCommand, ShowRoutesCommand, ShowPathsCommand)
+from piecrust.commands.builtin.plugins import PluginsCommand
 from piecrust.commands.builtin.scaffolding import (
         PrepareCommand,
         DefaultPrepareTemplatesCommandExtension,
@@ -41,9 +42,7 @@ from piecrust.templating.pystacheengine import PystacheTemplateEngine
 
 
 class BuiltInPlugin(PieCrustPlugin):
-    def __init__(self):
-        super(BuiltInPlugin, self).__init__()
-        self.name = '__builtin__'
+    name = '__builtin__'
 
     def getCommands(self):
         return [
@@ -59,6 +58,7 @@ class BuiltInPlugin(PieCrustPlugin):
                 ShowRoutesCommand(),
                 ShowPathsCommand(),
                 ThemesCommand(),
+                PluginsCommand(),
                 BakeCommand(),
                 ShowRecordCommand(),
                 ServeCommand()]

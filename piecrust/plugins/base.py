@@ -47,7 +47,6 @@ class PluginLoader(object):
     def __init__(self, app):
         self.app = app
         self._plugins = None
-        self._pluginsMeta = None
         self._componentCache = {}
 
     @property
@@ -96,7 +95,6 @@ class PluginLoader(object):
 
         from piecrust.plugins.builtin import BuiltInPlugin
         self._plugins = [BuiltInPlugin()]
-        self._pluginsMeta = {self._plugins[0].name: False}
 
         for p in self.app.config.get('site/plugins'):
             self._loadPlugin(p)
@@ -106,9 +104,10 @@ class PluginLoader(object):
 
     def _loadPlugin(self, plugin_name):
         try:
-            mod = importlib.import_module(plugin_name)
-        except ImportError:
-            logger.error("Failed to load plugin '%s'.")
+            mod = importlib.import_module('piecrust_' + plugin_name)
+        except ImportError as ex:
+            logger.error("Failed to load plugin '%s'." % plugin_name)
+            logger.error(ex)
             return
 
         plugin_class = getattr(mod, '__piecrust_plugin__', None)
