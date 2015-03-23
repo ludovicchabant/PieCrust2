@@ -43,7 +43,6 @@ class NullPieCrust:
         self.root_dir = None
         self.debug = False
         self.templates_dirs = []
-        self.plugins_dirs = []
         self.theme_dir = None
         self.cache_dir = None
         self.config = PieCrustConfiguration()

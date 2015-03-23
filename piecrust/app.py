@@ -10,15 +10,16 @@ from werkzeug.utils import cached_property
 from piecrust import (
         APP_VERSION, RESOURCES_DIR,
         CACHE_DIR, TEMPLATES_DIR, ASSETS_DIR,
-        PLUGINS_DIR, THEME_DIR,
+        THEME_DIR,
         CONFIG_PATH, THEME_CONFIG_PATH,
         DEFAULT_FORMAT, DEFAULT_TEMPLATE_ENGINE, DEFAULT_POSTS_FS,
-        DEFAULT_DATE_FORMAT, DEFAULT_PLUGIN_SOURCE, DEFAULT_THEME_SOURCE)
+        DEFAULT_DATE_FORMAT, DEFAULT_THEME_SOURCE)
 from piecrust.cache import ExtensibleCache, NullCache, NullExtensibleCache
 from piecrust.plugins.base import PluginLoader
 from piecrust.environment import StandardEnvironment
-from piecrust.configuration import (Configuration, ConfigurationError,
-        ConfigurationLoader, merge_dicts)
+from piecrust.configuration import (
+        Configuration, ConfigurationError, ConfigurationLoader,
+        merge_dicts)
 from piecrust.routing import Route
 from piecrust.sources.base import REALM_USER, REALM_THEME
 from piecrust.taxonomies import Taxonomy
@@ -27,7 +28,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 15
+CACHE_VERSION = 16
 
 
 class VariantNotFoundError(Exception):
@@ -117,7 +118,7 @@ class PieCrustConfiguration(Configuration):
                     ('textile', 'textile')]),
                 'default_auto_format': 'md',
                 'pagination_suffix': '/%num%',
-                'plugins_sources': [DEFAULT_PLUGIN_SOURCE],
+                'plugins': None,
                 'themes_sources': [DEFAULT_THEME_SOURCE],
                 'cache_time': 28800,
                 'enable_debug_info': True,
@@ -168,9 +169,7 @@ class PieCrustConfiguration(Configuration):
                          '$')
         cachec['pagination_suffix_re'] = pgn_suffix_re
 
-        # Make sure plugins and theme sources are lists.
-        if not isinstance(sitec['plugins_sources'], list):
-            sitec['plugins_sources'] = [sitec['plugins_sources']]
+        # Make sure theme sources is a list.
         if not isinstance(sitec['themes_sources'], list):
             sitec['themes_sources'] = [sitec['themes_sources']]
 
@@ -461,11 +460,6 @@ class PieCrust(object):
                 templates_dirs.append(default_theme_dir)
 
         return templates_dirs
-
-    @cached_property
-    def plugins_dirs(self):
-        return self._get_configurable_dirs(PLUGINS_DIR,
-                'site/plugins_dirs')
 
     @cached_property
     def theme_dir(self):

@@ -93,7 +93,7 @@ class ShowPathsCommand(ChefCommand):
 
     def run(self, ctx):
         app = ctx.app
-        paths = ['theme_dir', 'templates_dirs', 'plugins_dirs', 'cache_dir']
+        paths = ['theme_dir', 'templates_dirs', 'cache_dir']
         for p in paths:
             value = getattr(app, p)
             if isinstance(value, list):
