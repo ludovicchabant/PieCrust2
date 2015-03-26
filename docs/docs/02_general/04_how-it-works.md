@@ -129,7 +129,8 @@ the LessCSS processor, which outputs a CSS file. This then gets picked up by
 the CleanCSS processor, which will generate a compressed CSS file.
 
 If you want more information about what processors are mapped to what file
-types, you can check the list of [built-in processors][procs].
+types, you can check the list of [built-in processors][procs]. There's also more
+information available about the [asset pipeline][pipe].
 
 
 [src]: {{docurl('content-model/sources')}}
@@ -137,7 +138,8 @@ types, you can check the list of [built-in processors][procs].
 [seg]: {{docurl('content/content-segments')}}
 [tpl]: {{docurl('content/templating')}}
 [fmt]: {{docurl('content/formatters')}}
-[procs]: {{docurl('reference/asset-pipeline')}}
+[pipe]: {{docurl('asset-pipeline')}}
+[procs]: {{docurl('reference/asset-processors')}}
 [siteconf]: {{docurl('general/website-configuration')}}
 [pageconf]: {{docurl('content/page-configuration')}}
 [jinja]: http://jinja.pocoo.org/docs/dev/templates/
