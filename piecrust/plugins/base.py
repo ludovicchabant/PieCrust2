@@ -15,9 +15,6 @@ class PieCrustPlugin(object):
     def getDataProviders(self):
         return []
 
-    def getFileSystems(self):
-        return []
-
     def getProcessors(self):
         return []
 
@@ -28,9 +25,6 @@ class PieCrustPlugin(object):
         return []
 
     def getCommandExtensions(self):
-        return []
-
-    def getRepositories(self):
         return []
 
     def getBakerAssistants(self):
@@ -55,8 +49,8 @@ class PluginLoader(object):
         return self._plugins
 
     def getFormatters(self):
-        return self._getPluginComponents('getFormatters', True,
-                order_key=lambda f: f.priority)
+        return self._getPluginComponents(
+                'getFormatters', True, order_key=lambda f: f.priority)
 
     def getTemplateEngines(self):
         return self._getPluginComponents('getTemplateEngines', True)
@@ -64,12 +58,9 @@ class PluginLoader(object):
     def getDataProviders(self):
         return self._getPluginComponents('getDataProviders')
 
-    def getFileSystems(self):
-        return self._getPluginComponents('getFileSystems')
-
     def getProcessors(self):
-        return self._getPluginComponents('getProcessors', True,
-                order_key=lambda p: p.priority)
+        return self._getPluginComponents(
+                'getProcessors', True, order_key=lambda p: p.priority)
 
     def getImporters(self):
         return self._getPluginComponents('getImporters')
@@ -79,9 +70,6 @@ class PluginLoader(object):
 
     def getCommandExtensions(self):
         return self._getPluginComponents('getCommandExtensions')
-
-    def getRepositories(self):
-        return self._getPluginComponents('getRepositories', True)
 
     def getBakerAssistants(self):
         return self._getPluginComponents('getBakerAssistants')
