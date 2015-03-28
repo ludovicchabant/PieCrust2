@@ -127,8 +127,16 @@ class _ImporterBase(object):
         if excerpt is not None and excerpt.strip() != '':
             text = "%s\n\n---excerpt---\n\n%s" % (content, excerpt)
 
-        path = source.resolveRef(rel_path)
-        create_page(self.app, path, metadata, text)
+        status = metadata.get('status')
+        if status == 'publish':
+            path = source.resolveRef(rel_path)
+            create_page(self.app, path, metadata, text)
+        elif status == 'draft':
+            filename = '-'.join(metadata['title'].split(' ')) + '.html'
+            path = os.path.join(self.app.root_dir, 'drafts', filename)
+            create_page(self.app, path, metadata, text)
+        else:
+            logger.warning("Ignoring post with status: %s" % status)
 
 
 class _XmlImporter(_ImporterBase):
