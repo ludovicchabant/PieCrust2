@@ -3,21 +3,33 @@ import os.path
 import logging
 import platform
 import subprocess
-from piecrust.processing.base import SimpleFileProcessor
+from piecrust.processing.base import Processor, SimpleFileProcessor
 
 
 logger = logging.getLogger(__name__)
 
 
-class CleanCssProcessor(SimpleFileProcessor):
+class CleanCssProcessor(Processor):
     PROCESSOR_NAME = 'cleancss'
 
     def __init__(self):
-        super(CleanCssProcessor, self).__init__({'css': 'css'})
+        super(CleanCssProcessor, self).__init__()
         self._conf = None
 
-    def _doProcess(self, in_path, out_path):
+    def matches(self, path):
+        return path.endswith('.css')
+
+    def getOutputFilenames(self, filename):
         self._ensureInitialized()
+        basename, _ = os.path.splitext(filename)
+        return ['%s%s' % (basename, self._conf['out_ext'])]
+
+    def process(self, path, out_dir):
+        self._ensureInitialized()
+
+        _, in_name = os.path.split(path)
+        out_name = self.getOutputFilenames(in_name)[0]
+        out_path = os.path.join(out_dir, out_name)
 
         args = [self._conf['bin'], '-o', out_path]
         args += self._conf['options']
@@ -46,6 +58,9 @@ class CleanCssProcessor(SimpleFileProcessor):
         self._conf = self.app.config.get('cleancss') or {}
         self._conf.setdefault('bin', 'cleancss')
         self._conf.setdefault('options', ['--skip-rebase'])
+        self._conf.setdefault('out_ext', '.css')
+        if len(self._conf['out_ext']) > 0 and self._conf['out_ext'][0] != '.':
+            self._conf['out_ext'] = '.' + self._conf['out_ext']
         if not isinstance(self._conf['options'], list):
             raise Exception("The `cleancss/options` configuration setting "
                             "must be an array of arguments.")
