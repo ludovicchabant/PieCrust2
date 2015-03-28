@@ -221,18 +221,21 @@ class PieCrustConfiguration(Configuration):
             for blog_name in blogsc:
                 blogc = values.get(blog_name, {})
                 url_prefix = blog_name + '/'
-                endpoint = 'posts/%s' % blog_name
+                fs_endpoint = 'posts/%s' % blog_name
+                data_endpoint = blog_name
                 item_name = '%s-post' % blog_name
                 items_per_page = blogc.get('posts_per_page', g_posts_per_page)
                 items_filters = blogc.get('posts_filters', g_posts_filters)
                 date_format = blogc.get('date_format', g_date_format)
                 if len(blogsc) == 1:
                     url_prefix = ''
-                    endpoint = 'posts'
+                    fs_endpoint = 'posts'
+                    data_endpoint = 'blog'
                     item_name = 'post'
                 sourcesc[blog_name] = {
                         'type': 'posts/%s' % posts_fs,
-                        'fs_endpoint': endpoint,
+                        'fs_endpoint': fs_endpoint,
+                        'data_endpoint': data_endpoint,
                         'ignore_missing_dir': True,
                         'data_type': 'blog',
                         'item_name': item_name,
