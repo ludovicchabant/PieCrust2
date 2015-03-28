@@ -28,7 +28,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 16
+CACHE_VERSION = 17
 
 
 class VariantNotFoundError(Exception):
@@ -367,6 +367,16 @@ class PieCrustConfiguration(Configuration):
                 raise ConfigurationError(
                         "Source '%s' is using a reserved endpoint name: %s" %
                         (name, endpoint))
+
+        # Make sure the `plugins` setting is a list.
+        user_plugins = sitec.get('plugins')
+        if user_plugins:
+            if isinstance(user_plugins, str):
+                sitec['plugins'] = user_plugins.split(',')
+            elif not isinstance(user_plugins, list):
+                raise ConfigurationError(
+                        "The 'site/plugins' setting must be an array, or a "
+                        "comma-separated list.")
 
         # Done validating!
         return values
