@@ -165,9 +165,12 @@ class BlogDataProvider(DataProvider):
         if tax_name in self._taxonomies:
             return self._taxonomies[tax_name]
 
+        tax_info = self._page.app.getTaxonomy(tax_name)
+        setting_name = tax_info.setting_name
+
         posts_by_tax_value = {}
         for post in self._source.getPages():
-            tax_values = post.config.get(tax_name)
+            tax_values = post.config.get(setting_name)
             if tax_values is None:
                 continue
             if not isinstance(tax_values, list):
