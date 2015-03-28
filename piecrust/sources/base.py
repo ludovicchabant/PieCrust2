@@ -93,6 +93,12 @@ class PageSource(object):
     def getPages(self):
         return build_pages(self.app, self.getPageFactories())
 
+    def getPage(self, metadata):
+        rel_path, metadata = self.findPagePath(metadata, MODE_PARSING)
+        if rel_path is None:
+            return None
+        return Page(self, metadata, rel_path)
+
     def getPageFactories(self):
         if self._factories is None:
             self._factories = list(self.buildPageFactories())
