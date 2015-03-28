@@ -5,10 +5,16 @@ class Taxonomy(object):
     def __init__(self, app, name, config):
         self.app = app
         self.name = name
-        self.term_name = config['term']
-        self.is_multiple = config['multiple']
-        self.page_ref = config['page']
+        self.term_name = config.get('term', name)
+        self.is_multiple = config.get('multiple', False)
+        self.page_ref = config.get('page')
         self._source_page_refs = {}
+
+    @property
+    def setting_name(self):
+        if self.is_multiple:
+            return self.name
+        return self.term_name
 
     def resolvePagePath(self, source_name):
         pr = self.getPageRef(source_name)
