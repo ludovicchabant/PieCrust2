@@ -2,9 +2,7 @@ import os.path
 import shutil
 import codecs
 import logging
-import urllib.error
 import urllib.parse
-import urllib.request
 from piecrust.baking.records import FLAG_OVERRIDEN, FLAG_SOURCE_MODIFIED
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause, AndBooleanClause,

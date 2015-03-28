@@ -67,6 +67,7 @@ def test_build_base_url(url_format, pretty_urls, uri, expected):
     app.env = MagicMock()
     app.env.base_asset_url_format = url_format
     app.config = {
+            'site/root': '/',
             'site/pretty_urls': pretty_urls}
     assets_path = 'foo/bar-assets'
     actual = build_base_url(app, uri, assets_path)
