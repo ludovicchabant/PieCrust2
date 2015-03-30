@@ -128,6 +128,8 @@ def get_default_pagination_source(page):
     app = page.app
     source_name = page.config.get('source') or page.config.get('blog')
     if source_name is None:
+        source_name = app.config.get('site/default_pagination_source')
+    if source_name is None:
         blog_names = app.config.get('site/blogs')
         if blog_names is not None:
             source_name = blog_names[0]
