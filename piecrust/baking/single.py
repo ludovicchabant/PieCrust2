@@ -55,33 +55,19 @@ class PageBaker(object):
 
     def bake(self, factory, route, record_entry,
              taxonomy_name=None, taxonomy_term=None):
-        custom_data = None
-        pagination_filter = None
+        taxonomy = None
         route_metadata = dict(factory.metadata)
         if taxonomy_name and taxonomy_term:
-            # Must bake a taxonomy listing page... we'll have to add a
-            # pagination filter for only get matching posts, and the output
-            # URL will be a bit different.
-            tax = self.app.getTaxonomy(taxonomy_name)
-            pagination_filter = PaginationFilter(
-                    value_accessor=page_value_accessor)
-            if tax.is_multiple:
+            # TODO: add options for combining and slugifying terms
+            taxonomy = self.app.getTaxonomy(taxonomy_name)
+            if taxonomy.is_multiple:
                 if isinstance(taxonomy_term, tuple):
-                    abc = AndBooleanClause()
-                    for t in taxonomy_term:
-                        abc.addClause(HasFilterClause(taxonomy_name, t))
-                    pagination_filter.addClause(abc)
                     slugified_term = '/'.join(taxonomy_term)
                 else:
-                    pagination_filter.addClause(
-                            HasFilterClause(taxonomy_name, taxonomy_term))
                     slugified_term = taxonomy_term
             else:
-                pagination_filter.addClause(
-                        IsFilterClause(taxonomy_name, taxonomy_term))
                 slugified_term = taxonomy_term
-            custom_data = {tax.term_name: taxonomy_term}
-            route_metadata.update({tax.term_name: slugified_term})
+            route_metadata.update({taxonomy.setting_name: slugified_term})
 
         # Generate the URL using the route.
         page = factory.buildPage()
@@ -179,7 +165,7 @@ class PageBaker(object):
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
-                        pagination_filter, custom_data)
+                                           taxonomy, taxonomy_term)
             except Exception as ex:
                 if self.app.debug:
                     logger.exception(ex)
@@ -219,13 +205,11 @@ class PageBaker(object):
                 has_more_subs = True
 
     def _bakeSingle(self, page, sub_uri, num, out_path,
-            pagination_filter=None, custom_data=None):
+                    taxonomy=None, taxonomy_term=None):
         ctx = PageRenderingContext(page, sub_uri)
         ctx.page_num = num
-        if pagination_filter:
-            ctx.pagination_filter = pagination_filter
-        if custom_data:
-            ctx.custom_data = custom_data
+        if taxonomy and taxonomy_term:
+            ctx.setTaxonomyFilter(taxonomy, taxonomy_term)
 
         rp = render_page(ctx)
 

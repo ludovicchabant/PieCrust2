@@ -3,7 +3,6 @@ import os.path
 import pytest
 from piecrust.baking.baker import PageBaker, Baker
 from piecrust.baking.records import BakeRecord
-from piecrust.routing import Route
 from .mockutil import get_mock_app, mock_fs, mock_fs_scope
 
 
@@ -75,6 +74,7 @@ def test_simple_bake():
                 '2010': {'01': {'01': {'post1.html': 'post one'}}},
                 'index.html': 'something'}
 
+
 def test_removed():
     fs = (mock_fs()
             .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page')
@@ -96,6 +96,7 @@ def test_removed():
         structure = fs.getStructure('kitchen/_counter')
         assert structure == {
                 'index.html': 'something'}
+
 
 def test_record_version_change():
     fs = (mock_fs()
@@ -121,4 +122,65 @@ def test_record_version_change():
             assert mtime < os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
         finally:
             BakeRecord.RECORD_VERSION -= 1
+
+
+def test_bake_tags():
+    tags = [
+            ['foo'],
+            ['bar', 'whatever'],
+            ['foo', 'bar']]
+
+    def config_factory(i):
+        c = {'title': 'Post %d' % (i + 1)}
+        c['tags'] = tags[i]
+        return c
+
+    fs = (mock_fs()
+          .withPages(3, 'posts/2015-03-{idx1:02}_post{idx1:02}.md',
+                     config_factory)
+          .withPage('pages/_tag.md', {'layout': 'none', 'format': 'none'},
+                    "Pages in {{tag}}\n"
+                    "{%for p in pagination.posts -%}\n"
+                    "{{p.title}}\n"
+                    "{%endfor%}"))
+    with mock_fs_scope(fs):
+        out_dir = fs.path('kitchen/_counter')
+        app = fs.getApp()
+        baker = Baker(app, out_dir)
+        baker.bake()
+
+        s = fs.getStructure('kitchen/_counter/tag')
+        assert s['foo.html'] == "Pages in foo\nPost 3\nPost 1\n"
+        assert s['bar.html'] == "Pages in bar\nPost 3\nPost 2\n"
+        assert s['whatever.html'] == "Pages in whatever\nPost 2\n"
+
+
+def test_bake_categories():
+    categories = [
+            'foo', 'bar', 'foo']
+
+    def config_factory(i):
+        c = {'title': 'Post %d' % (i + 1)}
+        c['category'] = categories[i]
+        return c
+
+    fs = (mock_fs()
+          .withConfig({'site': {'category_url': 'cat/%category%'}})
+          .withPages(3, 'posts/2015-03-{idx1:02}_post{idx1:02}.md',
+                     config_factory)
+          .withPage('pages/_category.md', {'layout': 'none', 'format': 'none'},
+                    "Pages in {{category}}\n"
+                    "{%for p in pagination.posts -%}\n"
+                    "{{p.title}}\n"
+                    "{%endfor%}"))
+    with mock_fs_scope(fs):
+        out_dir = fs.path('kitchen/_counter')
+        app = fs.getApp()
+        baker = Baker(app, out_dir)
+        baker.bake()
+
+        print(fs.getStructure('kitchen/_counter').keys())
+        s = fs.getStructure('kitchen/_counter/cat')
+        assert s['foo.html'] == "Pages in foo\nPost 3\nPost 1\n"
+        assert s['bar.html'] == "Pages in bar\nPost 2\n"
 

@@ -202,12 +202,12 @@ class Baker(object):
                 # pages.
                 if (not prev_entry and cur_entry and
                         cur_entry.was_baked_successfully):
-                    changed_terms = cur_entry.config.get(tax.name)
+                    changed_terms = cur_entry.config.get(tax.setting_name)
                 elif (prev_entry and cur_entry and
                         cur_entry.was_baked_successfully):
                     changed_terms = []
-                    prev_terms = prev_entry.config.get(tax.name)
-                    cur_terms = cur_entry.config.get(tax.name)
+                    prev_terms = prev_entry.config.get(tax.setting_name)
+                    cur_terms = cur_entry.config.get(tax.setting_name)
                     if tax.is_multiple:
                         if prev_terms is not None:
                             changed_terms += prev_terms

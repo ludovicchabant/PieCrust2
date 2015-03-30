@@ -3,6 +3,9 @@ import os.path
 import logging
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
+from piecrust.data.filters import (
+        PaginationFilter, HasFilterClause, IsFilterClause, AndBooleanClause,
+        page_value_accessor)
 from piecrust.sources.base import PageSource
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
 from piecrust.uriutil import get_slug
@@ -82,6 +85,23 @@ class PageRenderingContext(object):
     def addUsedSource(self, source):
         if isinstance(source, PageSource):
             self.used_source_names.add((source.name, self.current_pass))
+
+    def setTaxonomyFilter(self, taxonomy, term_value):
+        flt = PaginationFilter(value_accessor=page_value_accessor)
+        if taxonomy.is_multiple:
+            if isinstance(term_value, tuple):
+                abc = AndBooleanClause()
+                for t in term_value:
+                    abc.addClause(HasFilterClause(taxonomy.setting_name, t))
+                flt.addClause(abc)
+            else:
+                flt.addClause(
+                        HasFilterClause(taxonomy.setting_name, term_value))
+        else:
+            flt.addClause(IsFilterClause(taxonomy.setting_name, term_value))
+        self.pagination_filter = flt
+        self.custom_data = {
+                taxonomy.term_name: term_value}
 
 
 def render_page(ctx):

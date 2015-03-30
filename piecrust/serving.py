@@ -16,9 +16,6 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator, wrap_file
 from jinja2 import FileSystemLoader, Environment
 from piecrust.app import PieCrust
-from piecrust.data.filters import (
-        PaginationFilter, HasFilterClause, IsFilterClause,
-        page_value_accessor)
 from piecrust.environment import StandardEnvironment
 from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import PageRenderingContext, render_page
@@ -230,6 +227,7 @@ class Server(object):
             raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
         taxonomy = None
+        term_value = None
         for route, route_metadata in routes:
             source = app.getSource(route.source_name)
             if route.taxonomy is None:
@@ -259,14 +257,7 @@ class Server(object):
         render_ctx = PageRenderingContext(page, req_path, page_num,
                                           force_render=True)
         if taxonomy is not None:
-            flt = PaginationFilter(value_accessor=page_value_accessor)
-            if taxonomy.is_multiple:
-                flt.addClause(HasFilterClause(taxonomy.name, term_value))
-            else:
-                flt.addClause(IsFilterClause(taxonomy.name, term_value))
-            render_ctx.pagination_filter = flt
-            render_ctx.custom_data = {
-                    taxonomy.term_name: term_value}
+            render_ctx.setTaxonomyFilter(taxonomy, term_value)
 
         # See if this page is known to use sources. If that's the case,
         # just don't use cached rendered segments for that page (but still
