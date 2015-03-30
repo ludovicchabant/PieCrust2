@@ -3,6 +3,7 @@ import time
 import os.path
 import logging
 import threading
+import email.utils
 import strict_rfc3339
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from jinja2.exceptions import TemplateSyntaxError
@@ -149,6 +150,7 @@ class PieCrustEnvironment(Environment):
                 'stripslash': strip_slash,
                 'titlecase': title_case,
                 'atomdate': get_atom_date,
+                'emaildate': get_email_date,
                 'date': get_date})
 
         # Backwards compatibility with Twig.
@@ -239,17 +241,27 @@ def get_atom_date(value):
     return strict_rfc3339.timestamp_to_rfc3339_localoffset(int(value))
 
 
+def get_email_date(value, localtime=False):
+    return email.utils.formatdate(value, localtime=localtime)
+
+
 def get_date(value, fmt):
     if value == 'now':
         value = time.time()
     if '%' not in fmt:
         suggest = php_format_to_strftime_format(fmt)
+        if suggest != fmt:
+            suggest_message = ("You probably want a format that looks "
+                               "like: '%s'." % suggest)
+        else:
+            suggest_message = ("We can't suggest a proper date format "
+                               "for you right now, though.")
         raise Exception("PieCrust 1 date formats won't work in PieCrust 2. "
-                        "You probably want a format that look like '%s'. "
+                        "%s\n"
                         "Please check the `strftime` formatting page here: "
                         "https://docs.python.org/3/library/datetime.html"
                         "#strftime-and-strptime-behavior" %
-                        suggest)
+                        suggest_message)
     return time.strftime(fmt, time.localtime(value))
 
 
