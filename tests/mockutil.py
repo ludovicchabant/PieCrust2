@@ -140,6 +140,25 @@ class mock_fs(object):
         return self.withAsset('%s/%s' % (dirname, name),
                 contents)
 
+    def withPages(self, num, url_factory, config_factory=None,
+                  contents_factory=None):
+        for i in range(num):
+            if isinstance(url_factory, str):
+                url = url_factory.format(idx=i, idx1=(i + 1))
+            else:
+                url = url_factory(i)
+
+            config = None
+            if config_factory:
+                config = config_factory(i)
+
+            contents = None
+            if contents_factory:
+                contents = contents_factory(i)
+
+            self.withPage(url, config, contents)
+        return self
+
     def getStructure(self, path=None):
         root = self._fs[self._root]
         if path:
