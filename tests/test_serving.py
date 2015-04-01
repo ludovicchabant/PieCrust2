@@ -14,11 +14,11 @@ from .mockutil import mock_fs, mock_fs_scope
         [
             ('/',
                 [{'src': 'pages', 'pat': '(?P<path>.*)'}],
-                [('pages', {'path': ''})]),
+                [('pages', {'path': '/'})]),
             ('/',
                 [{'src': 'pages', 'pat': '(?P<path>.*)'},
                     {'src': 'theme', 'pat': '(?P<path>.*)', 'realm': REALM_THEME}],
-                [('pages', {'path': ''}), ('theme', {'path': ''})])
+                [('pages', {'path': '/'}), ('theme', {'path': '/'})])
             ])
 def test_find_routes(uri, route_specs, expected):
     routes = []
