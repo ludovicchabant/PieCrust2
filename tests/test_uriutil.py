@@ -39,8 +39,9 @@ def test_parse_uri(routes, uri, expected):
 def test_split_sub_uri(uri, expected, pretty_urls):
     app = mock.MagicMock()
     app.config = {
+            'site/root': '/whatever/',
             'site/pretty_urls': pretty_urls,
             '__cache/pagination_suffix_re': '/(?P<num>\\d+)$'}
-    actual = split_sub_uri(app, uri)
-    assert actual == expected
+    actual = split_sub_uri(app, '/whatever/' + uri)
+    assert actual == ('/whatever/' + expected[0], expected[1])
 

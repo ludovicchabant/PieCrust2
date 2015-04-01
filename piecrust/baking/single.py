@@ -11,6 +11,7 @@ from piecrust.rendering import (PageRenderingContext, render_page,
         PASS_FORMATTING, PASS_RENDERING)
 from piecrust.sources.base import (PageFactory,
         REALM_NAMES, REALM_USER, REALM_THEME)
+from piecrust.uriutil import split_uri
 
 
 logger = logging.getLogger(__name__)
@@ -41,8 +42,10 @@ class PageBaker(object):
         self.pagination_suffix = app.config.get('site/pagination_suffix')
 
     def getOutputPath(self, uri):
+        uri_root, uri_path = split_uri(self.app, uri)
+
         bake_path = [self.out_dir]
-        decoded_uri = urllib.parse.unquote(uri.lstrip('/'))
+        decoded_uri = urllib.parse.unquote(uri_path)
         if self.pretty_urls:
             bake_path.append(decoded_uri)
             bake_path.append('index.html')
@@ -71,8 +74,7 @@ class PageBaker(object):
 
         # Generate the URL using the route.
         page = factory.buildPage()
-        uri = route.getUri(route_metadata, provider=page,
-                           include_site_root=False)
+        uri = route.getUri(route_metadata, provider=page)
 
         override = self.record.getOverrideEntry(factory, uri)
         if override is not None:
@@ -125,7 +127,7 @@ class PageBaker(object):
 
         while has_more_subs:
             sub_uri = route.getUri(route_metadata, sub_num=cur_sub,
-                                   provider=page, include_site_root=False)
+                                   provider=page)
             out_path = self.getOutputPath(sub_uri)
 
             # Check for up-to-date outputs.

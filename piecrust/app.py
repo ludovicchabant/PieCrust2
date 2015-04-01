@@ -28,7 +28,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 17
+CACHE_VERSION = 18
 
 
 class VariantNotFoundError(Exception):
@@ -135,6 +135,12 @@ class PieCrustConfiguration(Configuration):
         # Add a section for our cached information.
         cachec = collections.OrderedDict()
         values['__cache'] = cachec
+
+        # Make sure the site root starts and ends with a slash.
+        if not sitec['root'].startswith('/'):
+            raise ConfigurationError("The `site/root` setting must start "
+                                     "with a slash.")
+        sitec['root'] = sitec['root'].rstrip('/') + '/'
 
         # Cache auto-format regexes.
         if not isinstance(sitec['auto_formats'], dict):

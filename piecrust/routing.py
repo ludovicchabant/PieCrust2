@@ -7,7 +7,9 @@ logger = logging.getLogger(__name__)
 
 
 route_re = re.compile(r'%((?P<qual>path):)?(?P<name>\w+)%')
-template_func_re = re.compile(r'^(?P<name>\w+)\((?P<first_arg>\w+)(?P<other_args>.*)\)\s*$')
+route_esc_re = re.compile(r'\\%((?P<qual>path)\\:)?(?P<name>\w+)\\%')
+template_func_re = re.compile(r'^(?P<name>\w+)\((?P<first_arg>\w+)'
+                              r'(?P<other_args>.*)\)\s*$')
 template_func_arg_re = re.compile(r',\s*(?P<arg>\w+)')
 ugly_url_cleaner = re.compile(r'\.html$')
 
@@ -29,7 +31,7 @@ class Route(object):
         self.trailing_slash = app.config.get('site/trailing_slash')
         self.pagination_suffix_format = app.config.get(
                 '__cache/pagination_suffix_format')
-        self.uri_root = app.config.get('site/root').rstrip('/') + '/'
+        self.uri_root = app.config.get('site/root')
 
         uri = cfg['url']
         self.uri_pattern = uri.lstrip('/')
@@ -38,8 +40,8 @@ class Route(object):
             self.uri_format += '?!debug'
 
         # Get the straight-forward regex for matching this URI pattern.
-        re_suffix = '$'
-        p = route_re.sub(self._uriPatternRepl, self.uri_pattern) + re_suffix
+        p = route_esc_re.sub(self._uriPatternRepl,
+                             re.escape(self.uri_pattern)) + '$'
         self.uri_re = re.compile(p)
 
         # If the URI pattern has a 'path'-type component, we'll need to match
@@ -54,16 +56,18 @@ class Route(object):
                 .replace('//', '/')
                 .rstrip('/'))
         if uri_pattern_no_path != self.uri_pattern:
-            p = route_re.sub(self._uriPatternRepl, uri_pattern_no_path) + '$'
+            p = route_esc_re.sub(self._uriPatternRepl,
+                                 re.escape(uri_pattern_no_path)) + '$'
             self.uri_re_no_path = re.compile(p)
         else:
             self.uri_re_no_path = None
 
+        self.required_source_metadata = set()
+        for m in route_re.finditer(self.uri_pattern):
+            self.required_source_metadata.add(m.group('name'))
+
         self.source_name = cfg['source']
         self.taxonomy = cfg.get('taxonomy')
-        self.required_source_metadata = set()
-        for m in route_re.finditer(uri):
-            self.required_source_metadata.add(m.group('name'))
         self.template_func = None
         self.template_func_name = None
         self.template_func_args = []
@@ -85,6 +89,10 @@ class Route(object):
         return self.required_source_metadata.issubset(source_metadata.keys())
 
     def matchUri(self, uri):
+        if not uri.startswith(self.uri_root):
+            raise Exception("The given URI is not absolute: %s" % uri)
+        uri = uri[len(self.uri_root):]
+
         if not self.pretty_urls:
             uri = ugly_url_cleaner.sub('', uri)
         elif self.trailing_slash:
@@ -99,8 +107,7 @@ class Route(object):
                 return m.groupdict()
         return None
 
-    def getUri(self, source_metadata, *, sub_num=1, provider=None,
-               include_site_root=True):
+    def getUri(self, source_metadata, *, sub_num=1, provider=None):
         if provider:
             source_metadata = dict(source_metadata)
             source_metadata.update(provider.getRouteMetadata())
@@ -147,9 +154,7 @@ class Route(object):
                 else:
                     uri = base_uri + ext
 
-        if include_site_root:
-            uri = self.uri_root + uri
-
+        uri = self.uri_root + uri
         return uri
 
     def _uriFormatRepl(self, m):

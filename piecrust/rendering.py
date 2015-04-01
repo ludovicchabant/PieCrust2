@@ -8,7 +8,6 @@ from piecrust.data.filters import (
         page_value_accessor)
 from piecrust.sources.base import PageSource
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
-from piecrust.uriutil import get_slug
 
 
 logger = logging.getLogger(__name__)
@@ -64,10 +63,6 @@ class PageRenderingContext(object):
     @property
     def app(self):
         return self.page.app
-
-    @property
-    def slug(self):
-        return get_slug(self.page.app, self.uri)
 
     @property
     def source_metadata(self):

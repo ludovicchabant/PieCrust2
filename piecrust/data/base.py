@@ -1,7 +1,7 @@
 import time
 import logging
 from piecrust.data.assetor import Assetor
-from piecrust.uriutil import get_slug
+from piecrust.uriutil import split_uri
 
 
 logger = logging.getLogger(__name__)
@@ -129,8 +129,9 @@ class PaginationData(LazyPageConfigData):
 
     def _loadCustom(self):
         page_url = self._get_uri()
+        _, slug = split_uri(self.page.app, page_url)
         self._setValue('url', page_url)
-        self._setValue('slug', get_slug(self._page.app, page_url))
+        self._setValue('slug', slug)
         self._setValue(
                 'timestamp',
                 time.mktime(self.page.datetime.timetuple()))

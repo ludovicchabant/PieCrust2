@@ -7,7 +7,7 @@ from piecrust.data.assetor import Assetor
 from piecrust.data.debug import build_debug_info
 from piecrust.data.linker import PageLinkerData
 from piecrust.data.paginator import Paginator
-from piecrust.uriutil import get_slug, split_sub_uri
+from piecrust.uriutil import split_uri, split_sub_uri
 
 
 logger = logging.getLogger(__name__)
@@ -22,14 +22,15 @@ class DataBuildingContext(object):
         self.pagination_filter = None
 
     @property
-    def slug(self):
-        return get_slug(self.page.app, self.uri)
+    def app(self):
+        return self.page.app
 
 
 def build_page_data(ctx):
     page = ctx.page
     app = page.app
     first_uri, _ = split_sub_uri(app, ctx.uri)
+    _, slug = split_uri(app, ctx.uri)
 
     pc_data = PieCrustData()
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
@@ -46,7 +47,7 @@ def build_page_data(ctx):
             }
     page_data = data['page']
     page_data['url'] = ctx.uri
-    page_data['slug'] = ctx.slug
+    page_data['slug'] = slug
     page_data['timestamp'] = time.mktime(page.datetime.timetuple())
     date_format = app.config.get('site/date_format')
     if date_format:

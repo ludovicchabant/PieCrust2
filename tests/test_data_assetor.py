@@ -1,32 +1,48 @@
 import pytest
 from mock import MagicMock
-from piecrust.data.assetor import (Assetor, UnsupportedAssetsError,
-        build_base_url)
+from piecrust.data.assetor import (
+        Assetor, UnsupportedAssetsError, build_base_url)
 from .mockutil import mock_fs, mock_fs_scope
 
 
-@pytest.mark.parametrize('fs, expected', [
-        (mock_fs().withPage('pages/foo/bar'), {}),
+@pytest.mark.parametrize('fs, site_root, expected', [
+        (mock_fs().withPage('pages/foo/bar'), '/', {}),
         (mock_fs()
             .withPage('pages/foo/bar')
             .withPageAsset('pages/foo/bar', 'one.txt', 'one'),
+            '/',
             {'one': 'one'}),
         (mock_fs()
             .withPage('pages/foo/bar')
             .withPageAsset('pages/foo/bar', 'one.txt', 'one')
             .withPageAsset('pages/foo/bar', 'two.txt', 'two'),
+            '/',
+            {'one': 'one', 'two': 'two'}),
+
+        (mock_fs().withPage('pages/foo/bar'), '/whatever', {}),
+        (mock_fs()
+            .withPage('pages/foo/bar')
+            .withPageAsset('pages/foo/bar', 'one.txt', 'one'),
+            '/whatever',
+            {'one': 'one'}),
+        (mock_fs()
+            .withPage('pages/foo/bar')
+            .withPageAsset('pages/foo/bar', 'one.txt', 'one')
+            .withPageAsset('pages/foo/bar', 'two.txt', 'two'),
+            '/whatever',
             {'one': 'one', 'two': 'two'})
         ])
-def test_assets(fs, expected):
+def test_assets(fs, site_root, expected):
+    fs.withConfig({'site': {'root': site_root}})
     with mock_fs_scope(fs):
         page = MagicMock()
         page.app = fs.getApp(cache=False)
         page.app.env.base_asset_url_format = '%uri%'
         page.path = fs.path('/kitchen/pages/foo/bar.md')
-        assetor = Assetor(page, '/foo/bar')
+        assetor = Assetor(page, site_root.rstrip('/') + '/foo/bar')
         for en in expected.keys():
             assert hasattr(assetor, en)
-            path = '/foo/bar/%s.txt' % en
+            path = site_root.rstrip('/') + '/foo/bar/%s.txt' % en
             assert getattr(assetor, en) == path
             assert assetor[en] == path
 

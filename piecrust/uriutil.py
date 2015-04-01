@@ -74,13 +74,20 @@ def multi_replace(text, replacements):
     return pattern.sub(lambda m: reps[re.escape(m.group(0))], text)
 
 
-def get_slug(app, uri):
-    site_root = app.config.get('site/root')
-    uri = uri[len(site_root):]
-    return uri.lstrip('/')
+def split_uri(app, uri):
+    root = app.config.get('site/root')
+    uri_root = uri[:len(root)]
+    if uri_root != root:
+        raise Exception("URI '%s' is not a full URI." % uri)
+    uri = uri[len(root):]
+    return uri_root, uri
 
 
 def split_sub_uri(app, uri):
+    root = app.config.get('site/root')
+    if not uri.startswith(root):
+        raise Exception("URI '%s' is not a full URI." % uri)
+
     pretty_urls = app.config.get('site/pretty_urls')
     if not pretty_urls:
         uri, ext = os.path.splitext(uri)
@@ -97,5 +104,5 @@ def split_sub_uri(app, uri):
     if not pretty_urls:
         uri += ext
 
-    return (uri, page_num)
+    return uri, page_num
 

@@ -40,11 +40,13 @@ def test_get_output_path(uri, pretty, expected):
         app.config.set('site/pretty_urls', True)
     assert app.config.get('site/pretty_urls') == pretty
 
-    baker = PageBaker(app, '/destination')
-    path = baker.getOutputPath(uri)
-    expected = os.path.normpath(
-            os.path.join('/destination', expected))
-    assert expected == path
+    for site_root in ['/', '/whatever/']:
+        app.config.set('site/root', site_root)
+        baker = PageBaker(app, '/destination')
+        path = baker.getOutputPath(site_root + uri)
+        expected = os.path.normpath(
+                os.path.join('/destination', expected))
+        assert expected == path
 
 
 def test_empty_bake():
@@ -60,10 +62,18 @@ def test_empty_bake():
         assert list(structure.keys()) == ['index.html']
 
 
-def test_simple_bake():
+@pytest.mark.parametrize(
+        'site_root',
+        [
+            ('/'), ('/whatever')
+            ])
+def test_simple_bake(site_root):
+    pconf = {'layout': 'none', 'format': 'none'}
     fs = (mock_fs()
-            .withPage('posts/2010-01-01_post1.md', {'layout': 'none', 'format': 'none'}, 'post one')
-            .withPage('pages/_index.md', {'layout': 'none', 'format': 'none'}, "something"))
+          .withConfig({'site': {'root': site_root}})
+          .withPage('posts/2010-01-01_post1.md', pconf, 'post one')
+          .withPage('pages/about.md', pconf, 'URL: {{page.url}}')
+          .withPage('pages/_index.md', pconf, "something"))
     with mock_fs_scope(fs):
         out_dir = fs.path('kitchen/_counter')
         app = fs.getApp()
@@ -72,6 +82,8 @@ def test_simple_bake():
         structure = fs.getStructure('kitchen/_counter')
         assert structure == {
                 '2010': {'01': {'01': {'post1.html': 'post one'}}},
+                'about.html': 'URL: %s' % (
+                        site_root.rstrip('/') + '/about.html'),
                 'index.html': 'something'}
 
 
@@ -147,7 +159,8 @@ def test_bake_tags():
         out_dir = fs.path('kitchen/_counter')
         app = fs.getApp()
         baker = Baker(app, out_dir)
-        baker.bake()
+        r = baker.bake()
+        assert r.success is True
 
         s = fs.getStructure('kitchen/_counter/tag')
         assert s['foo.html'] == "Pages in foo\nPost 3\nPost 1\n"
