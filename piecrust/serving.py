@@ -415,7 +415,6 @@ content_type_map = {
 
 
 def find_routes(routes, uri):
-    uri = uri.lstrip('/')
     res = []
     for route in routes:
         metadata = route.matchUri(uri)
