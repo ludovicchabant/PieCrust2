@@ -100,6 +100,10 @@ class ShowRecordCommand(ChefCommand):
                 '-p', '--path',
                 help="A pattern that will be used to filter the relative path "
                      "of entries to show.")
+        parser.add_argument(
+                '-t', '--out',
+                help="A pattern that will be used to filter the output path "
+                     "of entries to show.")
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
@@ -109,6 +113,10 @@ class ShowRecordCommand(ChefCommand):
         pattern = None
         if ctx.args.path:
             pattern = '*%s*' % ctx.args.path.strip('*')
+
+        out_pattern = None
+        if ctx.args.out:
+            out_pattern = '*%s*' % ctx.args.out.strip('*')
 
         record_cache = ctx.app.cache.getCache('baker')
         if not record_cache.has(record_name):
@@ -126,9 +134,13 @@ class ShowRecordCommand(ChefCommand):
             logging.error("Status: failed")
         logging.info("Entries:")
         for entry in record.entries:
-            if pattern:
-                if not fnmatch.fnmatch(entry.rel_path, pattern):
-                    continue
+            if pattern and not fnmatch.fnmatch(entry.rel_path, pattern):
+                continue
+            if out_pattern and not (
+                    any([o for o in entry.out_paths
+                         if fnmatch.fnmatch(o, out_pattern)])):
+                continue
+
             logging.info(" - ")
             logging.info("   path:      %s" % entry.rel_path)
             logging.info("   spec:      %s:%s" % (entry.source_name,
@@ -160,9 +172,13 @@ class ShowRecordCommand(ChefCommand):
             logging.error("Status: failed")
         logging.info("Entries:")
         for entry in record.entries:
-            if pattern:
-                if not fnmatch.fnmatch(entry.rel_input, pattern):
-                    continue
+            if pattern and not fnmatch.fnmatch(entry.rel_input, pattern):
+                continue
+            if out_pattern and not (
+                    any([o for o in entry.rel_outputs
+                         if fnmatch.fnmatch(o, out_pattern)])):
+                continue
+
             flags = []
             if entry.flags & FLAG_PREPARED:
                 flags.append('prepared')
