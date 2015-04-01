@@ -163,6 +163,8 @@ class mock_fs(object):
         root = self._fs[self._root]
         if path:
             root = self._getEntry(self.path(path))
+            if root is None:
+                raise Exception("No such path: %s" % path)
 
         res = {}
         for k, v in root.items():
