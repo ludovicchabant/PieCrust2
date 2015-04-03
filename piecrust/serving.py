@@ -227,22 +227,23 @@ class Server(object):
             raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
         taxonomy = None
-        term_value = None
+        tax_terms = None
         for route, route_metadata in routes:
             source = app.getSource(route.source_name)
-            if route.taxonomy is None:
+            if route.taxonomy_name is None:
                 rel_path, fac_metadata = source.findPagePath(
                         route_metadata, MODE_PARSING)
                 if rel_path is not None:
                     break
             else:
-                taxonomy = app.getTaxonomy(route.taxonomy)
-                term_value = route_metadata.get(taxonomy.term_name)
-                if term_value is not None:
+                taxonomy = app.getTaxonomy(route.taxonomy_name)
+                route_terms = route_metadata.get(taxonomy.term_name)
+                if route_terms is not None:
                     tax_page_ref = taxonomy.getPageRef(source.name)
                     rel_path = tax_page_ref.rel_path
                     source = tax_page_ref.source
-                    fac_metadata = {taxonomy.term_name: term_value}
+                    tax_terms = route.unslugifyTaxonomyTerm(route_terms)
+                    fac_metadata = {taxonomy.term_name: tax_terms}
                     break
         else:
             raise SourceNotFoundError(
@@ -257,7 +258,7 @@ class Server(object):
         render_ctx = PageRenderingContext(page, req_path, page_num,
                                           force_render=True)
         if taxonomy is not None:
-            render_ctx.setTaxonomyFilter(taxonomy, term_value)
+            render_ctx.setTaxonomyFilter(taxonomy, tax_terms)
 
         # See if this page is known to use sources. If that's the case,
         # just don't use cached rendered segments for that page (but still

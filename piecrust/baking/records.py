@@ -1,17 +1,16 @@
 import os.path
 import logging
-from piecrust.sources.base import PageSource
 from piecrust.records import Record, TransitionalRecord
 
 
 logger = logging.getLogger(__name__)
 
 
-def _get_transition_key(source_name, rel_path, taxonomy_name=None,
-        taxonomy_term=None):
+def _get_transition_key(source_name, rel_path, taxonomy_info=None):
     key = '%s:%s' % (source_name, rel_path)
-    if taxonomy_name and taxonomy_term:
-        key += ';%s:' % taxonomy_name
+    if taxonomy_info:
+        taxonomy_name, taxonomy_term, taxonomy_source_name = taxonomy_info
+        key += ';%s:%s=' % (taxonomy_source_name, taxonomy_name)
         if isinstance(taxonomy_term, tuple):
             key += '/'.join(taxonomy_term)
         else:
@@ -20,7 +19,7 @@ def _get_transition_key(source_name, rel_path, taxonomy_name=None,
 
 
 class BakeRecord(Record):
-    RECORD_VERSION = 9
+    RECORD_VERSION = 11
 
     def __init__(self):
         super(BakeRecord, self).__init__()
@@ -32,24 +31,35 @@ class BakeRecord(Record):
 FLAG_NONE = 0
 FLAG_SOURCE_MODIFIED = 2**0
 FLAG_OVERRIDEN = 2**1
+FLAG_FORCED_BY_SOURCE = 2**2
 
 
 class BakeRecordPageEntry(object):
-    def __init__(self, factory, taxonomy_name=None, taxonomy_term=None):
-        self.path = factory.path
-        self.rel_path = factory.rel_path
-        self.source_name = factory.source.name
-        self.taxonomy_name = taxonomy_name
-        self.taxonomy_term = taxonomy_term
-        self.path_mtime = os.path.getmtime(factory.path)
+    """ An entry in the bake record.
+
+        The `taxonomy_info` attribute should be a tuple of the form:
+        (taxonomy name, term, source name)
+    """
+    def __init__(self, source_name, rel_path, path, taxonomy_info=None):
+        self.source_name = source_name
+        self.rel_path = rel_path
+        self.path = path
+        self.taxonomy_info = taxonomy_info
 
         self.flags = FLAG_NONE
         self.config = None
         self.errors = []
         self.out_uris = []
         self.out_paths = []
+        self.clean_uris = []
+        self.clean_out_paths = []
         self.used_source_names = set()
         self.used_taxonomy_terms = set()
+        self.used_pagination_item_count = 0
+
+    @property
+    def path_mtime(self):
+        return os.path.getmtime(self.path)
 
     @property
     def was_baked(self):
@@ -62,11 +72,6 @@ class BakeRecordPageEntry(object):
     @property
     def num_subs(self):
         return len(self.out_paths)
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state['path_mtime']
-        return state
 
 
 class TransitionalBakeRecord(TransitionalRecord):
@@ -82,7 +87,7 @@ class TransitionalBakeRecord(TransitionalRecord):
 
     def getTransitionKey(self, entry):
         return _get_transition_key(entry.source_name, entry.rel_path,
-                                   entry.taxonomy_name, entry.taxonomy_term)
+                                   entry.taxonomy_info)
 
     def getOverrideEntry(self, factory, uri):
         for pair in self.transitions.values():
@@ -100,10 +105,8 @@ class TransitionalBakeRecord(TransitionalRecord):
                 return prev
         return None
 
-    def getPreviousEntry(self, source_name, rel_path, taxonomy_name=None,
-            taxonomy_term=None):
-        key = _get_transition_key(source_name, rel_path,
-                taxonomy_name, taxonomy_term)
+    def getPreviousEntry(self, source_name, rel_path, taxonomy_info=None):
+        key = _get_transition_key(source_name, rel_path, taxonomy_info)
         pair = self.transitions.get(key)
         if pair is not None:
             return pair[0]

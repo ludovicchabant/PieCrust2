@@ -531,7 +531,7 @@ class PieCrust(object):
     def getRoutes(self, source_name, skip_taxonomies=False):
         for route in self.routes:
             if route.source_name == source_name:
-                if not skip_taxonomies or route.taxonomy is None:
+                if not skip_taxonomies or route.taxonomy_name is None:
                     yield route
 
     def getRoute(self, source_name, source_metadata):
@@ -542,7 +542,7 @@ class PieCrust(object):
 
     def getTaxonomyRoute(self, tax_name, source_name):
         for route in self.routes:
-            if route.taxonomy == tax_name and route.source_name == source_name:
+            if route.taxonomy_name == tax_name and route.source_name == source_name:
                 return route
         return None
 

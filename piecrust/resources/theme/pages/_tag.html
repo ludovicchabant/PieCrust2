@@ -2,7 +2,11 @@
 title:
 format: none
 ---
-<h2>Posts tagged with {{ tag }}</h2>
+{% set display_tag = tag %}
+{% if is_multiple_tag %}
+    {% set display_tag = tag|join(', ') %}
+{% endif %}
+<h2>Posts tagged with {{ display_tag }}</h2>
 
 <section>
     {% for post in pagination.posts %}

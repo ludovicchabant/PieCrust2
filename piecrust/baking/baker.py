@@ -175,7 +175,8 @@ class Baker(object):
                             (source.name, fac.ref_spec))
                     continue
 
-                entry = BakeRecordPageEntry(fac)
+                entry = BakeRecordPageEntry(fac.source.name, fac.rel_path,
+                                            fac.path)
                 record.addEntry(entry)
 
                 route = self.app.getRoute(source.name, fac.metadata)
@@ -193,8 +194,22 @@ class Baker(object):
     def _bakeTaxonomies(self, record):
         logger.debug("Baking taxonomies")
 
+        class _TaxonomyTermsInfo(object):
+            def __init__(self):
+                self.dirty_terms = set()
+                self.all_terms = set()
+
+            def __str__(self):
+                return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
+
+            def __repr__(self):
+                return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
+
         # Let's see all the taxonomy terms for which we must bake a
         # listing page... first, pre-populate our big map of used terms.
+        # For each source name, we have a list of taxonomies, and for each
+        # taxonomies, a list of terms, some being 'dirty', some used last
+        # time, etc.
         buckets = {}
         tax_names = [t.name for t in self.app.taxonomies]
         source_names = [s.name for s in self.app.sources]
@@ -202,56 +217,78 @@ class Baker(object):
             source_taxonomies = {}
             buckets[sn] = source_taxonomies
             for tn in tax_names:
-                source_taxonomies[tn] = set()
+                source_taxonomies[tn] = _TaxonomyTermsInfo()
 
         # Now see which ones are 'dirty' based on our bake record.
         logger.debug("Gathering dirty taxonomy terms")
         for prev_entry, cur_entry in record.transitions.values():
             for tax in self.app.taxonomies:
-                changed_terms = None
                 # Re-bake all taxonomy pages that include new or changed
                 # pages.
-                if (not prev_entry and cur_entry and
-                        cur_entry.was_baked_successfully):
-                    changed_terms = cur_entry.config.get(tax.setting_name)
-                elif (prev_entry and cur_entry and
-                        cur_entry.was_baked_successfully):
-                    changed_terms = []
-                    prev_terms = prev_entry.config.get(tax.setting_name)
-                    cur_terms = cur_entry.config.get(tax.setting_name)
-                    if tax.is_multiple:
-                        if prev_terms is not None:
-                            changed_terms += prev_terms
-                        if cur_terms is not None:
-                            changed_terms += cur_terms
+                if cur_entry and cur_entry.was_baked_successfully:
+                    if prev_entry and prev_entry.was_baked_successfully:
+                        # Entry was re-baked this time. Mark as dirty both the
+                        # old and new terms.
+                        changed_terms = []
+                        prev_terms = prev_entry.config.get(tax.setting_name)
+                        cur_terms = cur_entry.config.get(tax.setting_name)
+                        if tax.is_multiple:
+                            if prev_terms is not None:
+                                changed_terms += prev_terms
+                            if cur_terms is not None:
+                                changed_terms += cur_terms
+                        else:
+                            if prev_terms is not None:
+                                changed_terms.append(prev_terms)
+                            if cur_terms is not None:
+                                changed_terms.append(cur_terms)
                     else:
-                        if prev_terms is not None:
-                            changed_terms.append(prev_terms)
-                        if cur_terms is not None:
-                            changed_terms.append(cur_terms)
-                if changed_terms is not None:
-                    if not isinstance(changed_terms, list):
-                        changed_terms = [changed_terms]
-                    buckets[cur_entry.source_name][tax.name] |= (
-                            set(changed_terms))
+                        # Entry was not baked last time. Just mark as dirty
+                        # all the new terms.
+                        changed_terms = cur_entry.config.get(tax.setting_name)
+
+                    if changed_terms is not None:
+                        if not isinstance(changed_terms, list):
+                            changed_terms = [changed_terms]
+                        tt_info = buckets[cur_entry.source_name][tax.name]
+                        tt_info.dirty_terms |= set(changed_terms)
+
+                # Remember all terms used.
+                if cur_entry and cur_entry.was_baked_successfully:
+                    cur_terms = cur_entry.config.get(tax.setting_name)
+                    if cur_terms is not None:
+                        if not isinstance(cur_terms, list):
+                            cur_terms = [cur_terms]
+                        tt_info = buckets[cur_entry.source_name][tax.name]
+                        tt_info.all_terms |= set(cur_terms)
+                elif (prev_entry and prev_entry.was_baked_successfully and
+                        cur_entry and not cur_entry.was_baked):
+                    prev_terms = prev_entry.config.get(tax.setting_name)
+                    if prev_terms is not None:
+                        if not isinstance(prev_terms, list):
+                            prev_terms = [prev_terms]
+                        tt_info = buckets[prev_entry.source_name][tax.name]
+                        tt_info.all_terms |= set(prev_terms)
 
         # Re-bake the combination pages for terms that are 'dirty'.
         known_combinations = set()
         logger.debug("Gathering dirty term combinations")
         for prev_entry, cur_entry in record.transitions.values():
-            if cur_entry:
+            if cur_entry and cur_entry.was_baked_successfully:
                 known_combinations |= cur_entry.used_taxonomy_terms
             elif prev_entry:
                 known_combinations |= prev_entry.used_taxonomy_terms
         for sn, tn, terms in known_combinations:
-            changed_terms = buckets[sn][tn]
-            if not changed_terms.isdisjoint(set(terms)):
-                changed_terms.add(terms)
+            tt_info = buckets[sn][tn]
+            tt_info.all_terms.add(terms)
+            if not tt_info.dirty_terms.isdisjoint(set(terms)):
+                tt_info.dirty_terms.add(terms)
 
         # Start baking those terms.
         pool, queue, abort = self._createWorkerPool(record, self.num_workers)
         for source_name, source_taxonomies in buckets.items():
-            for tax_name, terms in source_taxonomies.items():
+            for tax_name, tt_info in source_taxonomies.items():
+                terms = tt_info.dirty_terms
                 if len(terms) == 0:
                     continue
 
@@ -280,13 +317,37 @@ class Baker(object):
                     logger.debug(
                             "Queuing: %s [%s, %s]" %
                             (fac.ref_spec, tax_name, term))
-                    entry = BakeRecordPageEntry(fac, tax_name, term)
+                    entry = BakeRecordPageEntry(
+                            fac.source.name, fac.rel_path, fac.path,
+                            (tax_name, term, source_name))
                     record.addEntry(entry)
-                    queue.addJob(
-                            BakeWorkerJob(fac, route, entry, tax_name, term))
+                    queue.addJob(BakeWorkerJob(fac, route, entry))
 
         success = self._waitOnWorkerPool(pool, abort)
         record.current.success &= success
+
+        # Now we create bake entries for all the terms that were *not* dirty.
+        # This is because otherwise, on the next incremental bake, we wouldn't
+        # find any entry for those things, and figure that we need to delete
+        # their outputs.
+        for prev_entry, cur_entry in record.transitions.values():
+            # Only consider taxonomy-related entries that don't have any
+            # current version.
+            if (prev_entry and prev_entry.taxonomy_info and
+                    not cur_entry):
+                sn = prev_entry.source_name
+                tn, tt, tsn = prev_entry.taxonomy_info
+                tt_info = buckets[tsn][tn]
+                if tt in tt_info.all_terms:
+                    logger.debug("Creating unbaked entry for taxonomy "
+                                 "term '%s:%s'." % (tn, tt))
+                    entry = BakeRecordPageEntry(
+                            prev_entry.source_name, prev_entry.rel_path,
+                            prev_entry.path, prev_entry.taxonomy_info)
+                    record.addEntry(entry)
+                else:
+                    logger.debug("Taxonomy term '%s:%s' isn't used anymore." %
+                                 (tn, tt))
 
     def _handleDeletetions(self, record):
         for path, reason in record.getDeletions():
@@ -355,13 +416,10 @@ class BakeWorkerContext(object):
 
 
 class BakeWorkerJob(object):
-    def __init__(self, factory, route, record_entry,
-                 taxonomy_name=None, taxonomy_term=None):
+    def __init__(self, factory, route, record_entry):
         self.factory = factory
         self.route = route
         self.record_entry = record_entry
-        self.taxonomy_name = taxonomy_name
-        self.taxonomy_term = taxonomy_term
 
     @property
     def source(self):
@@ -406,10 +464,7 @@ class BakeWorker(threading.Thread):
 
         entry = job.record_entry
         try:
-            self._page_baker.bake(
-                    job.factory, job.route, entry,
-                    taxonomy_name=job.taxonomy_name,
-                    taxonomy_term=job.taxonomy_term)
+            self._page_baker.bake(job.factory, job.route, entry)
         except BakingError as ex:
             logger.debug("Got baking error. Adding it to the record.")
             while ex:

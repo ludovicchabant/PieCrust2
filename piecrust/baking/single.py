@@ -3,7 +3,8 @@ import shutil
 import codecs
 import logging
 import urllib.parse
-from piecrust.baking.records import FLAG_OVERRIDEN, FLAG_SOURCE_MODIFIED
+from piecrust.baking.records import (
+        FLAG_OVERRIDEN, FLAG_SOURCE_MODIFIED, FLAG_FORCED_BY_SOURCE)
 from piecrust.data.filters import (PaginationFilter, HasFilterClause,
         IsFilterClause, AndBooleanClause,
         page_value_accessor)
@@ -56,21 +57,15 @@ class PageBaker(object):
 
         return os.path.normpath(os.path.join(*bake_path))
 
-    def bake(self, factory, route, record_entry,
-             taxonomy_name=None, taxonomy_term=None):
-        taxonomy = None
+    def bake(self, factory, route, record_entry):
+        bake_taxonomy_info = None
         route_metadata = dict(factory.metadata)
-        if taxonomy_name and taxonomy_term:
-            # TODO: add options for combining and slugifying terms
-            taxonomy = self.app.getTaxonomy(taxonomy_name)
-            if taxonomy.is_multiple:
-                if isinstance(taxonomy_term, tuple):
-                    slugified_term = '/'.join(taxonomy_term)
-                else:
-                    slugified_term = taxonomy_term
-            else:
-                slugified_term = taxonomy_term
-            route_metadata.update({taxonomy.setting_name: slugified_term})
+        if record_entry.taxonomy_info:
+            tax_name, tax_term, tax_source_name = record_entry.taxonomy_info
+            taxonomy = self.app.getTaxonomy(tax_name)
+            slugified_term = route.slugifyTaxonomyTerm(tax_term)
+            route_metadata[taxonomy.term_name] = slugified_term
+            bake_taxonomy_info = (taxonomy, tax_term)
 
         # Generate the URL using the route.
         page = factory.buildPage()
@@ -83,10 +78,11 @@ class PageBaker(object):
                 raise BakingError(
                         "Page '%s' maps to URL '%s' but is overriden by page"
                         "'%s:%s'." % (factory.ref_spec, uri,
-                            override.source_name, override.rel_path))
+                                      override.source_name,
+                                      override.rel_path))
             logger.debug("'%s' [%s] is overriden by '%s:%s'. Skipping" %
-                    (factory.ref_spec, uri, override.source_name,
-                        override.rel_path))
+                         (factory.ref_spec, uri, override.source_name,
+                          override.rel_path))
             record_entry.flags |= FLAG_OVERRIDEN
             return
 
@@ -97,7 +93,7 @@ class PageBaker(object):
         record_entry.config = copy_public_page_config(page.config)
         prev_record_entry = self.record.getPreviousEntry(
                 factory.source.name, factory.rel_path,
-                taxonomy_name, taxonomy_term)
+                record_entry.taxonomy_info)
 
         logger.debug("Baking '%s'..." % uri)
 
@@ -118,7 +114,9 @@ class PageBaker(object):
                 logger.debug("'%s' is known to use sources %s, at least one "
                              "of which got baked. Will force bake this page. "
                              % (uri, used_src_names))
+                record_entry.flags |= FLAG_FORCED_BY_SOURCE
                 force_this = True
+
                 if PASS_FORMATTING in invalidated_render_passes:
                     logger.debug("Will invalidate cached formatting for '%s' "
                                  "since sources were using during that pass."
@@ -134,7 +132,7 @@ class PageBaker(object):
             do_bake = True
             if not force_this:
                 try:
-                    in_path_time = record_entry.path_mtime
+                    in_path_time = page.path_mtime
                     out_path_time = os.path.getmtime(out_path)
                     if out_path_time >= in_path_time:
                         do_bake = False
@@ -151,7 +149,9 @@ class PageBaker(object):
                     cur_sub += 1
                     has_more_subs = True
                     logger.debug("  %s is up to date, skipping to next "
-                            "sub-page." % out_path)
+                                 "sub-page." % out_path)
+                    record_entry.clean_uris.append(sub_uri)
+                    record_entry.clean_out_paths.append(out_path)
                     continue
 
                 # We don't know how many subs to expect... just skip.
@@ -161,19 +161,19 @@ class PageBaker(object):
             # All good, proceed.
             try:
                 if invalidate_formatting:
-                    cache_key = '%s:%s' % (uri, cur_sub)
+                    cache_key = sub_uri
                     self.app.env.rendered_segments_repository.invalidate(
                             cache_key)
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
-                                           taxonomy, taxonomy_term)
+                                           bake_taxonomy_info)
             except Exception as ex:
                 if self.app.debug:
                     logger.exception(ex)
                 page_rel_path = os.path.relpath(page.path, self.app.root_dir)
                 raise BakingError("%s: error baking '%s'." %
-                        (page_rel_path, uri)) from ex
+                                  (page_rel_path, uri)) from ex
 
             # Copy page assets.
             if (cur_sub == 1 and self.copy_assets and
@@ -201,17 +201,20 @@ class PageBaker(object):
             record_entry.used_taxonomy_terms |= ctx.used_taxonomy_terms
 
             has_more_subs = False
-            if (ctx.used_pagination is not None and
-                    ctx.used_pagination.has_more):
-                cur_sub += 1
-                has_more_subs = True
+            if ctx.used_pagination is not None:
+                if cur_sub == 1:
+                    record_entry.used_pagination_item_count = \
+                            ctx.used_pagination.total_item_count
+                if ctx.used_pagination.has_more:
+                    cur_sub += 1
+                    has_more_subs = True
 
     def _bakeSingle(self, page, sub_uri, num, out_path,
-                    taxonomy=None, taxonomy_term=None):
+                    taxonomy_info=None):
         ctx = PageRenderingContext(page, sub_uri)
         ctx.page_num = num
-        if taxonomy and taxonomy_term:
-            ctx.setTaxonomyFilter(taxonomy, taxonomy_term)
+        if taxonomy_info:
+            ctx.setTaxonomyFilter(taxonomy_info[0], taxonomy_info[1])
 
         rp = render_page(ctx)
 

@@ -27,6 +27,9 @@ class Route(object):
     def __init__(self, app, cfg):
         self.app = app
 
+        self.source_name = cfg['source']
+        self.taxonomy_name = cfg.get('taxonomy')
+
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
         self.pagination_suffix_format = app.config.get(
@@ -66,8 +69,6 @@ class Route(object):
         for m in route_re.finditer(self.uri_pattern):
             self.required_source_metadata.add(m.group('name'))
 
-        self.source_name = cfg['source']
-        self.taxonomy = cfg.get('taxonomy')
         self.template_func = None
         self.template_func_name = None
         self.template_func_args = []
@@ -157,6 +158,19 @@ class Route(object):
         uri = self.uri_root + uri
         return uri
 
+    def slugifyTaxonomyTerm(self, term):
+        #TODO: add options for transliterating and combining terms.
+        if isinstance(term, tuple):
+            return '/'.join(term)
+        return term
+
+    def unslugifyTaxonomyTerm(self, term):
+        #TODO: same as above.
+        split_terms = term.split('/')
+        if len(split_terms) == 1:
+            return term
+        return tuple(split_terms)
+
     def _uriFormatRepl(self, m):
         name = m.group('name')
         #TODO: fix this hard-coded shit
@@ -171,7 +185,7 @@ class Route(object):
     def _uriPatternRepl(self, m):
         name = m.group('name')
         qualifier = m.group('qual')
-        if qualifier == 'path':
+        if qualifier == 'path' or self.taxonomy_name:
             return r'(?P<%s>[^\?]*)' % name
         return r'(?P<%s>[^/\?]+)' % name
 
@@ -198,7 +212,7 @@ class Route(object):
         if arg_list:
             self.template_func_args += template_func_arg_re.findall(arg_list)
 
-        if self.taxonomy:
+        if self.taxonomy_name:
             # This will be a taxonomy route function... this means we can
             # have a variable number of parameters, but only one parameter
             # definition, which is the value.
@@ -226,12 +240,10 @@ class Route(object):
                     registered_values = tuple(values)
                 eis = self.app.env.exec_info_stack
                 eis.current_page_info.render_ctx.used_taxonomy_terms.add(
-                        (self.source_name, self.taxonomy, registered_values))
+                        (self.source_name, self.taxonomy_name,
+                            registered_values))
 
-                if len(values) == 1:
-                    str_values = values[0]
-                else:
-                    str_values = '/'.join(values)
+                str_values = self.slugifyTaxonomyTerm(registered_values)
                 term_name = self.template_func_args[0]
                 metadata = {term_name: str_values}
 
@@ -270,7 +282,7 @@ class CompositeRouteFunction(object):
         self._funcs.append((route, route.template_func))
 
     def __call__(self, *args, **kwargs):
-        if len(args) == len(self._arg_names):
+        if len(self._funcs) == 1 or len(args) == len(self._arg_names):
             f = self._funcs[0][1]
             return f(*args, **kwargs)
 

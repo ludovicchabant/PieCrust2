@@ -68,9 +68,6 @@ class PageRenderingContext(object):
     def source_metadata(self):
         return self.page.source_metadata
 
-    def reset(self):
-        self.used_pagination = None
-
     def setPagination(self, paginator):
         if self.used_pagination is not None:
             raise Exception("Pagination has already been used.")
@@ -82,9 +79,10 @@ class PageRenderingContext(object):
             self.used_source_names.add((source.name, self.current_pass))
 
     def setTaxonomyFilter(self, taxonomy, term_value):
+        is_combination = isinstance(term_value, tuple)
         flt = PaginationFilter(value_accessor=page_value_accessor)
         if taxonomy.is_multiple:
-            if isinstance(term_value, tuple):
+            if is_combination:
                 abc = AndBooleanClause()
                 for t in term_value:
                     abc.addClause(HasFilterClause(taxonomy.setting_name, t))
@@ -95,8 +93,10 @@ class PageRenderingContext(object):
         else:
             flt.addClause(IsFilterClause(taxonomy.setting_name, term_value))
         self.pagination_filter = flt
+
         self.custom_data = {
-                taxonomy.term_name: term_value}
+                taxonomy.term_name: term_value,
+                'is_multiple_%s' % taxonomy.term_name: is_combination}
 
 
 def render_page(ctx):
@@ -117,7 +117,7 @@ def render_page(ctx):
         ctx.current_pass = PASS_FORMATTING
         repo = ctx.app.env.rendered_segments_repository
         if repo and not ctx.force_render:
-            cache_key = '%s:%s' % (ctx.uri, ctx.page_num)
+            cache_key = ctx.uri
             page_time = page.path_mtime
             contents = repo.get(
                     cache_key,

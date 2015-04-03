@@ -78,7 +78,7 @@ class ShowRoutesCommand(ChefCommand):
         for route in ctx.app.routes:
             logger.info("%s:" % route.uri_pattern)
             logger.info("    source: %s" % route.source_name)
-            logger.info("    taxonomy: %s" % (route.taxonomy or ''))
+            logger.info("    taxonomy: %s" % (route.taxonomy_name or ''))
             logger.info("    regex: %s" % route.uri_re.pattern)
 
 

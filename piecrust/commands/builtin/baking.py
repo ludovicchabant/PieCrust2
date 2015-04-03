@@ -5,7 +5,11 @@ import hashlib
 import fnmatch
 import datetime
 from piecrust.baking.baker import Baker
-from piecrust.baking.records import BakeRecord
+from piecrust.baking.records import (
+        BakeRecord,
+        FLAG_OVERRIDEN as BAKE_FLAG_OVERRIDEN,
+        FLAG_SOURCE_MODIFIED as BAKE_FLAG_SOURCE_MODIFIED,
+        FLAG_FORCED_BY_SOURCE as BAKE_FLAG_FORCED_BY_SOURCE)
 from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
 from piecrust.processing.base import ProcessorPipeline
@@ -13,6 +17,7 @@ from piecrust.processing.records import (
         ProcessorPipelineRecord,
         FLAG_PREPARED, FLAG_PROCESSED, FLAG_OVERRIDEN,
         FLAG_BYPASSED_STRUCTURED_PROCESSING)
+from piecrust.rendering import PASS_FORMATTING, PASS_RENDERING
 
 
 logger = logging.getLogger(__name__)
@@ -104,11 +109,17 @@ class ShowRecordCommand(ChefCommand):
                 '-t', '--out',
                 help="A pattern that will be used to filter the output path "
                      "of entries to show.")
+        parser.add_argument(
+                '--last',
+                type=int,
+                default=0,
+                help="Show the last Nth bake record.")
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
-        record_name = (hashlib.md5(out_dir.encode('utf8')).hexdigest() +
-                       '.record')
+        record_id = hashlib.md5(out_dir.encode('utf8')).hexdigest()
+        suffix = '' if ctx.args.last == 0 else '.%d' % ctx.args.last
+        record_name = '%s%s.record' % (record_id, suffix)
 
         pattern = None
         if ctx.args.path:
@@ -126,6 +137,7 @@ class ShowRecordCommand(ChefCommand):
         # Show the bake record.
         record = BakeRecord.load(record_cache.getCachePath(record_name))
         logging.info("Bake record for: %s" % record.out_dir)
+        logging.info("From: %s" % record_name)
         logging.info("Last baked: %s" %
                      datetime.datetime.fromtimestamp(record.bake_time))
         if record.success:
@@ -141,17 +153,36 @@ class ShowRecordCommand(ChefCommand):
                          if fnmatch.fnmatch(o, out_pattern)])):
                 continue
 
+            flags = []
+            if entry.flags & BAKE_FLAG_OVERRIDEN:
+                flags.append('overriden')
+            if entry.flags & BAKE_FLAG_SOURCE_MODIFIED:
+                flags.append('overriden')
+            if entry.flags & BAKE_FLAG_FORCED_BY_SOURCE:
+                flags.append('forced by source')
+
+            passes = {PASS_RENDERING: 'render', PASS_FORMATTING: 'format'}
+            used_srcs = ['%s (%s)' % (s[0], passes[s[1]])
+                         for s in entry.used_source_names]
+
             logging.info(" - ")
             logging.info("   path:      %s" % entry.rel_path)
             logging.info("   spec:      %s:%s" % (entry.source_name,
                                                   entry.rel_path))
-            logging.info("   taxonomy:  %s:%s" % (entry.taxonomy_name,
-                                                  entry.taxonomy_term))
+            if entry.taxonomy_info:
+                logging.info("   taxonomy:  %s:%s for %s" %
+                             entry.taxonomy_info)
+            else:
+                logging.info("   taxonomy:  <none>")
+            logging.info("   flags:     %s" % ', '.join(flags))
             logging.info("   config:    %s" % entry.config)
             logging.info("   out URLs:  %s" % entry.out_uris)
             logging.info("   out paths: %s" % [os.path.relpath(p, out_dir)
                                                for p in entry.out_paths])
-            logging.info("   used srcs: %s" % entry.used_source_names)
+            logging.info("   clean URLs:%s" % entry.clean_uris)
+            logging.info("   used srcs: %s" % used_srcs)
+            logging.info("   used terms:%s" % entry.used_taxonomy_terms)
+            logging.info("   used pgn:  %d" % entry.used_pagination_item_count)
             if entry.errors:
                 logging.error("   errors: %s" % entry.errors)
 
