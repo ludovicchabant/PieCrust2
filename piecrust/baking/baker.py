@@ -52,9 +52,8 @@ class Baker(object):
         # Load/create the bake record.
         record = TransitionalBakeRecord()
         record_cache = self.app.cache.getCache('baker')
-        record_name = (
-                hashlib.md5(self.out_dir.encode('utf8')).hexdigest() +
-                '.record')
+        record_id = hashlib.md5(self.out_dir.encode('utf8')).hexdigest()
+        record_name = record_id + '.record'
         if not self.force and record_cache.has(record_name):
             t = time.clock()
             record.loadPrevious(record_cache.getCachePath(record_name))
@@ -87,6 +86,18 @@ class Baker(object):
 
         # Delete files from the output.
         self._handleDeletetions(record)
+
+        # Backup previous records.
+        for i in range(8, -1, -1):
+            suffix = '' if i == 0 else '.%d' % i
+            record_path = record_cache.getCachePath(
+                    '%s%s.record' % (record_id, suffix))
+            if os.path.exists(record_path):
+                record_path_next = record_cache.getCachePath(
+                        '%s.%s.record' % (record_id, i + 1))
+                if os.path.exists(record_path_next):
+                    os.remove(record_path_next)
+                os.rename(record_path, record_path_next)
 
         # Save the bake record.
         t = time.clock()
