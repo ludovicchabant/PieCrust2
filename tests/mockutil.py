@@ -249,6 +249,7 @@ class mock_fs_scope(object):
         self._createMock('os.listdir', os.listdir, self._listdir)
         self._createMock('os.makedirs', os.makedirs, self._makedirs)
         self._createMock('os.remove', os.remove, self._remove)
+        self._createMock('os.rename', os.rename, self._rename)
         self._createMock('os.path.exists', os.path.exists, self._exists)
         self._createMock('os.path.isdir', os.path.isdir, self._isdir)
         self._createMock('os.path.isfile', os.path.isfile, self._isfile)
@@ -370,6 +371,13 @@ class mock_fs_scope(object):
         if not dst.replace('\\', '/').startswith('/' + self.root):
             raise Exception("Shouldn't copy to: %s" % dst)
         self._fs._createFile(dst, src_text)
+
+    def _rename(self, src, dst):
+        src = os.path.normpath(src)
+        if src.startswith(resources_path) or dst.startswith(resources_path):
+            raise Exception("Shouldn't rename files in the resources path.")
+        self._copyfile(src, dst)
+        self._remove(src)
 
     def _rmtree(self, path):
         if not path.replace('\\', '/').startswith('/' + self.root):
