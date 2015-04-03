@@ -2,6 +2,7 @@ import re
 import time
 import json
 import logging
+import hashlib
 import threading
 import contextlib
 import collections
@@ -15,7 +16,7 @@ re_fs_cache_key = re.compile(r'[^\d\w\-\._]+')
 
 
 def _make_fs_cache_key(key):
-    return re_fs_cache_key.sub('_', key)
+    return hashlib.md5(key.encode('utf8')).hexdigest()
 
 
 class MemCache(object):
