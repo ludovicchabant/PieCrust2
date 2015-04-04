@@ -135,7 +135,7 @@ class Route(object):
                     uri = suffix.lstrip('/')
                 else:
                     uri = uri.rstrip('/') + suffix
-            if self.trailing_slash:
+            if self.trailing_slash and uri != '':
                 uri = uri.rstrip('/') + '/'
         else:
             # Output will be:
