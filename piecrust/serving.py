@@ -285,8 +285,8 @@ class Server(object):
         if entry is None:
             entry = ServeRecordPageEntry(req_path, page_num)
             self._page_record.addEntry(entry)
-        rdr_pass = render_ctx.current_pass_info
-        entry.used_source_names = set(rdr_pass.used_source_names)
+        for p, pinfo in render_ctx.render_passes.items():
+            entry.used_source_names |= pinfo.used_source_names
 
         # Profiling.
         if app.config.get('site/show_debug_info'):
