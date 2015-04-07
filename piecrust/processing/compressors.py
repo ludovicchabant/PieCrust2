@@ -33,7 +33,7 @@ class CleanCssProcessor(Processor):
 
         args = [self._conf['bin'], '-o', out_path]
         args += self._conf['options']
-        args.append(in_path)
+        args.append(path)
         logger.debug("Cleaning CSS file: %s" % args)
 
         # On Windows, we need to run the process in a shell environment
