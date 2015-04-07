@@ -139,7 +139,7 @@ class FindCommand(ChefCommand):
     def run(self, ctx):
         pattern = ctx.args.pattern
         sources = list(ctx.app.sources)
-        if not ctx.args.exact:
+        if not ctx.args.exact and pattern is not None:
             pattern = '*%s*' % pattern
 
         for src in sources:
