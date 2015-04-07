@@ -107,21 +107,21 @@ def _pre_parse_chef_args(argv):
             res.root = os.path.expanduser(arg[len('--root='):])
         elif arg == '--root':
             res.root = os.path.expanduser(argv[i + 1])
-            ++i
+            i += 1
         elif arg.startswith('--config='):
             res.config_variant = arg[len('--config='):]
         elif arg == '--config':
             res.config_variant = argv[i + 1]
-            ++i
+            i += 1
         elif arg.startswith('--config-set='):
             res.config_values.append(
                     _parse_config_value(arg[len('--config-set='):]))
         elif arg == '--config-set':
             res.config_values.append(_parse_config_value(argv[i + 1]))
-            ++i
+            i += 1
         elif arg == '--log':
             res.log_file = argv[i + 1]
-            ++i
+            i += 1
         elif arg == '--log-debug':
             res.log_debug = True
         elif arg == '--no-cache':
@@ -130,8 +130,7 @@ def _pre_parse_chef_args(argv):
             res.debug = True
         elif arg == '--quiet':
             res.quiet = True
-
-        if arg[0] != '-':
+        else:
             break
 
         i = i + 1
