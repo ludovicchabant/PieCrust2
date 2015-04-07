@@ -240,9 +240,10 @@ class Route(object):
                     registered_values = tuple(values)
                 eis = self.app.env.exec_info_stack
                 cpi = eis.current_page_info.render_ctx.current_pass_info
-                cpi.used_taxonomy_terms.add(
-                        (self.source_name, self.taxonomy_name,
-                            registered_values))
+                if cpi:
+                    cpi.used_taxonomy_terms.add(
+                            (self.source_name, self.taxonomy_name,
+                                registered_values))
 
                 str_values = self.slugifyTaxonomyTerm(registered_values)
                 term_name = self.template_func_args[0]
