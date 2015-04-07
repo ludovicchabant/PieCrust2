@@ -84,13 +84,16 @@ class BakeScheduler(object):
     def _isJobReady(self, job):
         e = self.record.getPreviousEntry(
                 job.factory.source.name,
-                job.factory.rel_path)
+                job.factory.rel_path,
+                taxonomy_info=job.record_entry.taxonomy_info)
         if not e:
             return (True, None)
-        for sn, rp in e.used_source_names:
+        used_source_names = e.getAllUsedSourceNames()
+        for sn in used_source_names:
             if sn == job.factory.source.name:
                 continue
-            if any(filter(lambda j: j.factory.source.name == sn, self.jobs)):
+            if any(filter(lambda j: j.factory.source.name == sn,
+                          self.jobs)):
                 return (False, sn)
             if any(filter(lambda j: j.factory.source.name == sn,
                           self._active_jobs)):

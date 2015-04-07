@@ -6,10 +6,7 @@ import fnmatch
 import datetime
 from piecrust.baking.baker import Baker
 from piecrust.baking.records import (
-        BakeRecord,
-        FLAG_OVERRIDEN as BAKE_FLAG_OVERRIDEN,
-        FLAG_SOURCE_MODIFIED as BAKE_FLAG_SOURCE_MODIFIED,
-        FLAG_FORCED_BY_SOURCE as BAKE_FLAG_FORCED_BY_SOURCE)
+        BakeRecord, BakeRecordPageEntry, BakeRecordSubPageEntry)
 from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
 from piecrust.processing.base import ProcessorPipeline
@@ -154,37 +151,54 @@ class ShowRecordCommand(ChefCommand):
                 continue
 
             flags = []
-            if entry.flags & BAKE_FLAG_OVERRIDEN:
+            if entry.flags & BakeRecordPageEntry.FLAG_OVERRIDEN:
                 flags.append('overriden')
-            if entry.flags & BAKE_FLAG_SOURCE_MODIFIED:
-                flags.append('overriden')
-            if entry.flags & BAKE_FLAG_FORCED_BY_SOURCE:
-                flags.append('forced by source')
 
             passes = {PASS_RENDERING: 'render', PASS_FORMATTING: 'format'}
-            used_srcs = ['%s (%s)' % (s[0], passes[s[1]])
-                         for s in entry.used_source_names]
 
             logging.info(" - ")
             logging.info("   path:      %s" % entry.rel_path)
             logging.info("   spec:      %s:%s" % (entry.source_name,
                                                   entry.rel_path))
             if entry.taxonomy_info:
-                logging.info("   taxonomy:  %s:%s for %s" %
-                             entry.taxonomy_info)
+                tn, t, sn = entry.taxonomy_info
+                logging.info("   taxonomy:  %s (%s:%s)" %
+                             (t, sn, tn))
             else:
                 logging.info("   taxonomy:  <none>")
             logging.info("   flags:     %s" % ', '.join(flags))
             logging.info("   config:    %s" % entry.config)
-            logging.info("   out URLs:  %s" % entry.out_uris)
-            logging.info("   out paths: %s" % [os.path.relpath(p, out_dir)
-                                               for p in entry.out_paths])
-            logging.info("   clean URLs:%s" % entry.clean_uris)
-            logging.info("   used srcs: %s" % used_srcs)
-            logging.info("   used terms:%s" % entry.used_taxonomy_terms)
-            logging.info("   used pgn:  %d" % entry.used_pagination_item_count)
-            if entry.errors:
-                logging.error("   errors: %s" % entry.errors)
+
+            logging.info("   %d sub-pages:" % len(entry.subs))
+            for sub in entry.subs:
+                logging.info("   - ")
+                logging.info("     URL:    %s" % sub.out_uri)
+                logging.info("     path:   %s" % os.path.relpath(sub.out_path,
+                                                                 out_dir))
+                logging.info("     baked?: %s" % sub.was_baked)
+
+                sub_flags = []
+                if sub.flags & BakeRecordSubPageEntry.FLAG_FORCED_BY_SOURCE:
+                    sub_flags.append('forced by source')
+                if sub.flags & BakeRecordSubPageEntry.FLAG_FORCED_BY_NO_PREVIOUS:
+                    sub_flags.append('forced by missing previous record entry')
+                if sub.flags & BakeRecordSubPageEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS:
+                    sub_flags.append('forced by previous errors')
+                logging.info("     flags:  %s" % ', '.join(sub_flags))
+
+                for p, pi in sub.render_passes.items():
+                    logging.info("     %s pass:" % passes[p])
+                    logging.info("       used srcs:  %s" %
+                                 ', '.join(pi.used_source_names))
+                    logging.info("       used terms: %s" %
+                                 ', '.join(
+                                        ['%s (%s:%s)' % (t, sn, tn)
+                                         for sn, tn, t in pi.used_taxonomy_terms]))
+
+                if sub.errors:
+                    logging.error("   errors: %s" % sub.errors)
+
+            logging.info("   assets:    %s" % ', '.join(entry.assets))
 
         record_cache = ctx.app.cache.getCache('proc')
         if not record_cache.has(record_name):

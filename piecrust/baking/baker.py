@@ -103,7 +103,6 @@ class Baker(object):
         t = time.clock()
         record.current.bake_time = time.time()
         record.current.out_dir = self.out_dir
-        record.collapseRecords()
         record.saveCurrent(record_cache.getCachePath(record_name))
         logger.debug(format_timed(t, 'saved bake record', colored=False))
 
@@ -194,17 +193,6 @@ class Baker(object):
     def _bakeTaxonomies(self, record):
         logger.debug("Baking taxonomies")
 
-        class _TaxonomyTermsInfo(object):
-            def __init__(self):
-                self.dirty_terms = set()
-                self.all_terms = set()
-
-            def __str__(self):
-                return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
-
-            def __repr__(self):
-                return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
-
         # Let's see all the taxonomy terms for which we must bake a
         # listing page... first, pre-populate our big map of used terms.
         # For each source name, we have a list of taxonomies, and for each
@@ -222,62 +210,46 @@ class Baker(object):
         # Now see which ones are 'dirty' based on our bake record.
         logger.debug("Gathering dirty taxonomy terms")
         for prev_entry, cur_entry in record.transitions.values():
-            for tax in self.app.taxonomies:
-                # Re-bake all taxonomy pages that include new or changed
-                # pages.
-                if cur_entry and cur_entry.was_baked_successfully:
-                    if prev_entry and prev_entry.was_baked_successfully:
-                        # Entry was re-baked this time. Mark as dirty both the
-                        # old and new terms.
-                        changed_terms = []
-                        prev_terms = prev_entry.config.get(tax.setting_name)
-                        cur_terms = cur_entry.config.get(tax.setting_name)
-                        if tax.is_multiple:
-                            if prev_terms is not None:
-                                changed_terms += prev_terms
-                            if cur_terms is not None:
-                                changed_terms += cur_terms
-                        else:
-                            if prev_terms is not None:
-                                changed_terms.append(prev_terms)
-                            if cur_terms is not None:
-                                changed_terms.append(cur_terms)
-                    else:
-                        # Entry was not baked last time. Just mark as dirty
-                        # all the new terms.
-                        changed_terms = cur_entry.config.get(tax.setting_name)
+            # Re-bake all taxonomy pages that include new or changed
+            # pages.
+            if cur_entry and cur_entry.was_any_sub_baked:
+                entries = [cur_entry]
+                if prev_entry:
+                    entries.append(prev_entry)
 
-                    if changed_terms is not None:
-                        if not isinstance(changed_terms, list):
-                            changed_terms = [changed_terms]
+                for tax in self.app.taxonomies:
+                    changed_terms = set()
+                    for e in entries:
+                        terms = e.config.get(tax.setting_name)
+                        if terms:
+                            if not tax.is_multiple:
+                                terms = [terms]
+                            changed_terms |= set(terms)
+
+                    if len(changed_terms) > 0:
                         tt_info = buckets[cur_entry.source_name][tax.name]
-                        tt_info.dirty_terms |= set(changed_terms)
+                        tt_info.dirty_terms |= changed_terms
 
-                # Remember all terms used.
-                if cur_entry and cur_entry.was_baked_successfully:
+            # Remember all terms used.
+            for tax in self.app.taxonomies:
+                if cur_entry and not cur_entry.was_overriden:
                     cur_terms = cur_entry.config.get(tax.setting_name)
-                    if cur_terms is not None:
-                        if not isinstance(cur_terms, list):
+                    if cur_terms:
+                        if not tax.is_multiple:
                             cur_terms = [cur_terms]
                         tt_info = buckets[cur_entry.source_name][tax.name]
                         tt_info.all_terms |= set(cur_terms)
-                elif (prev_entry and prev_entry.was_baked_successfully and
-                        cur_entry and not cur_entry.was_baked):
-                    prev_terms = prev_entry.config.get(tax.setting_name)
-                    if prev_terms is not None:
-                        if not isinstance(prev_terms, list):
-                            prev_terms = [prev_terms]
-                        tt_info = buckets[prev_entry.source_name][tax.name]
-                        tt_info.all_terms |= set(prev_terms)
 
         # Re-bake the combination pages for terms that are 'dirty'.
         known_combinations = set()
         logger.debug("Gathering dirty term combinations")
         for prev_entry, cur_entry in record.transitions.values():
-            if cur_entry and cur_entry.was_baked_successfully:
-                known_combinations |= cur_entry.used_taxonomy_terms
-            elif prev_entry:
-                known_combinations |= prev_entry.used_taxonomy_terms
+            if not cur_entry:
+                continue
+            used_taxonomy_terms = cur_entry.getAllUsedTaxonomyTerms()
+            for sn, tn, terms in used_taxonomy_terms:
+                if isinstance(terms, tuple):
+                    known_combinations.add((sn, tn, terms))
         for sn, tn, terms in known_combinations:
             tt_info = buckets[sn][tn]
             tt_info.all_terms.add(terms)
@@ -341,10 +313,7 @@ class Baker(object):
                 if tt in tt_info.all_terms:
                     logger.debug("Creating unbaked entry for taxonomy "
                                  "term '%s:%s'." % (tn, tt))
-                    entry = BakeRecordPageEntry(
-                            prev_entry.source_name, prev_entry.rel_path,
-                            prev_entry.path, prev_entry.taxonomy_info)
-                    record.addEntry(entry)
+                    record.collapseEntry(prev_entry)
                 else:
                     logger.debug("Taxonomy term '%s:%s' isn't used anymore." %
                                  (tn, tt))
@@ -471,14 +440,20 @@ class BakeWorker(threading.Thread):
                 entry.errors.append(str(ex))
                 ex = ex.__cause__
 
-        if entry.errors:
-            for e in entry.errors:
-                logger.error(e)
+        has_error = False
+        for e in entry.getAllErrors():
+            has_error = True
+            logger.error(e)
+        if has_error:
             return False
 
-        if entry.was_baked_successfully:
-            uri = entry.out_uris[0]
-            friendly_uri = uri if uri != '' else '[main page]'
+        if entry.was_any_sub_baked:
+            first_sub = entry.subs[0]
+
+            friendly_uri = first_sub.out_uri
+            if friendly_uri == '':
+                friendly_uri = '[main page]'
+
             friendly_count = ''
             if entry.num_subs > 1:
                 friendly_count = ' (%d pages)' % entry.num_subs
@@ -488,3 +463,14 @@ class BakeWorker(threading.Thread):
 
         return True
 
+
+class _TaxonomyTermsInfo(object):
+    def __init__(self):
+        self.dirty_terms = set()
+        self.all_terms = set()
+
+    def __str__(self):
+        return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
+
+    def __repr__(self):
+        return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)

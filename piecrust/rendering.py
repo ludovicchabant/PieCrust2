@@ -32,7 +32,6 @@ class RenderedPage(object):
         self.num = num
         self.data = None
         self.content = None
-        self.execution_info = None
 
     @property
     def app(self):
@@ -44,6 +43,15 @@ PASS_FORMATTING = 1
 PASS_RENDERING = 2
 
 
+RENDER_PASSES = [PASS_FORMATTING, PASS_RENDERING]
+
+
+class RenderPassInfo(object):
+    def __init__(self):
+        self.used_source_names = set()
+        self.used_taxonomy_terms = set()
+
+
 class PageRenderingContext(object):
     def __init__(self, page, uri, page_num=1, force_render=False):
         self.page = page
@@ -53,12 +61,11 @@ class PageRenderingContext(object):
         self.pagination_source = None
         self.pagination_filter = None
         self.custom_data = None
-        self.use_cache = False
-        self.used_assets = None
+        self._current_pass = PASS_NONE
+
+        self.render_passes = {}
         self.used_pagination = None
-        self.used_source_names = set()
-        self.used_taxonomy_terms = set()
-        self.current_pass = PASS_NONE
+        self.used_assets = None
 
     @property
     def app(self):
@@ -68,15 +75,27 @@ class PageRenderingContext(object):
     def source_metadata(self):
         return self.page.source_metadata
 
+    @property
+    def current_pass_info(self):
+        return self.render_passes.get(self._current_pass)
+
+    def setCurrentPass(self, rdr_pass):
+        if rdr_pass != PASS_NONE:
+            self.render_passes.setdefault(rdr_pass, RenderPassInfo())
+        self._current_pass = rdr_pass
+
     def setPagination(self, paginator):
+        self._raiseIfNoCurrentPass()
         if self.used_pagination is not None:
             raise Exception("Pagination has already been used.")
         self.used_pagination = paginator
         self.addUsedSource(paginator._source)
 
     def addUsedSource(self, source):
+        self._raiseIfNoCurrentPass()
         if isinstance(source, PageSource):
-            self.used_source_names.add((source.name, self.current_pass))
+            pass_info = self.render_passes[self._current_pass]
+            pass_info.used_source_names.add(source.name)
 
     def setTaxonomyFilter(self, taxonomy, term_value):
         is_combination = isinstance(term_value, tuple)
@@ -98,6 +117,10 @@ class PageRenderingContext(object):
                 taxonomy.term_name: term_value,
                 'is_multiple_%s' % taxonomy.term_name: is_combination}
 
+    def _raiseIfNoCurrentPass(self):
+        if self._current_pass == PASS_NONE:
+            raise Exception("No rendering pass is currently active.")
+
 
 def render_page(ctx):
     eis = ctx.app.env.exec_info_stack
@@ -114,7 +137,7 @@ def render_page(ctx):
             page_data.update(ctx.custom_data)
 
         # Render content segments.
-        ctx.current_pass = PASS_FORMATTING
+        ctx.setCurrentPass(PASS_FORMATTING)
         repo = ctx.app.env.rendered_segments_repository
         if repo and not ctx.force_render:
             cache_key = ctx.uri
@@ -127,7 +150,7 @@ def render_page(ctx):
             contents = _do_render_page_segments(page, page_data)
 
         # Render layout.
-        ctx.current_pass = PASS_RENDERING
+        ctx.setCurrentPass(PASS_RENDERING)
         layout_name = page.config.get('layout')
         if layout_name is None:
             layout_name = page.source.config.get('default_layout', 'default')
@@ -141,10 +164,9 @@ def render_page(ctx):
         rp = RenderedPage(page, ctx.uri, ctx.page_num)
         rp.data = page_data
         rp.content = output
-        rp.execution_info = eis.current_page_info
         return rp
     finally:
-        ctx.current_pass = PASS_NONE
+        ctx.setCurrentPass(PASS_NONE)
         eis.popPage()
 
 
@@ -162,13 +184,13 @@ def render_page_segments(ctx):
 def _do_render_page_segments_from_ctx(ctx):
     eis = ctx.app.env.exec_info_stack
     eis.pushPage(ctx.page, ctx)
-    ctx.current_pass = PASS_FORMATTING
+    ctx.setCurrentPass(PASS_FORMATTING)
     try:
         data_ctx = DataBuildingContext(ctx.page, ctx.uri, ctx.page_num)
         page_data = build_page_data(data_ctx)
         return _do_render_page_segments(ctx.page, page_data)
     finally:
-        ctx.current_pass = PASS_NONE
+        ctx.setCurrentPass(PASS_NONE)
         eis.popPage()
 
 

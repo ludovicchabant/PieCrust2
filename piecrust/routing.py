@@ -239,7 +239,8 @@ class Route(object):
                 else:
                     registered_values = tuple(values)
                 eis = self.app.env.exec_info_stack
-                eis.current_page_info.render_ctx.used_taxonomy_terms.add(
+                cpi = eis.current_page_info.render_ctx.current_pass_info
+                cpi.used_taxonomy_terms.add(
                         (self.source_name, self.taxonomy_name,
                             registered_values))
 

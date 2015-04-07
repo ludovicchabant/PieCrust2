@@ -118,6 +118,7 @@ class TransitionalRecord(object):
         if te is None:
             logger.debug("Adding new record entry: %s" % key)
             self.transitions[key] = (None, entry)
+            self._onNewEntryAdded(entry)
             return
 
         if te[1] is not None:
@@ -125,4 +126,7 @@ class TransitionalRecord(object):
                     key)
         logger.debug("Setting current record entry: %s" % key)
         self.transitions[key] = (te[0], entry)
+
+    def _onNewEntryAdded(self, entry):
+        pass
 
