@@ -7,10 +7,9 @@ import argparse
 import colorama
 from piecrust import APP_VERSION
 from piecrust.app import PieCrust, PieCrustConfiguration
-from piecrust.chefutil import (format_timed, log_friendly_exception,
-        print_help_item)
+from piecrust.chefutil import (
+        format_timed, log_friendly_exception, print_help_item)
 from piecrust.commands.base import CommandContext
-from piecrust.environment import StandardEnvironment
 from piecrust.pathutil import SiteNotFoundError, find_app_root
 from piecrust.plugins.base import PluginLoader
 
@@ -76,7 +75,7 @@ def main():
 
 class PreParsedChefArgs(object):
     def __init__(self, root=None, cache=True, debug=False, quiet=False,
-            log_file=None, log_debug=False, config_variant=None):
+                 log_file=None, log_debug=False, config_variant=None):
         self.root = root
         self.cache = cache
         self.debug = debug
@@ -84,6 +83,15 @@ class PreParsedChefArgs(object):
         self.log_file = log_file
         self.log_debug = log_debug
         self.config_variant = config_variant
+        self.config_values = []
+
+
+def _parse_config_value(arg):
+    try:
+        name, value = arg.split('=')
+    except Exception:
+        raise Exception("Invalid configuration name and value: %s" % arg)
+    return (name, value)
 
 
 def _pre_parse_chef_args(argv):
@@ -98,12 +106,18 @@ def _pre_parse_chef_args(argv):
         if arg.startswith('--root='):
             res.root = os.path.expanduser(arg[len('--root='):])
         elif arg == '--root':
-            res.root = argv[i + 1]
+            res.root = os.path.expanduser(argv[i + 1])
             ++i
         elif arg.startswith('--config='):
             res.config_variant = arg[len('--config='):]
         elif arg == '--config':
             res.config_variant = argv[i + 1]
+            ++i
+        elif arg.startswith('--config-set='):
+            res.config_values.append(
+                    _parse_config_value(arg[len('--config-set='):]))
+        elif arg == '--config-set':
+            res.config_values.append(_parse_config_value(argv[i + 1]))
             ++i
         elif arg == '--log':
             res.log_file = argv[i + 1]
@@ -173,23 +187,49 @@ def _run_chef(pre_args):
         if not root:
             raise SiteNotFoundError("Can't apply any variant.")
         app.config.applyVariant('variants/' + pre_args.config_variant)
+    for name, value in pre_args.config_values:
+        logger.debug("Setting configuration '%s' to: %s" % (name, value))
+        app.config.set(name, value)
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
             prog='chef',
             description="The PieCrust chef manages your website.",
             formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--version', action='version', version=('%(prog)s ' + APP_VERSION))
-    parser.add_argument('--root', help="The root directory of the website.")
-    parser.add_argument('--config', help="The configuration variant to use for this command.")
-    parser.add_argument('--debug', help="Show debug information.", action='store_true')
-    parser.add_argument('--no-cache', help="When applicable, disable caching.", action='store_true')
-    parser.add_argument('--quiet', help="Print only important information.", action='store_true')
-    parser.add_argument('--log', help="Send log messages to the specified file.")
-    parser.add_argument('--log-debug', help="Log debug messages to the log file.", action='store_true')
+    parser.add_argument(
+            '--version',
+            action='version',
+            version=('%(prog)s ' + APP_VERSION))
+    parser.add_argument(
+            '--root',
+            help="The root directory of the website.")
+    parser.add_argument(
+            '--config',
+            help="The configuration variant to use for this command.")
+    parser.add_argument(
+            '--config-set',
+            help="Sets a specific site configuration setting.")
+    parser.add_argument(
+            '--debug',
+            help="Show debug information.", action='store_true')
+    parser.add_argument(
+            '--no-cache',
+            help="When applicable, disable caching.",
+            action='store_true')
+    parser.add_argument(
+            '--quiet',
+            help="Print only important information.",
+            action='store_true')
+    parser.add_argument(
+            '--log',
+            help="Send log messages to the specified file.")
+    parser.add_argument(
+            '--log-debug',
+            help="Log debug messages to the log file.",
+            action='store_true')
 
     commands = sorted(app.plugin_loader.getCommands(),
-            key=lambda c: c.name)
+                      key=lambda c: c.name)
     subparsers = parser.add_subparsers(title='list of commands')
     for c in commands:
         p = subparsers.add_parser(c.name, help=c.description)
@@ -204,10 +244,10 @@ def _run_chef(pre_args):
                 print_help_item(epilog, name, desc)
             parser.epilog = epilog.getvalue()
 
-
     # Parse the command line.
     result = parser.parse_args()
-    logger.debug(format_timed(start_time, 'initialized PieCrust', colored=False))
+    logger.debug(format_timed(start_time, 'initialized PieCrust',
+                              colored=False))
 
     # Print the help if no command was specified.
     if not hasattr(result, 'func'):
