@@ -1,0 +1,28 @@
+---
+in:
+    posts/2010-01-01_post1.md: 'post one'
+    pages/about.md: 'URL: {{page.url}}'
+    pages/_index.md: 'something'
+out:
+    '2010':
+        '01':
+            '01':
+                post1.html: 'post one'
+    about.html: 'URL: /about.html'
+    index.html: 'something'
+---
+config:
+    site:
+        root: /whatever
+in:
+    posts/2010-01-01_post1.md: 'post one'
+    pages/about.md: 'URL: {{page.url}}'
+    pages/_index.md: 'something'
+out:
+    '2010':
+        '01':
+            '01':
+                post1.html: 'post one'
+    about.html: 'URL: /whatever/about.html'
+    index.html: 'something'
+

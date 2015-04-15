@@ -1,0 +1,45 @@
+---
+config:
+    site:
+        category_url: cat/%category%
+in:
+    posts/2015-03-01_post01.md: |
+      ---
+      title: Post 01
+      category: foo
+      ---
+    posts/2015-03-02_post02.md: |
+      ---
+      title: Post 02
+      category: bar
+      ---
+    posts/2015-03-03_post03.md: |
+      ---
+      title: Post 03
+      category: foo
+      ---
+    pages/_category.md: |
+      Pages in {{category}}
+      {% for p in pagination.posts -%}
+      {{p.title}}
+      {% endfor %}
+    pages/_index.md: ''
+out:
+    index.html: ''
+    '2015':
+        '03':
+            '01':
+                post01.html: ''
+            '02':
+                post02.html: ''
+            '03':
+                post03.html: ''
+    cat:
+        foo.html: |
+          Pages in foo
+          Post 03
+          Post 01
+        bar.html: |
+          Pages in bar
+          Post 02
+

@@ -1,0 +1,6 @@
+---
+in:
+    pages/_index.md: ''
+out:
+    index.html: ''
+
