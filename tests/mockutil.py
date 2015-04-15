@@ -324,7 +324,6 @@ class mock_fs_scope(object):
         self._fs._deleteEntry(path)
 
     def _exists(self, path):
-        print("Checking for %s" % path)
         path = os.path.normpath(path)
         if path.startswith(resources_path):
             return self._originals['os.path.isdir'](path)
