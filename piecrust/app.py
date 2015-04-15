@@ -28,7 +28,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 18
+CACHE_VERSION = 19
 
 
 class VariantNotFoundError(Exception):
@@ -192,6 +192,8 @@ class PieCrustConfiguration(Configuration):
             posts_fs = sitec.setdefault('posts_fs', DEFAULT_POSTS_FS)
             blogsc = sitec.setdefault('blogs', ['posts'])
 
+            g_page_layout = sitec.get('default_page_layout', 'default')
+            g_post_layout = sitec.get('default_post_layout', 'post')
             g_post_url = sitec.get('post_url', '%year%/%month%/%day%/%slug%')
             g_tag_url = sitec.get('tag_url', 'tag/%tag%')
             g_category_url = sitec.get('category_url', '%category%')
@@ -205,6 +207,7 @@ class PieCrustConfiguration(Configuration):
                     'type': 'default',
                     'ignore_missing_dir': True,
                     'data_endpoint': 'site.pages',
+                    'default_layout': g_page_layout,
                     'item_name': 'page'}
             sitec['sources'] = sourcesc
 
@@ -248,7 +251,7 @@ class PieCrustConfiguration(Configuration):
                         'items_per_page': items_per_page,
                         'items_filters': items_filters,
                         'date_format': date_format,
-                        'default_layout': 'post'}
+                        'default_layout': g_post_layout}
                 tax_page_prefix = ''
                 if len(blogsc) > 1:
                     tax_page_prefix = blog_name + '/'
