@@ -35,6 +35,12 @@ given between parenthesis:
 
 * `default_format` (`markdown`): Specifies the default text formatter to use.
 
+* `default_page_layout` (`default`): Specifies the default page layout when
+  using the default content model.
+
+* `default_post_layout` (`post`): Specifies the default blog post layout when
+  using the default content model.
+
 * `default_template_engine` (`jinja`): Specifies what template engine to use.
 
 * `enable_debug_info` (`true`): If you’re using PieCrust in dynamic CMS mode,
