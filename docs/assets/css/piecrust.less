@@ -265,6 +265,13 @@ ul.doc-level1 {
         font-size: 1.1em;
         font-weight: bold;
     }
+
+    @doc-link-active: darken(@brand-success, 10%);
+    a.active {
+        border-left: 3px solid @doc-link-active;
+        padding-left: 0.5em;
+        color: @doc-link-active;
+    }
 }
 
 ul.doc-level2 {
