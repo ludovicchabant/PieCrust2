@@ -1,0 +1,41 @@
+---
+config:
+    site:
+        posts_per_page: 3
+        pagination_suffix: /page%num%
+in:
+    posts/2015-03-01_post01.md: "---\ntitle: Post 01\n---\n"
+    posts/2015-03-02_post02.md: "---\ntitle: Post 02\n---\n"
+    posts/2015-03-03_post03.md: "---\ntitle: Post 03\n---\n"
+    posts/2015-03-04_post04.md: "---\ntitle: Post 04\n---\n"
+    posts/2015-03-05_post05.md: "---\ntitle: Post 05\n---\n"
+    posts/2015-03-06_post06.md: "---\ntitle: Post 06\n---\n"
+    posts/2015-03-07_post07.md: "---\ntitle: Post 07\n---\n"
+    pages/_index.md: ''
+    pages/foo.md: |
+        {%- for p in pagination.items -%}
+        {{p.url}} {{p.title}}
+        {% endfor -%}
+        {{pagination.prev_page}}
+        {{pagination.this_page}}
+        {{pagination.next_page}}
+outfiles:
+    foo.html: |
+        /2015/03/07/post07.html Post 07
+        /2015/03/06/post06.html Post 06
+        /2015/03/05/post05.html Post 05
+        None
+        /foo.html
+        /foo/page2.html
+    foo/page2.html: |
+        /2015/03/04/post04.html Post 04
+        /2015/03/03/post03.html Post 03
+        /2015/03/02/post02.html Post 02
+        /foo.html
+        /foo/page2.html
+        /foo/page3.html
+    foo/page3.html: |
+        /2015/03/01/post01.html Post 01
+        /foo/page2.html
+        /foo/page3.html
+        None

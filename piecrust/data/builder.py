@@ -34,7 +34,7 @@ def build_page_data(ctx):
 
     pc_data = PieCrustData()
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
-    paginator = Paginator(page, pgn_source, first_uri, ctx.page_num,
+    paginator = Paginator(page, pgn_source, ctx.page_num,
                           ctx.pagination_filter)
     assetor = Assetor(page, first_uri)
     linker = PageLinkerData(page.source, page.rel_path)

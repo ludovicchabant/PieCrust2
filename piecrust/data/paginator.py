@@ -10,23 +10,25 @@ logger = logging.getLogger(__name__)
 
 
 class Paginator(object):
-    debug_render = ['has_more', 'items', 'has_items', 'items_per_page',
-                    'items_this_page', 'prev_page_number', 'this_page_number',
-                    'next_page_number', 'prev_page', 'next_page',
-                    'total_item_count', 'total_page_count',
-                    'next_item', 'prev_item']
-    debug_render_invoke = ['has_more', 'items', 'has_items', 'items_per_page',
-                    'items_this_page', 'prev_page_number', 'this_page_number',
-                    'next_page_number', 'prev_page', 'next_page',
-                    'total_item_count', 'total_page_count',
-                    'next_item', 'prev_item']
+    debug_render = [
+            'has_more', 'items', 'has_items', 'items_per_page',
+            'items_this_page', 'prev_page_number', 'this_page_number',
+            'next_page_number', 'prev_page', 'next_page',
+            'total_item_count', 'total_page_count',
+            'next_item', 'prev_item']
+    debug_render_invoke = [
+            'has_more', 'items', 'has_items', 'items_per_page',
+            'items_this_page', 'prev_page_number', 'this_page_number',
+            'next_page_number', 'prev_page', 'next_page',
+            'total_item_count', 'total_page_count',
+            'next_item', 'prev_item']
 
-    def __init__(self, page, source, uri, page_num=1, pgn_filter=None,
-            items_per_page=-1):
+    def __init__(self, page, source, page_num=1, pgn_filter=None,
+                 items_per_page=-1):
         self._parent_page = page
         self._source = source
-        self._uri = uri
         self._page_num = page_num
+        self._route = None
         self._iterator = None
         self._pgn_filter = pgn_filter
         self._items_per_page = items_per_page
@@ -185,11 +187,13 @@ class Paginator(object):
             return
 
         if self._source is None:
-            raise Exception("Can't load pagination data: no source has been defined.")
+            raise Exception("Can't load pagination data: no source has "
+                            "been defined.")
 
         pag_filter = self._getPaginationFilter()
         offset = (self._page_num - 1) * self.items_per_page
-        self._iterator = PageIterator(self._source,
+        self._iterator = PageIterator(
+                self._source,
                 current_page=self._parent_page,
                 pagination_filter=pag_filter,
                 offset=offset, limit=self.items_per_page,
@@ -210,12 +214,17 @@ class Paginator(object):
         return f
 
     def _getPageUri(self, index):
-        uri = self._uri
-        if index > 1:
-            if len(uri) > 0 and not uri.endswith('/'):
-                uri += '/'
-            uri += str(index)
-        return uri
+        if self._route is None:
+            app = self._source.app
+            self._route = app.getRoute(self._parent_page.source.name,
+                                       self._parent_page.source_metadata)
+            if self._route is None:
+                raise Exception("Can't get route for page: %s" %
+                                self._parent_page.path)
+
+        return self._route.getUri(self._parent_page.source_metadata,
+                                  provider=self._parent_page,
+                                  sub_num=index)
 
     def _onIteration(self):
         if self._parent_page is not None and not self._pgn_set_on_ctx:

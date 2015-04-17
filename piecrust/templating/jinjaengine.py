@@ -179,9 +179,9 @@ class PieCrustEnvironment(Environment):
             raise Exception("Can't paginate when no page has been pushed "
                             "on the execution stack.")
         first_uri, _ = split_sub_uri(self.app, cpi.render_ctx.uri)
-        return Paginator(cpi.page, value, first_uri,
-                page_num=cpi.render_ctx.page_num,
-                items_per_page=items_per_page)
+        return Paginator(cpi.page, value,
+                         page_num=cpi.render_ctx.page_num,
+                         items_per_page=items_per_page)
 
     def _formatWith(self, value, format_name):
         return format_text(self.app, format_name, value)
