@@ -80,33 +80,37 @@ class BakeTestItem(pytest.Item):
 
         if expected_output_files:
             actual = fs.getStructure('kitchen/_counter')
-            error = _compare_dicts(actual, expected_output_files)
+            error = _compare_dicts(expected_output_files, actual)
             if error:
                 raise ExpectedBakeOutputError(error)
 
         if expected_partial_files:
-            for key, content in expected_partial_files.items():
+            keys = list(sorted(expected_partial_files.keys()))
+            for key in keys:
                 try:
-                    actual = fs.getStructure('kitchen/_counter/' +
+                    actual = fs.getFileEntry('kitchen/_counter/' +
                                              key.lstrip('/'))
-                except Exception:
+                except Exception as e:
                     raise ExpectedBakeOutputError([
-                        "Missing expected output file: %s" % key])
-                if not isinstance(actual, str):
-                    raise ExpectedBakeOutputError([
-                        "Expected output file is a directory: %s" % key])
-                if actual != content:
-                    raise ExpectedBakeOutputError([
-                        "Unexpected output file contents:",
-                        "%s: %s" % (key, content),
-                        "%s: %s" % (key, actual)])
+                        "Can't access output file %s: %s" % (key, e)])
+
+                expected = expected_partial_files[key]
+                # HACK because for some reason PyYAML adds a new line for those
+                # and I have no idea why.
+                expected = expected.rstrip('\n')
+                cmpres = _compare_str(expected, actual, key)
+                if cmpres:
+                    raise ExpectedBakeOutputError(cmpres)
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name
 
     def repr_failure(self, excinfo):
         if isinstance(excinfo.value, ExpectedBakeOutputError):
-            return ('\n'.join(excinfo.value.args[0]))
+            return ('\n'.join(
+                ['Unexpected bake output. Left is expected output, '
+                    'right is actual output'] +
+                excinfo.value.args[0]))
         return super(BakeTestItem, self).repr_failure(excinfo)
 
 
@@ -121,6 +125,23 @@ def _add_mock_files(fs, parent_path, spec):
             fs.withFile(path, subspec)
         elif isinstance(subspec, dict):
             _add_mock_files(fs, path, subspec)
+
+
+def _compare(left, right, path):
+    if type(left) != type(right):
+        return (["Different items: ",
+                 "%s: %s" % (path, pprint.pformat(left)),
+                 "%s: %s" % (path, pprint.pformat(right))])
+    if isinstance(left, str):
+        return _compare_str(left, right, path)
+    elif isinstance(left, dict):
+        return _compare_dicts(left, right, path)
+    elif isinstance(left, list):
+        return _compare_lists(left, right, path)
+    elif left != right:
+        return (["Different items: ",
+                 "%s: %s" % (path, pprint.pformat(left)),
+                 "%s: %s" % (path, pprint.pformat(right))])
 
 
 def _compare_dicts(left, right, basepath=''):
@@ -140,45 +161,49 @@ def _compare_dicts(left, right, basepath=''):
         lv = left[key]
         rv = right[key]
         childpath = basepath + '/' + key
-        if type(lv) != type(rv):
-            return (["Different items: ",
-                     "%s/%s: %s" % (basepath, key, pprint.pformat(lv)),
-                     "%s/%s: %s" % (basepath, key, pprint.pformat(rv))])
-
-        if isinstance(lv, dict):
-            r = _compare_dicts(lv, rv, childpath)
-            if r:
-                return r
-        elif isinstance(lv, list):
-            r = _compare_lists(lv, rv, childpath)
-            if r:
-                return r
-        elif lv != rv:
-            return (["Different items: ",
-                     "%s/%s: %s" % (basepath, key, pprint.pformat(lv)),
-                     "%s/%s: %s" % (basepath, key, pprint.pformat(rv))])
+        cmpres = _compare(lv, rv, childpath)
+        if cmpres:
+            return cmpres
     return None
 
 
-def _compare_lists(left, right):
+def _compare_lists(left, right, path):
     for i in range(min(len(left), len(right))):
         l = left[i]
         r = right[i]
-        if type(l) != type(r):
-            return ['Different items at index %d:' % i,
-                    pprint.pformat(l),
-                    pprint.pformat(r)]
-        if isinstance(l, dict):
-            r = _compare_dicts(l, r)
-            if r:
-                return r
-        elif isinstance(l, list):
-            r = _compare_lists(l, r)
-            if r:
-                return r
-        elif l != r:
-            return ['Different items at index %d:' % i,
-                    pprint.pformat(l),
-                    pprint.pformat(r)]
+        cmpres = _compare(l, r, path)
+        if cmpres:
+            return cmpres
+    if len(left) > len(right):
+        return (["Left '%s' contains more items. First extra item: " % path,
+                 left[len(right)]])
+    if len(right) > len(left):
+        return (["Right '%s' contains more items. First extra item: " % path,
+                 right[len(left)]])
     return None
+
+
+def _compare_str(left, right, path):
+    if left == right:
+        return None
+    for i in range(min(len(left), len(right))):
+        if left[i] != right[i]:
+            start = max(0, i - 5)
+            lend = min(len(left), i + 5)
+            rend = min(len(right), i + 5)
+            return ["Items '%s' differ at index %d:" % (path, i),
+                    left[start:lend],
+                    (' ' * start + '^'),
+                    right[start:rend],
+                    (' ' * start + '^')]
+    if len(left) > len(right):
+        return ["Left is longer.",
+                "Left '%s': " % path, left,
+                "Right '%s': " % path, right,
+                "Extra items: %r" % left[len(right):]]
+    if len(right) > len(left):
+        return ["Right is longer.",
+                "Left '%s': " % path, left,
+                "Right '%s': " % path, right,
+                "Extra items: %r" % right[len(left):]]
 
