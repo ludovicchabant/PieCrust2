@@ -165,11 +165,21 @@ class mock_fs(object):
             root = self._getEntry(self.path(path))
             if root is None:
                 raise Exception("No such path: %s" % path)
+            if not isinstance(root, dict):
+                raise Exception("Path is not a directory: %s" % path)
 
         res = {}
         for k, v in root.items():
             self._getStructureRecursive(v, res, k)
         return res
+
+    def getFileEntry(self, path):
+        entry = self._getEntry(self.path(path))
+        if entry is None:
+            raise Exception("No such file: %s" % path)
+        if not isinstance(entry, _MockFsEntry):
+            raise Exception("Path is not a file: %s" % path)
+        return entry.contents
 
     def _getStructureRecursive(self, src, target, name):
         if isinstance(src, _MockFsEntry):
