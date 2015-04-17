@@ -43,7 +43,6 @@ class PageBaker(object):
         self.copy_assets = copy_assets
         self.site_root = app.config.get('site/root')
         self.pretty_urls = app.config.get('site/pretty_urls')
-        self.pagination_suffix = app.config.get('site/pagination_suffix')
 
     def getOutputPath(self, uri):
         uri_root, uri_path = split_uri(self.app, uri)
