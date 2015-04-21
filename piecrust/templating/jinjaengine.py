@@ -149,7 +149,8 @@ class PieCrustEnvironment(Environment):
                 'stripoutertag': strip_outer_tag,
                 'stripslash': strip_slash,
                 'titlecase': title_case,
-                'atomdate': get_atom_date,
+                'atomdate': get_xml_date,
+                'xmldate': get_xml_date,
                 'emaildate': get_email_date,
                 'date': get_date})
 
@@ -237,7 +238,7 @@ def title_case(value):
     return value.title()
 
 
-def get_atom_date(value):
+def get_xml_date(value):
     return strict_rfc3339.timestamp_to_rfc3339_localoffset(int(value))
 
 
