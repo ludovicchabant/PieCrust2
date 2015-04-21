@@ -199,6 +199,8 @@ class ShowRecordCommand(ChefCommand):
                     logging.error("   errors: %s" % sub.errors)
 
             logging.info("   assets:    %s" % ', '.join(entry.assets))
+            if entry.errors:
+                logging.error("   errors: %s" % entry.errors)
 
         record_cache = ctx.app.cache.getCache('proc')
         if not record_cache.has(record_name):

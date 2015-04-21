@@ -88,6 +88,7 @@ class BakeRecordPageEntry(object):
         self.config = None
         self.subs = []
         self.assets = []
+        self.errors = []
 
     @property
     def path_mtime(self):
