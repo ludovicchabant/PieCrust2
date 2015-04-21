@@ -74,7 +74,7 @@ class JekyllImporter(FileWalkingImporter):
         if 'exclude' in config:
             if 'baker' not in config:
                 config['baker'] = {}
-            config['baker']['skip_patterns'] = list(map(
+            config['baker']['ignore'] = list(map(
                     lambda i: '^/_%s/' % re.escape(i)))
         if 'jinja' not in config:
             config['jinja'] = {}
