@@ -252,7 +252,7 @@ class OrderedPageSource(AutoConfigSourceBase):
         if rel_path != '':
             parts = rel_path.split('/')
             for p in parts:
-                p_pat = r'(\d+_)?' + re.escape(p)
+                p_pat = r'(\d+_)?' + re.escape(p) + '$'
                 for name in os.listdir(path):
                     if re.match(p_pat, name):
                         path = os.path.join(path, name)
