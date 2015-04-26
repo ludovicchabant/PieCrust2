@@ -30,9 +30,11 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         return self.__class__.PATH_FORMAT
 
     def resolveRef(self, ref_path):
-        return os.path.normpath(os.path.join(self.fs_endpoint_path, ref_path))
+        path = os.path.normpath(os.path.join(self.fs_endpoint_path, ref_path))
+        metadata = self._parseMetadataFromPath(ref_path)
+        return path, metadata
 
-    def findPagePath(self, metadata, mode):
+    def findPageFactory(self, metadata, mode):
         year = metadata.get('year')
         month = metadata.get('month')
         day = metadata.get('day')
@@ -46,7 +48,7 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
             if day is not None:
                 day = int(day)
         except ValueError:
-            return None, None
+            return None
 
         ext = metadata.get('ext')
         if ext is None:
@@ -91,35 +93,10 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         elif mode == MODE_PARSING and not os.path.isfile(path):
             raise PageNotFoundError(path)
 
-        regex_repl = {
-                'year': '(?P<year>\d{4})',
-                'month': '(?P<month>\d{2})',
-                'day': '(?P<day>\d{2})',
-                'slug': '(?P<slug>.*)',
-                'ext': '(?P<ext>.*)'
-                }
-        path_format_re = re.sub(r'([\-\.])', r'\\\1', self.path_format)
-        pattern = path_format_re % regex_repl + '$'
-        m = re.search(pattern, path.replace('\\', '/'))
-        if not m:
-            raise Exception("Expected to be able to match path with path "
-                            "format: %s" % path)
-
-        year = int(m.group('year'))
-        month = int(m.group('month'))
-        day = int(m.group('day'))
-        timestamp = datetime.date(year, month, day)
-        fac_metadata = {
-                'year': year,
-                'month': month,
-                'day': day,
-                'slug': m.group('slug'),
-                'date': timestamp
-                }
-
         rel_path = os.path.relpath(path, self.fs_endpoint_path)
         rel_path = rel_path.replace('\\', '/')
-        return rel_path, fac_metadata
+        fac_metadata = self._parseMetadataFromPath(rel_path)
+        return PageFactory(self, rel_path, fac_metadata)
 
     def setupPrepareParser(self, parser, app):
         parser.add_argument('-d', '--date', help="The date of the post, "
@@ -154,6 +131,34 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 return False
             raise InvalidFileSystemEndpointError(self.name, self.fs_endpoint_path)
         return True
+
+    def _parseMetadataFromPath(self, path):
+        regex_repl = {
+                'year': '(?P<year>\d{4})',
+                'month': '(?P<month>\d{2})',
+                'day': '(?P<day>\d{2})',
+                'slug': '(?P<slug>.*)',
+                'ext': '(?P<ext>.*)'
+                }
+        path_format_re = re.sub(r'([\-\.])', r'\\\1', self.path_format)
+        pattern = path_format_re % regex_repl + '$'
+        m = re.search(pattern, path.replace('\\', '/'))
+        if not m:
+            raise Exception("Expected to be able to match path with path "
+                            "format: %s" % path)
+
+        year = int(m.group('year'))
+        month = int(m.group('month'))
+        day = int(m.group('day'))
+        timestamp = datetime.date(year, month, day)
+        metadata = {
+                'year': year,
+                'month': month,
+                'day': day,
+                'slug': m.group('slug'),
+                'date': timestamp
+                }
+        return metadata
 
     def _makeFactory(self, path, slug, year, month, day):
         path = path.replace('\\', '/')

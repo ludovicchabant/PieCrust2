@@ -231,19 +231,17 @@ class Server(object):
         for route, route_metadata in routes:
             source = app.getSource(route.source_name)
             if route.taxonomy_name is None:
-                rel_path, fac_metadata = source.findPagePath(
-                        route_metadata, MODE_PARSING)
-                if rel_path is not None:
+                factory = source.findPageFactory(route_metadata, MODE_PARSING)
+                if factory is not None:
                     break
             else:
                 taxonomy = app.getTaxonomy(route.taxonomy_name)
                 route_terms = route_metadata.get(taxonomy.term_name)
                 if route_terms is not None:
                     tax_page_ref = taxonomy.getPageRef(source.name)
-                    rel_path = tax_page_ref.rel_path
-                    source = tax_page_ref.source
+                    factory = tax_page_ref.getFactory()
                     tax_terms = route.unslugifyTaxonomyTerm(route_terms)
-                    fac_metadata = {taxonomy.term_name: tax_terms}
+                    factory.metadata[taxonomy.term_name] = tax_terms
                     break
         else:
             raise SourceNotFoundError(
@@ -251,8 +249,7 @@ class Server(object):
                     (req_path, [r.source_name for r, _ in routes]))
 
         # Build the page.
-        fac = PageFactory(source, rel_path, fac_metadata)
-        page = fac.buildPage()
+        page = factory.buildPage()
         # We force the rendering of the page because it could not have
         # changed, but include pages that did change.
         render_ctx = PageRenderingContext(page, req_path, page_num,

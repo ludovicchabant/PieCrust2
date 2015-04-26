@@ -45,7 +45,8 @@ class PageFactory(object):
 
     @cached_property
     def path(self):
-        return self.source.resolveRef(self.rel_path)
+        path, _ = self.source.resolveRef(self.rel_path)
+        return path
 
     def buildPage(self):
         repo = self.source.app.env.page_repository
@@ -94,10 +95,10 @@ class PageSource(object):
         return build_pages(self.app, self.getPageFactories())
 
     def getPage(self, metadata):
-        rel_path, metadata = self.findPagePath(metadata, MODE_PARSING)
-        if rel_path is None:
+        factory = self.findPageFactory(metadata, MODE_PARSING)
+        if factory is None:
             return None
-        return Page(self, metadata, rel_path)
+        return factory.buildPage()
 
     def getPageFactories(self):
         if self._factories is None:
@@ -108,9 +109,12 @@ class PageSource(object):
         raise NotImplementedError()
 
     def resolveRef(self, ref_path):
+        """ Returns the full path and source metadata given a source
+            (relative) path, like a ref-spec.
+        """
         raise NotImplementedError()
 
-    def findPagePath(self, metadata, mode):
+    def findPageFactory(self, metadata, mode):
         raise NotImplementedError()
 
     def buildDataProvider(self, page, user_data):

@@ -57,7 +57,8 @@ class Page(IRouteMetadataProvider):
 
     @cached_property
     def path(self):
-        return self.source.resolveRef(self.rel_path)
+        path, _ = self.source.resolveRef(self.rel_path)
+        return path
 
     @cached_property
     def path_mtime(self):

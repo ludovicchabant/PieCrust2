@@ -64,8 +64,8 @@ class PrepareCommand(ExtendableChefCommand):
         app = ctx.app
         source = ctx.args.source
         metadata = source.buildMetadata(ctx.args)
-        rel_path, metadata = source.findPagePath(metadata, MODE_CREATING)
-        path = source.resolveRef(rel_path)
+        factory = source.findPageFactory(metadata, MODE_CREATING)
+        path = factory.path
         name, ext = os.path.splitext(path)
         if ext == '.*':
             path = '%s.%s' % (

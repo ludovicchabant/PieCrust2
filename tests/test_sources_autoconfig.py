@@ -173,7 +173,10 @@ def test_ordered_source_find(fs, route_path, expected_path,
         app = fs.getApp()
         s = app.getSource('test')
         route_metadata = {'slug': route_path}
-        fac_path, metadata = s.findPagePath(route_metadata, MODE_PARSING)
-        assert fac_path == slashfix(expected_path)
-        assert metadata == expected_metadata
+        factory = s.findPageFactory(route_metadata, MODE_PARSING)
+        if factory is None:
+            assert expected_path is None and expected_metadata is None
+            return
+        assert factory.rel_path == slashfix(expected_path)
+        assert factory.metadata == expected_metadata
 

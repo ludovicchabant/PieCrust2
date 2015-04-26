@@ -55,10 +55,14 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
                 yield PageFactory(self, fac_path, metadata)
 
     def resolveRef(self, ref_path):
-        return os.path.normpath(
+        path = os.path.normpath(
                 os.path.join(self.fs_endpoint_path, ref_path.lstrip("\\/")))
+        slug = self._makeSlug(ref_path)
+        metadata = {'slug': slug}
+        self._populateMetadata(ref_path, metadata)
+        return path, metadata
 
-    def findPagePath(self, metadata, mode):
+    def findPageFactory(self, metadata, mode):
         uri_path = metadata.get('slug', '')
         if not uri_path:
             uri_path = '_index'
@@ -71,7 +75,7 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
             rel_path = os.path.relpath(path, self.fs_endpoint_path)
             rel_path = rel_path.replace('\\', '/')
             self._populateMetadata(rel_path, metadata, mode)
-            return rel_path, metadata
+            return PageFactory(self, rel_path, metadata)
 
         if ext == '':
             paths_to_check = [
@@ -84,9 +88,9 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
                 rel_path = os.path.relpath(path, self.fs_endpoint_path)
                 rel_path = rel_path.replace('\\', '/')
                 self._populateMetadata(rel_path, metadata, mode)
-                return rel_path, metadata
+                return PageFactory(self, rel_path, metadata)
 
-        return None, None
+        return None
 
     def listPath(self, rel_path):
         rel_path = rel_path.lstrip('\\/')

@@ -41,12 +41,15 @@ def test_default_source_factories(fs, expected_paths, expected_slugs):
         assert slugs == expected_slugs
 
 
-
-@pytest.mark.parametrize('ref_path, expected', [
-        ('foo.html', '/kitchen/test/foo.html'),
-        ('foo/bar.html', '/kitchen/test/foo/bar.html'),
+@pytest.mark.parametrize(
+        'ref_path, expected_path, expected_metadata',
+        [
+            ('foo.html', '/kitchen/test/foo.html', {'slug': 'foo'}),
+            ('foo/bar.html', '/kitchen/test/foo/bar.html',
+                {'slug': 'foo/bar'}),
         ])
-def test_default_source_resolve_ref(ref_path, expected):
+def test_default_source_resolve_ref(ref_path, expected_path,
+                                    expected_metadata):
     fs = mock_fs()
     fs.withConfig({
         'site': {
@@ -56,12 +59,13 @@ def test_default_source_resolve_ref(ref_path, expected):
                 {'url': '/%path%', 'source': 'test'}]
             }
         })
-    expected = fs.path(expected).replace('/', os.sep)
+    expected_path = fs.path(expected_path).replace('/', os.sep)
     with mock_fs_scope(fs):
         app = PieCrust(fs.path('kitchen'), cache=False)
         s = app.getSource('test')
-        actual = s.resolveRef(ref_path)
-        assert actual == expected
+        actual_path, actual_metadata = s.resolveRef(ref_path)
+        assert actual_path == expected_path
+        assert actual_metadata == expected_metadata
 
 
 @pytest.mark.parametrize('page_ref, expected_source_name, expected_rel_path, '

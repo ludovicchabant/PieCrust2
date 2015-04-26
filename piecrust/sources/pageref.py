@@ -1,5 +1,6 @@
 import re
 import os.path
+from piecrust.sources.base import PageFactory
 
 
 page_ref_pattern = re.compile(r'(?P<src>[\w]+)\:(?P<path>.*?)(;|$)')
@@ -13,25 +14,35 @@ class PageRef(object):
     """ A reference to a page, with support for looking a page in different
         realms.
     """
+    _INDEX_NEEDS_LOADING = -2
+    _INDEX_NOT_FOUND = -1
+
+    class _HitInfo(object):
+        def __init__(self, source_name, rel_path, path, metadata):
+            self.source_name = source_name
+            self.rel_path = rel_path
+            self.path = path
+            self.metadata = metadata
+
     def __init__(self, app, page_ref):
         self.app = app
         self._page_ref = page_ref
-        self._paths = None
-        self._first_valid_path_index = -2
+        self._hits = None
+        self._first_valid_hit_index = self._INDEX_NEEDS_LOADING
         self._exts = list(app.config.get('site/auto_formats').keys())
 
     @property
     def exists(self):
         try:
-            self._checkPaths()
+            self._checkHits()
             return True
         except PageNotFoundError:
             return False
 
     @property
     def source_name(self):
-        self._checkPaths()
-        return self._paths[self._first_valid_path_index][0]
+        self._checkHits()
+        return self._first_valid_hit.source_name
 
     @property
     def source(self):
@@ -39,61 +50,75 @@ class PageRef(object):
 
     @property
     def rel_path(self):
-        self._checkPaths()
-        return self._paths[self._first_valid_path_index][1]
+        self._checkHits()
+        return self._first_valid_hit.rel_path
 
     @property
     def path(self):
-        self._checkPaths()
-        return self._paths[self._first_valid_path_index][2]
+        self._checkHits()
+        return self._first_valid_hit.path
+
+    @property
+    def metadata(self):
+        self._checkHits()
+        return self._first_valid_hit.metadata
 
     @property
     def possible_rel_paths(self):
         self._load()
-        return [p[1] for p in self._paths]
+        return [h.rel_path for h in self._hits]
 
     @property
     def possible_paths(self):
         self._load()
-        return [p[2] for p in self._paths]
+        return [h.path for h in self._hits]
+
+    def getFactory(self):
+        return PageFactory(self.source, self.rel_path, self.metadata)
+
+    @property
+    def _first_valid_hit(self):
+        return self._hits[self._first_valid_hit_index]
 
     def _load(self):
-        if self._paths is not None:
+        if self._hits is not None:
             return
 
         it = list(page_ref_pattern.finditer(self._page_ref))
         if len(it) == 0:
             raise Exception("Invalid page ref: %s" % self._page_ref)
 
-        self._paths = []
+        self._hits = []
         for m in it:
             source_name = m.group('src')
             source = self.app.getSource(source_name)
             if source is None:
                 raise Exception("No such source: %s" % source_name)
             rel_path = m.group('path')
-            path = source.resolveRef(rel_path)
+            path, metadata = source.resolveRef(rel_path)
             if '%ext%' in rel_path:
                 for e in self._exts:
-                    self._paths.append(
-                            (source_name,
-                             rel_path.replace('%ext%', e),
-                             path.replace('%ext%', e)))
+                    self._hits.append(self._HitInfo(
+                            source_name,
+                            rel_path.replace('%ext%', e),
+                            path.replace('%ext%', e),
+                            metadata))
             else:
-                self._paths.append((source_name, rel_path, path))
+                self._hits.append(
+                        self._HitInfo(source_name, rel_path, path, metadata))
 
-    def _checkPaths(self):
-        if self._first_valid_path_index >= 0:
+    def _checkHits(self):
+        if self._first_valid_hit_index >= 0:
             return
-        if self._first_valid_path_index == -1:
+        if self._first_valid_hit_index == self._INDEX_NOT_FOUND:
             raise PageNotFoundError(
                     "No valid paths were found for page reference: %s" %
                     self._page_ref)
 
         self._load()
-        self._first_valid_path_index = -1
-        for i, path_info in enumerate(self._paths):
-            if os.path.isfile(path_info[2]):
-                self._first_valid_path_index = i
+        self._first_valid_hit_index = self._INDEX_NOT_FOUND
+        for i, hit in enumerate(self._hits):
+            if os.path.isfile(hit.path):
+                self._first_valid_hit_index = i
                 break
 

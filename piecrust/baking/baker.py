@@ -178,7 +178,8 @@ class Baker(object):
                                             fac.path)
                 record.addEntry(entry)
 
-                route = self.app.getRoute(source.name, fac.metadata)
+                route = self.app.getRoute(source.name, fac.metadata,
+                                          skip_taxonomies=True)
                 if route is None:
                     entry.errors.append(
                             "Can't get route for page: %s" % fac.ref_spec)

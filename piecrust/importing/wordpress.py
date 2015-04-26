@@ -112,7 +112,7 @@ class _ImporterBase(object):
             source = self._pages_source
         else:
             raise Exception("Unknown post type: %s" % post_info['type'])
-        rel_path, fac_metadata = source.findPagePath(finder, MODE_CREATING)
+        factory = source.findPageFactory(finder, MODE_CREATING)
 
         metadata = post_info['metadata'].copy()
         for name in ['title', 'author', 'status', 'post_id', 'post_guid',
@@ -129,7 +129,7 @@ class _ImporterBase(object):
 
         status = metadata.get('status')
         if status == 'publish':
-            path = source.resolveRef(rel_path)
+            path = factory.path
             create_page(self.app, path, metadata, text)
         elif status == 'draft':
             filename = '-'.join(metadata['title'].split(' ')) + '.html'

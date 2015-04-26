@@ -531,14 +531,15 @@ class PieCrust(object):
                 return source
         return None
 
-    def getRoutes(self, source_name, skip_taxonomies=False):
+    def getRoutes(self, source_name, *, skip_taxonomies=False):
         for route in self.routes:
             if route.source_name == source_name:
                 if not skip_taxonomies or route.taxonomy_name is None:
                     yield route
 
-    def getRoute(self, source_name, source_metadata):
-        for route in self.getRoutes(source_name, True):
+    def getRoute(self, source_name, source_metadata, *, skip_taxonomies=False):
+        for route in self.getRoutes(source_name,
+                                    skip_taxonomies=skip_taxonomies):
             if route.matchesMetadata(source_metadata):
                 return route
         return None
