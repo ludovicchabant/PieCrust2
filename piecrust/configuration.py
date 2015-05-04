@@ -1,4 +1,5 @@
 import re
+import copy
 import logging
 import collections
 import yaml
@@ -6,6 +7,8 @@ from yaml.constructor import ConstructorError
 
 
 logger = logging.getLogger(__name__)
+
+default_allowed_types = (dict, list, tuple, int, bool, str)
 
 
 class ConfigurationError(Exception):
@@ -36,8 +39,10 @@ class Configuration(object):
             self._validateAll(values)
         self._values = values
 
-    def getAll(self):
-        return self.get()
+    def getDeepcopy(self, validate_types=False):
+        if validate_types:
+            self.validateTypes()
+        return copy.deepcopy(self.get())
 
     def get(self, key_path=None, default_value=None):
         self._ensureLoaded()
@@ -88,6 +93,30 @@ class Configuration(object):
 
         merge_dicts(self._values, other_values,
                     validator=self._validateValue)
+
+    def validateTypes(self, allowed_types=default_allowed_types):
+        self._validateDictTypesRecursive(self._values, allowed_types)
+
+    def _validateDictTypesRecursive(self, d, allowed_types):
+        for k, v in d.items():
+            if not isinstance(k, str):
+                raise ConfigurationError("Key '%s' is not a string." % k)
+            self._validateTypeRecursive(v, allowed_types)
+
+    def _validateListTypesRecursive(self, l, allowed_types):
+        for v in l:
+            self._validateTypeRecursive(v, allowed_types)
+
+    def _validateTypeRecursive(self, v, allowed_types):
+        if v is None:
+            return
+        if not isinstance(v, allowed_types):
+            raise ConfigurationError(
+                    "Value '%s' is of forbidden type: %s" % (v, type(v)))
+        if isinstance(v, dict):
+            self._validateDictTypesRecursive(v, allowed_types)
+        elif isinstance(v, list):
+            self._validateListTypesRecursive(v, allowed_types)
 
     def _ensureLoaded(self):
         if self._values is None:
