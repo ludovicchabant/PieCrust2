@@ -44,7 +44,7 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
         for dirpath, dirnames, filenames in os.walk(self.fs_endpoint_path):
             rel_dirpath = os.path.relpath(dirpath, self.fs_endpoint_path)
             dirnames[:] = list(filter(filter_page_dirname, dirnames))
-            for f in filter(filter_page_filename, filenames):
+            for f in sorted(filter(filter_page_filename, filenames)):
                 fac_path = f
                 if rel_dirpath != '.':
                     fac_path = os.path.join(rel_dirpath, f)
