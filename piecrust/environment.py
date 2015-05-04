@@ -137,7 +137,9 @@ class Environment(object):
         self.exec_info_stack.clear()
         self.was_cache_cleaned = False
         self.base_asset_url_format = '%uri%'
+        self._onSubCacheDirChanged(app)
 
+    def _onSubCacheDirChanged(self, app):
         for name, repo in self.fs_caches.items():
             cache = app.cache.getCache(name)
             repo.fs_cache = cache

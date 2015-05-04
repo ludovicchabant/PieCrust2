@@ -403,7 +403,8 @@ class PieCrust(object):
         self.plugin_loader = PluginLoader(self)
 
         if cache:
-            self.cache = ExtensibleCache(self.cache_dir)
+            cache_dir = os.path.join(self.cache_dir, 'default')
+            self.cache = ExtensibleCache(cache_dir)
         else:
             self.cache = NullExtensibleCache()
 
@@ -494,6 +495,12 @@ class PieCrust(object):
     def cache_dir(self):
         return os.path.join(self.root_dir, CACHE_DIR)
 
+    @property  # Not a cached property because its result can change.
+    def sub_cache_dir(self):
+        if self.cache.enabled:
+            return self.cache.base_dir
+        return None
+
     @cached_property
     def sources(self):
         defs = {}
@@ -556,6 +563,18 @@ class PieCrust(object):
             if tax.name == tax_name:
                 return tax
         return None
+
+    def useSubCache(self, cache_name, cache_key):
+        cache_hash = hashlib.md5(cache_key.encode('utf8')).hexdigest()
+        cache_dir = os.path.join(self.cache_dir,
+                                 '%s_%s' % (cache_name, cache_hash))
+        self._useSubCacheDir(cache_dir)
+
+    def _useSubCacheDir(self, cache_dir):
+        assert cache_dir
+        logger.debug("Moving cache to: %s" % cache_dir)
+        self.cache = ExtensibleCache(cache_dir)
+        self.env._onSubCacheDirChanged(self)
 
     def _get_dir(self, default_rel_dir):
         abs_dir = os.path.join(self.root_dir, default_rel_dir)

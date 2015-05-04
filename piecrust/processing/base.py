@@ -132,7 +132,7 @@ class ProcessorPipeline(object):
         self.out_dir = out_dir
         self.force = force
 
-        tmp_dir = app.cache_dir
+        tmp_dir = app.sub_cache_dir
         if not tmp_dir:
             import tempfile
             tmp_dir = os.path.join(tempfile.gettempdir(), 'piecrust')

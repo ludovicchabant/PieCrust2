@@ -1,5 +1,6 @@
 import os
 import os.path
+import shutil
 import codecs
 import logging
 import threading
@@ -40,6 +41,16 @@ class ExtensibleCache(object):
         if except_names is None:
             return dirnames
         return [dn for dn in dirnames if dn not in except_names]
+
+    def clearCache(self, name):
+        cache_dir = self.getCacheDir(name)
+        if os.path.isdir(cache_dir):
+            logger.debug("Cleaning cache: %s" % cache_dir)
+            shutil.rmtree(cache_dir)
+
+    def clearCaches(self, except_names=None):
+        for name in self.getCacheNames(except_names=except_names):
+            self.clearCache(name)
 
 
 class SimpleCache(object):
@@ -121,4 +132,16 @@ class NullExtensibleCache(object):
 
     def getCache(self, name):
         return self.null_cache
+
+    def getCacheDir(self, name):
+        raise NotImplementedError()
+
+    def getCacheNames(self, except_names=None):
+        return []
+
+    def clearCache(self, name):
+        pass
+
+    def clearCaches(self, except_names=None):
+        pass
 

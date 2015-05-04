@@ -11,6 +11,7 @@ class ServeCommand(ChefCommand):
         super(ServeCommand, self).__init__()
         self.name = 'serve'
         self.description = "Runs a local web server to serve your website."
+        self.cache_name = 'server'
 
     def setupParser(self, parser, app):
         parser.add_argument(
@@ -43,6 +44,7 @@ class ServeCommand(ChefCommand):
         server = Server(
                 ctx.app.root_dir,
                 debug=debug,
+                sub_cache_dir=ctx.app.sub_cache_dir,
                 use_reloader=ctx.args.use_reloader)
         app = server.getWsgiApp()
 

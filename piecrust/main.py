@@ -181,14 +181,19 @@ def _run_chef(pre_args):
     else:
         app = PieCrust(root, cache=pre_args.cache, debug=pre_args.debug)
 
+    # Build a hash for a custom cache directory.
+    cache_key = 'default'
+
     # Handle a configuration variant.
     if pre_args.config_variant is not None:
         if not root:
             raise SiteNotFoundError("Can't apply any variant.")
         app.config.applyVariant('variants/' + pre_args.config_variant)
+        cache_key += ',variant=%s' % pre_args.config_variant
     for name, value in pre_args.config_values:
         logger.debug("Setting configuration '%s' to: %s" % (name, value))
         app.config.set(name, value)
+        cache_key += ',%s=%s' % (name, value)
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
@@ -234,6 +239,7 @@ def _run_chef(pre_args):
         p = subparsers.add_parser(c.name, help=c.description)
         c.setupParser(p, app)
         p.set_defaults(func=c.checkedRun)
+        p.set_defaults(cache_name=c.cache_name)
 
     help_cmd = next(filter(lambda c: c.name == 'help', commands), None)
     if help_cmd and help_cmd.has_topics:
@@ -252,6 +258,10 @@ def _run_chef(pre_args):
     if not hasattr(result, 'func'):
         parser.print_help()
         return 0
+
+    # Use a customized cache for the command and current config.
+    if result.cache_name != 'default' or cache_key != 'default':
+        app.useSubCache(result.cache_name, cache_key)
 
     # Run the command!
     ctx = CommandContext(app, parser, result)

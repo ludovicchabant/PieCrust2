@@ -19,6 +19,7 @@ class ChefCommand(object):
         self.name = '__unknown__'
         self.description = '__unknown__'
         self.requires_website = True
+        self.cache_name = 'default'
 
     def setupParser(self, parser, app):
         raise NotImplementedError()

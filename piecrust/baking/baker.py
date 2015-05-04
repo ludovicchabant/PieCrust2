@@ -1,6 +1,5 @@
 import time
 import os.path
-import shutil
 import hashlib
 import logging
 import threading
@@ -10,7 +9,6 @@ from piecrust.baking.scheduler import BakeScheduler
 from piecrust.baking.single import (BakingError, PageBaker)
 from piecrust.chefutil import format_timed, log_friendly_exception
 from piecrust.sources.base import (
-        PageFactory,
         REALM_NAMES, REALM_USER, REALM_THEME)
 
 
@@ -141,12 +139,7 @@ class Baker(object):
 
         if reason is not None:
             # We have to bake everything from scratch.
-            for cache_name in self.app.cache.getCacheNames(
-                    except_names=['app']):
-                cache_dir = self.app.cache.getCacheDir(cache_name)
-                if os.path.isdir(cache_dir):
-                    logger.debug("Cleaning baker cache: %s" % cache_dir)
-                    shutil.rmtree(cache_dir)
+            self.app.cache.clearCaches(except_names=['app'])
             self.force = True
             record.incremental_count = 0
             record.clearPrevious()
