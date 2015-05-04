@@ -18,7 +18,7 @@ from jinja2 import FileSystemLoader, Environment
 from piecrust.app import PieCrust
 from piecrust.environment import StandardEnvironment
 from piecrust.processing.base import ProcessorPipeline
-from piecrust.rendering import PageRenderingContext, render_page
+from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
 from piecrust.sources.base import PageFactory, MODE_PARSING
 from piecrust.uriutil import split_sub_uri
 
@@ -252,7 +252,9 @@ class Server(object):
         page = factory.buildPage()
         # We force the rendering of the page because it could not have
         # changed, but include pages that did change.
-        render_ctx = PageRenderingContext(page, req_path, page_num,
+        qp = QualifiedPage(page, route, route_metadata)
+        render_ctx = PageRenderingContext(qp,
+                                          page_num=page_num,
                                           force_render=True)
         if taxonomy is not None:
             render_ctx.setTaxonomyFilter(taxonomy, tax_terms)

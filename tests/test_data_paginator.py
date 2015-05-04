@@ -1,4 +1,5 @@
 import math
+import mock
 import pytest
 from piecrust.data.paginator import Paginator
 from piecrust.sources.interfaces import IPaginationSource
@@ -44,17 +45,17 @@ class MockSource(list, IPaginationSource):
         ('blog', 3, 14)
     ])
 def test_paginator(uri, page_num, count):
-    def _mock_get_uri(index):
+    def _get_mock_uri(sub_num):
         res = uri
-        if index > 1:
+        if sub_num > 1:
             if res != '' and not res.endswith('/'):
                 res += '/'
-            res += '%d' % index
+            res += '%d' % sub_num
         return res
 
     source = MockSource(count)
-    p = Paginator(None, source, page_num)
-    p._getPageUri = _mock_get_uri
+    p = Paginator(None, source, page_num=page_num)
+    p._getPageUri = _get_mock_uri
 
     if count <= 5:
         # All posts fit on the page

@@ -34,25 +34,20 @@ class DataProvider(object):
         return []
 
 
-class CompositeDataProvider(object):
-    def __init__(self, providers):
-        self._providers = providers
-
-    def __getattr__(self, name):
-        for p in self._providers:
-            try:
-                return getattr(p, name)
-            except AttributeError:
-                pass
-        raise AttributeError()
-
-
 class IteratorDataProvider(DataProvider):
     PROVIDER_NAME = 'iterator'
 
     debug_render_doc = """Provides a list of pages."""
 
     def __init__(self, source, page, user_data):
+        self._innerIt = None
+        if isinstance(user_data, IteratorDataProvider):
+            # Iterator providers can be chained, like for instance with
+            # `site.pages` listing both the theme pages and the user site's
+            # pages.
+            self._innerIt = user_data
+            user_data = None
+
         super(IteratorDataProvider, self).__init__(source, page, user_data)
         self._pages = PageIterator(source, current_page=page)
         self._pages._iter_event += self._onIteration
@@ -65,7 +60,9 @@ class IteratorDataProvider(DataProvider):
         return self._pages[key]
 
     def __iter__(self):
-        return iter(self._pages)
+        yield from iter(self._pages)
+        if self._innerIt:
+            yield from self._innerIt
 
     def _onIteration(self):
         if not self._ctx_set:

@@ -277,18 +277,13 @@ class Baker(object):
                             tax.page_ref)
                     continue
 
-                tax_page_source = tax_page_ref.source
-                tax_page_rel_path = tax_page_ref.rel_path
                 logger.debug(
                         "Using taxonomy page: %s:%s" %
-                        (tax_page_source.name, tax_page_rel_path))
-
+                        (tax_page_ref.source_name, tax_page_ref.rel_path))
                 for term in terms:
-                    fac = PageFactory(
-                            tax_page_source, tax_page_rel_path,
-                            {tax.term_name: term})
+                    fac = tax_page_ref.getFactory()
                     logger.debug(
-                            "Queuing: %s [%s, %s]" %
+                            "Queuing: %s [%s=%s]" %
                             (fac.ref_spec, tax_name, term))
                     entry = BakeRecordPageEntry(
                             fac.source.name, fac.rel_path, fac.path,

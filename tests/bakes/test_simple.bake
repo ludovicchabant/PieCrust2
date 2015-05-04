@@ -25,4 +25,11 @@ out:
                 post1.html: 'post one'
     about.html: 'URL: /whatever/about.html'
     index.html: 'something'
+---
+in:
+    pages/foo.md: |
+        This page is {{page.url}}
+outfiles:
+    foo.html: |
+        This page is /foo.html
 

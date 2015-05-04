@@ -1,7 +1,8 @@
 import os
 import os.path
+import copy
 import logging
-from piecrust.sources.base import MODE_CREATING
+from piecrust.sources.base import MODE_CREATING, MODE_PARSING
 from piecrust.sources.default import DefaultPageSource
 
 
@@ -19,10 +20,14 @@ class ProseSource(DefaultPageSource):
         metadata['config'] = self._makeConfig(rel_path, mode)
 
     def _makeConfig(self, rel_path, mode):
-        c = dict(self.config_recipe)
+        c = copy.deepcopy(self.config_recipe)
         if c.get('title') == '%first_line%' and mode != MODE_CREATING:
             path = os.path.join(self.fs_endpoint_path, rel_path)
-            c['title'] = get_first_line(path)
+            try:
+                c['title'] = get_first_line(path)
+            except OSError:
+                if mode == MODE_PARSING:
+                    raise
         return c
 
 

@@ -39,3 +39,52 @@ outfiles:
         /foo/page2.html
         /foo/page3.html
         None
+---
+config:
+    site:
+        posts_per_page: 3
+in:
+    posts/2015-03-01_post01.md: |
+        ---
+        title: Post 01
+        tags: [foo]
+        ---
+    posts/2015-03-02_post02.md: |
+        ---
+        title: Post 02
+        tags: [foo]
+        ---
+    posts/2015-03-03_post03.md: |
+        ---
+        title: Post 03
+        tags: [foo]
+        ---
+    posts/2015-03-04_post04.md: |
+        ---
+        title: Post 04
+        tags: [foo]
+        ---
+    posts/2015-03-05_post05.md: |
+        ---
+        title: Post 05
+        tags: [foo]
+        ---
+    pages/_index.md: ''
+    pages/_tag.md: |
+        Posts with {{tag}}
+        {% for p in pagination.items -%}
+        {{p.url}} {{p.title}}
+        {% endfor -%}
+        {{pagination.prev_page}}
+        {{pagination.this_page}}
+        {{pagination.next_page}}
+outfiles:
+    tag/foo.html: |
+        Posts with foo
+        /2015/03/05/post05.html Post 05
+        /2015/03/04/post04.html Post 04
+        /2015/03/03/post03.html Post 03
+        None
+        /tag/foo.html
+        /tag/foo/2.html
+

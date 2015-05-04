@@ -1,3 +1,4 @@
+import copy
 import logging
 from werkzeug.utils import cached_property
 from piecrust.configuration import ConfigurationError
@@ -57,7 +58,7 @@ class PageFactory(object):
 
     def _doBuildPage(self):
         logger.debug("Building page: %s" % self.path)
-        page = Page(self.source, self.metadata, self.rel_path)
+        page = Page(self.source, copy.deepcopy(self.metadata), self.rel_path)
         # Load it right away, especially when using the page repository,
         # because we'll be inside a critical scope.
         page._load()

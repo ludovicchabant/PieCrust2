@@ -1,5 +1,6 @@
 import re
 import os.path
+import copy
 from piecrust.sources.base import PageFactory
 
 
@@ -74,7 +75,8 @@ class PageRef(object):
         return [h.path for h in self._hits]
 
     def getFactory(self):
-        return PageFactory(self.source, self.rel_path, self.metadata)
+        return PageFactory(self.source, self.rel_path,
+                           copy.deepcopy(self.metadata))
 
     @property
     def _first_valid_hit(self):
@@ -95,15 +97,14 @@ class PageRef(object):
             if source is None:
                 raise Exception("No such source: %s" % source_name)
             rel_path = m.group('path')
-            path, metadata = source.resolveRef(rel_path)
             if '%ext%' in rel_path:
                 for e in self._exts:
+                    cur_rel_path = rel_path.replace('%ext%', e)
+                    path, metadata = source.resolveRef(cur_rel_path)
                     self._hits.append(self._HitInfo(
-                            source_name,
-                            rel_path.replace('%ext%', e),
-                            path.replace('%ext%', e),
-                            metadata))
+                            source_name, cur_rel_path, path, metadata))
             else:
+                path, metadata = source.resolveRef(rel_path)
                 self._hits.append(
                         self._HitInfo(source_name, rel_path, path, metadata))
 

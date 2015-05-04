@@ -4,7 +4,7 @@ import mock
 from piecrust.data.filters import (
         PaginationFilter, HasFilterClause, IsFilterClause,
         page_value_accessor)
-from piecrust.rendering import PageRenderingContext, render_page
+from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
 from piecrust.serving import find_routes
 from piecrust.sources.base import REALM_USER, REALM_THEME
 from .mockutil import mock_fs, mock_fs_scope
@@ -74,10 +74,13 @@ def test_serve_tag_page(tag, expected_indices):
                     "{%endfor%}"))
     with mock_fs_scope(fs):
         app = fs.getApp()
-        page = app.getSource('pages').getPage({'slug': '_tag'})
+        page = app.getSource('pages').getPage({'slug': '_tag', 'tag': tag})
+        route = app.getTaxonomyRoute('tags', 'posts')
+        route_metadata = {'slug': '_tag', 'tag': tag}
         taxonomy = app.getTaxonomy('tags')
 
-        ctx = PageRenderingContext(page, '/tag/' + tag)
+        qp = QualifiedPage(page, route, route_metadata)
+        ctx = PageRenderingContext(qp)
         ctx.setTaxonomyFilter(taxonomy, tag)
         rp = render_page(ctx)
 
@@ -115,10 +118,14 @@ def test_serve_category_page(category, expected_indices):
                     "{%endfor%}"))
     with mock_fs_scope(fs):
         app = fs.getApp()
-        page = app.getSource('pages').getPage({'slug': '_category'})
+        page = app.getSource('pages').getPage({'slug': '_category',
+                                               'category': category})
+        route = app.getTaxonomyRoute('categories', 'posts')
+        route_metadata = {'slug': '_category', 'category': category}
         taxonomy = app.getTaxonomy('categories')
 
-        ctx = PageRenderingContext(page, '/' + category)
+        qp = QualifiedPage(page, route, route_metadata)
+        ctx = PageRenderingContext(qp)
         ctx.setTaxonomyFilter(taxonomy, category)
         rp = render_page(ctx)
 

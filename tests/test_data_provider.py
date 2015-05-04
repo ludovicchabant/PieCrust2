@@ -1,4 +1,4 @@
-from piecrust.rendering import PageRenderingContext, render_page
+from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
 from .mockutil import mock_fs, mock_fs_scope
 
 
@@ -18,7 +18,10 @@ def test_blog_provider():
     with mock_fs_scope(fs):
         app = fs.getApp()
         page = app.getSource('pages').getPage({'slug': 'categories'})
-        ctx = PageRenderingContext(page, '/categories')
+        route = app.getRoute('pages', None)
+        route_metadata = {'slug': 'categories'}
+        qp = QualifiedPage(page, route, route_metadata)
+        ctx = PageRenderingContext(qp)
         rp = render_page(ctx)
         expected = "\nBar (1)\n\nFoo (2)\n"
         assert rp.content == expected

@@ -23,12 +23,11 @@ class Paginator(object):
             'total_item_count', 'total_page_count',
             'next_item', 'prev_item']
 
-    def __init__(self, page, source, page_num=1, pgn_filter=None,
-                 items_per_page=-1):
-        self._parent_page = page
+    def __init__(self, qualified_page, source, *,
+                 page_num=1, pgn_filter=None, items_per_page=-1):
+        self._parent_page = qualified_page
         self._source = source
         self._page_num = page_num
-        self._route = None
         self._iterator = None
         self._pgn_filter = pgn_filter
         self._items_per_page = items_per_page
@@ -214,17 +213,7 @@ class Paginator(object):
         return f
 
     def _getPageUri(self, index):
-        if self._route is None:
-            app = self._source.app
-            self._route = app.getRoute(self._parent_page.source.name,
-                                       self._parent_page.source_metadata)
-            if self._route is None:
-                raise Exception("Can't get route for page: %s" %
-                                self._parent_page.path)
-
-        return self._route.getUri(self._parent_page.source_metadata,
-                                  provider=self._parent_page,
-                                  sub_num=index)
+        return self._parent_page.getUri(index)
 
     def _onIteration(self):
         if self._parent_page is not None and not self._pgn_set_on_ctx:

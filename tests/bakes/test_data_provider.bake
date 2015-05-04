@@ -1,0 +1,16 @@
+---
+in:
+    pages/foo.md: |
+        Foo!
+    pages/bar.md: |
+        Bar!
+    pages/allpages.md: |
+        {% for p in site.pages -%}
+        {{p.url}}
+        {% endfor %}
+outfiles:
+    allpages.html: |
+        /
+        /allpages.html
+        /bar.html
+        /foo.html

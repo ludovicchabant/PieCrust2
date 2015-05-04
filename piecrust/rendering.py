@@ -1,6 +1,7 @@
 import re
 import os.path
 import logging
+from werkzeug.utils import cached_property
 from piecrust.data.builder import (DataBuildingContext, build_page_data,
         build_layout_data)
 from piecrust.data.filters import (
@@ -23,6 +24,20 @@ class PageRenderingError(Exception):
 
 class TemplateEngineNotFound(Exception):
     pass
+
+
+class QualifiedPage(object):
+    def __init__(self, page, route, route_metadata):
+        self.page = page
+        self.route = route
+        self.route_metadata = route_metadata
+
+    def getUri(self, sub_num=1):
+        return self.route.getUri(self.route_metadata, provider=self.page,
+                                 sub_num=sub_num)
+
+    def __getattr__(self, name):
+        return getattr(self.page, name)
 
 
 class RenderedPage(object):
@@ -53,9 +68,8 @@ class RenderPassInfo(object):
 
 
 class PageRenderingContext(object):
-    def __init__(self, page, uri, page_num=1, force_render=False):
-        self.page = page
-        self.uri = uri
+    def __init__(self, qualified_page, page_num=1, force_render=False):
+        self.page = qualified_page
         self.page_num = page_num
         self.force_render = force_render
         self.pagination_source = None
@@ -74,6 +88,10 @@ class PageRenderingContext(object):
     @property
     def source_metadata(self):
         return self.page.source_metadata
+
+    @cached_property
+    def uri(self):
+        return self.page.getUri(self.page_num)
 
     @property
     def current_pass_info(self):
@@ -129,7 +147,7 @@ def render_page(ctx):
         page = ctx.page
 
         # Build the data for both segment and layout rendering.
-        data_ctx = DataBuildingContext(page, ctx.uri, ctx.page_num)
+        data_ctx = DataBuildingContext(page, page_num=ctx.page_num)
         data_ctx.pagination_source = ctx.pagination_source
         data_ctx.pagination_filter = ctx.pagination_filter
         page_data = build_page_data(data_ctx)
@@ -156,8 +174,8 @@ def render_page(ctx):
             layout_name = page.source.config.get('default_layout', 'default')
         null_names = ['', 'none', 'nil']
         if layout_name not in null_names:
-            layout_data = build_layout_data(page, page_data, contents)
-            output = render_layout(layout_name, page, layout_data)
+            build_layout_data(page, page_data, contents)
+            output = render_layout(layout_name, page, page_data)
         else:
             output = contents['content']
 
@@ -173,8 +191,9 @@ def render_page(ctx):
 def render_page_segments(ctx):
     repo = ctx.app.env.rendered_segments_repository
     if repo:
-        cache_key = '%s:%s' % (ctx.uri, ctx.page_num)
-        return repo.get(cache_key,
+        cache_key = ctx.uri
+        return repo.get(
+            cache_key,
             lambda: _do_render_page_segments_from_ctx(ctx),
             fs_cache_time=ctx.page.path_mtime)
 
@@ -186,7 +205,7 @@ def _do_render_page_segments_from_ctx(ctx):
     eis.pushPage(ctx.page, ctx)
     ctx.setCurrentPass(PASS_FORMATTING)
     try:
-        data_ctx = DataBuildingContext(ctx.page, ctx.uri, ctx.page_num)
+        data_ctx = DataBuildingContext(ctx.page, page_num=ctx.page_num)
         page_data = build_page_data(data_ctx)
         return _do_render_page_segments(ctx.page, page_data)
     finally:

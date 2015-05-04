@@ -1,3 +1,4 @@
+import copy
 import time
 import logging
 from piecrust.data.assetor import Assetor
@@ -97,7 +98,7 @@ class LazyPageConfigData(object):
     def _load(self):
         if self._values is not None:
             return
-        self._values = dict(self._page.config.get())
+        self._values = self._page.config.getDeepcopy(self._page.app.debug)
         try:
             self._loadCustom()
         except Exception as ex:
@@ -119,13 +120,20 @@ class LazyPageConfigData(object):
 class PaginationData(LazyPageConfigData):
     def __init__(self, page):
         super(PaginationData, self).__init__(page)
+        self._route = None
+        self._route_metadata = None
 
     def _get_uri(self):
         page = self._page
-        route = page.app.getRoute(page.source.name, page.source_metadata)
-        if route is None:
-            raise Exception("Can't get route for page: %s" % page.path)
-        return route.getUri(page.source_metadata, provider=page)
+        if self._route is None:
+            # TODO: this is not quite correct, as we're missing parts of the
+            #       route metadata if the current page is a taxonomy page.
+            self._route = page.app.getRoute(page.source.name,
+                                            page.source_metadata)
+            self._route_metadata = copy.deepcopy(page.source_metadata)
+            if self._route is None:
+                raise Exception("Can't get route for page: %s" % page.path)
+        return self._route.getUri(self._route_metadata, provider=page)
 
     def _loadCustom(self):
         page_url = self._get_uri()
@@ -161,8 +169,11 @@ class PaginationData(LazyPageConfigData):
             uri = self._get_uri()
             try:
                 from piecrust.rendering import (
-                        PageRenderingContext, render_page_segments)
-                ctx = PageRenderingContext(self._page, uri)
+                        QualifiedPage, PageRenderingContext,
+                        render_page_segments)
+                qp = QualifiedPage(self._page, self._route,
+                                   self._route_metadata)
+                ctx = PageRenderingContext(qp)
                 segs = render_page_segments(ctx)
             except Exception as e:
                 raise Exception(

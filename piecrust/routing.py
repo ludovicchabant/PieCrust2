@@ -1,5 +1,6 @@
 import re
 import os.path
+import copy
 import logging
 
 
@@ -65,9 +66,9 @@ class Route(object):
         else:
             self.uri_re_no_path = None
 
-        self.required_source_metadata = set()
+        self.required_route_metadata = set()
         for m in route_re.finditer(self.uri_pattern):
-            self.required_source_metadata.add(m.group('name'))
+            self.required_route_metadata.add(m.group('name'))
 
         self.template_func = None
         self.template_func_name = None
@@ -86,8 +87,8 @@ class Route(object):
     def source_realm(self):
         return self.source.realm
 
-    def matchesMetadata(self, source_metadata):
-        return self.required_source_metadata.issubset(source_metadata.keys())
+    def matchesMetadata(self, route_metadata):
+        return self.required_route_metadata.issubset(route_metadata.keys())
 
     def matchUri(self, uri):
         if not uri.startswith(self.uri_root):
@@ -108,17 +109,17 @@ class Route(object):
                 return m.groupdict()
         return None
 
-    def getUri(self, source_metadata, *, sub_num=1, provider=None):
+    def getUri(self, route_metadata, *, sub_num=1, provider=None):
+        route_metadata = copy.deepcopy(route_metadata)
         if provider:
-            source_metadata = dict(source_metadata)
-            source_metadata.update(provider.getRouteMetadata())
+            route_metadata.update(provider.getRouteMetadata())
 
         #TODO: fix this hard-coded shit
         for key in ['year', 'month', 'day']:
-            if key in source_metadata and isinstance(source_metadata[key], str):
-                source_metadata[key] = int(source_metadata[key])
+            if key in route_metadata and isinstance(route_metadata[key], str):
+                route_metadata[key] = int(route_metadata[key])
 
-        uri = self.uri_format % source_metadata
+        uri = self.uri_format % route_metadata
         suffix = None
         if sub_num > 1:
             # Note that we know the pagination suffix starts with a slash.

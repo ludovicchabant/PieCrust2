@@ -42,7 +42,7 @@ def test_required_metadata(site_root, route_pattern,
     app.config.set('site/root', site_root.rstrip('/') + '/')
     config = {'url': route_pattern, 'source': 'blah'}
     route = Route(app, config)
-    assert route.required_source_metadata == expected_required_metadata
+    assert route.required_route_metadata == expected_required_metadata
 
 
 @pytest.mark.parametrize(

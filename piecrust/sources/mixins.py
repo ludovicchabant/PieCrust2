@@ -5,6 +5,7 @@ from piecrust.data.base import PaginationData
 from piecrust.data.filters import PaginationFilter, page_value_accessor
 from piecrust.sources.base import PageFactory
 from piecrust.sources.interfaces import IPaginationSource, IListableSource
+from piecrust.sources.pageref import PageNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -20,6 +21,33 @@ class SourceFactoryIterator(object):
 
     def __iter__(self):
         return self.source.getPages()
+
+
+class SourceFactoryWithoutTaxonomiesIterator(object):
+    def __init__(self, source):
+        self.source = source
+        self._taxonomy_pages = None
+        # See comment above.
+        self.it = None
+
+    def __iter__(self):
+        self._cacheTaxonomyPages()
+        for p in self.source.getPages():
+            if p.rel_path in self._taxonomy_pages:
+                continue
+            yield p
+
+    def _cacheTaxonomyPages(self):
+        if self._taxonomy_pages is not None:
+            return
+
+        self._taxonomy_pages = set()
+        for tax in self.source.app.taxonomies:
+            page_ref = tax.getPageRef(self.source.name)
+            try:
+                self._taxonomy_pages.add(page_ref.rel_path)
+            except PageNotFoundError:
+                pass
 
 
 class DateSortIterator(object):
@@ -52,7 +80,9 @@ class SimplePaginationSourceMixin(IPaginationSource):
         return self.config['items_per_page']
 
     def getSourceIterator(self):
-        return SourceFactoryIterator(self)
+        if self.config.get('iteration_includes_taxonomies', False):
+            return SourceFactoryIterator(self)
+        return SourceFactoryWithoutTaxonomiesIterator(self)
 
     def getSorterIterator(self, it):
         return DateSortIterator(it)

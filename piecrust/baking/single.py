@@ -1,4 +1,5 @@
 import os.path
+import copy
 import shutil
 import codecs
 import logging
@@ -10,7 +11,7 @@ from piecrust.data.filters import (
         IsFilterClause, AndBooleanClause,
         page_value_accessor)
 from piecrust.rendering import (
-        PageRenderingContext, render_page,
+        QualifiedPage, PageRenderingContext, render_page,
         PASS_FORMATTING, PASS_RENDERING)
 from piecrust.sources.base import (
         PageFactory,
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def copy_public_page_config(config):
-    res = config.get().copy()
+    res = config.getDeepcopy()
     for k in list(res.keys()):
         if k.startswith('__'):
             del res[k]
@@ -60,10 +61,12 @@ class PageBaker(object):
         return os.path.normpath(os.path.join(*bake_path))
 
     def bake(self, factory, route, record_entry):
-        bake_taxonomy_info = None
-        route_metadata = dict(factory.metadata)
+        # Get the page.
+        page = factory.buildPage()
+        route_metadata = copy.deepcopy(factory.metadata)
 
-        # Add taxonomy metadata for generating the URL if needed.
+        # Add taxonomy info in the template data and route metadata if needed.
+        bake_taxonomy_info = None
         if record_entry.taxonomy_info:
             tax_name, tax_term, tax_source_name = record_entry.taxonomy_info
             taxonomy = self.app.getTaxonomy(tax_name)
@@ -71,8 +74,7 @@ class PageBaker(object):
             route_metadata[taxonomy.term_name] = slugified_term
             bake_taxonomy_info = (taxonomy, tax_term)
 
-        # Generate the URL using the route.
-        page = factory.buildPage()
+        # Generate the URI.
         uri = route.getUri(route_metadata, provider=page)
 
         # See if this URL has been overriden by a previously baked page.
@@ -209,7 +211,8 @@ class PageBaker(object):
                         BakeRecordSubPageEntry.FLAG_FORMATTING_INVALIDATED
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
-                ctx, rp = self._bakeSingle(page, sub_uri, cur_sub, out_path,
+                qp = QualifiedPage(page, route, route_metadata)
+                ctx, rp = self._bakeSingle(qp, cur_sub, out_path,
                                            bake_taxonomy_info)
             except Exception as ex:
                 if self.app.debug:
@@ -257,10 +260,8 @@ class PageBaker(object):
                     cur_sub += 1
                     has_more_subs = True
 
-    def _bakeSingle(self, page, sub_uri, num, out_path,
-                    taxonomy_info=None):
-        ctx = PageRenderingContext(page, sub_uri)
-        ctx.page_num = num
+    def _bakeSingle(self, qualified_page, num, out_path, taxonomy_info=None):
+        ctx = PageRenderingContext(qualified_page, page_num=num)
         if taxonomy_info:
             ctx.setTaxonomyFilter(taxonomy_info[0], taxonomy_info[1])
 
