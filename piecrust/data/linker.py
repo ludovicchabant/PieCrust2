@@ -25,7 +25,7 @@ class PageLinkerData(object):
         self._linker._load()
         if self._linker._self_item is None:
             return None
-        return self._linker._self_item.config.get('__linker_child')
+        return self._linker._self_item._linker_info.child_linker
 
     @property
     def root(self):
@@ -45,9 +45,9 @@ class LinkedPageData(PaginationData):
 
     def __init__(self, page):
         super(LinkedPageData, self).__init__(page)
-        self.name = page.config.get('__linker_name')
-        self.is_self = page.config.get('__linker_is_self')
-        self.children = page.config.get('__linker_child')
+        self.name = page._linker_info.name
+        self.is_self = page._linker_info.is_self
+        self.children = page._linker_info.child_linker
         self.is_dir = (self.children is not None)
         self.is_page = True
 
@@ -98,6 +98,22 @@ class LinkerSource(IPaginationSource):
         if self._orig_source:
             return self._orig_source.getSettingAccessor()
         return None
+
+
+class _LinkerInfo(object):
+    def __init__(self):
+        self.name = None
+        self.is_self = False
+        self.child_linker = None
+
+
+class _LinkedPage(object):
+    def __init__(self, page):
+        self._page = page
+        self._linker_info = _LinkerInfo()
+
+    def __getattr__(self, name):
+        return getattr(self._page, name)
 
 
 class Linker(object):
@@ -200,10 +216,11 @@ class Linker(object):
                     item = Linker(self._source, self._root_page_path,
                                   name=name, dir_path=data)
                 else:
-                    item = data.buildPage()
-                    is_self = (item.rel_path == self._root_page_path)
-                    item.config.set('__linker_name', name)
-                    item.config.set('__linker_is_self', is_self)
+                    page = data.buildPage()
+                    is_self = (page.rel_path == self._root_page_path)
+                    item = _LinkedPage(page)
+                    item._linker_info.name = name
+                    item._linker_info.is_self = is_self
                     if is_self:
                         self._self_item = item
 
@@ -213,11 +230,11 @@ class Linker(object):
                 elif is_dir:
                     # The current item is a directory. The existing item
                     # should be a page.
-                    existing.config.set('__linker_child', item)
+                    existing._linker_info.child_linker = item
                 else:
                     # The current item is a page. The existing item should
                     # be a directory.
-                    item.config.set('__linker_child', existing)
+                    item._linker_info.child_linker = existing
                     self._items[name] = item
 
 
