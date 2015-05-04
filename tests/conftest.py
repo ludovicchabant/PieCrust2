@@ -97,6 +97,7 @@ class BakeTestItem(pytest.Item):
                 expected = expected_partial_files[key]
                 # HACK because for some reason PyYAML adds a new line for those
                 # and I have no idea why.
+                actual = actual.rstrip('\n')
                 expected = expected.rstrip('\n')
                 cmpres = _compare_str(expected, actual, key)
                 if cmpres:
@@ -188,14 +189,20 @@ def _compare_str(left, right, path):
         return None
     for i in range(min(len(left), len(right))):
         if left[i] != right[i]:
-            start = max(0, i - 5)
-            lend = min(len(left), i + 5)
-            rend = min(len(right), i + 5)
-            return ["Items '%s' differ at index %d:" % (path, i),
-                    left[start:lend],
-                    (' ' * start + '^'),
-                    right[start:rend],
-                    (' ' * start + '^')]
+            start = max(0, i - 15)
+            marker_offset = min(15, (i - start)) + 3
+
+            lend = min(len(left), i + 15)
+            rend = min(len(right), i + 15)
+
+            return ["Items '%s' differ at index %d:" % (path, i), '',
+                    "Left:", left, '',
+                    "Right:", right, '',
+                    "Difference:",
+                    repr(left[start:lend]),
+                    (' ' * marker_offset + '^'),
+                    repr(right[start:rend]),
+                    (' ' * marker_offset + '^')]
     if len(left) > len(right):
         return ["Left is longer.",
                 "Left '%s': " % path, left,
