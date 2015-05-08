@@ -16,7 +16,8 @@ def read(fname):
 
 
 def runcmd(cmd):
-    with subprocess.Popen(cmd, stdout=subprocess.PIPE,
+    with subprocess.Popen(
+            cmd, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE) as p:
         out, err = p.communicate()
     return out, err
@@ -153,7 +154,12 @@ if version is None:
                         "from the repository.")
 
 
-setup(name="PieCrust",
+install_requires = read('requirements.txt').splitlines()
+tests_require = read('dev-requirements.txt').splitlines()
+
+
+setup(
+        name="PieCrust",
         version=version,
         description="A powerful static website generator and lightweight CMS.",
         long_description=read('README.rst') + '\n\n' + read('CHANGELOG.rst'),
@@ -173,30 +179,11 @@ setup(name="PieCrust",
         packages=find_packages(),
         include_package_data=True,
         zip_safe=False,
-        install_requires=[
-            'Jinja2==2.7.3',
-            'Markdown==2.4.1',
-            'MarkupSafe==0.23',
-            'PyYAML==3.11',
-            'Pygments==1.6',
-            'Werkzeug==0.9.6',
-            'colorama==0.3.1',
-            'compressinja==0.0.2',
-            'mock==1.0.1',
-            'py==1.4.23',
-            'python-dateutil==2.2',
-            'repoze.lru==0.6',
-            'smartypants==1.8.6',
-            'strict-rfc3339==0.4',
-            'textile==2.2.1'
-            ],
-        tests_require=[
-            'pytest==2.6.1',
-            'pytest-mock==0.2.0'
-            ],
+        install_requires=install_requires,
+        tests_require=tests_require,
         cmdclass={
             'test': PyTest,
-            'version' : GenerateVersionCommand
+            'version': GenerateVersionCommand
             },
         classifiers=[
             'Development Status :: 3 - Alpha',
