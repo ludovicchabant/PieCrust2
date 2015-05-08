@@ -1,6 +1,6 @@
 import logging
-from piecrust.serving import Server, _sse_abort
 from piecrust.commands.base import ChefCommand
+from piecrust.serving.wrappers import run_werkzeug_server, run_gunicorn_server
 
 
 logger = logging.getLogger(__name__)
@@ -37,54 +37,31 @@ class ServeCommand(ChefCommand):
                 default='werkzeug')
 
     def run(self, ctx):
+        root_dir = ctx.app.root_dir
         host = ctx.args.address
         port = int(ctx.args.port)
         debug = ctx.args.debug or ctx.args.use_debugger
 
-        server = Server(
-                ctx.app.root_dir,
-                debug=debug,
-                sub_cache_dir=ctx.app.sub_cache_dir,
-                use_reloader=ctx.args.use_reloader)
-        app = server.getWsgiApp()
-
         if ctx.args.wsgi == 'werkzeug':
-            from werkzeug.serving import run_simple
-            try:
-                run_simple(host, port, app,
-                           threaded=True,
-                           use_debugger=debug,
-                           use_reloader=ctx.args.use_reloader)
-            finally:
-                _sse_abort.set()
+            run_werkzeug_server(
+                    root_dir, host, port,
+                    debug_piecrust=debug,
+                    sub_cache_dir=ctx.app.sub_cache_dir,
+                    use_debugger=debug,
+                    use_reloader=ctx.args.use_reloader)
 
         elif ctx.args.wsgi == 'gunicorn':
-            from gunicorn.app.base import BaseApplication
-
-            class PieCrustGunicornApplication(BaseApplication):
-                def __init__(self, app, options):
-                    self.app = app
-                    self.options = options
-                    super(PieCrustGunicornApplication, self).__init__()
-
-                def load_config(self):
-                    for k, v in self.options.items():
-                        if k in self.cfg.settings and v is not None:
-                            self.cfg.set(k, v)
-
-                def load(self):
-                    return self.app
-
             options = {
                     'bind': '%s:%s' % (host, port),
-                    'accesslog': '-',
-                    'worker_class': 'gaiohttp',
-                    'workers': 2,
-                    'timeout': 999999}
+                    'accesslog': '-',  # print access log to stderr
+                    }
             if debug:
                 options['loglevel'] = 'debug'
             if ctx.args.use_reloader:
                 options['reload'] = True
-            app_wrapper = PieCrustGunicornApplication(app, options)
-            app_wrapper.run()
+            run_gunicorn_server(
+                    root_dir,
+                    debug_piecrust=debug,
+                    sub_cache_dir=ctx.app.sub_cache_dir,
+                    gunicorn_options=options)
 

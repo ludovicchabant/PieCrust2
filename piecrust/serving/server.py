@@ -1,36 +1,24 @@
 import io
 import os
 import re
-import json
 import gzip
 import time
-import queue
 import os.path
 import hashlib
 import logging
 import datetime
-import threading
 from werkzeug.exceptions import (
         NotFound, MethodNotAllowed, InternalServerError, HTTPException)
 from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator, wrap_file
 from jinja2 import FileSystemLoader, Environment
 from piecrust.app import PieCrust
-from piecrust.environment import StandardEnvironment
-from piecrust.processing.base import ProcessorPipeline
 from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
-from piecrust.sources.base import PageFactory, MODE_PARSING
+from piecrust.sources.base import MODE_PARSING
 from piecrust.uriutil import split_sub_uri
 
 
 logger = logging.getLogger(__name__)
-
-
-_sse_abort = threading.Event()
-
-
-class ServingEnvironment(StandardEnvironment):
-    pass
 
 
 class ServeRecord(object):
@@ -67,11 +55,11 @@ class WsgiServerWrapper(object):
 class Server(object):
     def __init__(self, root_dir,
                  debug=False, sub_cache_dir=None,
-                 use_reloader=False, static_preview=True):
+                 static_preview=True, run_sse_check=None):
         self.root_dir = root_dir
         self.debug = debug
         self.sub_cache_dir = sub_cache_dir
-        self.use_reloader = use_reloader
+        self.run_sse_check = run_sse_check
         self.static_preview = static_preview
         self._out_dir = None
         self._page_record = None
@@ -86,14 +74,13 @@ class Server(object):
         self._out_dir = os.path.join(app.sub_cache_dir, 'server')
         self._page_record = ServeRecord()
 
-        if (not self.use_reloader or
-                os.environ.get('WERKZEUG_RUN_MAIN') == 'true'):
-            # We don't want to run the processing loop here if this isn't
-            # the actual process that does the serving. In most cases it is,
-            # but if we're using Werkzeug's reloader, then it won't be the
-            # first time we get there... it will only be the correct process
-            # the second time, when the reloading process is spawned, with the
-            # `WERKZEUG_RUN_MAIN` variable set.
+        if not self.run_sse_check or self.run_sse_check():
+            # When using a server with code reloading, some implementations
+            # use process forking and we end up going here twice. We only want
+            # to start the pipeline loop in the inner process most of the
+            # time so we let the implementation tell us if this is OK.
+            from piecrust.processing.base import ProcessorPipeline
+            from piecrust.serving.procloop import ProcessingLoop
             pipeline = ProcessorPipeline(app, self._out_dir)
             self._proc_loop = ProcessingLoop(pipeline)
             self._proc_loop.start()
@@ -182,6 +169,8 @@ class Server(object):
         if request.path.startswith(debug_mount):
             rel_req_path = request.path[len(debug_mount):]
             if rel_req_path == 'pipeline_status':
+                from piecrust.server.procloop import (
+                        PipelineStatusServerSideEventProducer)
                 provider = PipelineStatusServerSideEventProducer(
                         self._proc_loop.status_queue)
                 it = ClosingIterator(provider.run(), [provider.close])
@@ -262,10 +251,11 @@ class Server(object):
         # Profiling.
         if app.config.get('site/show_debug_info'):
             now_time = time.clock()
-            timing_info = ('%8.1f ms' %
+            timing_info = (
+                    '%8.1f ms' %
                     ((now_time - app.env.start_time) * 1000.0))
-            rp_content = rp_content.replace('__PIECRUST_TIMING_INFORMATION__',
-                    timing_info)
+            rp_content = rp_content.replace(
+                    '__PIECRUST_TIMING_INFORMATION__', timing_info)
 
         # Build the response.
         response = Response()
@@ -284,7 +274,7 @@ class Server(object):
             cache_control.must_revalidate = True
         else:
             cache_time = (page.config.get('cache_time') or
-                    app.config.get('site/cache_time'))
+                          app.config.get('site/cache_time'))
             if cache_time:
                 cache_control.public = True
                 cache_control.max_age = cache_time
@@ -486,136 +476,4 @@ def load_mimetype_map():
                 for t in tokens[1:]:
                     mimetype_map[t] = tokens[0]
     return mimetype_map
-
-
-class PipelineStatusServerSideEventProducer(object):
-    def __init__(self, status_queue):
-        self.status_queue = status_queue
-        self.interval = 2
-        self.timeout = 60*10
-        self._start_time = 0
-
-    def run(self):
-        logger.debug("Starting pipeline status SSE.")
-        self._start_time = time.time()
-
-        outstr = 'event: ping\ndata: started\n\n'
-        yield bytes(outstr, 'utf8')
-
-        count = 0
-        while True:
-            if time.time() > self.timeout + self._start_time:
-                logger.debug("Closing pipeline status SSE, timeout reached.")
-                outstr = 'event: pipeline_timeout\ndata: bye\n\n'
-                yield bytes(outstr, 'utf8')
-                break
-
-            if _sse_abort.is_set():
-                break
-
-            try:
-                logger.debug("Polling pipeline status queue...")
-                count += 1
-                data = self.status_queue.get(True, self.interval)
-            except queue.Empty:
-                if count < 3:
-                    continue
-                data = {'type': 'ping', 'message': 'ping'}
-                count = 0
-
-            event_type = data['type']
-            outstr = 'event: %s\ndata: %s\n\n' % (
-                    event_type, json.dumps(data))
-            logger.debug("Sending pipeline status SSE.")
-            yield bytes(outstr, 'utf8')
-
-    def close(self):
-        logger.debug("Closing pipeline status SSE.")
-
-
-class ProcessingLoop(threading.Thread):
-    def __init__(self, pipeline):
-        super(ProcessingLoop, self).__init__(
-                name='pipeline-reloader', daemon=True)
-        self.pipeline = pipeline
-        self.status_queue = queue.Queue()
-        self.interval = 1
-        self._paths = set()
-        self._record = None
-        self._last_bake = 0
-
-    def run(self):
-        # Build the first list of known files and run the pipeline once.
-        app = self.pipeline.app
-        roots = [os.path.join(app.root_dir, r)
-                 for r in self.pipeline.mounts.keys()]
-        for root in roots:
-            for dirpath, dirnames, filenames in os.walk(root):
-                self._paths |= set([os.path.join(dirpath, f)
-                                    for f in filenames])
-        self._last_bake = time.time()
-        self._record = self.pipeline.run(save_record=False)
-
-        while True:
-            for root in roots:
-                # For each mount root we try to find the first new or
-                # modified file. If any, we just run the pipeline on
-                # that mount.
-                found_new_or_modified = False
-                for dirpath, dirnames, filenames in os.walk(root):
-                    for filename in filenames:
-                        path = os.path.join(dirpath, filename)
-                        if path not in self._paths:
-                            logger.debug("Found new asset: %s" % path)
-                            self._paths.add(path)
-                            found_new_or_modified = True
-                            break
-                        if os.path.getmtime(path) > self._last_bake:
-                            logger.debug("Found modified asset: %s" % path)
-                            found_new_or_modified = True
-                            break
-
-                    if found_new_or_modified:
-                        break
-
-                if found_new_or_modified:
-                    self._runPipeline(root)
-
-            time.sleep(self.interval)
-
-    def _runPipeline(self, root):
-        self._last_bake = time.time()
-        try:
-            self._record = self.pipeline.run(
-                    root,
-                    previous_record=self._record,
-                    save_record=False)
-
-            # Update the status queue.
-            # (we need to clear it because there may not be a consumer
-            #  on the other side, if the user isn't running with the
-            #  debug window active)
-            while True:
-                try:
-                    self.status_queue.get_nowait()
-                except queue.Empty:
-                    break
-
-            if self._record.success:
-                item = {
-                        'type': 'pipeline_success'}
-                self.status_queue.put_nowait(item)
-            else:
-                item = {
-                        'type': 'pipeline_error',
-                        'assets': []}
-                for entry in self._record.entries:
-                    if entry.errors:
-                        asset_item = {
-                                'path': entry.rel_input,
-                                'errors': list(entry.errors)}
-                        item['assets'].append(asset_item)
-                self.status_queue.put_nowait(item)
-        except:
-            pass
 
