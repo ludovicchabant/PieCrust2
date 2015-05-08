@@ -54,11 +54,12 @@ class WsgiServerWrapper(object):
 
 class Server(object):
     def __init__(self, root_dir,
-                 debug=False, sub_cache_dir=None,
+                 debug=False, sub_cache_dir=None, enable_debug_info=True,
                  static_preview=True, run_sse_check=None):
         self.root_dir = root_dir
         self.debug = debug
         self.sub_cache_dir = sub_cache_dir
+        self.enable_debug_info = enable_debug_info
         self.run_sse_check = run_sse_check
         self.static_preview = static_preview
         self._out_dir = None
@@ -123,6 +124,7 @@ class Server(object):
         app.config.set('site/root', '/')
         app.config.set('server/is_serving', True)
         if (app.config.get('site/enable_debug_info') and
+                self.enable_debug_info and
                 '!debug' in request.args):
             app.config.set('site/show_debug_info', True)
 
