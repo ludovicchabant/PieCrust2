@@ -2,12 +2,11 @@
 # like Werkzeug or Gunicorn. It returns a WSGI app for serving a PieCrust
 # website located in the current working directory.
 import os
-from piecrust.serving.server import Server
+from piecrust.wsgiutil import get_app
 
 
 root_dir = os.getcwd()
-server = Server(root_dir, sub_cache_dir='prod', enable_debug_info=False)
-app = server.getWsgiApp()
+app = get_app(root_dir)
 # Add this for `mod_wsgi`.
 application = app
 
