@@ -8,4 +8,6 @@ from piecrust.serving.server import Server
 root_dir = os.getcwd()
 server = Server(root_dir, sub_cache_dir='prod', enable_debug_info=False)
 app = server.getWsgiApp()
+# Add this for `mod_wsgi`.
+application = app
 
