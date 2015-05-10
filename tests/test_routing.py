@@ -68,7 +68,7 @@ def test_required_metadata(site_root, route_pattern,
                 {'foo': ''}),
             ('/', {'url': '/prefix/%path:foo%'},
                 'prefix',
-                {}),
+                {'foo': ''}),
 
             ('/blah', {'url': '/%foo%'},
                 'something',
@@ -90,7 +90,7 @@ def test_required_metadata(site_root, route_pattern,
                 {'foo': ''}),
             ('/blah', {'url': '/prefix/%path:foo%'},
                 'prefix',
-                {}),
+                {'foo': ''}),
             ])
 def test_match_uri(site_root, config, uri, expected_match):
     site_root = site_root.rstrip('/') + '/'

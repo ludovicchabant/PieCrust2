@@ -341,7 +341,7 @@ class Server(object):
         # just don't use cached rendered segments for that page (but still
         # use them for pages that are included in it).
         uri = qp.getUri()
-        assert uri == req_path
+        assert uri.rstrip(' /') == req_path.rstrip(' /')
         entry = self._page_record.getEntry(uri, page_num)
         if (taxonomy_info is not None or entry is None or
                 entry.used_source_names):

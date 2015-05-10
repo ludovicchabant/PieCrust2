@@ -90,7 +90,7 @@ class Route(object):
     def matchesMetadata(self, route_metadata):
         return self.required_route_metadata.issubset(route_metadata.keys())
 
-    def matchUri(self, uri):
+    def matchUri(self, uri, strict=False):
         if not uri.startswith(self.uri_root):
             raise Exception("The given URI is not absolute: %s" % uri)
         uri = uri[len(self.uri_root):]
@@ -100,14 +100,28 @@ class Route(object):
         elif self.trailing_slash:
             uri = uri.rstrip('/')
 
+        route_metadata = None
         m = self.uri_re.match(uri)
         if m:
-            return m.groupdict()
+            route_metadata = m.groupdict()
         if self.uri_re_no_path:
             m = self.uri_re_no_path.match(uri)
             if m:
-                return m.groupdict()
-        return None
+                route_metadata = m.groupdict()
+        if route_metadata is None:
+            return None
+
+        if not strict:
+            # When matching URIs, if the URI is a match but is missing some
+            # metadata, fill those up with empty strings. This can happen if,
+            # say, a route's pattern is `/foo/%slug%`, and we're matching an
+            # URL like `/foo`.
+            matched_keys = set(route_metadata.keys())
+            missing_keys = self.required_route_metadata - matched_keys
+            for k in missing_keys:
+                route_metadata[k] = ''
+
+        return route_metadata
 
     def getUri(self, route_metadata, *, sub_num=1, provider=None):
         route_metadata = copy.deepcopy(route_metadata)
