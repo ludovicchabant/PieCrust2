@@ -1,8 +1,7 @@
 import logging
 import collections
-from piecrust.data.base import PaginationData
+from piecrust.data.base import PaginationData, LazyPageConfigLoaderHasNoValue
 from piecrust.data.iterators import PageIterator
-from piecrust.sources.base import build_pages
 from piecrust.sources.interfaces import IPaginationSource, IListableSource
 
 
@@ -53,8 +52,10 @@ class LinkedPageData(PaginationData):
 
         self.mapLoader('*', self._linkerChildLoader)
 
-    def _linkerChildLoader(self, name):
-        return getattr(self.children, name)
+    def _linkerChildLoader(self, data, name):
+        if self.children and hasattr(self.children, name):
+            return getattr(self.children, name)
+        raise LazyPageConfigLoaderHasNoValue
 
 
 class LinkedPageDataBuilderIterator(object):

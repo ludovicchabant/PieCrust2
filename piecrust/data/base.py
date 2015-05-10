@@ -8,6 +8,13 @@ from piecrust.uriutil import split_uri
 logger = logging.getLogger(__name__)
 
 
+class LazyPageConfigLoaderHasNoValue(Exception):
+    """ An exception that can be returned when a loader for `LazyPageConfig`
+        can't return any value.
+    """
+    pass
+
+
 class LazyPageConfigData(object):
     """ An object that represents the configuration header of a page,
         but also allows for additional data. It's meant to be exposed
@@ -28,26 +35,34 @@ class LazyPageConfigData(object):
     def get(self, name):
         try:
             return self._getValue(name)
-        except KeyError:
+        except LazyPageConfigLoaderHasNoValue:
             return None
 
     def __getattr__(self, name):
         try:
             return self._getValue(name)
-        except KeyError:
+        except LazyPageConfigLoaderHasNoValue:
             raise AttributeError
 
     def __getitem__(self, name):
-        return self._getValue(name)
+        try:
+            return self._getValue(name)
+        except LazyPageConfigLoaderHasNoValue:
+            raise KeyError
 
     def _getValue(self, name):
         self._load()
+
+        if name in self._values:
+            return self._values[name]
 
         if self._loaders:
             loader = self._loaders.get(name)
             if loader is not None:
                 try:
                     self._values[name] = loader(self, name)
+                except LazyPageConfigLoaderHasNoValue:
+                    raise
                 except Exception as ex:
                     raise Exception(
                             "Error while loading attribute '%s' for: %s" %
@@ -61,16 +76,20 @@ class LazyPageConfigData(object):
                     if len(self._loaders) == 0:
                         self._loaders = None
 
-            elif name not in self._values:
+            else:
                 loader = self._loaders.get('*')
                 if loader is not None:
                     try:
                         self._values[name] = loader(self, name)
+                    except LazyPageConfigLoaderHasNoValue:
+                        raise
                     except Exception as ex:
                         raise Exception(
-                                "Error while loading attirbute '%s' for: %s" %
+                                "Error while loading attribute '%s' for: %s" %
                                 (name, self._page.rel_path)) from ex
+                    # We always keep the wildcard loader in the loaders list.
 
+        assert name in self._values
         return self._values[name]
 
     def _setValue(self, name, value):
