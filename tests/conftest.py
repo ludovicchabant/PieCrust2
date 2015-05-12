@@ -1,9 +1,11 @@
+import io
 import sys
 import pprint
 import os.path
 import logging
 import pytest
 import yaml
+import colorama
 from piecrust.configuration import merge_dicts
 from .mockutil import mock_fs, mock_fs_scope
 
@@ -29,24 +31,26 @@ def pytest_configure(config):
 def pytest_collect_file(parent, path):
     if path.ext == ".bake" and path.basename.startswith("test"):
         return BakeTestFile(path, parent)
+    elif path.ext == ".chef" and path.basename.startswith("test"):
+        return ChefTestFile(path, parent)
 
 
-class BakeTestFile(pytest.File):
+class YamlTestFileBase(pytest.File):
     def collect(self):
         spec = yaml.load_all(self.fspath.open())
         for i, item in enumerate(spec):
             name = '%s_%d' % (self.fspath.basename, i)
             if 'test_name' in item:
                 name += '_%s' % item['test_name']
-            yield BakeTestItem(name, self, item)
+            yield self.__item_class__(name, self, item)
 
 
-class BakeTestItem(pytest.Item):
+class YamlTestItemBase(pytest.Item):
     def __init__(self, name, parent, spec):
-        super(BakeTestItem, self).__init__(name, parent)
+        super(YamlTestItemBase, self).__init__(name, parent)
         self.spec = spec
 
-    def runtest(self):
+    def _prepareMockFs(self):
         fs = mock_fs()
 
         # Website config.
@@ -65,6 +69,68 @@ class BakeTestItem(pytest.Item):
         input_files = self.spec.get('in')
         if input_files is not None:
             _add_mock_files(fs, '/kitchen', input_files)
+
+        return fs
+
+
+class ChefTestItem(YamlTestItemBase):
+    __initialized_logging__ = False
+
+    def runtest(self):
+        if not ChefTestItem.__initialized_logging__:
+            colorama.init()
+            hdl = logging.StreamHandler(stream=sys.stdout)
+            logging.getLogger().addHandler(hdl)
+            logging.getLogger().setLevel(logging.INFO)
+            ChefTestItem.__initialized_logging__ = True
+
+        fs = self._prepareMockFs()
+
+        argv = self.spec['args']
+        if isinstance(argv, str):
+            argv = argv.split(' ')
+
+        expected_code = self.spec.get('code', 0)
+        expected_out = self.spec.get('out', '')
+
+        with mock_fs_scope(fs):
+            memstream = io.StringIO()
+            hdl = logging.StreamHandler(stream=memstream)
+            logging.getLogger().addHandler(hdl)
+            try:
+                from piecrust.main import PreParsedChefArgs, _run_chef
+                pre_args = PreParsedChefArgs(
+                        root=fs.path('/kitchen'))
+                exit_code = _run_chef(pre_args, argv)
+            finally:
+                logging.getLogger().removeHandler(hdl)
+
+            assert expected_code == exit_code
+            assert expected_out == memstream.getvalue()
+
+    def reportinfo(self):
+        return self.fspath, 0, "bake: %s" % self.name
+
+    def repr_failure(self, excinfo):
+        if isinstance(excinfo.value, ExpectedChefOutputError):
+            return ('\n'.join(
+                ['Unexpected command output. Left is expected output, '
+                    'right is actual output'] +
+                excinfo.value.args[0]))
+        return super(ChefTestItem, self).repr_failure(excinfo)
+
+
+class ExpectedChefOutputError(Exception):
+    pass
+
+
+class ChefTestFile(YamlTestFileBase):
+    __item_class__ = ChefTestItem
+
+
+class BakeTestItem(YamlTestItemBase):
+    def runtest(self):
+        fs = self._prepareMockFs()
 
         # Output file-system.
         expected_output_files = self.spec.get('out')
@@ -117,6 +183,10 @@ class BakeTestItem(pytest.Item):
 
 class ExpectedBakeOutputError(Exception):
     pass
+
+
+class BakeTestFile(YamlTestFileBase):
+    __item_class__ = BakeTestItem
 
 
 def _add_mock_files(fs, parent_path, spec):
