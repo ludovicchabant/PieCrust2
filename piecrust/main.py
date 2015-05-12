@@ -60,10 +60,10 @@ def main():
         except ValueError:
             locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
 
-    argv = sys.argv
+    argv = sys.argv[1:]
     pre_args = _pre_parse_chef_args(argv)
     try:
-        exit_code = _run_chef(pre_args)
+        exit_code = _run_chef(pre_args, argv)
     except Exception as ex:
         if pre_args.debug:
             logger.exception(ex)
@@ -100,7 +100,7 @@ def _pre_parse_chef_args(argv):
     # related arguments must be parsed first because we want to log everything
     # from the beginning.
     res = PreParsedChefArgs()
-    i = 1
+    i = 0
     while i < len(argv):
         arg = argv[i]
         if arg.startswith('--root='):
@@ -166,7 +166,7 @@ def _pre_parse_chef_args(argv):
     return res
 
 
-def _run_chef(pre_args):
+def _run_chef(pre_args, argv):
     # Setup the app.
     start_time = time.clock()
     root = pre_args.root
@@ -250,7 +250,7 @@ def _run_chef(pre_args):
             parser.epilog = epilog.getvalue()
 
     # Parse the command line.
-    result = parser.parse_args()
+    result = parser.parse_args(argv)
     logger.debug(format_timed(start_time, 'initialized PieCrust',
                               colored=False))
 
