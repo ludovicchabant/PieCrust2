@@ -1,6 +1,8 @@
 include README.rst
 include CHANGELOG.rst
 include LICENSE.rst
+include requirements.txt
+include dev-requirements.txt
 recursive-include piecrust *.py mime.types
 recursive-include piecrust/resources *
 recursive-include tests *.py
