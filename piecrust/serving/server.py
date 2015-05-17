@@ -12,6 +12,7 @@ from werkzeug.exceptions import (
 from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator, wrap_file
 from jinja2 import FileSystemLoader, Environment
+from piecrust import CACHE_DIR
 from piecrust.app import PieCrust
 from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
 from piecrust.sources.base import MODE_PARSING
@@ -62,8 +63,8 @@ class Server(object):
         self.enable_debug_info = enable_debug_info
         self.run_sse_check = run_sse_check
         self.static_preview = static_preview
-        self._out_dir = None
-        self._page_record = None
+        self._page_record = ServeRecord()
+        self._out_dir = os.path.join(root_dir, CACHE_DIR, 'server')
         self._proc_loop = None
         self._mimetype_map = load_mimetype_map()
 
@@ -71,9 +72,9 @@ class Server(object):
         # Bake all the assets so we know what we have, and so we can serve
         # them to the client. We need a temp app for this.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
-        app._useSubCacheDir(self.sub_cache_dir)
+        if self.sub_cache_dir:
+            app._useSubCacheDir(self.sub_cache_dir)
         self._out_dir = os.path.join(app.sub_cache_dir, 'server')
-        self._page_record = ServeRecord()
 
         if not self.run_sse_check or self.run_sse_check():
             # When using a server with code reloading, some implementations
@@ -120,7 +121,8 @@ class Server(object):
 
         # Create the app for this request.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
-        app._useSubCacheDir(self.sub_cache_dir)
+        if self.sub_cache_dir:
+            app._useSubCacheDir(self.sub_cache_dir)
         app.config.set('site/root', '/')
         app.config.set('server/is_serving', True)
         if (app.config.get('site/enable_debug_info') and

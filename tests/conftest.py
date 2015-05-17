@@ -29,10 +29,13 @@ def pytest_configure(config):
 
 
 def pytest_collect_file(parent, path):
-    if path.ext == ".bake" and path.basename.startswith("test"):
-        return BakeTestFile(path, parent)
-    elif path.ext == ".chef" and path.basename.startswith("test"):
-        return ChefTestFile(path, parent)
+    if path.basename.startswith("test"):
+        if path.ext == ".bake":
+            return BakeTestFile(path, parent)
+        elif path.ext == ".chef":
+            return ChefTestFile(path, parent)
+        elif path.ext == ".serve":
+            return ServeTestFile(path, parent)
 
 
 class YamlTestFileBase(pytest.File):
@@ -187,6 +190,55 @@ class ExpectedBakeOutputError(Exception):
 
 class BakeTestFile(YamlTestFileBase):
     __item_class__ = BakeTestItem
+
+
+class ServeTestItem(YamlTestItemBase):
+    class _TestApp(object):
+        def __init__(self, server):
+            self.server = server
+
+        def __call__(self, environ, start_response):
+            return self.server._try_run_request(environ, start_response)
+
+    def runtest(self):
+        fs = self._prepareMockFs()
+
+        url = self.spec.get('url')
+        if url is None:
+            raise Exception("Missing URL in test spec.")
+
+        expected_status = self.spec.get('status', 200)
+        expected_headers = self.spec.get('headers')
+        expected_output = self.spec.get('out')
+        expected_contains = self.spec.get('out_contains')
+
+        from werkzeug.test import Client
+        from werkzeug.wrappers import BaseResponse
+        from piecrust.serving.server import Server
+        with mock_fs_scope(fs):
+            server = Server(fs.path('/kitchen'))
+            test_app = self._TestApp(server)
+            client = Client(test_app, BaseResponse)
+            resp = client.get(url)
+            assert expected_status == resp.status_code
+
+            if expected_headers:
+                for k, v in expected_headers.items():
+                    assert v == resp.headers.get(k)
+
+            actual = resp.data.decode('utf8').rstrip()
+            if expected_output:
+                assert expected_output.rstrip() == actual
+
+            if expected_contains:
+                assert expected_contains.rstrip() in actual
+
+    def reportinfo(self):
+        return self.fspath, 0, "serve: %s" % self.name
+
+
+class ServeTestFile(YamlTestFileBase):
+    __item_class__ = ServeTestItem
 
 
 def _add_mock_files(fs, parent_path, spec):

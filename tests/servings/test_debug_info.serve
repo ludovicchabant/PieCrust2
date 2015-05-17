@@ -1,0 +1,16 @@
+---
+url: /foo
+in: 
+    pages/foo.md: |
+        BLAH
+        {{piecrust.debug_info}}
+out: BLAH
+---
+url: /foo?!debug
+in:
+    pages/foo.md: |
+        BLAH
+        {{piecrust.debug_info}}
+out_contains: |
+    BLAH
+    <div id="piecrust-debug-info"
