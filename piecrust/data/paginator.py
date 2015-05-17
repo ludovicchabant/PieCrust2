@@ -191,9 +191,12 @@ class Paginator(object):
 
         pag_filter = self._getPaginationFilter()
         offset = (self._page_num - 1) * self.items_per_page
+        current_page = None
+        if self._parent_page:
+            current_page = self._parent_page.page
         self._iterator = PageIterator(
                 self._source,
-                current_page=self._parent_page,
+                current_page=current_page,
                 pagination_filter=pag_filter,
                 offset=offset, limit=self.items_per_page,
                 locked=True)
