@@ -89,7 +89,8 @@ class LazyPageConfigData(object):
                                 (name, self._page.rel_path)) from ex
                     # We always keep the wildcard loader in the loaders list.
 
-        assert name in self._values
+        if name not in self._values:
+            raise LazyPageConfigLoaderHasNoValue()
         return self._values[name]
 
     def _setValue(self, name, value):

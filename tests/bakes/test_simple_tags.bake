@@ -1,5 +1,17 @@
 ---
 in:
+    posts/2015-03-01_post01.md: "---\ntitle: Post 01\n---\nContent 01"
+    pages/_index.md: |
+        {%for p in pagination.items -%}
+        {{p.content|safe}}
+        {%if p.tags%}{{p.tags}}{%else%}No tags{%endif%}
+        {%endfor%}
+outfiles:
+    index.html: |
+        Content 01
+        No tags
+---
+in:
     posts/2015-03-01_post01.md: |
       ---
       title: Post 01
