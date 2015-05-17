@@ -25,7 +25,7 @@ class ProseSource(DefaultPageSource):
             path = os.path.join(self.fs_endpoint_path, rel_path)
             try:
                 c['title'] = get_first_line(path)
-            except OSError:
+            except IOError:
                 if mode == MODE_PARSING:
                     raise
         return c

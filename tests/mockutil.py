@@ -1,5 +1,6 @@
 import io
 import time
+import errno
 import random
 import codecs
 import shutil
@@ -252,7 +253,10 @@ class mock_fs_scope(object):
 
     def _startMock(self):
         # TODO: sadly, there seems to be no way to replace `open` everywhere?
-        modules = self.open_patches + ['__main__', 'piecrust.records']
+        modules = self.open_patches + [
+                '__main__',
+                'piecrust.records',
+                'jinja2.utils']
         for m in modules:
             self._createMock('%s.open' % m, open, self._open, create=True)
 
@@ -296,14 +300,22 @@ class mock_fs_scope(object):
                 e = self._getFsEntry(path)
                 assert e is not None
             elif 'x' in mode:
-                raise OSError("File '%s' already exists" % path)
+                err = IOError("File '%s' already exists" % path)
+                err.errno = errno.EEXIST
+                raise err
         else:
-            raise OSError("Unsupported open mode: %s" % mode)
+            err = IOError("Unsupported open mode: %s" % mode)
+            err.errno = errno.EINVAL
+            raise err
 
         if e is None:
-            raise OSError("No such file: %s" % path)
+            err = IOError("No such file: %s" % path)
+            err.errno = errno.ENOENT
+            raise err
         if not isinstance(e, _MockFsEntry):
-            raise OSError("'%s' is not a file %s" % (path, e))
+            err = IOError("'%s' is not a file %s" % (path, e))
+            err.errno = errno.EISDIR
+            raise err
 
         return _MockFsEntryWriter(e, mode)
 
