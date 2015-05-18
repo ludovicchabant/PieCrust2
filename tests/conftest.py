@@ -29,12 +29,13 @@ def pytest_configure(config):
 
 
 def pytest_collect_file(parent, path):
-    if path.basename.startswith("test"):
-        if path.ext == ".bake":
+    if path.ext == '.yaml' and path.basename.startswith("test"):
+        category = os.path.basename(path.dirname)
+        if category == 'bakes':
             return BakeTestFile(path, parent)
-        elif path.ext == ".chef":
+        elif category == 'cli':
             return ChefTestFile(path, parent)
-        elif path.ext == ".serve":
+        elif category == 'servings':
             return ServeTestFile(path, parent)
 
 
