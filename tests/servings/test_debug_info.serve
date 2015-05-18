@@ -14,3 +14,30 @@ in:
 out_contains: |
     BLAH
     <div id="piecrust-debug-info"
+---
+url: /foo
+in:
+    pages/foo.md: BLAH {{pcurl('bar')}}
+out: BLAH /bar.html
+---
+url: /foo?!debug
+in:
+    pages/foo.md: BLAH {{pcurl('bar')}}
+out: BLAH /bar.html?!debug
+---
+url: /foo
+config:
+    site:
+        pretty_urls: true
+in:
+    pages/foo.md: BLAH {{pcurl('bar')}}
+out: BLAH /bar
+---
+url: /foo?!debug
+config:
+    site:
+        pretty_urls: true
+in:
+    pages/foo.md: BLAH {{pcurl('bar')}}
+out: BLAH /bar?!debug
+

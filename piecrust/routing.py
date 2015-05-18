@@ -33,6 +33,7 @@ class Route(object):
 
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
+        self.show_debug_info = app.config.get('site/show_debug_info')
         self.pagination_suffix_format = app.config.get(
                 '__cache/pagination_suffix_format')
         self.uri_root = app.config.get('site/root')
@@ -40,8 +41,6 @@ class Route(object):
         uri = cfg['url']
         self.uri_pattern = uri.lstrip('/')
         self.uri_format = route_re.sub(self._uriFormatRepl, self.uri_pattern)
-        if app.config.get('site/show_debug_info'):
-            self.uri_format += '?!debug'
 
         # Get the straight-forward regex for matching this URI pattern.
         p = route_esc_re.sub(self._uriPatternRepl,
@@ -171,6 +170,10 @@ class Route(object):
                     uri = base_uri + ext
 
         uri = self.uri_root + uri
+
+        if self.show_debug_info:
+            uri += '?!debug'
+
         return uri
 
     def slugifyTaxonomyTerm(self, term):
