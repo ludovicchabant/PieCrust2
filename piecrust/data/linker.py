@@ -47,7 +47,7 @@ class LinkedPageData(PaginationData):
         self.name = page._linker_info.name
         self.is_self = page._linker_info.is_self
         self.children = page._linker_info.child_linker
-        self.is_dir = (self.children is not None)
+        self.is_dir = page._linker_info.is_dir
         self.is_page = True
 
         self.mapLoader('*', self._linkerChildLoader)
@@ -104,6 +104,7 @@ class LinkerSource(IPaginationSource):
 class _LinkerInfo(object):
     def __init__(self):
         self.name = None
+        self.is_dir = False
         self.is_self = False
         self.child_linker = []
 
@@ -232,10 +233,12 @@ class Linker(object):
                     # The current item is a directory. The existing item
                     # should be a page.
                     existing._linker_info.child_linker = item
+                    existing._linker_info.is_dir = True
                 else:
                     # The current item is a page. The existing item should
                     # be a directory.
                     item._linker_info.child_linker = existing
+                    item._linker_info.is_dir = True
                     self._items[name] = item
 
 
