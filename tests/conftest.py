@@ -146,7 +146,13 @@ class BakeTestItem(YamlTestItemBase):
             out_dir = fs.path('kitchen/_counter')
             app = fs.getApp()
             baker = Baker(app, out_dir)
-            baker.bake()
+            record = baker.bake()
+
+        if not record.success:
+            errors = []
+            for e in record.entries:
+                errors += e.getAllErrors()
+            raise BakeError(errors)
 
         if expected_output_files:
             actual = fs.getStructure('kitchen/_counter')
@@ -182,7 +188,15 @@ class BakeTestItem(YamlTestItemBase):
                 ['Unexpected bake output. Left is expected output, '
                     'right is actual output'] +
                 excinfo.value.args[0]))
+        elif isinstance(excinfo.value, BakeError):
+            return ('\n'.join(
+                ['Errors occured during bake:'] +
+                excinfo.value.args[0]))
         return super(BakeTestItem, self).repr_failure(excinfo)
+
+
+class BakeError(Exception):
+    pass
 
 
 class ExpectedBakeOutputError(Exception):
