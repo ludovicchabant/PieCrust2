@@ -327,19 +327,31 @@ def _compare_str(left, right, path):
     for i in range(min(len(left), len(right))):
         if left[i] != right[i]:
             start = max(0, i - 15)
-            marker_offset = min(15, (i - start)) + 3
+            l_end = min(len(left), i + 15)
+            r_end = min(len(right), i + 15)
 
-            lend = min(len(left), i + 15)
-            rend = min(len(right), i + 15)
+            l_str = ''
+            l_offset = 0
+            for j in range(start, l_end):
+                c = repr(left[j]).strip("'")
+                l_str += c
+                if j < i:
+                    l_offset += len(c)
+
+            r_str = ''
+            r_offset = 0
+            for j in range(start, r_end):
+                c = repr(right[j]).strip("'")
+                r_str += c
+                if j < i:
+                    r_offset += len(c)
 
             return ["Items '%s' differ at index %d:" % (path, i), '',
                     "Left:", left, '',
                     "Right:", right, '',
                     "Difference:",
-                    repr(left[start:lend]),
-                    (' ' * marker_offset + '^'),
-                    repr(right[start:rend]),
-                    (' ' * marker_offset + '^')]
+                    l_str, (' ' * l_offset + '^'),
+                    r_str, (' ' * r_offset + '^')]
     if len(left) > len(right):
         return ["Left is longer.",
                 "Left '%s': " % path, left,
