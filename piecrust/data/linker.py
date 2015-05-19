@@ -23,7 +23,7 @@ class PageLinkerData(object):
     def children(self):
         self._linker._load()
         if self._linker._self_item is None:
-            return None
+            return []
         return self._linker._self_item._linker_info.child_linker
 
     @property
@@ -105,7 +105,7 @@ class _LinkerInfo(object):
     def __init__(self):
         self.name = None
         self.is_self = False
-        self.child_linker = None
+        self.child_linker = []
 
 
 class _LinkedPage(object):
@@ -244,7 +244,7 @@ def filter_page_items(item):
 
 
 def filter_directory_items(item):
-    return isinstance(item, linker)
+    return isinstance(item, Linker)
 
 
 def walk_linkers(linker, depth=0, max_depth=-1, filter_func=None):

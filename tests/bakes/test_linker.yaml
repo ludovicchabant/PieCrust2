@@ -1,0 +1,48 @@
+---
+in:
+    pages/foo.md: |
+        {%for c in family.children%}
+        {{c.title}}
+        {%endfor%}
+outfiles:
+    foo.html: ''
+---
+in:
+    pages/foo.md: |
+        {%for c in family.children-%}
+        {{c.title}}
+        {%endfor%}
+    pages/foo/one.md: |
+        ---
+        title: One
+        ---
+    pages/foo/two.md: |
+        ---
+        title: Two
+        ---
+outfiles:
+    foo.html: |
+        One
+        Two
+---
+in:
+    pages/foo.md: |
+        ---
+        title: Foo
+        ---
+        {%for c in family.siblings-%}
+        {{c.title}}{%if c.is_self%} SELFIE!{%endif%}
+        {%endfor%}
+    pages/bar.md: |
+        ---
+        title: Bar
+        ---
+    pages/other.md: |
+        ---
+        title: Other
+        ---
+outfiles:
+    foo.html: |
+        Bar
+        Foo SELFIE!
+        Other
