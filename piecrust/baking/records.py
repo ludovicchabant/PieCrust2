@@ -113,6 +113,7 @@ class BakeRecordPageEntry(object):
         return self.subs[sub_index - 1]
 
     def getAllErrors(self):
+        yield from self.errors
         for o in self.subs:
             yield from o.errors
 
