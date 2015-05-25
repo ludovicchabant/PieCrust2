@@ -1,3 +1,4 @@
+import os.path
 import pytest
 from piecrust.data.linker import Linker
 from .mockutil import mock_fs, mock_fs_scope
@@ -39,7 +40,8 @@ def test_linker_iteration(fs, page_path, expected):
         app = fs.getApp()
         app.config.set('site/pretty_urls', True)
         src = app.getSource('pages')
-        linker = Linker(src, page_path)
+        linker = Linker(src, os.path.dirname(page_path),
+                        root_page_path=page_path)
         actual = list(iter(linker))
 
         assert len(actual) == len(expected)
@@ -83,7 +85,8 @@ def test_recursive_linker_iteration(fs, page_path, expected):
         app = fs.getApp()
         app.config.set('site/pretty_urls', True)
         src = app.getSource('pages')
-        linker = Linker(src, page_path)
+        linker = Linker(src, os.path.dirname(page_path),
+                        root_page_path=page_path)
         actual = list(iter(linker.allpages))
 
         assert len(actual) == len(expected)

@@ -13,25 +13,54 @@ class PageLinkerData(object):
         root page.
     """
     def __init__(self, source, page_path):
-        self._linker = Linker(source, page_path)
+        self._source = source
+        self._root_page_path = page_path
+        self._linker = None
+
+    @property
+    def parent(self):
+        self._load()
+        return self._linker.parent
+
+    @property
+    def ancestors(self):
+        cur = self.parent
+        while cur:
+            yield cur
+            cur = cur.parent
 
     @property
     def siblings(self):
+        self._load()
         return self._linker
 
     @property
     def children(self):
+        self._load()
         self._linker._load()
         if self._linker._self_item is None:
             return []
-        return self._linker._self_item._linker_info.child_linker
+        children = self._linker._self_item._linker_info.child_linker
+        if children is None:
+            return []
+        return children
 
     @property
     def root(self):
+        self._load()
         return self._linker.root
 
     def forpath(self, rel_path):
+        self._load()
         return self._linker.forpath(rel_path)
+
+    def _load(self):
+        if self._linker is not None:
+            return
+
+        dir_path = self._source.getDirpath(self._root_page_path)
+        self._linker = Linker(self._source, dir_path,
+                              root_page_path=self._root_page_path)
 
 
 class LinkedPageData(PaginationData):
@@ -46,11 +75,24 @@ class LinkedPageData(PaginationData):
         super(LinkedPageData, self).__init__(page)
         self.name = page._linker_info.name
         self.is_self = page._linker_info.is_self
-        self.children = page._linker_info.child_linker
         self.is_dir = page._linker_info.is_dir
         self.is_page = True
+        self._child_linker = page._linker_info.child_linker
 
         self.mapLoader('*', self._linkerChildLoader)
+
+    @property
+    def parent(self):
+        if self._child_linker is not None:
+            return self._child_linker.parent
+        print("No parent for ", self.url, self.title)
+        return None
+
+    @property
+    def children(self):
+        if self._child_linker is not None:
+            return self._child_linker
+        return []
 
     def _linkerChildLoader(self, data, name):
         if self.children and hasattr(self.children, name):
@@ -106,7 +148,7 @@ class _LinkerInfo(object):
         self.name = None
         self.is_dir = False
         self.is_self = False
-        self.child_linker = []
+        self.child_linker = None
 
 
 class _LinkedPage(object):
@@ -121,12 +163,12 @@ class _LinkedPage(object):
 class Linker(object):
     debug_render_doc = """Provides access to sibling and children pages."""
 
-    def __init__(self, source, root_page_path, *, name=None, dir_path=None):
+    def __init__(self, source, dir_path, *, root_page_path=None):
         self._source = source
-        self._root_page_path = root_page_path
-        self._name = name
         self._dir_path = dir_path
+        self._root_page_path = root_page_path
         self._items = None
+        self._parent = None
         self._self_item = None
 
         self.is_dir = True
@@ -148,15 +190,40 @@ class Linker(object):
 
         return LinkedPageData(item)
 
+    def __str__(self):
+        return self.name
+
     @property
     def name(self):
-        if self._name is None:
-            self._load()
-        return self._name
+        return self._source.getBasename(self._dir_path)
 
     @property
     def children(self):
         return self._iterItems(0)
+
+    @property
+    def parent(self):
+        if self._dir_path == '':
+            return None
+
+        if self._parent is None:
+            parent_name = self._source.getBasename(self._dir_path)
+            parent_dir_path = self._source.getDirpath(self._dir_path)
+            for is_dir, name, data in self._source.listPath(parent_dir_path):
+                if not is_dir and name == parent_name:
+                    parent_page = data.buildPage()
+                    item = _LinkedPage(parent_page)
+                    item._linker_info.name = parent_name
+                    item._linker_info.child_linker = Linker(
+                            self._source, parent_dir_path,
+                            root_page_path=self._root_page_path)
+                    self._parent = LinkedPageData(item)
+                    break
+            else:
+                self._parent = Linker(self._source, parent_dir_path,
+                                      root_page_path=self._root_page_path)
+
+        return self._parent
 
     @property
     def pages(self):
@@ -183,8 +250,8 @@ class Linker(object):
         return self.forpath('/')
 
     def forpath(self, rel_path):
-        return Linker(self._source, self._root_page_path,
-                      name='.', dir_path=rel_path)
+        return Linker(self._source, rel_path,
+                      root_page_path=self._root_page_path)
 
     def _iterItems(self, max_depth=-1, filter_func=None):
         items = walk_linkers(self, max_depth=max_depth,
@@ -200,14 +267,6 @@ class Linker(object):
         if not is_listable:
             raise Exception("Source '%s' can't be listed." % self._source.name)
 
-        if self._name is None:
-            self._name = self._source.getBasename(self._root_page_path)
-        if self._dir_path is None:
-            self._dir_path = self._source.getDirpath(self._root_page_path)
-
-        if self._dir_path is None:
-            raise Exception("This linker has no directory to start from.")
-
         items = list(self._source.listPath(self._dir_path))
         self._items = collections.OrderedDict()
         with self._source.app.env.page_repository.startBatchGet():
@@ -215,8 +274,8 @@ class Linker(object):
                 # If `is_dir` is true, `data` will be the directory's source
                 # path. If not, it will be a page factory.
                 if is_dir:
-                    item = Linker(self._source, self._root_page_path,
-                                  name=name, dir_path=data)
+                    item = Linker(self._source, data,
+                                  root_page_path=self._root_page_path)
                 else:
                     page = data.buildPage()
                     is_self = (page.rel_path == self._root_page_path)

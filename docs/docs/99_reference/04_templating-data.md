@@ -97,6 +97,15 @@ Note that you can inspect this data yourself by using the debug window.
   children of the current page. This is only possible for page sources that
   support hierarchical navigation (but most of those shipping with PieCrust do).
 
+    * `parent`: Returns the data for a parent page, _i.e._ a page with the same
+      name as the current page's directory name. So if the current page is
+      `/foo/bar/something.md`, this would return the data for a page named
+      `/foo/bar.md`.
+
+    * `ancestors`: Returns a list of data for all parents, all the way to the
+      root. In the previous example, this would return `/foo/bar.md` and
+      `/foo.md` (if they exist).
+
     * `siblings`: Returns a list of the current page's siblings, _i.e._ pages on
       the same "level" as the current one.
 

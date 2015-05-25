@@ -46,3 +46,34 @@ outfiles:
         Bar
         Foo SELFIE!
         Other
+---
+in:
+    pages/foo.md: "---\ntitle: Foo\n---\n"
+    pages/foo/one.md: |
+        {{family.parent.url}} {{family.parent.title}}
+outfiles:
+    foo/one.html: /foo.html Foo
+---
+in:
+    pages/foo.md: "---\ntitle: Foo\n---\n"
+    pages/foo/bar.md: "---\ntitle: Bar\n---\n"
+    pages/foo/bar/one.md: |
+        {{family.parent.url}} {{family.parent.title}}
+        {{family.parent.parent.url}} {{family.parent.parent.title}}
+outfiles:
+    foo/bar/one.html: |
+        /foo/bar.html Bar
+        /foo.html Foo
+---
+in:
+    pages/foo.md: "---\ntitle: Foo\n---\n"
+    pages/foo/bar.md: "---\ntitle: Bar\n---\n"
+    pages/foo/bar/one.md: |
+        {% for p in family.ancestors -%}
+        {{p.url}} {{p.title}}
+        {% endfor %}
+outfiles:
+    foo/bar/one.html: |
+        /foo/bar.html Bar
+        /foo.html Foo
+
