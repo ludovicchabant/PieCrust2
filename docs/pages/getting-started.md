@@ -9,7 +9,7 @@ This quick tutorial will show you how to create a simple blog with PieCrust.
 >
 >     virtualenv pcenv
 >     <activate pcenv>
->     pip install piecrust
+>     pip install piecrust --pre
 >     chef init mywebsite
 >     cd mywebsite
 >     chef prepare post my-first-post
@@ -37,7 +37,7 @@ and on Windows that's the Command Prompt.
 Python 3 comes with a [package manager][2] called `pip`, with which you can install,
 update, and uninstall Python programs like PieCrust. Just run:
 
-    pip install piecrust
+    pip install piecrust --pre
 
 This will install PieCrust globally on your system. You may want to install it
 using a *virtual environment* instead, though. See the next section for that.
@@ -45,8 +45,8 @@ using a *virtual environment* instead, though. See the next section for that.
 > #### Permission Errors
 >
 > If you get some permission errors, you may have to run that command as an
-> administrator. That would be `sudo pip install piecrust` on MacOSX and Linux, or
-> running the Command Prompt as an Administrator on Windows.
+> administrator. That would be `sudo pip install piecrust --pre` on MacOSX and
+> Linux, or running the Command Prompt as an Administrator on Windows.
 
 You should now have PieCrust installed! You can check that it works by typing:
 
@@ -67,17 +67,16 @@ which you don't have administrator access.
 Thankfully, `pip` supports a whole variety of scenarios, and [another
 utility][3], called `virtualenv` enables even more of them.
 
-* If you don't have it yet, install `virtualenv` with `pip install
-  virtualenv`, or check with your administrators to have it. Most web hosts
-  provide it.
+* If you don't have it yet, install `virtualenv` with `pip install virtualenv`,
+  or check with your administrators to have it. Most web hosts provide it.
 * Run `virtualenv pcenv`. This will create a directory called `pcenv` that
   contains a whole new Python environment, separate from your system's Python
   environment.
-* Activate that environment with `sh pcenv/bin/activate.sh` (on Linux or
-  MacOSX) or `pcenv\Scripts\activate` (on Windows). The new environment will
-  now be active for as long as your current command prompt is active.
-* Now install PieCrust with `pip install piecrust`. This will install it in
-  that environment, leaving your system's Python clean of any of PieCrust's
+* Activate that environment with `sh pcenv/bin/activate.sh` (on Linux or MacOSX)
+  or `pcenv\Scripts\activate` (on Windows). The new environment will now be
+  active for as long as your current command prompt is active.
+* Now install PieCrust with `pip install piecrust --pre`. This will install it
+  in that environment, leaving your system's Python clean of any of PieCrust's
   dependencies.
 
 

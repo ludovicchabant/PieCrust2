@@ -97,7 +97,7 @@ page, or, if you're already experienced in the culinary arts:
 
     virtualenv pcenv
     <activate pcenv>
-    pip install piecrust
+    pip install piecrust --pre
     chef init mynewwebsite
     cd mynewwebsite
     chef prepare post my-first-post
