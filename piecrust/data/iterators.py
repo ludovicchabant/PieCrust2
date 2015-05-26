@@ -108,6 +108,10 @@ class PaginationFilterIterator(object):
 
 
 class PageIterator(object):
+    debug_render = []
+    debug_render_doc_dynamic = ['_debugRenderDoc']
+    debug_render_not_empty = True
+
     def __init__(self, source, current_page=None, pagination_filter=None,
             offset=0, limit=-1, locked=False):
         self._source = source
@@ -302,4 +306,7 @@ class PageIterator(object):
                     self._pagination_slicer.next_page]
             pn_it = self._source.getTailIterator(iter(pn))
             self._prev_page, self._next_page = (list(pn_it))
+
+    def _debugRenderDoc(self):
+        return "Contains %d items" % len(self)
 

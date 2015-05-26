@@ -37,7 +37,8 @@ class DataProvider(object):
 class IteratorDataProvider(DataProvider):
     PROVIDER_NAME = 'iterator'
 
-    debug_render_doc = """Provides a list of pages."""
+    debug_render_doc_dynamic = ['_debugRenderDoc']
+    debug_render_not_empty = True
 
     def __init__(self, source, page, user_data):
         self._innerIt = None
@@ -69,6 +70,9 @@ class IteratorDataProvider(DataProvider):
             eis = self._page.app.env.exec_info_stack
             eis.current_page_info.render_ctx.addUsedSource(self._source.name)
             self._ctx_set = True
+
+    def _debugRenderDoc(self):
+        return 'Provides a list of %d items' % len(self)
 
 
 class BlogDataProvider(DataProvider):

@@ -21,7 +21,9 @@ class LazyPageConfigData(object):
         to the templating system.
     """
     debug_render = []
+    debug_render_invoke = []
     debug_render_dynamic = ['_debugRenderKeys']
+    debug_render_invoke_dynamic = ['_debugRenderKeys']
 
     def __init__(self, page):
         self._page = page

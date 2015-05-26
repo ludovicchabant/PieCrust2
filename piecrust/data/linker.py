@@ -12,15 +12,22 @@ class PageLinkerData(object):
     """ Entry template data to get access to related pages from a given
         root page.
     """
+    debug_render = ['parent', 'ancestors', 'siblings', 'children', 'root',
+                    'forpath']
+    debug_render_invoke = ['parent', 'siblings', 'children']
+
     def __init__(self, source, page_path):
         self._source = source
         self._root_page_path = page_path
         self._linker = None
+        self._is_loaded = False
 
     @property
     def parent(self):
         self._load()
-        return self._linker.parent
+        if self._linker is not None:
+            return self._linker.parent
+        return None
 
     @property
     def ancestors(self):
@@ -32,11 +39,15 @@ class PageLinkerData(object):
     @property
     def siblings(self):
         self._load()
+        if self._linker is None:
+            return []
         return self._linker
 
     @property
     def children(self):
         self._load()
+        if self._linker is None:
+            return []
         self._linker._load()
         if self._linker._self_item is None:
             return []
@@ -48,14 +59,24 @@ class PageLinkerData(object):
     @property
     def root(self):
         self._load()
+        if self._linker is None:
+            return None
         return self._linker.root
 
     def forpath(self, rel_path):
         self._load()
+        if self._linker is None:
+            return None
         return self._linker.forpath(rel_path)
 
     def _load(self):
-        if self._linker is not None:
+        if self._is_loaded:
+            return
+
+        self._is_loaded = True
+
+        is_listable = isinstance(self._source, IListableSource)
+        if not is_listable:
             return
 
         dir_path = self._source.getDirpath(self._root_page_path)
@@ -69,7 +90,10 @@ class LinkedPageData(PaginationData):
         `Paginator` and other page iterators, but with a few additional data
         like hierarchical data.
     """
-    debug_render = ['is_dir', 'is_self'] + PaginationData.debug_render
+    debug_render = (['is_dir', 'is_self', 'parent', 'children'] +
+                    PaginationData.debug_render)
+    debug_render_invoke = (['is_dir', 'is_self', 'parent', 'children'] +
+                           PaginationData.debug_render_invoke)
 
     def __init__(self, page):
         super(LinkedPageData, self).__init__(page)
