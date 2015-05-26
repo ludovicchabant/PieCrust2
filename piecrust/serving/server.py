@@ -12,7 +12,7 @@ from werkzeug.exceptions import (
 from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator, wrap_file
 from jinja2 import FileSystemLoader, Environment
-from piecrust import CACHE_DIR
+from piecrust import CACHE_DIR, RESOURCES_DIR
 from piecrust.app import PieCrust
 from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
 from piecrust.sources.base import MODE_PARSING
@@ -158,9 +158,7 @@ class Server(object):
         static_mount = '/__piecrust_static/'
         if request.path.startswith(static_mount):
             rel_req_path = request.path[len(static_mount):]
-            mount = os.path.join(
-                    os.path.dirname(__file__),
-                    'resources', 'server')
+            mount = os.path.join(RESOURCES_DIR, 'server')
             full_path = os.path.join(mount, rel_req_path)
             try:
                 response = self._make_wrapped_file_response(
@@ -173,7 +171,7 @@ class Server(object):
         if request.path.startswith(debug_mount):
             rel_req_path = request.path[len(debug_mount):]
             if rel_req_path == 'pipeline_status':
-                from piecrust.server.procloop import (
+                from piecrust.serving.procloop import (
                         PipelineStatusServerSideEventProducer)
                 provider = PipelineStatusServerSideEventProducer(
                         self._proc_loop.status_queue)
@@ -459,8 +457,7 @@ def find_routes(routes, uri):
 
 class ErrorMessageLoader(FileSystemLoader):
     def __init__(self):
-        base_dir = os.path.join(os.path.dirname(__file__), 'resources',
-                                'messages')
+        base_dir = os.path.join(RESOURCES_DIR, 'messages')
         super(ErrorMessageLoader, self).__init__(base_dir)
 
     def get_source(self, env, template):
