@@ -97,7 +97,12 @@ class PieCrustData(object):
     @property
     def debug_info(self):
         if self._page is not None and self._data is not None:
-            return build_debug_info(self._page, self._data)
+            try:
+                return build_debug_info(self._page, self._data)
+            except Exception as ex:
+                logger.exception(ex)
+                return ('An error occured while generating debug info. '
+                        'Please check the logs.')
         return ''
 
     def _enableDebugInfo(self, page, data):
