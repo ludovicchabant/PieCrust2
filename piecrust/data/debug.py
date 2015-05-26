@@ -208,7 +208,8 @@ class DebugDataRenderer(object):
         self._renderDoc(data, path)
         self._renderAttributes(data, path)
         rendered_count = self._renderIterable(data, path, lambda d: enumerate(d))
-        if rendered_count == 0:
+        if (rendered_count == 0 and
+                not hasattr(data.__class__, 'debug_render_not_empty')):
             self._writeLine('<p style="%s %s">(empty array)</p>' % (CSS_P, CSS_DOC))
         self._writeLine('</div>')
 
@@ -218,7 +219,8 @@ class DebugDataRenderer(object):
         self._renderAttributes(data, path)
         rendered_count = self._renderIterable(data, path,
                 lambda d: sorted(iter(d.items()), key=lambda i: i[0]))
-        if rendered_count == 0:
+        if (rendered_count == 0 and
+                not hasattr(data.__class__, 'debug_render_not_empty')):
             self._writeLine('<p style="%s %s">(empty dictionary)</p>' % (CSS_P, CSS_DOC))
         self._writeLine('</div>')
 
@@ -240,10 +242,12 @@ class DebugDataRenderer(object):
                 data.__class__.debug_render_items):
             rendered_count = self._renderIterable(data, path,
                     lambda d: enumerate(d))
-            if rendered_count == 0:
+            if (rendered_count == 0 and
+                    not hasattr(data.__class__, 'debug_render_not_empty')):
                 self._writeLine('<p style="%s %s">(empty)</p>' % (CSS_P, CSS_DOC))
 
-        elif rendered_attrs == 0:
+        elif (rendered_attrs == 0 and
+                not hasattr(data.__class__, 'debug_render_not_empty')):
             self._writeLine('<p style="%s %s">(empty)</p>' % (CSS_P, CSS_DOC))
 
         self._writeLine('</div>')
@@ -264,6 +268,13 @@ class DebugDataRenderer(object):
         if hasattr(data.__class__, 'debug_render_doc'):
             self._writeLine('<span style="%s">&ndash; %s</span>' %
                     (CSS_DOC, data.__class__.debug_render_doc))
+
+        if hasattr(data.__class__, 'debug_render_doc_dynamic'):
+            drdd = data.__class__.debug_render_doc_dynamic
+            for ng in drdd:
+                doc = getattr(data, ng)
+                self._writeLine('<span style="%s">&ndash; %s</span>' %
+                        (CSS_DOC, doc()))
 
         doc = self.external_docs.get(path)
         if doc is not None:
