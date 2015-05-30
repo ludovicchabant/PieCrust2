@@ -1,4 +1,4 @@
-from markdown import markdown
+from markdown import Markdown
 from piecrust.formatting.base import Formatter
 
 
@@ -8,15 +8,15 @@ class MarkdownFormatter(Formatter):
 
     def __init__(self):
         super(MarkdownFormatter, self).__init__()
-        self._extensions = None
+        self._formatter = None
 
     def render(self, format_name, txt):
         assert format_name in self.FORMAT_NAMES
         self._ensureInitialized()
-        return markdown(txt, extensions=self._extensions)
+        return self._formatter.convert(txt)
 
     def _ensureInitialized(self):
-        if self._extensions is not None:
+        if self._formatter is not None:
             return
 
         config = self.app.config.get('markdown')
@@ -34,5 +34,6 @@ class MarkdownFormatter(Formatter):
         # Compatibility with PieCrust 1.x
         if config.get('use_markdown_extra'):
             extensions.append('extra')
-        self._extensions = extensions
+
+        self._formatter = Markdown(extensions=extensions)
 
