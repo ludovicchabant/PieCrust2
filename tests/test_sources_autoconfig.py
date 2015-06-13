@@ -5,49 +5,49 @@ from .pathutil import slashfix
 
 
 @pytest.mark.parametrize(
-        'fs, src_config, expected_paths, expected_metadata',
+        'fs_fac, src_config, expected_paths, expected_metadata',
         [
-            (mock_fs(), {}, [], []),
-            (mock_fs().withPage('test/_index.md'),
+            (lambda: mock_fs(), {}, [], []),
+            (lambda: mock_fs().withPage('test/_index.md'),
                 {},
                 ['_index.md'],
                 [{'slug': '', 'config': {'foo': []}}]),
-            (mock_fs().withPage('test/something.md'),
+            (lambda: mock_fs().withPage('test/something.md'),
                 {},
                 ['something.md'],
                 [{'slug': 'something', 'config': {'foo': []}}]),
-            (mock_fs().withPage('test/bar/something.md'),
+            (lambda: mock_fs().withPage('test/bar/something.md'),
                 {},
                 ['bar/something.md'],
                 [{'slug': 'something', 'config': {'foo': ['bar']}}]),
-            (mock_fs().withPage('test/bar1/bar2/something.md'),
+            (lambda: mock_fs().withPage('test/bar1/bar2/something.md'),
                 {},
                 ['bar1/bar2/something.md'],
                 [{'slug': 'something', 'config': {'foo': ['bar1', 'bar2']}}]),
 
-            (mock_fs().withPage('test/something.md'),
+            (lambda: mock_fs().withPage('test/something.md'),
                 {'collapse_single_values': True},
                 ['something.md'],
                 [{'slug': 'something', 'config': {'foo': None}}]),
-            (mock_fs().withPage('test/bar/something.md'),
+            (lambda: mock_fs().withPage('test/bar/something.md'),
                 {'collapse_single_values': True},
                 ['bar/something.md'],
                 [{'slug': 'something', 'config': {'foo': 'bar'}}]),
-            (mock_fs().withPage('test/bar1/bar2/something.md'),
+            (lambda: mock_fs().withPage('test/bar1/bar2/something.md'),
                 {'collapse_single_values': True},
                 ['bar1/bar2/something.md'],
                 [{'slug': 'something', 'config': {'foo': ['bar1', 'bar2']}}]),
 
-            (mock_fs().withPage('test/something.md'),
+            (lambda: mock_fs().withPage('test/something.md'),
                 {'only_single_values': True},
                 ['something.md'],
                 [{'slug': 'something', 'config': {'foo': None}}]),
-            (mock_fs().withPage('test/bar/something.md'),
+            (lambda: mock_fs().withPage('test/bar/something.md'),
                 {'only_single_values': True},
                 ['bar/something.md'],
                 [{'slug': 'something', 'config': {'foo': 'bar'}}]),
             ])
-def test_autoconfig_source_factories(fs, src_config, expected_paths,
+def test_autoconfig_source_factories(fs_fac, src_config, expected_paths,
                                      expected_metadata):
     site_config = {
             'sources': {
@@ -58,6 +58,7 @@ def test_autoconfig_source_factories(fs, src_config, expected_paths,
                 {'url': '/%slug%', 'source': 'test'}]
             }
     site_config['sources']['test'].update(src_config)
+    fs = fs_fac()
     fs.withConfig({'site': site_config})
     fs.withDir('kitchen/test')
     with mock_fs_scope(fs):
@@ -88,27 +89,27 @@ def test_autoconfig_fails_if_multiple_folders():
 
 
 @pytest.mark.parametrize(
-        'fs, expected_paths, expected_metadata',
+        'fs_fac, expected_paths, expected_metadata',
         [
-            (mock_fs(), [], []),
-            (mock_fs().withPage('test/_index.md'),
+            (lambda: mock_fs(), [], []),
+            (lambda: mock_fs().withPage('test/_index.md'),
                 ['_index.md'],
                 [{'slug': '',
                     'config': {'foo': 0, 'foo_trail': [0]}}]),
-            (mock_fs().withPage('test/something.md'),
+            (lambda: mock_fs().withPage('test/something.md'),
                 ['something.md'],
                 [{'slug': 'something',
                     'config': {'foo': 0, 'foo_trail': [0]}}]),
-            (mock_fs().withPage('test/08_something.md'),
+            (lambda: mock_fs().withPage('test/08_something.md'),
                 ['08_something.md'],
                 [{'slug': 'something',
                     'config': {'foo': 8, 'foo_trail': [8]}}]),
-            (mock_fs().withPage('test/02_there/08_something.md'),
+            (lambda: mock_fs().withPage('test/02_there/08_something.md'),
                 ['02_there/08_something.md'],
                 [{'slug': 'there/something',
                     'config': {'foo': 8, 'foo_trail': [2, 8]}}]),
             ])
-def test_ordered_source_factories(fs, expected_paths, expected_metadata):
+def test_ordered_source_factories(fs_fac, expected_paths, expected_metadata):
     site_config = {
             'sources': {
                 'test': {'type': 'ordered',
@@ -117,6 +118,7 @@ def test_ordered_source_factories(fs, expected_paths, expected_metadata):
             'routes': [
                 {'url': '/%slug%', 'source': 'test'}]
             }
+    fs = fs_fac()
     fs.withConfig({'site': site_config})
     fs.withDir('kitchen/test')
     with mock_fs_scope(fs):
@@ -130,34 +132,34 @@ def test_ordered_source_factories(fs, expected_paths, expected_metadata):
 
 
 @pytest.mark.parametrize(
-        'fs, route_path, expected_path, expected_metadata',
+        'fs_fac, route_path, expected_path, expected_metadata',
         [
-            (mock_fs(), 'missing', None, None),
-            (mock_fs().withPage('test/something.md'),
+            (lambda: mock_fs(), 'missing', None, None),
+            (lambda: mock_fs().withPage('test/something.md'),
                 'something', 'something.md',
                 {'slug': 'something',
                     'config': {'foo': 0, 'foo_trail': [0]}}),
-            (mock_fs().withPage('test/bar/something.md'),
+            (lambda: mock_fs().withPage('test/bar/something.md'),
                 'bar/something', 'bar/something.md',
                 {'slug': 'bar/something',
                     'config': {'foo': 0, 'foo_trail': [0]}}),
-            (mock_fs().withPage('test/42_something.md'),
+            (lambda: mock_fs().withPage('test/42_something.md'),
                 'something', '42_something.md',
                 {'slug': 'something',
                     'config': {'foo': 42, 'foo_trail': [42]}}),
-            (mock_fs().withPage('test/bar/42_something.md'),
+            (lambda: mock_fs().withPage('test/bar/42_something.md'),
                 'bar/something', 'bar/42_something.md',
                 {'slug': 'bar/something',
                     'config': {'foo': 42, 'foo_trail': [42]}}),
 
-            ((mock_fs()
+            ((lambda: mock_fs()
                 .withPage('test/42_something.md')
                 .withPage('test/43_other_something.md')),
                 'something', '42_something.md',
                 {'slug': 'something',
                     'config': {'foo': 42, 'foo_trail': [42]}}),
             ])
-def test_ordered_source_find(fs, route_path, expected_path,
+def test_ordered_source_find(fs_fac, route_path, expected_path,
                              expected_metadata):
     site_config = {
             'sources': {
@@ -167,6 +169,7 @@ def test_ordered_source_find(fs, route_path, expected_path,
             'routes': [
                 {'url': '/%slug%', 'source': 'test'}]
             }
+    fs = fs_fac()
     fs.withConfig({'site': site_config})
     fs.withDir('kitchen/test')
     with mock_fs_scope(fs):

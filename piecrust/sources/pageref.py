@@ -42,7 +42,6 @@ class PageRef(object):
 
     @property
     def source_name(self):
-        self._checkHits()
         return self._first_valid_hit.source_name
 
     @property
@@ -51,23 +50,25 @@ class PageRef(object):
 
     @property
     def rel_path(self):
-        self._checkHits()
         return self._first_valid_hit.rel_path
 
     @property
     def path(self):
-        self._checkHits()
         return self._first_valid_hit.path
 
     @property
     def metadata(self):
-        self._checkHits()
         return self._first_valid_hit.metadata
 
     @property
-    def possible_rel_paths(self):
+    def possible_ref_specs(self):
         self._load()
-        return [h.rel_path for h in self._hits]
+        return ['%s:%s' % (h.source_name, h.rel_path) for h in self._hits]
+
+    @property
+    def possible_split_ref_specs(self):
+        self._load()
+        return [(h.source_name, h.rel_path) for h in self._hits]
 
     @property
     def possible_paths(self):
@@ -80,17 +81,23 @@ class PageRef(object):
 
     @property
     def _first_valid_hit(self):
+        self._checkHits()
         return self._hits[self._first_valid_hit_index]
 
     def _load(self):
         if self._hits is not None:
             return
 
+        self._hits = []
+
+        if self._page_ref is None:
+            self._first_valid_hit_index = self._INDEX_NOT_FOUND
+            return
+
         it = list(page_ref_pattern.finditer(self._page_ref))
         if len(it) == 0:
             raise Exception("Invalid page ref: %s" % self._page_ref)
 
-        self._hits = []
         for m in it:
             source_name = m.group('src')
             source = self.app.getSource(source_name)
@@ -111,15 +118,17 @@ class PageRef(object):
     def _checkHits(self):
         if self._first_valid_hit_index >= 0:
             return
+
+        if self._first_valid_hit_index == self._INDEX_NEEDS_LOADING:
+            self._load()
+            self._first_valid_hit_index = self._INDEX_NOT_FOUND
+            for i, hit in enumerate(self._hits):
+                if os.path.isfile(hit.path):
+                    self._first_valid_hit_index = i
+                    break
+
         if self._first_valid_hit_index == self._INDEX_NOT_FOUND:
             raise PageNotFoundError(
                     "No valid paths were found for page reference: %s" %
                     self._page_ref)
-
-        self._load()
-        self._first_valid_hit_index = self._INDEX_NOT_FOUND
-        for i, hit in enumerate(self._hits):
-            if os.path.isfile(hit.path):
-                self._first_valid_hit_index = i
-                break
 

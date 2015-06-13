@@ -2,8 +2,8 @@ import re
 import os.path
 import logging
 from werkzeug.utils import cached_property
-from piecrust.data.builder import (DataBuildingContext, build_page_data,
-        build_layout_data)
+from piecrust.data.builder import (
+        DataBuildingContext, build_page_data, build_layout_data)
 from piecrust.data.filters import (
         PaginationFilter, HasFilterClause, IsFilterClause, AndBooleanClause,
         page_value_accessor)
@@ -94,6 +94,12 @@ class PageRenderingContext(object):
         return self.page.getUri(self.page_num)
 
     @property
+    def pagination_has_more(self):
+        if self.used_pagination is None:
+            return False
+        return self.used_pagination.has_more
+
+    @property
     def current_pass_info(self):
         return self.render_passes.get(self._current_pass)
 
@@ -157,15 +163,19 @@ def render_page(ctx):
         # Render content segments.
         ctx.setCurrentPass(PASS_FORMATTING)
         repo = ctx.app.env.rendered_segments_repository
+        save_to_fs = True
+        if ctx.app.env.fs_cache_only_for_main_page and not eis.is_main_page:
+            save_to_fs = False
         if repo and not ctx.force_render:
-            cache_key = ctx.uri
-            page_time = page.path_mtime
             contents = repo.get(
-                    cache_key,
+                    ctx.uri,
                     lambda: _do_render_page_segments(page, page_data),
-                    fs_cache_time=page_time)
+                    fs_cache_time=page.path_mtime,
+                    save_to_fs=save_to_fs)
         else:
             contents = _do_render_page_segments(page, page_data)
+            if repo:
+                repo.put(ctx.uri, contents, save_to_fs)
 
         # Render layout.
         ctx.setCurrentPass(PASS_RENDERING)
@@ -226,9 +236,10 @@ def _do_render_page_segments(page, page_data):
         for seg_part in seg.parts:
             part_format = seg_part.fmt or format_name
             try:
-                part_text = engine.renderString(
-                        seg_part.content, page_data,
-                        filename=page.path)
+                with app.env.timerScope(engine.__class__.__name__):
+                    part_text = engine.renderString(
+                            seg_part.content, page_data,
+                            filename=page.path)
             except TemplatingError as err:
                 err.lineno += seg_part.line
                 raise err
@@ -291,7 +302,8 @@ def format_text(app, format_name, txt, exact_format=False):
     format_name = format_name or app.config.get('site/default_format')
     for fmt in app.plugin_loader.getFormatters():
         if fmt.FORMAT_NAMES is None or format_name in fmt.FORMAT_NAMES:
-            txt = fmt.render(format_name, txt)
+            with app.env.timerScope(fmt.__class__.__name__):
+                txt = fmt.render(format_name, txt)
             format_count += 1
             if fmt.OUTPUT_FORMAT is not None:
                 format_name = fmt.OUTPUT_FORMAT

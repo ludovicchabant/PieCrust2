@@ -1,7 +1,8 @@
 import time
 import os.path
 import pytest
-from piecrust.baking.baker import PageBaker, Baker
+from piecrust.baking.baker import Baker
+from piecrust.baking.single import PageBaker
 from piecrust.baking.records import BakeRecord
 from .mockutil import get_mock_app, mock_fs, mock_fs_scope
 
@@ -56,6 +57,7 @@ def test_removed():
     with mock_fs_scope(fs):
         out_dir = fs.path('kitchen/_counter')
         app = fs.getApp()
+        app.config.set('baker/workers', 1)
         baker = Baker(app, out_dir)
         baker.bake()
         structure = fs.getStructure('kitchen/_counter')

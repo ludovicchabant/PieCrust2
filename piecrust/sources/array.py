@@ -1,5 +1,6 @@
 from piecrust.sources.base import PageSource
 from piecrust.sources.mixins import SimplePaginationSourceMixin
+from piecrust.sources.pageref import PageRef
 
 
 class CachedPageFactory(object):
@@ -30,7 +31,7 @@ class CachedPageFactory(object):
 
 class ArraySource(PageSource, SimplePaginationSourceMixin):
     def __init__(self, app, inner_source, name='array', config=None):
-        super(ArraySource, self).__init__(app, name, config or {})
+        super(ArraySource, self).__init__(app, name, config)
         self.inner_source = inner_source
 
     @property
@@ -40,4 +41,7 @@ class ArraySource(PageSource, SimplePaginationSourceMixin):
     def getPageFactories(self):
         for p in self.inner_source:
             yield CachedPageFactory(p)
+
+    def getTaxonomyPageRef(self, tax_name):
+        return None
 

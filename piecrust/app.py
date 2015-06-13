@@ -1,5 +1,6 @@
 import re
 import json
+import time
 import os.path
 import codecs
 import hashlib
@@ -413,9 +414,18 @@ class PieCrust(object):
             self.env = StandardEnvironment()
         self.env.initialize(self)
 
+        self.env.registerTimer('SiteConfigLoad')
+        self.env.registerTimer('PageLoad')
+        for engine in self.plugin_loader.getTemplateEngines():
+            self.env.registerTimer(engine.__class__.__name__)
+        for fmt in self.plugin_loader.getFormatters():
+            self.env.registerTimer(fmt.__class__.__name__)
+
     @cached_property
     def config(self):
         logger.debug("Creating site configuration...")
+        start_time = time.perf_counter()
+
         paths = []
         if self.theme_dir:
             paths.append(os.path.join(self.theme_dir, THEME_CONFIG_PATH))
@@ -456,6 +466,7 @@ class PieCrust(object):
                         sc['realm'] = REALM_THEME
             config.fixups.append(_fixupThemeSources)
 
+        self.env.stepTimer('SiteConfigLoad', time.perf_counter() - start_time)
         return config
 
     @cached_property

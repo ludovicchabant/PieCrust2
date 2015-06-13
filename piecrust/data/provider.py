@@ -118,17 +118,17 @@ class BlogDataProvider(DataProvider):
             return self._yearly
 
         self._yearly = []
+        yearly_index = {}
         for post in self._source.getPages():
             year = post.datetime.strftime('%Y')
 
-            posts_this_year = next(
-                    filter(lambda y: y.name == year, self._yearly),
-                    None)
+            posts_this_year = yearly_index.get(year)
             if posts_this_year is None:
                 timestamp = time.mktime(
                         (post.datetime.year, 1, 1, 0, 0, 0, 0, 0, -1))
                 posts_this_year = BlogArchiveEntry(self._page, year, timestamp)
                 self._yearly.append(posts_this_year)
+                yearly_index[year] = posts_this_year
 
             posts_this_year._data_source.append(post)
         self._yearly = sorted(self._yearly,

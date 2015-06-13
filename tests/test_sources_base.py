@@ -6,22 +6,23 @@ from .mockutil import mock_fs, mock_fs_scope
 from .pathutil import slashfix
 
 
-@pytest.mark.parametrize('fs, expected_paths, expected_slugs', [
-        (mock_fs(), [], []),
-        (mock_fs().withPage('test/foo.html'),
+@pytest.mark.parametrize('fs_fac, expected_paths, expected_slugs', [
+        (lambda: mock_fs(), [], []),
+        (lambda: mock_fs().withPage('test/foo.html'),
             ['foo.html'], ['foo']),
-        (mock_fs().withPage('test/foo.md'),
+        (lambda: mock_fs().withPage('test/foo.md'),
             ['foo.md'], ['foo']),
-        (mock_fs().withPage('test/foo.ext'),
+        (lambda: mock_fs().withPage('test/foo.ext'),
             ['foo.ext'], ['foo.ext']),
-        (mock_fs().withPage('test/foo/bar.html'),
+        (lambda: mock_fs().withPage('test/foo/bar.html'),
             ['foo/bar.html'], ['foo/bar']),
-        (mock_fs().withPage('test/foo/bar.md'),
+        (lambda: mock_fs().withPage('test/foo/bar.md'),
             ['foo/bar.md'], ['foo/bar']),
-        (mock_fs().withPage('test/foo/bar.ext'),
+        (lambda: mock_fs().withPage('test/foo/bar.ext'),
             ['foo/bar.ext'], ['foo/bar.ext']),
         ])
-def test_default_source_factories(fs, expected_paths, expected_slugs):
+def test_default_source_factories(fs_fac, expected_paths, expected_slugs):
+    fs = fs_fac()
     fs.withConfig({
         'site': {
             'sources': {
@@ -131,7 +132,7 @@ def test_page_ref_with_missing_source():
         app = fs.getApp()
         r = PageRef(app, 'whatever:doesnt_exist.md')
         with pytest.raises(Exception):
-            r.possible_rel_paths
+            r.possible_ref_specs
 
 
 def test_page_ref_with_missing_file():
@@ -139,9 +140,11 @@ def test_page_ref_with_missing_file():
     with mock_fs_scope(fs):
         app = fs.getApp()
         r = PageRef(app, 'pages:doesnt_exist.%ext%')
-        assert r.possible_rel_paths == [
-                'doesnt_exist.html', 'doesnt_exist.md', 'doesnt_exist.textile']
-        assert r.source_name == 'pages'
+        assert r.possible_ref_specs == [
+                'pages:doesnt_exist.html', 'pages:doesnt_exist.md',
+                'pages:doesnt_exist.textile']
+        with pytest.raises(PageNotFoundError):
+            r.source_name
         with pytest.raises(PageNotFoundError):
             r.rel_path
         with pytest.raises(PageNotFoundError):

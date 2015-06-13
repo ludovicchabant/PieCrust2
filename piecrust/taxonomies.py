@@ -16,21 +16,19 @@ class Taxonomy(object):
             return self.name
         return self.term_name
 
-    def resolvePagePath(self, source_name):
-        pr = self.getPageRef(source_name)
+    def resolvePagePath(self, source):
+        pr = self.getPageRef(source)
         try:
             return pr.path
         except PageNotFoundError:
             return None
 
-    def getPageRef(self, source_name):
-        if source_name in self._source_page_refs:
-            return self._source_page_refs[source_name]
+    def getPageRef(self, source):
+        if source.name in self._source_page_refs:
+            return self._source_page_refs[source.name]
 
-        source = self.app.getSource(source_name)
-        ref_path = (source.getTaxonomyPageRef(self.name) or
-                '%s:%s' % (source_name, self.page_ref))
+        ref_path = source.getTaxonomyPageRef(self.name)
         page_ref = PageRef(self.app, ref_path)
-        self._source_page_refs[source_name] = page_ref
+        self._source_page_refs[source.name] = page_ref
         return page_ref
 

@@ -148,36 +148,36 @@ class BakeTestItem(YamlTestItemBase):
             baker = Baker(app, out_dir)
             record = baker.bake()
 
-        if not record.success:
-            errors = []
-            for e in record.entries:
-                errors += e.getAllErrors()
-            raise BakeError(errors)
+            if not record.success:
+                errors = []
+                for e in record.entries:
+                    errors += e.getAllErrors()
+                raise BakeError(errors)
 
-        if expected_output_files:
-            actual = fs.getStructure('kitchen/_counter')
-            error = _compare_dicts(expected_output_files, actual)
-            if error:
-                raise ExpectedBakeOutputError(error)
+            if expected_output_files:
+                actual = fs.getStructure('kitchen/_counter')
+                error = _compare_dicts(expected_output_files, actual)
+                if error:
+                    raise ExpectedBakeOutputError(error)
 
-        if expected_partial_files:
-            keys = list(sorted(expected_partial_files.keys()))
-            for key in keys:
-                try:
-                    actual = fs.getFileEntry('kitchen/_counter/' +
-                                             key.lstrip('/'))
-                except Exception as e:
-                    raise ExpectedBakeOutputError([
-                        "Can't access output file %s: %s" % (key, e)])
+            if expected_partial_files:
+                keys = list(sorted(expected_partial_files.keys()))
+                for key in keys:
+                    try:
+                        actual = fs.getFileEntry('kitchen/_counter/' +
+                                                 key.lstrip('/'))
+                    except Exception as e:
+                        raise ExpectedBakeOutputError([
+                            "Can't access output file %s: %s" % (key, e)])
 
-                expected = expected_partial_files[key]
-                # HACK because for some reason PyYAML adds a new line for those
-                # and I have no idea why.
-                actual = actual.rstrip('\n')
-                expected = expected.rstrip('\n')
-                cmpres = _compare_str(expected, actual, key)
-                if cmpres:
-                    raise ExpectedBakeOutputError(cmpres)
+                    expected = expected_partial_files[key]
+                    # HACK because for some reason PyYAML adds a new line for
+                    # those and I have no idea why.
+                    actual = actual.rstrip('\n')
+                    expected = expected.rstrip('\n')
+                    cmpres = _compare_str(expected, actual, key)
+                    if cmpres:
+                        raise ExpectedBakeOutputError(cmpres)
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name

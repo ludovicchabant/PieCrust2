@@ -293,36 +293,35 @@ class Linker(object):
 
         items = list(self._source.listPath(self._dir_path))
         self._items = collections.OrderedDict()
-        with self._source.app.env.page_repository.startBatchGet():
-            for is_dir, name, data in items:
-                # If `is_dir` is true, `data` will be the directory's source
-                # path. If not, it will be a page factory.
-                if is_dir:
-                    item = Linker(self._source, data,
-                                  root_page_path=self._root_page_path)
-                else:
-                    page = data.buildPage()
-                    is_self = (page.rel_path == self._root_page_path)
-                    item = _LinkedPage(page)
-                    item._linker_info.name = name
-                    item._linker_info.is_self = is_self
-                    if is_self:
-                        self._self_item = item
+        for is_dir, name, data in items:
+            # If `is_dir` is true, `data` will be the directory's source
+            # path. If not, it will be a page factory.
+            if is_dir:
+                item = Linker(self._source, data,
+                              root_page_path=self._root_page_path)
+            else:
+                page = data.buildPage()
+                is_self = (page.rel_path == self._root_page_path)
+                item = _LinkedPage(page)
+                item._linker_info.name = name
+                item._linker_info.is_self = is_self
+                if is_self:
+                    self._self_item = item
 
-                existing = self._items.get(name)
-                if existing is None:
-                    self._items[name] = item
-                elif is_dir:
-                    # The current item is a directory. The existing item
-                    # should be a page.
-                    existing._linker_info.child_linker = item
-                    existing._linker_info.is_dir = True
-                else:
-                    # The current item is a page. The existing item should
-                    # be a directory.
-                    item._linker_info.child_linker = existing
-                    item._linker_info.is_dir = True
-                    self._items[name] = item
+            existing = self._items.get(name)
+            if existing is None:
+                self._items[name] = item
+            elif is_dir:
+                # The current item is a directory. The existing item
+                # should be a page.
+                existing._linker_info.child_linker = item
+                existing._linker_info.is_dir = True
+            else:
+                # The current item is a page. The existing item should
+                # be a directory.
+                item._linker_info.child_linker = existing
+                item._linker_info.is_dir = True
+                self._items[name] = item
 
 
 def filter_page_items(item):

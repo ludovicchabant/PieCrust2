@@ -13,7 +13,7 @@ class MarkdownFormatter(Formatter):
     def render(self, format_name, txt):
         assert format_name in self.FORMAT_NAMES
         self._ensureInitialized()
-        return self._formatter.convert(txt)
+        return self._formatter.reset().convert(txt)
 
     def _ensureInitialized(self):
         if self._formatter is not None:

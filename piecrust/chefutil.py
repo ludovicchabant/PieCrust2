@@ -1,9 +1,18 @@
 import time
+import logging
+import contextlib
 from colorama import Fore
 
 
+@contextlib.contextmanager
+def format_timed_scope(logger, message, *, level=logging.INFO, colored=True):
+    start_time = time.perf_counter()
+    yield
+    logger.log(level, format_timed(start_time, message, colored=colored))
+
+
 def format_timed(start_time, message, indent_level=0, colored=True):
-    end_time = time.clock()
+    end_time = time.perf_counter()
     indent = indent_level * '  '
     time_str = '%8.1f ms' % ((end_time - start_time) * 1000.0)
     if colored:

@@ -5,34 +5,35 @@ from piecrust.data.assetor import (
 from .mockutil import mock_fs, mock_fs_scope
 
 
-@pytest.mark.parametrize('fs, site_root, expected', [
-        (mock_fs().withPage('pages/foo/bar'), '/', {}),
-        (mock_fs()
+@pytest.mark.parametrize('fs_fac, site_root, expected', [
+        (lambda: mock_fs().withPage('pages/foo/bar'), '/', {}),
+        (lambda: mock_fs()
             .withPage('pages/foo/bar')
             .withPageAsset('pages/foo/bar', 'one.txt', 'one'),
             '/',
             {'one': 'one'}),
-        (mock_fs()
+        (lambda: mock_fs()
             .withPage('pages/foo/bar')
             .withPageAsset('pages/foo/bar', 'one.txt', 'one')
             .withPageAsset('pages/foo/bar', 'two.txt', 'two'),
             '/',
             {'one': 'one', 'two': 'two'}),
 
-        (mock_fs().withPage('pages/foo/bar'), '/whatever', {}),
-        (mock_fs()
+        (lambda: mock_fs().withPage('pages/foo/bar'), '/whatever', {}),
+        (lambda: mock_fs()
             .withPage('pages/foo/bar')
             .withPageAsset('pages/foo/bar', 'one.txt', 'one'),
             '/whatever',
             {'one': 'one'}),
-        (mock_fs()
+        (lambda: mock_fs()
             .withPage('pages/foo/bar')
             .withPageAsset('pages/foo/bar', 'one.txt', 'one')
             .withPageAsset('pages/foo/bar', 'two.txt', 'two'),
             '/whatever',
             {'one': 'one', 'two': 'two'})
         ])
-def test_assets(fs, site_root, expected):
+def test_assets(fs_fac, site_root, expected):
+    fs = fs_fac()
     fs.withConfig({'site': {'root': site_root}})
     with mock_fs_scope(fs):
         page = MagicMock()

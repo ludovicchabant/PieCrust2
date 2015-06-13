@@ -319,7 +319,7 @@ class Server(object):
             if route_terms is None:
                 return None
 
-            tax_page_ref = taxonomy.getPageRef(source.name)
+            tax_page_ref = taxonomy.getPageRef(source)
             factory = tax_page_ref.getFactory()
             tax_terms = route.unslugifyTaxonomyTerm(route_terms)
             route_metadata[taxonomy.term_name] = tax_terms

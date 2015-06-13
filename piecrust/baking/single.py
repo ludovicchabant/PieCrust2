@@ -1,21 +1,13 @@
 import os.path
-import copy
 import shutil
 import codecs
 import logging
 import urllib.parse
 from piecrust.baking.records import (
-        BakeRecordPassInfo, BakeRecordPageEntry, BakeRecordSubPageEntry)
-from piecrust.data.filters import (
-        PaginationFilter, HasFilterClause,
-        IsFilterClause, AndBooleanClause,
-        page_value_accessor)
+        PageBakeInfo, SubPageBakeInfo, BakePassInfo)
 from piecrust.rendering import (
         QualifiedPage, PageRenderingContext, render_page,
-        PASS_FORMATTING, PASS_RENDERING)
-from piecrust.sources.base import (
-        PageFactory,
-        REALM_NAMES, REALM_USER, REALM_THEME)
+        PASS_FORMATTING)
 from piecrust.uriutil import split_uri
 
 
@@ -35,12 +27,10 @@ class BakingError(Exception):
 
 
 class PageBaker(object):
-    def __init__(self, app, out_dir, force=False, record=None,
-                 copy_assets=True):
+    def __init__(self, app, out_dir, force=False, copy_assets=True):
         self.app = app
         self.out_dir = out_dir
         self.force = force
-        self.record = record
         self.copy_assets = copy_assets
         self.site_root = app.config.get('site/root')
         self.pretty_urls = app.config.get('site/pretty_urls')
@@ -60,122 +50,43 @@ class PageBaker(object):
 
         return os.path.normpath(os.path.join(*bake_path))
 
-    def bake(self, factory, route, record_entry):
+    def bake(self, factory, route, route_metadata, prev_entry,
+             first_render_info, dirty_source_names, tax_info=None):
         # Get the page.
         page = factory.buildPage()
-        route_metadata = copy.deepcopy(factory.metadata)
-
-        # Add taxonomy info in the template data and route metadata if needed.
-        bake_taxonomy_info = None
-        if record_entry.taxonomy_info:
-            tax_name, tax_term, tax_source_name = record_entry.taxonomy_info
-            taxonomy = self.app.getTaxonomy(tax_name)
-            slugified_term = route.slugifyTaxonomyTerm(tax_term)
-            route_metadata[taxonomy.term_name] = slugified_term
-            bake_taxonomy_info = (taxonomy, tax_term)
-
-        # Generate the URI.
-        uri = route.getUri(route_metadata, provider=page)
-
-        # See if this URL has been overriden by a previously baked page.
-        # If that page is from another realm (e.g. a user page vs. a theme
-        # page), we silently skip this page. If they're from the same realm,
-        # we don't allow overriding and raise an error (this is probably
-        # because of a misconfigured configuration that allows for ambiguous
-        # URLs between 2 routes or sources).
-        override = self.record.getOverrideEntry(factory, uri)
-        if override is not None:
-            override_source = self.app.getSource(override.source_name)
-            if override_source.realm == factory.source.realm:
-                raise BakingError(
-                        "Page '%s' maps to URL '%s' but is overriden by page"
-                        "'%s:%s'." % (factory.ref_spec, uri,
-                                      override.source_name,
-                                      override.rel_path))
-            logger.debug("'%s' [%s] is overriden by '%s:%s'. Skipping" %
-                         (factory.ref_spec, uri, override.source_name,
-                          override.rel_path))
-            record_entry.flags |= BakeRecordPageEntry.FLAG_OVERRIDEN
-            return
-
-        # Setup the record entry.
-        record_entry.config = copy_public_page_config(page.config)
 
         # Start baking the sub-pages.
         cur_sub = 1
         has_more_subs = True
-        force_this = self.force
-        invalidate_formatting = False
-        prev_record_entry = self.record.getPreviousEntry(
-                factory.source.name, factory.rel_path,
-                record_entry.taxonomy_info)
-
-        logger.debug("Baking '%s'..." % uri)
+        report = PageBakeInfo()
 
         while has_more_subs:
             # Get the URL and path for this sub-page.
             sub_uri = route.getUri(route_metadata, sub_num=cur_sub,
                                    provider=page)
+            logger.debug("Baking '%s' [%d]..." % (sub_uri, cur_sub))
             out_path = self.getOutputPath(sub_uri)
 
             # Create the sub-entry for the bake record.
-            record_sub_entry = BakeRecordSubPageEntry(sub_uri, out_path)
-            record_entry.subs.append(record_sub_entry)
+            sub_entry = SubPageBakeInfo(sub_uri, out_path)
+            report.subs.append(sub_entry)
 
             # Find a corresponding sub-entry in the previous bake record.
-            prev_record_sub_entry = None
-            if prev_record_entry:
+            prev_sub_entry = None
+            if prev_entry:
                 try:
-                    prev_record_sub_entry = prev_record_entry.getSub(cur_sub)
+                    prev_sub_entry = prev_entry.getSub(cur_sub)
                 except IndexError:
                     pass
 
-            # Figure out what to do with this page.
-            if (prev_record_sub_entry and
-                    (prev_record_sub_entry.was_baked_successfully or
-                        prev_record_sub_entry.was_clean)):
-                # If the current page is known to use pages from other sources,
-                # see if any of those got baked, or are going to be baked for
-                # some reason. If so, we need to bake this one too.
-                # (this happens for instance with the main page of a blog).
-                dirty_src_names, invalidated_render_passes = (
-                        self._getDirtySourceNamesAndRenderPasses(
-                            prev_record_sub_entry))
-                if len(invalidated_render_passes) > 0:
-                    logger.debug(
-                            "'%s' is known to use sources %s, which have "
-                            "items that got (re)baked. Will force bake this "
-                            "page. " % (uri, dirty_src_names))
-                    record_sub_entry.flags |= \
-                        BakeRecordSubPageEntry.FLAG_FORCED_BY_SOURCE
-                    force_this = True
-
-                    if PASS_FORMATTING in invalidated_render_passes:
-                        logger.debug(
-                                "Will invalidate cached formatting for '%s' "
-                                "since sources were using during that pass."
-                                % uri)
-                        invalidate_formatting = True
-            elif (prev_record_sub_entry and
-                    prev_record_sub_entry.errors):
-                # Previous bake failed. We'll have to bake it again.
-                logger.debug(
-                        "Previous record entry indicates baking failed for "
-                        "'%s'. Will bake it again." % uri)
-                record_sub_entry.flags |= \
-                    BakeRecordSubPageEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS
-                force_this = True
-            elif not prev_record_sub_entry:
-                # No previous record. We'll have to bake it.
-                logger.debug("No previous record entry found for '%s'. Will "
-                             "force bake it." % uri)
-                record_sub_entry.flags |= \
-                    BakeRecordSubPageEntry.FLAG_FORCED_BY_NO_PREVIOUS
-                force_this = True
+            # Figure out if we need to invalidate or force anything.
+            force_this_sub, invalidate_formatting = _compute_force_flags(
+                    prev_sub_entry, sub_entry, dirty_source_names)
+            force_this_sub = force_this_sub or self.force
 
             # Check for up-to-date outputs.
             do_bake = True
-            if not force_this:
+            if not force_this_sub:
                 try:
                     in_path_time = page.path_mtime
                     out_path_time = os.path.getmtime(out_path)
@@ -188,10 +99,10 @@ class PageBaker(object):
             # If this page didn't bake because it's already up-to-date.
             # Keep trying for as many subs as we know this page has.
             if not do_bake:
-                prev_record_sub_entry.collapseRenderPasses(record_sub_entry)
-                record_sub_entry.flags = BakeRecordSubPageEntry.FLAG_NONE
+                prev_sub_entry.collapseRenderPasses(sub_entry)
+                sub_entry.flags = SubPageBakeInfo.FLAG_NONE
 
-                if prev_record_entry.num_subs >= cur_sub + 1:
+                if prev_entry.num_subs >= cur_sub + 1:
                     cur_sub += 1
                     has_more_subs = True
                     logger.debug("  %s is up to date, skipping to next "
@@ -207,34 +118,40 @@ class PageBaker(object):
                     cache_key = sub_uri
                     self.app.env.rendered_segments_repository.invalidate(
                             cache_key)
-                    record_sub_entry.flags |= \
-                        BakeRecordSubPageEntry.FLAG_FORMATTING_INVALIDATED
+                    sub_entry.flags |= \
+                        SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 qp = QualifiedPage(page, route, route_metadata)
-                ctx, rp = self._bakeSingle(qp, cur_sub, out_path,
-                                           bake_taxonomy_info)
+                ctx, rp = self._bakeSingle(qp, cur_sub, out_path, tax_info)
             except Exception as ex:
                 if self.app.debug:
                     logger.exception(ex)
                 page_rel_path = os.path.relpath(page.path, self.app.root_dir)
                 raise BakingError("%s: error baking '%s'." %
-                                  (page_rel_path, uri)) from ex
+                                  (page_rel_path, sub_uri)) from ex
 
             # Record what we did.
-            record_sub_entry.flags |= BakeRecordSubPageEntry.FLAG_BAKED
-            self.record.dirty_source_names.add(record_entry.source_name)
+            sub_entry.flags |= SubPageBakeInfo.FLAG_BAKED
+            # self.record.dirty_source_names.add(record_entry.source_name)
             for p, pinfo in ctx.render_passes.items():
-                brpi = BakeRecordPassInfo()
-                brpi.used_source_names = set(pinfo.used_source_names)
-                brpi.used_taxonomy_terms = set(pinfo.used_taxonomy_terms)
-                record_sub_entry.render_passes[p] = brpi
-            if prev_record_sub_entry:
-                prev_record_sub_entry.collapseRenderPasses(record_sub_entry)
+                bpi = BakePassInfo()
+                bpi.used_source_names = set(pinfo.used_source_names)
+                bpi.used_taxonomy_terms = set(pinfo.used_taxonomy_terms)
+                sub_entry.render_passes[p] = bpi
+            if prev_sub_entry:
+                prev_sub_entry.collapseRenderPasses(sub_entry)
+
+            # If this page has had its first sub-page rendered already, we
+            # have that information from the baker. Otherwise (e.g. for
+            # taxonomy pages), we have that information from the result
+            # of the render.
+            info = ctx
+            if cur_sub == 1 and first_render_info is not None:
+                info = first_render_info
 
             # Copy page assets.
-            if (cur_sub == 1 and self.copy_assets and
-                    ctx.used_assets is not None):
+            if cur_sub == 1 and self.copy_assets and info.used_assets:
                 if self.pretty_urls:
                     out_assets_dir = os.path.dirname(out_path)
                 else:
@@ -244,47 +161,113 @@ class PageBaker(object):
                         out_assets_dir += out_name_noext
 
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
-                if not os.path.isdir(out_assets_dir):
-                    os.makedirs(out_assets_dir, 0o755)
-                for ap in ctx.used_assets:
+                _ensure_dir_exists(out_assets_dir)
+
+                used_assets = info.used_assets
+                for ap in used_assets:
                     dest_ap = os.path.join(out_assets_dir,
                                            os.path.basename(ap))
                     logger.debug("  %s -> %s" % (ap, dest_ap))
                     shutil.copy(ap, dest_ap)
-                    record_entry.assets.append(ap)
+                    report.assets.append(ap)
 
             # Figure out if we have more work.
             has_more_subs = False
-            if ctx.used_pagination is not None:
-                if ctx.used_pagination.has_more:
-                    cur_sub += 1
-                    has_more_subs = True
+            if info.pagination_has_more:
+                cur_sub += 1
+                has_more_subs = True
 
-    def _bakeSingle(self, qualified_page, num, out_path, taxonomy_info=None):
+        return report
+
+    def _bakeSingle(self, qualified_page, num, out_path, tax_info=None):
         ctx = PageRenderingContext(qualified_page, page_num=num)
-        if taxonomy_info:
-            ctx.setTaxonomyFilter(taxonomy_info[0], taxonomy_info[1])
+        if tax_info:
+            tax = self.app.getTaxonomy(tax_info.taxonomy_name)
+            ctx.setTaxonomyFilter(tax, tax_info.term)
 
         rp = render_page(ctx)
 
         out_dir = os.path.dirname(out_path)
-        if not os.path.isdir(out_dir):
-            os.makedirs(out_dir, 0o755)
+        _ensure_dir_exists(out_dir)
 
         with codecs.open(out_path, 'w', 'utf8') as fp:
             fp.write(rp.content)
 
         return ctx, rp
 
-    def _getDirtySourceNamesAndRenderPasses(self, record_sub_entry):
-        dirty_src_names = set()
-        invalidated_render_passes = set()
-        for p, pinfo in record_sub_entry.render_passes.items():
-            for src_name in pinfo.used_source_names:
-                is_dirty = (src_name in self.record.dirty_source_names)
-                if is_dirty:
-                    invalidated_render_passes.add(p)
-                    dirty_src_names.add(src_name)
-                    break
-        return dirty_src_names, invalidated_render_passes
+
+def _compute_force_flags(prev_sub_entry, sub_entry, dirty_source_names):
+    # Figure out what to do with this page.
+    force_this_sub = False
+    invalidate_formatting = False
+    sub_uri = sub_entry.out_uri
+    if (prev_sub_entry and
+            (prev_sub_entry.was_baked_successfully or
+                prev_sub_entry.was_clean)):
+        # If the current page is known to use pages from other sources,
+        # see if any of those got baked, or are going to be baked for
+        # some reason. If so, we need to bake this one too.
+        # (this happens for instance with the main page of a blog).
+        dirty_for_this, invalidated_render_passes = (
+                _get_dirty_source_names_and_render_passes(
+                    prev_sub_entry, dirty_source_names))
+        if len(invalidated_render_passes) > 0:
+            logger.debug(
+                    "'%s' is known to use sources %s, which have "
+                    "items that got (re)baked. Will force bake this "
+                    "page. " % (sub_uri, dirty_for_this))
+            sub_entry.flags |= \
+                SubPageBakeInfo.FLAG_FORCED_BY_SOURCE
+            force_this_sub = True
+
+            if PASS_FORMATTING in invalidated_render_passes:
+                logger.debug(
+                        "Will invalidate cached formatting for '%s' "
+                        "since sources were using during that pass."
+                        % sub_uri)
+                invalidate_formatting = True
+    elif (prev_sub_entry and
+            prev_sub_entry.errors):
+        # Previous bake failed. We'll have to bake it again.
+        logger.debug(
+                "Previous record entry indicates baking failed for "
+                "'%s'. Will bake it again." % sub_uri)
+        sub_entry.flags |= \
+            SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS
+        force_this_sub = True
+    elif not prev_sub_entry:
+        # No previous record. We'll have to bake it.
+        logger.debug("No previous record entry found for '%s'. Will "
+                     "force bake it." % sub_uri)
+        sub_entry.flags |= \
+            SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS
+        force_this_sub = True
+
+    return force_this_sub, invalidate_formatting
+
+
+def _get_dirty_source_names_and_render_passes(
+        sub_entry, dirty_source_names):
+    dirty_for_this = set()
+    invalidated_render_passes = set()
+    for p, pinfo in sub_entry.render_passes.items():
+        for src_name in pinfo.used_source_names:
+            is_dirty = (src_name in dirty_source_names)
+            if is_dirty:
+                invalidated_render_passes.add(p)
+                dirty_for_this.add(src_name)
+                break
+    return dirty_for_this, invalidated_render_passes
+
+
+def _ensure_dir_exists(path):
+    try:
+        os.makedirs(path, mode=0o755, exist_ok=True)
+    except OSError:
+        # In a multiprocess environment, several process may very
+        # occasionally try to create the same directory at the same time.
+        # Let's ignore any error and if something's really wrong (like file
+        # acces permissions or whatever), then it will more legitimately fail
+        # just after this when we try to write files.
+        pass
 

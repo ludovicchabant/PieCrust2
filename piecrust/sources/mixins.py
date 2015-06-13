@@ -5,7 +5,7 @@ from piecrust.data.base import PaginationData
 from piecrust.data.filters import PaginationFilter, page_value_accessor
 from piecrust.sources.base import PageFactory
 from piecrust.sources.interfaces import IPaginationSource, IListableSource
-from piecrust.sources.pageref import PageNotFoundError
+from piecrust.sources.pageref import PageRef
 
 
 logger = logging.getLogger(__name__)
@@ -41,13 +41,15 @@ class SourceFactoryWithoutTaxonomiesIterator(object):
         if self._taxonomy_pages is not None:
             return
 
+        app = self.source.app
         self._taxonomy_pages = set()
-        for tax in self.source.app.taxonomies:
-            page_ref = tax.getPageRef(self.source.name)
-            try:
-                self._taxonomy_pages.add(page_ref.rel_path)
-            except PageNotFoundError:
-                pass
+        for src in app.sources:
+            for tax in app.taxonomies:
+                ref_spec = src.getTaxonomyPageRef(tax.name)
+                page_ref = PageRef(app, ref_spec)
+                for sn, rp in page_ref.possible_split_ref_specs:
+                    if sn == self.source.name:
+                        self._taxonomy_pages.add(rp)
 
 
 class DateSortIterator(object):

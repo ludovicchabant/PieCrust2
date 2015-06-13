@@ -5,17 +5,17 @@ from .mockutil import mock_fs, mock_fs_scope
 
 
 @pytest.mark.parametrize(
-    'fs, page_path, expected',
+    'fs_fac, page_path, expected',
     [
-        (mock_fs().withPage('pages/foo'), 'foo.md',
+        (lambda: mock_fs().withPage('pages/foo'), 'foo.md',
             # is_dir, name, is_self, data
             [(False, 'foo', True, '/foo')]),
-        ((mock_fs()
+        ((lambda: mock_fs()
                 .withPage('pages/foo')
                 .withPage('pages/bar')),
             'foo.md',
             [(False, 'bar', False, '/bar'), (False, 'foo', True, '/foo')]),
-        ((mock_fs()
+        ((lambda: mock_fs()
                 .withPage('pages/baz')
                 .withPage('pages/something')
                 .withPage('pages/something/else')
@@ -26,7 +26,7 @@ from .mockutil import mock_fs, mock_fs_scope
                 (False, 'baz', False, '/baz'),
                 (False, 'foo', True, '/foo'),
                 (True, 'something', False, '/something')]),
-        ((mock_fs()
+        ((lambda: mock_fs()
                 .withPage('pages/something/else')
                 .withPage('pages/foo')
                 .withPage('pages/something/good')
@@ -35,7 +35,8 @@ from .mockutil import mock_fs, mock_fs_scope
             [(False, 'else', True, '/something/else'),
                 (False, 'good', False, '/something/good')])
     ])
-def test_linker_iteration(fs, page_path, expected):
+def test_linker_iteration(fs_fac, page_path, expected):
+    fs = fs_fac()
     with mock_fs_scope(fs):
         app = fs.getApp()
         app.config.set('site/pretty_urls', True)
@@ -54,16 +55,16 @@ def test_linker_iteration(fs, page_path, expected):
 
 
 @pytest.mark.parametrize(
-        'fs, page_path, expected',
+        'fs_fac, page_path, expected',
         [
-            (mock_fs().withPage('pages/foo'), 'foo.md',
+            (lambda: mock_fs().withPage('pages/foo'), 'foo.md',
                 [('/foo', True)]),
-            ((mock_fs()
+            ((lambda: mock_fs()
                     .withPage('pages/foo')
                     .withPage('pages/bar')),
                 'foo.md',
                 [('/bar', False), ('/foo', True)]),
-            ((mock_fs()
+            ((lambda: mock_fs()
                     .withPage('pages/baz')
                     .withPage('pages/something/else')
                     .withPage('pages/foo')
@@ -71,7 +72,7 @@ def test_linker_iteration(fs, page_path, expected):
                 'foo.md',
                 [('/bar', False), ('/baz', False),
                     ('/foo', True), ('/something/else', False)]),
-            ((mock_fs()
+            ((lambda: mock_fs()
                     .withPage('pages/something/else')
                     .withPage('pages/foo')
                     .withPage('pages/something/good')
@@ -80,7 +81,8 @@ def test_linker_iteration(fs, page_path, expected):
                 [('/something/else', True),
                     ('/something/good', False)])
         ])
-def test_recursive_linker_iteration(fs, page_path, expected):
+def test_recursive_linker_iteration(fs_fac, page_path, expected):
+    fs = fs_fac()
     with mock_fs_scope(fs):
         app = fs.getApp()
         app.config.set('site/pretty_urls', True)

@@ -9,7 +9,8 @@ import datetime
 import dateutil.parser
 import collections
 from werkzeug.utils import cached_property
-from piecrust.configuration import (Configuration, ConfigurationError,
+from piecrust.configuration import (
+        Configuration, ConfigurationError,
         parse_config_header)
 from piecrust.routing import IRouteMetadataProvider
 
@@ -241,9 +242,11 @@ def json_save_segments(segments):
 
 def load_page(app, path, path_mtime=None):
     try:
-        return _do_load_page(app, path, path_mtime)
+        with app.env.timerScope('PageLoad'):
+            return _do_load_page(app, path, path_mtime)
     except Exception as e:
-        logger.exception("Error loading page: %s" %
+        logger.exception(
+                "Error loading page: %s" %
                 os.path.relpath(path, app.root_dir))
         _, __, traceback = sys.exc_info()
         raise PageLoadingError(path, e).with_traceback(traceback)
@@ -255,9 +258,11 @@ def _do_load_page(app, path, path_mtime):
     cache_path = hashlib.md5(path.encode('utf8')).hexdigest() + '.json'
     page_time = path_mtime or os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
-        cache_data = json.loads(cache.read(cache_path),
+        cache_data = json.loads(
+                cache.read(cache_path),
                 object_pairs_hook=collections.OrderedDict)
-        config = PageConfiguration(values=cache_data['config'],
+        config = PageConfiguration(
+                values=cache_data['config'],
                 validate=False)
         content = json_load_segments(cache_data['content'])
         return config, content, True
@@ -268,7 +273,7 @@ def _do_load_page(app, path, path_mtime):
         raw = fp.read()
     header, offset = parse_config_header(raw)
 
-    if not 'format' in header:
+    if 'format' not in header:
         auto_formats = app.config.get('site/auto_formats')
         name, ext = os.path.splitext(path)
         header['format'] = auto_formats.get(ext, None)

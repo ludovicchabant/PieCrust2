@@ -20,9 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 def build_pages(app, factories):
-    with app.env.page_repository.startBatchGet():
-        for f in factories:
-            yield f.buildPage()
+    for f in factories:
+        yield f.buildPage()
 
 
 class InvalidFileSystemEndpointError(Exception):
@@ -59,9 +58,6 @@ class PageFactory(object):
     def _doBuildPage(self):
         logger.debug("Building page: %s" % self.path)
         page = Page(self.source, copy.deepcopy(self.metadata), self.rel_path)
-        # Load it right away, especially when using the page repository,
-        # because we'll be inside a critical scope.
-        page._load()
         return page
 
 

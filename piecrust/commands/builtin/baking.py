@@ -6,7 +6,7 @@ import fnmatch
 import datetime
 from piecrust.baking.baker import Baker
 from piecrust.baking.records import (
-        BakeRecord, BakeRecordPageEntry, BakeRecordSubPageEntry)
+        BakeRecord, BakeRecordEntry, SubPageBakeInfo)
 from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
 from piecrust.processing.base import ProcessorPipeline
@@ -36,6 +36,10 @@ class BakeCommand(ChefCommand):
                 help="Force re-baking the entire website.",
                 action='store_true')
         parser.add_argument(
+                '-w', '--workers',
+                help="The number of worker processes to spawn.",
+                type=int, default=-1)
+        parser.add_argument(
                 '--assets-only',
                 help="Only bake the assets (don't bake the web pages).",
                 action='store_true')
@@ -43,13 +47,17 @@ class BakeCommand(ChefCommand):
                 '--html-only',
                 help="Only bake HTML files (don't run the asset pipeline).",
                 action='store_true')
+        parser.add_argument(
+                '--show-timers',
+                help="Show detailed timing information.",
+                action='store_true')
 
     def run(self, ctx):
         out_dir = (ctx.args.output or
                    os.path.join(ctx.app.root_dir, '_counter'))
 
         success = True
-        start_time = time.clock()
+        start_time = time.perf_counter()
         try:
             # Bake the site sources.
             if not ctx.args.assets_only:
@@ -71,10 +79,26 @@ class BakeCommand(ChefCommand):
             return 1
 
     def _bakeSources(self, ctx, out_dir):
+        if ctx.args.workers > 0:
+            ctx.app.config.set('baker/workers', ctx.args.workers)
         baker = Baker(
                 ctx.app, out_dir,
                 force=ctx.args.force)
         record = baker.bake()
+
+        if ctx.args.show_timers:
+            if record.timers:
+                from colorama import Fore
+                logger.info("-------------------")
+                logger.info("Timing information:")
+                for name in sorted(record.timers.keys()):
+                    val_str = '%8.1f s' % record.timers[name]
+                    logger.info(
+                            "[%s%s%s] %s" %
+                            (Fore.GREEN, val_str, Fore.RESET, name))
+            else:
+                logger.warning("Timing information is not available.")
+
         return record.success
 
     def _bakeAssets(self, ctx, out_dir):
@@ -151,7 +175,7 @@ class ShowRecordCommand(ChefCommand):
                 continue
 
             flags = []
-            if entry.flags & BakeRecordPageEntry.FLAG_OVERRIDEN:
+            if entry.flags & BakeRecordEntry.FLAG_OVERRIDEN:
                 flags.append('overriden')
 
             passes = {PASS_RENDERING: 'render', PASS_FORMATTING: 'format'}
@@ -161,9 +185,9 @@ class ShowRecordCommand(ChefCommand):
             logging.info("   spec:      %s:%s" % (entry.source_name,
                                                   entry.rel_path))
             if entry.taxonomy_info:
-                tn, t, sn = entry.taxonomy_info
+                tax_name, term, source_name = entry.taxonomy_info
                 logging.info("   taxonomy:  %s (%s:%s)" %
-                             (t, sn, tn))
+                             (term, source_name, tax_name))
             else:
                 logging.info("   taxonomy:  <none>")
             logging.info("   flags:     %s" % ', '.join(flags))
@@ -178,11 +202,11 @@ class ShowRecordCommand(ChefCommand):
                 logging.info("     baked?: %s" % sub.was_baked)
 
                 sub_flags = []
-                if sub.flags & BakeRecordSubPageEntry.FLAG_FORCED_BY_SOURCE:
+                if sub.flags & SubPageBakeInfo.FLAG_FORCED_BY_SOURCE:
                     sub_flags.append('forced by source')
-                if sub.flags & BakeRecordSubPageEntry.FLAG_FORCED_BY_NO_PREVIOUS:
+                if sub.flags & SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS:
                     sub_flags.append('forced by missing previous record entry')
-                if sub.flags & BakeRecordSubPageEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS:
+                if sub.flags & SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS:
                     sub_flags.append('forced by previous errors')
                 logging.info("     flags:  %s" % ', '.join(sub_flags))
 
@@ -193,7 +217,8 @@ class ShowRecordCommand(ChefCommand):
                     logging.info("       used terms: %s" %
                                  ', '.join(
                                         ['%s (%s:%s)' % (t, sn, tn)
-                                         for sn, tn, t in pi.used_taxonomy_terms]))
+                                         for sn, tn, t in
+                                         pi.used_taxonomy_terms]))
 
                 if sub.errors:
                     logging.error("   errors: %s" % sub.errors)

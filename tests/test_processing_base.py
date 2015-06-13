@@ -77,10 +77,12 @@ def test_one_level_dirtyness():
         mtime = os.path.getmtime(fs.path('/counter/blah.foo'))
         assert abs(time.time() - mtime) <= 2
 
+        time.sleep(1)
         pp.run()
         assert expected == fs.getStructure('counter')
         assert mtime == os.path.getmtime(fs.path('/counter/blah.foo'))
 
+        time.sleep(1)
         fs.withFile('kitchen/assets/blah.foo', 'A new test file.')
         pp.run()
         expected = {'blah.foo': 'A new test file.'}
@@ -101,10 +103,12 @@ def test_two_levels_dirtyness():
         mtime = os.path.getmtime(fs.path('/counter/blah.bar'))
         assert abs(time.time() - mtime) <= 2
 
+        time.sleep(1)
         pp.run()
         assert expected == fs.getStructure('counter')
         assert mtime == os.path.getmtime(fs.path('/counter/blah.bar'))
 
+        time.sleep(1)
         fs.withFile('kitchen/assets/blah.foo', 'A new test file.')
         pp.run()
         expected = {'blah.bar': 'FOO: A new test file.'}
@@ -126,6 +130,7 @@ def test_removed():
         pp.run()
         assert expected == fs.getStructure('counter')
 
+        time.sleep(1)
         os.remove(fs.path('/kitchen/assets/blah2.foo'))
         expected = {
                 'blah1.foo': 'A test file.'}
