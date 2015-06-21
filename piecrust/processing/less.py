@@ -24,7 +24,8 @@ class LessProcessor(SimpleFileProcessor):
 
     def onPipelineStart(self, pipeline):
         self._map_dir = os.path.join(pipeline.tmp_dir, 'less')
-        if not os.path.isdir(self._map_dir):
+        if (pipeline.is_first_worker and
+                not os.path.isdir(self._map_dir)):
             os.makedirs(self._map_dir)
 
     def getDependencies(self, path):
@@ -42,6 +43,7 @@ class LessProcessor(SimpleFileProcessor):
             # Get the sources, but make all paths absolute.
             sources = dep_map.get('sources')
             path_dir = os.path.dirname(path)
+
             def _makeAbs(p):
                 return os.path.join(path_dir, p)
             deps = list(map(_makeAbs, sources))

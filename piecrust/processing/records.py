@@ -1,57 +1,38 @@
 import os.path
+import hashlib
 from piecrust.records import Record, TransitionalRecord
 
 
 class ProcessorPipelineRecord(Record):
-    RECORD_VERSION = 4
+    RECORD_VERSION = 5
 
     def __init__(self):
         super(ProcessorPipelineRecord, self).__init__()
         self.out_dir = None
         self.process_time = None
+        self.processed_count = 0
         self.success = False
-
-    def hasOverrideEntry(self, rel_path):
-        return self.findEntry(rel_path) is not None
-
-    def findEntry(self, rel_path):
-        rel_path = rel_path.lower()
-        for entry in self.entries:
-            for out_path in entry.rel_outputs:
-                if out_path.lower() == rel_path:
-                    return entry
-        return None
-
-    def replaceEntry(self, new_entry):
-        for e in self.entries:
-            if (e.base_dir == new_entry.base_dir and
-                    e.rel_input == new_entry.rel_input):
-                e.flags = new_entry.flags
-                e.rel_outputs = list(new_entry.rel_outputs)
-                e.errors = list(new_entry.errors)
-                break
+        self.timers = None
 
 
 FLAG_NONE = 0
 FLAG_PREPARED = 2**0
 FLAG_PROCESSED = 2**1
-FLAG_OVERRIDEN = 2**2
 FLAG_BYPASSED_STRUCTURED_PROCESSING = 2**3
 
 
+def _get_transition_key(path):
+    return hashlib.md5(path.encode('utf8')).hexdigest()
+
+
 class ProcessorPipelineRecordEntry(object):
-    def __init__(self, base_dir, rel_input):
-        self.base_dir = base_dir
-        self.rel_input = rel_input
+    def __init__(self, path):
+        self.path = path
 
         self.flags = FLAG_NONE
         self.rel_outputs = []
         self.proc_tree = None
         self.errors = []
-
-    @property
-    def path(self):
-        return os.path.join(self.base_dir, self.rel_input)
 
     @property
     def was_prepared(self):
@@ -73,10 +54,18 @@ class TransitionalProcessorPipelineRecord(TransitionalRecord):
                 ProcessorPipelineRecord, previous_path)
 
     def getTransitionKey(self, entry):
-        return entry.rel_input
+        return _get_transition_key(entry.path)
 
-    def getPreviousEntry(self, rel_path):
-        pair = self.transitions.get(rel_path)
+    def getCurrentEntry(self, path):
+        key = _get_transition_key(path)
+        pair = self.transitions.get(key)
+        if pair is not None:
+            return pair[1]
+        return None
+
+    def getPreviousEntry(self, path):
+        key = _get_transition_key(path)
+        pair = self.transitions.get(key)
         if pair is not None:
             return pair[0]
         return None

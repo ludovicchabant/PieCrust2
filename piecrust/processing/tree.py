@@ -79,7 +79,6 @@ class ProcessingTreeBuilder(object):
         self.processors = processors
 
     def build(self, path):
-        start_time = time.clock()
         tree_root = ProcessingTreeNode(path, list(self.processors))
 
         loop_guard = 100
@@ -97,7 +96,7 @@ class ProcessingTreeBuilder(object):
             if proc.is_bypassing_structured_processing:
                 if cur_node != tree_root:
                     raise ProcessingTreeError("Only root processors can "
-                            "bypass structured processing.")
+                                              "bypass structured processing.")
                 break
 
             # Get the destination directory and output files.
@@ -116,18 +115,14 @@ class ProcessingTreeBuilder(object):
                 if proc.PROCESSOR_NAME != 'copy':
                     walk_stack.append(out_node)
 
-        logger.debug(format_timed(
-            start_time, "Built processing tree for: %s" % path,
-            colored=False))
         return tree_root
 
 
 class ProcessingTreeRunner(object):
-    def __init__(self, base_dir, tmp_dir, out_dir, lock=None):
+    def __init__(self, base_dir, tmp_dir, out_dir):
         self.base_dir = base_dir
         self.tmp_dir = tmp_dir
         self.out_dir = out_dir
-        self.lock = lock
 
     def processSubTree(self, tree_root):
         did_process = False
@@ -155,8 +150,9 @@ class ProcessingTreeRunner(object):
         proc = node.getProcessor()
         if proc.is_bypassing_structured_processing:
             try:
-                start_time = time.clock()
-                proc.process(full_path, self.out_dir)
+                start_time = time.perf_counter()
+                with proc.app.env.timerScope(proc.__class__.__name__):
+                    proc.process(full_path, self.out_dir)
                 print_node(
                         node,
                         format_timed(
@@ -172,16 +168,15 @@ class ProcessingTreeRunner(object):
         rel_out_dir = os.path.dirname(node.path)
         out_dir = os.path.join(base_out_dir, rel_out_dir)
         if not os.path.isdir(out_dir):
-            if self.lock:
-                with self.lock:
-                    if not os.path.isdir(out_dir):
-                        os.makedirs(out_dir, 0o755)
-            else:
-                os.makedirs(out_dir, 0o755)
+            try:
+                os.makedirs(out_dir, 0o755, exist_ok=True)
+            except OSError:
+                pass
 
         try:
-            start_time = time.clock()
-            proc_res = proc.process(full_path, out_dir)
+            start_time = time.perf_counter()
+            with proc.app.env.timerScope(proc.__class__.__name__):
+                proc_res = proc.process(full_path, out_dir)
             if proc_res is None:
                 raise Exception("Processor '%s' didn't return a boolean "
                                 "result value." % proc)
@@ -200,12 +195,12 @@ class ProcessingTreeRunner(object):
 
         proc = node.getProcessor()
         if (proc.is_bypassing_structured_processing or
-            not proc.is_delegating_dependency_check):
+                not proc.is_delegating_dependency_check):
             # This processor wants to handle things on its own...
             node.setState(STATE_DIRTY, False)
             return
 
-        start_time = time.clock()
+        start_time = time.perf_counter()
 
         # Get paths and modification times for the input path and
         # all dependencies (if any).

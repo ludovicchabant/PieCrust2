@@ -26,12 +26,14 @@ class SassProcessor(SimpleFileProcessor):
 
     def onPipelineStart(self, pipeline):
         super(SassProcessor, self).onPipelineStart(pipeline)
-        self._map_dir = os.path.join(pipeline.tmp_dir, 'sass')
-        if not os.path.isdir(self._map_dir):
-            os.makedirs(self._map_dir)
+
+        if pipeline.is_first_worker:
+            self._map_dir = os.path.join(pipeline.tmp_dir, 'sass')
+            if not os.path.isdir(self._map_dir):
+                os.makedirs(self._map_dir)
 
         # Ignore include-only Sass files.
-        pipeline.addSkipPatterns(['_*.scss', '_*.sass'])
+        pipeline.addIgnorePatterns(['_*.scss', '_*.sass'])
 
     def getDependencies(self, path):
         if _is_include_only(path):

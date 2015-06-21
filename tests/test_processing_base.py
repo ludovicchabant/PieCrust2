@@ -2,8 +2,10 @@ import time
 import os.path
 import shutil
 import pytest
-from piecrust.processing.base import (ProcessorPipeline, SimpleFileProcessor)
+from piecrust.processing.base import SimpleFileProcessor
+from piecrust.processing.pipeline import ProcessorPipeline
 from piecrust.processing.records import ProcessorPipelineRecord
+from piecrust.processing.worker import get_filtered_processors
 from .mockutil import mock_fs, mock_fs_scope
 
 
@@ -36,7 +38,6 @@ class NoopProcessor(SimpleFileProcessor):
 
 def _get_pipeline(fs, app=None):
     app = app or fs.getApp()
-    app.config.set('baker/num_workers', 1)
     return ProcessorPipeline(app, fs.path('counter'))
 
 
@@ -44,7 +45,7 @@ def test_empty():
     fs = mock_fs()
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
-        pp.filterProcessors(['copy'])
+        pp.enabled_processors = ['copy']
         expected = {}
         assert expected == fs.getStructure('counter')
         pp.run()
@@ -57,7 +58,7 @@ def test_one_file():
             .withFile('kitchen/assets/something.html', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
-        pp.filterProcessors(['copy'])
+        pp.enabled_processors = ['copy']
         expected = {}
         assert expected == fs.getStructure('counter')
         pp.run()
@@ -70,7 +71,7 @@ def test_one_level_dirtyness():
             .withFile('kitchen/assets/blah.foo', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
-        pp.filterProcessors(['copy'])
+        pp.enabled_processors = ['copy']
         pp.run()
         expected = {'blah.foo': 'A test file.'}
         assert expected == fs.getStructure('counter')
@@ -93,10 +94,10 @@ def test_one_level_dirtyness():
 def test_two_levels_dirtyness():
     fs = (mock_fs()
             .withFile('kitchen/assets/blah.foo', 'A test file.'))
-    with mock_fs_scope(fs) as scope:
+    with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
-        pp.processors.append(FooProcessor(('foo', 'bar'), scope._open))
-        pp.filterProcessors(['foo', 'copy'])
+        pp.enabled_processors = ['copy']
+        pp.additional_processors = [FooProcessor(('foo', 'bar'))]
         pp.run()
         expected = {'blah.bar': 'FOO: A test file.'}
         assert expected == fs.getStructure('counter')
@@ -126,7 +127,7 @@ def test_removed():
                 'blah2.foo': 'Ooops'}
         assert expected == fs.getStructure('kitchen/assets')
         pp = _get_pipeline(fs)
-        pp.filterProcessors(['copy'])
+        pp.enabled_processors = ['copy']
         pp.run()
         assert expected == fs.getStructure('counter')
 
@@ -145,18 +146,21 @@ def test_record_version_change():
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
         noop = NoopProcessor(('foo', 'foo'))
-        pp.processors.append(noop)
-        pp.filterProcessors(['foo', 'copy'])
+        pp.enabled_processors = ['copy']
+        pp.additional_processors = [noop]
         pp.run()
-        assert 1 == len(noop.processed)
+        assert os.path.exists(fs.path('/counter/blah.foo')) is True
+        mtime = os.path.getmtime(fs.path('/counter/blah.foo'))
 
+        time.sleep(1)
         pp.run()
-        assert 1 == len(noop.processed)
+        assert mtime == os.path.getmtime(fs.path('/counter/blah.foo'))
 
+        time.sleep(1)
         ProcessorPipelineRecord.RECORD_VERSION += 1
         try:
             pp.run()
-            assert 2 == len(noop.processed)
+            assert mtime < os.path.getmtime(fs.path('/counter/blah.foo'))
         finally:
             ProcessorPipelineRecord.RECORD_VERSION -= 1
 
@@ -170,24 +174,27 @@ def test_record_version_change():
             {'something.html': 'A test file.',
                 'foo': {'_important.html': 'Important!'}})
         ])
-def test_skip_pattern(patterns, expected):
+def test_ignore_pattern(patterns, expected):
     fs = (mock_fs()
             .withFile('kitchen/assets/something.html', 'A test file.')
             .withFile('kitchen/assets/_hidden.html', 'Shhh')
             .withFile('kitchen/assets/foo/_important.html', 'Important!'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
-        pp.addSkipPatterns(patterns)
-        pp.filterProcessors(['copy'])
+        pp.addIgnorePatterns(patterns)
+        pp.enabled_processors = ['copy']
         assert {} == fs.getStructure('counter')
         pp.run()
         assert expected == fs.getStructure('counter')
 
 
 @pytest.mark.parametrize('names, expected', [
-        ('all', ['copy', 'concat', 'less', 'sass', 'sitemap']),
-        ('all -sitemap', ['copy', 'concat', 'less', 'sass']),
-        ('-sitemap -less -sass all', ['copy', 'concat']),
+        ('all', ['cleancss', 'compass', 'copy', 'concat', 'less', 'requirejs',
+                 'sass', 'sitemap', 'uglifyjs']),
+        ('all -sitemap', ['cleancss', 'copy', 'compass', 'concat', 'less',
+                          'requirejs', 'sass', 'uglifyjs']),
+        ('-sitemap -less -sass all', ['cleancss', 'copy', 'compass', 'concat',
+                                      'requirejs', 'uglifyjs']),
         ('copy', ['copy']),
         ('less sass', ['less', 'sass'])
     ])
@@ -195,9 +202,8 @@ def test_filter_processor(names, expected):
     fs = mock_fs()
     with mock_fs_scope(fs):
         app = fs.getApp()
-        pp = _get_pipeline(fs, app=app)
-        pp.filterProcessors('copy concat less sass sitemap')
-        procs = pp.getFilteredProcessors(names)
+        processors = app.plugin_loader.getProcessors()
+        procs = get_filtered_processors(processors, names)
         actual = [p.PROCESSOR_NAME for p in procs]
         assert sorted(actual) == sorted(expected)
 

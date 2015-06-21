@@ -1,7 +1,6 @@
 import os
 import os.path
 import logging
-import platform
 import subprocess
 from piecrust.processing.base import Processor, PRIORITY_FIRST
 from piecrust.uriutil import multi_replace
