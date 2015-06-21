@@ -251,8 +251,6 @@ def render_page_segments(ctx):
     eis = ctx.app.env.exec_info_stack
     eis.pushPage(ctx.page, ctx)
     try:
-        page_data = _build_render_data(ctx)
-
         ctx.setCurrentPass(PASS_FORMATTING)
         repo = ctx.app.env.rendered_segments_repository
         save_to_fs = True
@@ -261,11 +259,11 @@ def render_page_segments(ctx):
         if repo and not ctx.force_render:
             render_result = repo.get(
                 ctx.uri,
-                lambda: _do_render_page_segments(ctx.page, page_data),
+                lambda: _do_render_page_segments_from_ctx(ctx),
                 fs_cache_time=ctx.page.path_mtime,
                 save_to_fs=save_to_fs)
         else:
-            render_result = _do_render_page_segments(ctx.page, page_data)
+            render_result = _do_render_page_segments_from_ctx(ctx)
             if repo:
                 repo.put(ctx.uri, render_result, save_to_fs)
     finally:
@@ -279,13 +277,19 @@ def render_page_segments(ctx):
 
 
 def _build_render_data(ctx):
-    data_ctx = DataBuildingContext(ctx.page, page_num=ctx.page_num)
-    data_ctx.pagination_source = ctx.pagination_source
-    data_ctx.pagination_filter = ctx.pagination_filter
-    page_data = build_page_data(data_ctx)
-    if ctx.custom_data:
-        page_data.update(ctx.custom_data)
-    return page_data
+    with ctx.app.env.timerScope("PageDataBuild"):
+        data_ctx = DataBuildingContext(ctx.page, page_num=ctx.page_num)
+        data_ctx.pagination_source = ctx.pagination_source
+        data_ctx.pagination_filter = ctx.pagination_filter
+        page_data = build_page_data(data_ctx)
+        if ctx.custom_data:
+            page_data.update(ctx.custom_data)
+        return page_data
+
+
+def _do_render_page_segments_from_ctx(ctx):
+    page_data = _build_render_data(ctx)
+    return _do_render_page_segments(ctx.page, page_data)
 
 
 def _do_render_page_segments(page, page_data):

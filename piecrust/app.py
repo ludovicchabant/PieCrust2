@@ -415,6 +415,7 @@ class PieCrust(object):
         self.env.initialize(self)
         self.env.registerTimer('SiteConfigLoad')
         self.env.registerTimer('PageLoad')
+        self.env.registerTimer("PageDataBuild")
 
     @cached_property
     def config(self):
