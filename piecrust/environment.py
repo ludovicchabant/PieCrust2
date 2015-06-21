@@ -137,7 +137,10 @@ class Environment(object):
         self.base_asset_url_format = '%uri%'
         self._onSubCacheDirChanged(app)
 
-    def registerTimer(self, category):
+    def registerTimer(self, category, *, raise_if_registered=True):
+        if raise_if_registered and category in self._timers:
+            raise Exception("Timer '%s' has already been registered." %
+                            category)
         self._timers[category] = 0
 
     @contextlib.contextmanager
