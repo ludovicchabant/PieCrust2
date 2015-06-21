@@ -83,6 +83,9 @@ class Environment(object):
     def stepTimer(self, category, value):
         self._timers[category] += value
 
+    def stepTimerSince(self, category, since):
+        self.stepTimer(category, time.perf_counter() - since)
+
     def _onSubCacheDirChanged(self, app):
         for name, repo in self.fs_caches.items():
             cache = app.cache.getCache(name)
