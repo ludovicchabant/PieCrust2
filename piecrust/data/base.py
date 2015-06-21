@@ -101,7 +101,7 @@ class LazyPageConfigData(object):
                             "loaded")
         self._values[name] = value
 
-    def mapLoader(self, attr_name, loader):
+    def mapLoader(self, attr_name, loader, override_existing=False):
         if loader is None:
             if self._loaders is None or attr_name not in self._loaders:
                 return
@@ -112,10 +112,14 @@ class LazyPageConfigData(object):
 
         if self._loaders is None:
             self._loaders = {}
-        if attr_name in self._loaders:
+        if not override_existing and attr_name in self._loaders:
             raise Exception(
                     "A loader has already been mapped for: %s" % attr_name)
         self._loaders[attr_name] = loader
+
+    def mapValue(self, attr_name, value, override_existing=False):
+        loader = lambda _, __: value
+        self.mapLoader(attr_name, loader, override_existing=override_existing)
 
     def _load(self):
         if self._values is not None:

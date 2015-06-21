@@ -6,6 +6,7 @@ from werkzeug.utils import cached_property
 from piecrust import APP_VERSION
 from piecrust.configuration import merge_dicts
 from piecrust.data.assetor import Assetor
+from piecrust.data.base import LazyPageConfigData
 from piecrust.data.debug import build_debug_info
 from piecrust.data.linker import PageLinkerData
 from piecrust.data.paginator import Paginator
@@ -37,6 +38,7 @@ def build_page_data(ctx):
     first_uri, _ = split_sub_uri(app, ctx.uri)
 
     pc_data = PieCrustData()
+    config_data = LazyPageConfigData(page)
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
     paginator = Paginator(page, pgn_source,
                           page_num=ctx.page_num,
@@ -45,19 +47,21 @@ def build_page_data(ctx):
     linker = PageLinkerData(page.source, page.rel_path)
     data = {
             'piecrust': pc_data,
-            'page': {},
+            'page': config_data,
             'assets': assetor,
             'pagination': paginator,
             'family': linker
             }
-    page_data = data['page']
-    page_data.update(copy.deepcopy(page.source_metadata))
-    page_data.update(page.config.getDeepcopy(app.debug))
-    page_data['url'] = ctx.uri
-    page_data['timestamp'] = time.mktime(page.datetime.timetuple())
+
+    for k, v in page.source_metadata.items():
+        config_data.mapValue(k, copy.deepcopy(v))
+    config_data.mapValue('url', ctx.uri, override_existing=True)
+    config_data.mapValue('timestamp', time.mktime(page.datetime.timetuple()),
+                         override_existing=True)
     date_format = app.config.get('site/date_format')
     if date_format:
-        page_data['date'] = page.datetime.strftime(date_format)
+        config_data.mapValue('date', page.datetime.strftime(date_format),
+                             override_existing=True)
 
     #TODO: handle slugified taxonomy terms.
 
