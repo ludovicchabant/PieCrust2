@@ -7,6 +7,7 @@ THEME_DIR = 'theme'
 CONFIG_PATH = 'config.yml'
 THEME_CONFIG_PATH = 'theme_config.yml'
 THEME_INFO_PATH = 'theme_info.yml'
+ASSET_DIR_SUFFIX = '-assets'
 
 DEFAULT_FORMAT = 'markdown'
 DEFAULT_TEMPLATE_ENGINE = 'jinja2'

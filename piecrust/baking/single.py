@@ -3,8 +3,8 @@ import shutil
 import codecs
 import logging
 import urllib.parse
-from piecrust.baking.records import (
-        PageBakeInfo, SubPageBakeInfo, BakePassInfo)
+from piecrust import ASSET_DIR_SUFFIX
+from piecrust.baking.records import SubPageBakeInfo
 from piecrust.rendering import (
         QualifiedPage, PageRenderingContext, render_page,
         PASS_FORMATTING)
@@ -51,14 +51,14 @@ class PageBaker(object):
         return os.path.normpath(os.path.join(*bake_path))
 
     def bake(self, factory, route, route_metadata, prev_entry,
-             first_render_info, dirty_source_names, tax_info=None):
+             dirty_source_names, tax_info=None):
         # Get the page.
         page = factory.buildPage()
 
         # Start baking the sub-pages.
         cur_sub = 1
         has_more_subs = True
-        report = PageBakeInfo()
+        sub_entries = []
 
         while has_more_subs:
             # Get the URL and path for this sub-page.
@@ -69,7 +69,7 @@ class PageBaker(object):
 
             # Create the sub-entry for the bake record.
             sub_entry = SubPageBakeInfo(sub_uri, out_path)
-            report.subs.append(sub_entry)
+            sub_entries.append(sub_entry)
 
             # Find a corresponding sub-entry in the previous bake record.
             prev_sub_entry = None
@@ -99,7 +99,7 @@ class PageBaker(object):
             # If this page didn't bake because it's already up-to-date.
             # Keep trying for as many subs as we know this page has.
             if not do_bake:
-                prev_sub_entry.collapseRenderPasses(sub_entry)
+                sub_entry.render_info = prev_sub_entry.copyRenderInfo()
                 sub_entry.flags = SubPageBakeInfo.FLAG_NONE
 
                 if prev_entry.num_subs >= cur_sub + 1:
@@ -123,35 +123,19 @@ class PageBaker(object):
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 qp = QualifiedPage(page, route, route_metadata)
-                ctx, rp = self._bakeSingle(qp, cur_sub, out_path, tax_info)
+                rp = self._bakeSingle(qp, cur_sub, out_path, tax_info)
             except Exception as ex:
-                if self.app.debug:
-                    logger.exception(ex)
                 page_rel_path = os.path.relpath(page.path, self.app.root_dir)
                 raise BakingError("%s: error baking '%s'." %
                                   (page_rel_path, sub_uri)) from ex
 
             # Record what we did.
             sub_entry.flags |= SubPageBakeInfo.FLAG_BAKED
-            # self.record.dirty_source_names.add(record_entry.source_name)
-            for p, pinfo in ctx.render_passes.items():
-                bpi = BakePassInfo()
-                bpi.used_source_names = set(pinfo.used_source_names)
-                bpi.used_taxonomy_terms = set(pinfo.used_taxonomy_terms)
-                sub_entry.render_passes[p] = bpi
-            if prev_sub_entry:
-                prev_sub_entry.collapseRenderPasses(sub_entry)
-
-            # If this page has had its first sub-page rendered already, we
-            # have that information from the baker. Otherwise (e.g. for
-            # taxonomy pages), we have that information from the result
-            # of the render.
-            info = ctx
-            if cur_sub == 1 and first_render_info is not None:
-                info = first_render_info
+            sub_entry.render_info = rp.copyRenderInfo()
 
             # Copy page assets.
-            if cur_sub == 1 and self.copy_assets and info.used_assets:
+            if (cur_sub == 1 and self.copy_assets and
+                    sub_entry.anyPass(lambda p: p.used_assets)):
                 if self.pretty_urls:
                     out_assets_dir = os.path.dirname(out_path)
                 else:
@@ -163,21 +147,23 @@ class PageBaker(object):
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
 
-                used_assets = info.used_assets
-                for ap in used_assets:
-                    dest_ap = os.path.join(out_assets_dir,
-                                           os.path.basename(ap))
-                    logger.debug("  %s -> %s" % (ap, dest_ap))
-                    shutil.copy(ap, dest_ap)
-                    report.assets.append(ap)
+                page_dirname = os.path.dirname(page.path)
+                page_pathname, _ = os.path.splitext(page.path)
+                in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
+                for fn in os.listdir(in_assets_dir):
+                    full_fn = os.path.join(page_dirname, fn)
+                    if os.path.isfile(full_fn):
+                        dest_ap = os.path.join(out_assets_dir, fn)
+                        logger.debug("  %s -> %s" % (full_fn, dest_ap))
+                        shutil.copy(full_fn, dest_ap)
 
             # Figure out if we have more work.
             has_more_subs = False
-            if info.pagination_has_more:
+            if sub_entry.anyPass(lambda p: p.pagination_has_more):
                 cur_sub += 1
                 has_more_subs = True
 
-        return report
+        return sub_entries
 
     def _bakeSingle(self, qualified_page, num, out_path, tax_info=None):
         ctx = PageRenderingContext(qualified_page, page_num=num)
@@ -193,7 +179,7 @@ class PageBaker(object):
         with codecs.open(out_path, 'w', 'utf8') as fp:
             fp.write(rp.content)
 
-        return ctx, rp
+        return rp
 
 
 def _compute_force_flags(prev_sub_entry, sub_entry, dirty_source_names):
@@ -246,11 +232,11 @@ def _compute_force_flags(prev_sub_entry, sub_entry, dirty_source_names):
     return force_this_sub, invalidate_formatting
 
 
-def _get_dirty_source_names_and_render_passes(
-        sub_entry, dirty_source_names):
+def _get_dirty_source_names_and_render_passes(sub_entry, dirty_source_names):
     dirty_for_this = set()
     invalidated_render_passes = set()
-    for p, pinfo in sub_entry.render_passes.items():
+    assert sub_entry.render_info is not None
+    for p, pinfo in sub_entry.render_info.items():
         for src_name in pinfo.used_source_names:
             is_dirty = (src_name in dirty_source_names)
             if is_dirty:

@@ -9,12 +9,13 @@ from piecrust.baking.records import (
         BakeRecord, BakeRecordEntry, SubPageBakeInfo)
 from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
-from piecrust.processing.base import ProcessorPipeline
+from piecrust.processing.pipeline import ProcessorPipeline
 from piecrust.processing.records import (
         ProcessorPipelineRecord,
-        FLAG_PREPARED, FLAG_PROCESSED, FLAG_OVERRIDEN,
+        FLAG_PREPARED, FLAG_PROCESSED,
         FLAG_BYPASSED_STRUCTURED_PROCESSING)
-from piecrust.rendering import PASS_FORMATTING, PASS_RENDERING
+from piecrust.rendering import (
+        PASS_FORMATTING, PASS_RENDERING)
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class BakeCommand(ChefCommand):
                 action='store_true')
         parser.add_argument(
                 '--html-only',
-                help="Only bake HTML files (don't run the asset pipeline).",
+                help="Only bake the pages (don't run the asset pipeline).",
                 action='store_true')
         parser.add_argument(
                 '--show-timers',
@@ -57,6 +58,7 @@ class BakeCommand(ChefCommand):
                    os.path.join(ctx.app.root_dir, '_counter'))
 
         success = True
+        ctx.timers = {}
         start_time = time.perf_counter()
         try:
             # Bake the site sources.
@@ -66,6 +68,17 @@ class BakeCommand(ChefCommand):
             # Bake the assets.
             if not ctx.args.html_only:
                 success = success & self._bakeAssets(ctx, out_dir)
+
+            # Show merged timers.
+            if ctx.args.show_timers:
+                from colorama import Fore
+                logger.info("-------------------")
+                logger.info("Timing information:")
+                for name in sorted(ctx.timers.keys()):
+                    val_str = '%8.1f s' % ctx.timers[name]
+                    logger.info(
+                            "[%s%s%s] %s" %
+                            (Fore.GREEN, val_str, Fore.RESET, name))
 
             # All done.
             logger.info('-------------------------')
@@ -85,20 +98,7 @@ class BakeCommand(ChefCommand):
                 ctx.app, out_dir,
                 force=ctx.args.force)
         record = baker.bake()
-
-        if ctx.args.show_timers:
-            if record.timers:
-                from colorama import Fore
-                logger.info("-------------------")
-                logger.info("Timing information:")
-                for name in sorted(record.timers.keys()):
-                    val_str = '%8.1f s' % record.timers[name]
-                    logger.info(
-                            "[%s%s%s] %s" %
-                            (Fore.GREEN, val_str, Fore.RESET, name))
-            else:
-                logger.warning("Timing information is not available.")
-
+        _merge_timers(record.timers, ctx.timers)
         return record.success
 
     def _bakeAssets(self, ctx, out_dir):
@@ -106,7 +106,18 @@ class BakeCommand(ChefCommand):
                 ctx.app, out_dir,
                 force=ctx.args.force)
         record = proc.run()
+        _merge_timers(record.timers, ctx.timers)
         return record.success
+
+
+def _merge_timers(source, target):
+    if source is None:
+        return
+
+    for name, val in source.items():
+        if name not in target:
+            target[name] = 0
+        target[name] += val
 
 
 class ShowRecordCommand(ChefCommand):
@@ -135,6 +146,15 @@ class ShowRecordCommand(ChefCommand):
                 type=int,
                 default=0,
                 help="Show the last Nth bake record.")
+        parser.add_argument(
+                '--html-only',
+                action='store_true',
+                help="Only show records for pages (not from the asset "
+                     "pipeline).")
+        parser.add_argument(
+                '--assets-only',
+                action='store_true',
+                help="Only show records for assets (not from pages).")
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
@@ -150,12 +170,18 @@ class ShowRecordCommand(ChefCommand):
         if ctx.args.out:
             out_pattern = '*%s*' % ctx.args.out.strip('*')
 
+        if not ctx.args.assets_only:
+            self._showBakeRecord(ctx, record_name, pattern, out_pattern)
+        if not ctx.args.html_only:
+            self._showProcessingRecord(ctx, record_name, pattern, out_pattern)
+
+    def _showBakeRecord(self, ctx, record_name, pattern, out_pattern):
+        # Show the bake record.
         record_cache = ctx.app.cache.getCache('baker')
         if not record_cache.has(record_name):
             raise Exception("No record has been created for this output path. "
                             "Did you bake there yet?")
 
-        # Show the bake record.
         record = BakeRecord.load(record_cache.getCachePath(record_name))
         logging.info("Bake record for: %s" % record.out_dir)
         logging.info("From: %s" % record_name)
@@ -167,69 +193,90 @@ class ShowRecordCommand(ChefCommand):
             logging.error("Status: failed")
         logging.info("Entries:")
         for entry in record.entries:
-            if pattern and not fnmatch.fnmatch(entry.rel_path, pattern):
+            if pattern and not fnmatch.fnmatch(entry.path, pattern):
                 continue
             if out_pattern and not (
                     any([o for o in entry.out_paths
                          if fnmatch.fnmatch(o, out_pattern)])):
                 continue
 
-            flags = []
-            if entry.flags & BakeRecordEntry.FLAG_OVERRIDEN:
-                flags.append('overriden')
-
-            passes = {PASS_RENDERING: 'render', PASS_FORMATTING: 'format'}
+            flags = _get_flag_descriptions(
+                    entry.flags,
+                    {
+                        BakeRecordEntry.FLAG_NEW: 'new',
+                        BakeRecordEntry.FLAG_SOURCE_MODIFIED: 'modified',
+                        BakeRecordEntry.FLAG_OVERRIDEN: 'overriden'})
 
             logging.info(" - ")
-            logging.info("   path:      %s" % entry.rel_path)
-            logging.info("   spec:      %s:%s" % (entry.source_name,
-                                                  entry.rel_path))
+
+            rel_path = os.path.relpath(entry.path, ctx.app.root_dir)
+            logging.info("   path:      %s" % rel_path)
+            logging.info("   source:    %s" % entry.source_name)
             if entry.taxonomy_info:
-                tax_name, term, source_name = entry.taxonomy_info
-                logging.info("   taxonomy:  %s (%s:%s)" %
-                             (term, source_name, tax_name))
+                ti = entry.taxonomy_info
+                logging.info("   taxonomy:  %s = %s (in %s)" %
+                             (ti.taxonomy_name, ti.term, ti.source_name))
             else:
                 logging.info("   taxonomy:  <none>")
-            logging.info("   flags:     %s" % ', '.join(flags))
+            logging.info("   flags:     %s" % _join(flags))
             logging.info("   config:    %s" % entry.config)
+
+            if entry.errors:
+                logging.error("   errors: %s" % entry.errors)
 
             logging.info("   %d sub-pages:" % len(entry.subs))
             for sub in entry.subs:
+                sub_flags = _get_flag_descriptions(
+                        sub.flags,
+                        {
+                            SubPageBakeInfo.FLAG_BAKED: 'baked',
+                            SubPageBakeInfo.FLAG_FORCED_BY_SOURCE:
+                                'forced by source',
+                            SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS:
+                                'forced by missing previous record entry',
+                            SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS:
+                                'forced by previous errors',
+                            SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED:
+                                'formatting invalidated'})
+
                 logging.info("   - ")
                 logging.info("     URL:    %s" % sub.out_uri)
-                logging.info("     path:   %s" % os.path.relpath(sub.out_path,
-                                                                 out_dir))
-                logging.info("     baked?: %s" % sub.was_baked)
+                logging.info("     path:   %s" % os.path.relpath(
+                        sub.out_path, record.out_dir))
+                logging.info("     flags:  %s" % _join(sub_flags))
 
-                sub_flags = []
-                if sub.flags & SubPageBakeInfo.FLAG_FORCED_BY_SOURCE:
-                    sub_flags.append('forced by source')
-                if sub.flags & SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS:
-                    sub_flags.append('forced by missing previous record entry')
-                if sub.flags & SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS:
-                    sub_flags.append('forced by previous errors')
-                logging.info("     flags:  %s" % ', '.join(sub_flags))
-
-                for p, pi in sub.render_passes.items():
-                    logging.info("     %s pass:" % passes[p])
-                    logging.info("       used srcs:  %s" %
-                                 ', '.join(pi.used_source_names))
-                    logging.info("       used terms: %s" %
-                                 ', '.join(
-                                        ['%s (%s:%s)' % (t, sn, tn)
-                                         for sn, tn, t in
-                                         pi.used_taxonomy_terms]))
+                if sub.render_info:
+                    pass_names = {
+                            PASS_FORMATTING: 'formatting pass',
+                            PASS_RENDERING: 'rendering pass'}
+                    for p, ri in sub.render_info.items():
+                        logging.info("     - %s" % pass_names[p])
+                        logging.info("       used sources:  %s" %
+                                     _join(ri.used_source_names))
+                        pgn_info = 'no'
+                        if ri.used_pagination:
+                            pgn_info = 'yes'
+                        if ri.pagination_has_more:
+                            pgn_info += ', has more'
+                        logging.info("       used pagination: %s", pgn_info)
+                        logging.info("       used assets: %s",
+                                     'yes' if ri.used_assets else 'no')
+                        logging.info("       used terms: %s" %
+                                     _join(
+                                            ['%s=%s (%s)' % (tn, t, sn)
+                                             for sn, tn, t in
+                                             ri.used_taxonomy_terms]))
+                else:
+                    logging.info("     no render info")
 
                 if sub.errors:
                     logging.error("   errors: %s" % sub.errors)
 
-            logging.info("   assets:    %s" % ', '.join(entry.assets))
-            if entry.errors:
-                logging.error("   errors: %s" % entry.errors)
-
+    def _showProcessingRecord(self, ctx, record_name, pattern, out_pattern):
         record_cache = ctx.app.cache.getCache('proc')
         if not record_cache.has(record_name):
-            return
+            raise Exception("No record has been created for this output path. "
+                            "Did you bake there yet?")
 
         # Show the pipeline record.
         record = ProcessorPipelineRecord.load(
@@ -244,37 +291,51 @@ class ShowRecordCommand(ChefCommand):
             logging.error("Status: failed")
         logging.info("Entries:")
         for entry in record.entries:
-            if pattern and not fnmatch.fnmatch(entry.rel_input, pattern):
+            rel_path = os.path.relpath(entry.path, ctx.app.root_dir)
+            if pattern and not fnmatch.fnmatch(rel_path, pattern):
                 continue
             if out_pattern and not (
                     any([o for o in entry.rel_outputs
                          if fnmatch.fnmatch(o, out_pattern)])):
                 continue
 
-            flags = []
-            if entry.flags & FLAG_PREPARED:
-                flags.append('prepared')
-            if entry.flags & FLAG_PROCESSED:
-                flags.append('processed')
-            if entry.flags & FLAG_OVERRIDEN:
-                flags.append('overriden')
-            if entry.flags & FLAG_BYPASSED_STRUCTURED_PROCESSING:
-                flags.append('external')
+            flags = _get_flag_descriptions(
+                    entry.flags,
+                    {
+                        FLAG_PREPARED: 'prepared',
+                        FLAG_PROCESSED: 'processed',
+                        FLAG_BYPASSED_STRUCTURED_PROCESSING: 'external'})
+
             logger.info(" - ")
-            logger.info("   path:      %s" % entry.rel_input)
+            logger.info("   path:      %s" % rel_path)
             logger.info("   out paths: %s" % entry.rel_outputs)
-            logger.info("   flags:     %s" % flags)
-            logger.info("   proc tree: %s" % format_proc_tree(
+            logger.info("   flags:     %s" % _join(flags))
+            logger.info("   proc tree: %s" % _format_proc_tree(
                     entry.proc_tree, 14*' '))
+
             if entry.errors:
                 logger.error("   errors: %s" % entry.errors)
 
 
-def format_proc_tree(tree, margin='', level=0):
+def _join(items, sep=', ', text_if_none='none'):
+    if items:
+        return sep.join(items)
+    return text_if_none
+
+
+def _get_flag_descriptions(flags, descriptions):
+    res = []
+    for k, v in descriptions.items():
+        if flags & k:
+            res.append(v)
+    return res
+
+
+def _format_proc_tree(tree, margin='', level=0):
     name, children = tree
     res = '%s%s+ %s\n' % (margin if level > 0 else '', level * '  ', name)
     if children:
         for c in children:
-            res += format_proc_tree(c, margin, level + 1)
+            res += _format_proc_tree(c, margin, level + 1)
     return res
 

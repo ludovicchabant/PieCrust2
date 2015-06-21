@@ -27,14 +27,9 @@ class BakeRecord(Record):
         super(BakeRecord, self).__init__()
         self.out_dir = None
         self.bake_time = None
+        self.baked_count = {}
         self.timers = None
         self.success = True
-
-
-class BakePassInfo(object):
-    def __init__(self):
-        self.used_source_names = set()
-        self.used_taxonomy_terms = set()
 
 
 class SubPageBakeInfo(object):
@@ -50,7 +45,7 @@ class SubPageBakeInfo(object):
         self.out_path = out_path
         self.flags = self.FLAG_NONE
         self.errors = []
-        self.render_passes = {}
+        self.render_info = None
 
     @property
     def was_clean(self):
@@ -64,23 +59,16 @@ class SubPageBakeInfo(object):
     def was_baked_successfully(self):
         return self.was_baked and len(self.errors) == 0
 
-    def collapseRenderPasses(self, other):
-        for p, pinfo in self.render_passes.items():
-            if p not in other.render_passes:
-                other.render_passes[p] = copy.deepcopy(pinfo)
+    def anyPass(self, func):
+        assert self.render_info is not None
+        for p, pinfo in self.render_info.items():
+            if func(pinfo):
+                return True
+        return False
 
-
-class PageBakeInfo(object):
-    def __init__(self):
-        self.subs = []
-        self.assets = []
-
-
-class FirstRenderInfo(object):
-    def __init__(self):
-        self.assets = []
-        self.used_pagination = False
-        self.pagination_has_more = False
+    def copyRenderInfo(self):
+        assert self.render_info
+        return copy.deepcopy(self.render_info)
 
 
 class TaxonomyInfo(object):
@@ -108,8 +96,7 @@ class BakeRecordEntry(object):
         self.flags = self.FLAG_NONE
         self.config = None
         self.errors = []
-        self.bake_info = None
-        self.first_render_info = None
+        self.subs = []
 
     @property
     def path_mtime(self):
@@ -121,58 +108,50 @@ class BakeRecordEntry(object):
 
     @property
     def num_subs(self):
-        if self.bake_info is None:
-            return 0
-        return len(self.bake_info.subs)
+        return len(self.subs)
 
     @property
     def was_any_sub_baked(self):
-        if self.bake_info is not None:
-            for o in self.bake_info.subs:
-                if o.was_baked:
-                    return True
+        for o in self.subs:
+            if o.was_baked:
+                return True
         return False
 
     @property
-    def subs(self):
-        if self.bake_info is not None:
-            return self.bake_info.subs
-        return []
+    def all_assets(self):
+        for sub in self.subs:
+            yield from sub.assets
 
     @property
     def has_any_error(self):
         if len(self.errors) > 0:
             return True
-        if self.bake_info is not None:
-            for o in self.bake_info.subs:
-                if len(o.errors) > 0:
-                    return True
+        for o in self.subs:
+            if len(o.errors) > 0:
+                return True
         return False
 
     def getSub(self, sub_index):
-        if self.bake_info is None:
-            raise Exception("No bake info available on this entry.")
-        return self.bake_info.subs[sub_index - 1]
+        return self.subs[sub_index - 1]
 
     def getAllErrors(self):
         yield from self.errors
-        if self.bake_info is not None:
-            for o in self.bake_info.subs:
-                yield from o.errors
+        for o in self.subs:
+            yield from o.errors
 
     def getAllUsedSourceNames(self):
         res = set()
-        if self.bake_info is not None:
-            for o in self.bake_info.subs:
-                for p, pinfo in o.render_passes.items():
+        for o in self.subs:
+            if o.render_info is not None:
+                for p, pinfo in o.render_info.items():
                     res |= pinfo.used_source_names
         return res
 
     def getAllUsedTaxonomyTerms(self):
         res = set()
-        if self.bake_info is not None:
-            for o in self.bake_info.subs:
-                for p, pinfo in o.render_passes.items():
+        for o in self.subs:
+            if o.render_info is not None:
+                for p, pinfo in o.render_info.items():
                     res |= pinfo.used_taxonomy_terms
         return res
 

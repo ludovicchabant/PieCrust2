@@ -6,7 +6,7 @@ import hashlib
 import logging
 import multiprocessing
 from piecrust.baking.records import (
-        BakeRecordEntry, TransitionalBakeRecord, TaxonomyInfo, FirstRenderInfo)
+        BakeRecordEntry, TransitionalBakeRecord, TaxonomyInfo)
 from piecrust.baking.worker import (
         BakeWorkerJob, LoadJobPayload, RenderFirstSubJobPayload,
         BakeJobPayload,
@@ -39,6 +39,12 @@ class Baker(object):
                 for path in tax_page_ref.possible_paths:
                     self.taxonomy_pages.append(path)
                     logger.debug(" - %s" % path)
+
+        # Register some timers.
+        self.app.env.registerTimer('LoadJob', raise_if_registered=False)
+        self.app.env.registerTimer('RenderFirstSubJob',
+                                   raise_if_registered=False)
+        self.app.env.registerTimer('BakeJob', raise_if_registered=False)
 
     def bake(self):
         logger.debug("  Bake Output: %s" % self.out_dir)
@@ -108,7 +114,7 @@ class Baker(object):
                 logger.error("Didn't get timing information from all workers.")
                 break
 
-            for name, val in timers.items():
+            for name, val in timers['data'].items():
                 main_val = record.current.timers.setdefault(name, 0)
                 record.current.timers[name] = main_val + val
 
@@ -185,6 +191,8 @@ class Baker(object):
     def _bakeRealm(self, record, pool, realm, srclist):
         start_time = time.perf_counter()
         try:
+            record.current.baked_count[realm] = 0
+
             all_factories = []
             for source in srclist:
                 factories = source.getPageFactories()
@@ -193,18 +201,21 @@ class Baker(object):
 
             self._loadRealmPages(record, pool, all_factories)
             self._renderRealmPages(record, pool, all_factories)
-            self._bakeRealmPages(record, pool, all_factories)
+            self._bakeRealmPages(record, pool, realm, all_factories)
         finally:
-            page_count = len(all_factories)
+            page_count = record.current.baked_count[realm]
             logger.info(format_timed(
                     start_time,
-                    "baked %d %s pages" %
+                    "baked %d %s pages." %
                     (page_count, REALM_NAMES[realm].lower())))
 
     def _loadRealmPages(self, record, pool, factories):
+        logger.debug("Loading %d realm pages..." % len(factories))
         with format_timed_scope(logger,
                                 "loaded %d pages" % len(factories),
-                                level=logging.DEBUG, colored=False):
+                                level=logging.DEBUG, colored=False,
+                                timer_env=self.app.env,
+                                timer_category='LoadJob'):
             for fac in factories:
                 job = BakeWorkerJob(
                         JOB_LOAD,
@@ -218,6 +229,7 @@ class Baker(object):
                 if res.errors:
                     record_entry.errors += res.errors
                     record.current.success = False
+                    self._logErrors(res.path, res.errors)
                 record.addEntry(record_entry)
 
             self._waitOnWorkerPool(
@@ -226,9 +238,12 @@ class Baker(object):
                     result_handler=_handler)
 
     def _renderRealmPages(self, record, pool, factories):
+        logger.debug("Rendering %d realm pages..." % len(factories))
         with format_timed_scope(logger,
                                 "prepared %d pages" % len(factories),
-                                level=logging.DEBUG, colored=False):
+                                level=logging.DEBUG, colored=False,
+                                timer_env=self.app.env,
+                                timer_category='RenderFirstSubJob'):
             expected_result_count = 0
             for fac in factories:
                 record_entry = record.getCurrentEntry(fac.path)
@@ -264,27 +279,23 @@ class Baker(object):
 
             def _handler(res):
                 entry = record.getCurrentEntry(res.path)
-
-                entry.first_render_info = FirstRenderInfo()
-                entry.first_render_info.used_assets = res.used_assets
-                entry.first_render_info.used_pagination = \
-                    res.used_pagination
-                entry.first_render_info.pagination_has_more = \
-                    res.pagination_has_more
-
                 if res.errors:
                     entry.errors += res.errors
                     record.current.success = False
+                    self._logErrors(res.path, res.errors)
 
             self._waitOnWorkerPool(
                     pool,
                     expected_result_count=expected_result_count,
                     result_handler=_handler)
 
-    def _bakeRealmPages(self, record, pool, factories):
+    def _bakeRealmPages(self, record, pool, realm, factories):
+        logger.debug("Baking %d realm pages..." % len(factories))
         with format_timed_scope(logger,
                                 "baked %d pages" % len(factories),
-                                level=logging.DEBUG, colored=False):
+                                level=logging.DEBUG, colored=False,
+                                timer_env=self.app.env,
+                                timer_category='BakeJob'):
             expected_result_count = 0
             for fac in factories:
                 if self._queueBakeJob(record, pool, fac):
@@ -292,11 +303,15 @@ class Baker(object):
 
             def _handler(res):
                 entry = record.getCurrentEntry(res.path, res.taxonomy_info)
-                entry.bake_info = res.bake_info
+                entry.subs = res.sub_entries
                 if res.errors:
                     entry.errors += res.errors
+                    self._logErrors(res.path, res.errors)
                 if entry.has_any_error:
                     record.current.success = False
+                if entry.was_any_sub_baked:
+                    record.current.baked_count[realm] += 1
+                    record.dirty_source_names.add(entry.source_name)
 
             self._waitOnWorkerPool(
                     pool,
@@ -304,6 +319,7 @@ class Baker(object):
                     result_handler=_handler)
 
     def _bakeTaxonomies(self, record, pool):
+        logger.debug("Baking taxonomy pages...")
         with format_timed_scope(logger, 'built taxonomy buckets',
                                 level=logging.DEBUG, colored=False):
             buckets = self._buildTaxonomyBuckets(record)
@@ -420,7 +436,7 @@ class Baker(object):
 
         def _handler(res):
             entry = record.getCurrentEntry(res.path, res.taxonomy_info)
-            entry.bake_info = res.bake_info
+            entry.subs = res.sub_entries
             if res.errors:
                 entry.errors += res.errors
             if entry.has_any_error:
@@ -500,13 +516,13 @@ class Baker(object):
         job = BakeWorkerJob(
                 JOB_BAKE,
                 BakeJobPayload(fac, route_metadata, prev_entry,
-                               cur_entry.first_render_info,
                                record.dirty_source_names,
                                tax_info))
         pool.queue.put_nowait(job)
         return True
 
     def _handleDeletetions(self, record):
+        logger.debug("Handling deletions...")
         for path, reason in record.getDeletions():
             logger.debug("Removing '%s': %s" % (path, reason))
             try:
@@ -516,6 +532,12 @@ class Baker(object):
                 # Not a big deal if that file had already been removed
                 # by the user.
                 pass
+
+    def _logErrors(self, path, errors):
+        rel_path = os.path.relpath(path, self.app.root_dir)
+        logger.error("Errors found in %s:" % rel_path)
+        for e in errors:
+            logger.error("  " + e)
 
     def _createWorkerPool(self):
         from piecrust.baking.worker import BakeWorkerContext, worker_func
@@ -527,6 +549,7 @@ class Baker(object):
                     pool.queue, pool.results, pool.abort_event,
                     force=self.force, debug=self.app.debug)
             w = multiprocessing.Process(
+                    name='Worker_%d' % i,
                     target=worker_func, args=(i, ctx))
             w.start()
             pool.workers.append(w)
@@ -555,6 +578,12 @@ class Baker(object):
                                 "for 10 seconds. A worker might be stuck?" %
                                 (got_count, expected_result_count))
                         abort_with_exception = Exception("Worker time-out.")
+                        break
+
+                    if isinstance(res, dict) and res.get('type') == 'error':
+                        abort_with_exception = Exception(
+                                'Worker critical error:\n' +
+                                '\n'.join(res['messages']))
                         break
 
                     got_count += 1

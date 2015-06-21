@@ -5,10 +5,13 @@ from colorama import Fore
 
 
 @contextlib.contextmanager
-def format_timed_scope(logger, message, *, level=logging.INFO, colored=True):
+def format_timed_scope(logger, message, *, level=logging.INFO, colored=True,
+                       timer_env=None, timer_category=None):
     start_time = time.perf_counter()
     yield
     logger.log(level, format_timed(start_time, message, colored=colored))
+    if timer_env is not None and timer_category is not None:
+        timer_env.stepTimer(timer_category, time.perf_counter() - start_time)
 
 
 def format_timed(start_time, message, indent_level=0, colored=True):

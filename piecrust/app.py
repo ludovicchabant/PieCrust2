@@ -29,7 +29,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 19
+CACHE_VERSION = 20
 
 
 class VariantNotFoundError(Exception):
@@ -413,13 +413,8 @@ class PieCrust(object):
         if self.env is None:
             self.env = StandardEnvironment()
         self.env.initialize(self)
-
         self.env.registerTimer('SiteConfigLoad')
         self.env.registerTimer('PageLoad')
-        for engine in self.plugin_loader.getTemplateEngines():
-            self.env.registerTimer(engine.__class__.__name__)
-        for fmt in self.plugin_loader.getFormatters():
-            self.env.registerTimer(fmt.__class__.__name__)
 
     @cached_property
     def config(self):

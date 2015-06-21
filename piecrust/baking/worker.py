@@ -64,6 +64,7 @@ class BakeWorker(object):
             app.env.registerTimer(type(jh).__name__)
 
         # Start working!
+        aborted_with_exception = None
         while not self.ctx.abort_event.is_set():
             try:
                 with app.env.timerScope('JobReceive'):
@@ -77,19 +78,23 @@ class BakeWorker(object):
                     handler.handleJob(job)
             except Exception as ex:
                 self.ctx.abort_event.set()
-                self.abort_exception = ex
-                self.success = False
+                aborted_with_exception = ex
                 logger.debug("[%d] Critical error, aborting." % self.wid)
-                if self.ctx.app.debug:
+                if self.ctx.debug:
                     logger.exception(ex)
                 break
             finally:
                 self.ctx.work_queue.task_done()
 
+        if aborted_with_exception is not None:
+            msgs = _get_errors(aborted_with_exception)
+            self.ctx.results.put_nowait({'type': 'error', 'messages': msgs})
+
         # Send our timers to the main process before exiting.
         app.env.stepTimer("Worker_%d" % self.wid,
                           time.perf_counter() - work_start_time)
-        self.ctx.results.put_nowait(app.env._timers)
+        self.ctx.results.put_nowait({
+                'type': 'timers', 'data': app.env._timers})
 
 
 class JobHandler(object):
@@ -141,20 +146,16 @@ class RenderFirstSubJobPayload(object):
 class RenderFirstSubJobResult(object):
     def __init__(self, path):
         self.path = path
-        self.used_assets = None
-        self.used_pagination = None
-        self.pagination_has_more = False
         self.errors = None
 
 
 class BakeJobPayload(object):
     def __init__(self, fac, route_metadata, previous_entry,
-                 first_render_info, dirty_source_names, tax_info=None):
+                 dirty_source_names, tax_info=None):
         self.factory_info = PageFactoryInfo(fac)
         self.route_metadata = route_metadata
         self.previous_entry = previous_entry
         self.dirty_source_names = dirty_source_names
-        self.first_render_info = first_render_info
         self.taxonomy_info = tax_info
 
 
@@ -162,7 +163,7 @@ class BakeJobResult(object):
     def __init__(self, path, tax_info=None):
         self.path = path
         self.taxonomy_info = tax_info
-        self.bake_info = None
+        self.sub_entries = None
         self.errors = None
 
 
@@ -177,7 +178,10 @@ class LoadJobHandler(JobHandler):
             page._load()
             result.config = page.config.get()
         except Exception as ex:
+            logger.debug("Got loading error. Sending it to master.")
             result.errors = _get_errors(ex)
+            if self.ctx.debug:
+                logger.exception(ex)
 
         self.ctx.results.put_nowait(result)
 
@@ -201,13 +205,11 @@ class RenderFirstSubJobHandler(JobHandler):
         logger.debug("Preparing page: %s" % fac.ref_spec)
         try:
             render_page_segments(ctx)
-            result.used_assets = ctx.used_assets
-            result.used_pagination = ctx.used_pagination is not None
-            if result.used_pagination:
-                result.pagination_has_more = ctx.used_pagination.has_more
         except Exception as ex:
             logger.debug("Got rendering error. Sending it to master.")
             result.errors = _get_errors(ex)
+            if self.ctx.debug:
+                logger.exception(ex)
 
         self.ctx.results.put_nowait(result)
 
@@ -233,18 +235,19 @@ class BakeJobHandler(JobHandler):
 
         result = BakeJobResult(fac.path, tax_info)
         previous_entry = job.payload.previous_entry
-        first_render_info = job.payload.first_render_info
         dirty_source_names = job.payload.dirty_source_names
         logger.debug("Baking page: %s" % fac.ref_spec)
         try:
-            report = self.page_baker.bake(fac, route, route_metadata,
-                                          previous_entry, first_render_info,
-                                          dirty_source_names, tax_info)
-            result.bake_info = report
+            sub_entries = self.page_baker.bake(
+                    fac, route, route_metadata, previous_entry,
+                    dirty_source_names, tax_info)
+            result.sub_entries = sub_entries
 
         except BakingError as ex:
             logger.debug("Got baking error. Sending it to master.")
             result.errors = _get_errors(ex)
+            if self.ctx.debug:
+                logger.exception(ex)
 
         self.ctx.results.put_nowait(result)
 

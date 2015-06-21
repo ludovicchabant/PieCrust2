@@ -196,7 +196,8 @@ class PaginationData(LazyPageConfigData):
                 qp = QualifiedPage(self._page, self._route,
                                    self._route_metadata)
                 ctx = PageRenderingContext(qp)
-                segs = render_page_segments(ctx)
+                render_result = render_page_segments(ctx)
+                segs = render_result.segments
             except Exception as e:
                 raise Exception(
                         "Error rendering segments for '%s'" % uri) from e

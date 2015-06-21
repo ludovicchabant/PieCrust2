@@ -1,5 +1,6 @@
 import re
 import os.path
+import copy
 import logging
 from werkzeug.utils import cached_property
 from piecrust.data.builder import (
@@ -40,6 +41,18 @@ class QualifiedPage(object):
         return getattr(self.page, name)
 
 
+class RenderedSegments(object):
+    def __init__(self, segments, render_pass_info):
+        self.segments = segments
+        self.render_pass_info = render_pass_info
+
+
+class RenderedLayout(object):
+    def __init__(self, content, render_pass_info):
+        self.content = content
+        self.render_pass_info = render_pass_info
+
+
 class RenderedPage(object):
     def __init__(self, page, uri, num=1):
         self.page = page
@@ -47,10 +60,14 @@ class RenderedPage(object):
         self.num = num
         self.data = None
         self.content = None
+        self.render_info = None
 
     @property
     def app(self):
         return self.page.app
+
+    def copyRenderInfo(self):
+        return copy.deepcopy(self.render_info)
 
 
 PASS_NONE = 0
@@ -65,6 +82,41 @@ class RenderPassInfo(object):
     def __init__(self):
         self.used_source_names = set()
         self.used_taxonomy_terms = set()
+        self.used_pagination = False
+        self.pagination_has_more = False
+        self.used_assets = False
+
+    def merge(self, other):
+        self.used_source_names |= other.used_source_names
+        self.used_taxonomy_terms |= other.used_taxonomy_terms
+        self.used_pagination = self.used_pagination or other.used_pagination
+        self.pagination_has_more = (self.pagination_has_more or
+                                    other.pagination_has_more)
+        self.used_assets = self.used_assets or other.used_assets
+
+    def _toJson(self):
+        data = {
+                'used_source_names': list(self.used_source_names),
+                'used_taxonomy_terms': list(self.used_taxonomy_terms),
+                'used_pagination': self.used_pagination,
+                'pagination_has_more': self.pagination_has_more,
+                'used_assets': self.used_assets}
+        return data
+
+    @staticmethod
+    def _fromJson(data):
+        assert data is not None
+        rpi = RenderPassInfo()
+        rpi.used_source_names = set(data['used_source_names'])
+        for i in data['used_taxonomy_terms']:
+            terms = i[2]
+            if isinstance(terms, list):
+                terms = tuple(terms)
+            rpi.used_taxonomy_terms.add((i[0], i[1], terms))
+        rpi.used_pagination = data['used_pagination']
+        rpi.pagination_has_more = data['pagination_has_more']
+        rpi.used_assets = data['used_assets']
+        return rpi
 
 
 class PageRenderingContext(object):
@@ -78,8 +130,6 @@ class PageRenderingContext(object):
         self._current_pass = PASS_NONE
 
         self.render_passes = {}
-        self.used_pagination = None
-        self.used_assets = None
 
     @property
     def app(self):
@@ -94,12 +144,6 @@ class PageRenderingContext(object):
         return self.page.getUri(self.page_num)
 
     @property
-    def pagination_has_more(self):
-        if self.used_pagination is None:
-            return False
-        return self.used_pagination.has_more
-
-    @property
     def current_pass_info(self):
         return self.render_passes.get(self._current_pass)
 
@@ -110,15 +154,18 @@ class PageRenderingContext(object):
 
     def setPagination(self, paginator):
         self._raiseIfNoCurrentPass()
-        if self.used_pagination is not None:
+        pass_info = self.current_pass_info
+        if pass_info.used_pagination:
             raise Exception("Pagination has already been used.")
-        self.used_pagination = paginator
+        assert paginator.is_loaded
+        pass_info.used_pagination = True
+        pass_info.pagination_has_more = paginator.has_more
         self.addUsedSource(paginator._source)
 
     def addUsedSource(self, source):
         self._raiseIfNoCurrentPass()
         if isinstance(source, PageSource):
-            pass_info = self.render_passes[self._current_pass]
+            pass_info = self.current_pass_info
             pass_info.used_source_names.add(source.name)
 
     def setTaxonomyFilter(self, taxonomy, term_value):
@@ -150,15 +197,8 @@ def render_page(ctx):
     eis = ctx.app.env.exec_info_stack
     eis.pushPage(ctx.page, ctx)
     try:
-        page = ctx.page
-
         # Build the data for both segment and layout rendering.
-        data_ctx = DataBuildingContext(page, page_num=ctx.page_num)
-        data_ctx.pagination_source = ctx.pagination_source
-        data_ctx.pagination_filter = ctx.pagination_filter
-        page_data = build_page_data(data_ctx)
-        if ctx.custom_data:
-            page_data.update(ctx.custom_data)
+        page_data = _build_render_data(ctx)
 
         # Render content segments.
         ctx.setCurrentPass(PASS_FORMATTING)
@@ -167,31 +207,40 @@ def render_page(ctx):
         if ctx.app.env.fs_cache_only_for_main_page and not eis.is_main_page:
             save_to_fs = False
         if repo and not ctx.force_render:
-            contents = repo.get(
+            render_result = repo.get(
                     ctx.uri,
-                    lambda: _do_render_page_segments(page, page_data),
-                    fs_cache_time=page.path_mtime,
+                    lambda: _do_render_page_segments(ctx.page, page_data),
+                    fs_cache_time=ctx.page.path_mtime,
                     save_to_fs=save_to_fs)
         else:
-            contents = _do_render_page_segments(page, page_data)
+            render_result = _do_render_page_segments(ctx.page, page_data)
             if repo:
-                repo.put(ctx.uri, contents, save_to_fs)
+                repo.put(ctx.uri, render_result, save_to_fs)
 
         # Render layout.
+        page = ctx.page
         ctx.setCurrentPass(PASS_RENDERING)
         layout_name = page.config.get('layout')
         if layout_name is None:
             layout_name = page.source.config.get('default_layout', 'default')
         null_names = ['', 'none', 'nil']
         if layout_name not in null_names:
-            build_layout_data(page, page_data, contents)
-            output = render_layout(layout_name, page, page_data)
+            build_layout_data(page, page_data, render_result['segments'])
+            layout_result = _do_render_layout(layout_name, page, page_data)
         else:
-            output = contents['content']
+            layout_result = {
+                    'content': render_result['segments']['content'],
+                    'pass_info': None}
 
         rp = RenderedPage(page, ctx.uri, ctx.page_num)
         rp.data = page_data
-        rp.content = output
+        rp.content = layout_result['content']
+        rp.render_info = {
+                PASS_FORMATTING: RenderPassInfo._fromJson(
+                    render_result['pass_info'])}
+        if layout_result['pass_info'] is not None:
+            rp.render_info[PASS_RENDERING] = RenderPassInfo._fromJson(
+                layout_result['pass_info'])
         return rp
     finally:
         ctx.setCurrentPass(PASS_NONE)
@@ -199,38 +248,59 @@ def render_page(ctx):
 
 
 def render_page_segments(ctx):
-    repo = ctx.app.env.rendered_segments_repository
-    if repo:
-        cache_key = ctx.uri
-        return repo.get(
-            cache_key,
-            lambda: _do_render_page_segments_from_ctx(ctx),
-            fs_cache_time=ctx.page.path_mtime)
-
-    return _do_render_page_segments_from_ctx(ctx)
-
-
-def _do_render_page_segments_from_ctx(ctx):
     eis = ctx.app.env.exec_info_stack
     eis.pushPage(ctx.page, ctx)
-    ctx.setCurrentPass(PASS_FORMATTING)
     try:
-        data_ctx = DataBuildingContext(ctx.page, page_num=ctx.page_num)
-        page_data = build_page_data(data_ctx)
-        return _do_render_page_segments(ctx.page, page_data)
+        page_data = _build_render_data(ctx)
+
+        ctx.setCurrentPass(PASS_FORMATTING)
+        repo = ctx.app.env.rendered_segments_repository
+        save_to_fs = True
+        if ctx.app.env.fs_cache_only_for_main_page and not eis.is_main_page:
+            save_to_fs = False
+        if repo and not ctx.force_render:
+            render_result = repo.get(
+                ctx.uri,
+                lambda: _do_render_page_segments(ctx.page, page_data),
+                fs_cache_time=ctx.page.path_mtime,
+                save_to_fs=save_to_fs)
+        else:
+            render_result = _do_render_page_segments(ctx.page, page_data)
+            if repo:
+                repo.put(ctx.uri, render_result, save_to_fs)
     finally:
         ctx.setCurrentPass(PASS_NONE)
         eis.popPage()
 
+    rs = RenderedSegments(
+            render_result['segments'],
+            RenderPassInfo._fromJson(render_result['pass_info']))
+    return rs
+
+
+def _build_render_data(ctx):
+    data_ctx = DataBuildingContext(ctx.page, page_num=ctx.page_num)
+    data_ctx.pagination_source = ctx.pagination_source
+    data_ctx.pagination_filter = ctx.pagination_filter
+    page_data = build_page_data(data_ctx)
+    if ctx.custom_data:
+        page_data.update(ctx.custom_data)
+    return page_data
+
 
 def _do_render_page_segments(page, page_data):
     app = page.app
+
+    cpi = app.env.exec_info_stack.current_page_info
+    assert cpi is not None
+    assert cpi.page == page
+
     engine_name = page.config.get('template_engine')
     format_name = page.config.get('format')
 
     engine = get_template_engine(app, engine_name)
 
-    formatted_content = {}
+    formatted_segments = {}
     for seg_name, seg in page.raw_content.items():
         seg_text = ''
         for seg_part in seg.parts:
@@ -246,19 +316,27 @@ def _do_render_page_segments(page, page_data):
 
             part_text = format_text(app, part_format, part_text)
             seg_text += part_text
-        formatted_content[seg_name] = seg_text
+        formatted_segments[seg_name] = seg_text
 
         if seg_name == 'content':
             m = content_abstract_re.search(seg_text)
             if m:
                 offset = m.start()
                 content_abstract = seg_text[:offset]
-                formatted_content['content.abstract'] = content_abstract
+                formatted_segments['content.abstract'] = content_abstract
 
-    return formatted_content
+    pass_info = cpi.render_ctx.render_passes.get(PASS_FORMATTING)
+    res = {
+            'segments': formatted_segments,
+            'pass_info': pass_info._toJson()}
+    return res
 
 
-def render_layout(layout_name, page, layout_data):
+def _do_render_layout(layout_name, page, layout_data):
+    cpi = page.app.env.exec_info_stack.current_page_info
+    assert cpi is not None
+    assert cpi.page == page
+
     names = layout_name.split(',')
     default_template_engine = get_template_engine(page.app, None)
     default_exts = ['.' + e.lstrip('.')
@@ -281,7 +359,10 @@ def render_layout(layout_name, page, layout_data):
         msg = "Can't find template for page: %s\n" % page.path
         msg += "Looked for: %s" % ', '.join(full_names)
         raise Exception(msg) from ex
-    return output
+
+    pass_info = cpi.render_ctx.render_passes.get(PASS_RENDERING)
+    res = {'content': output, 'pass_info': pass_info._toJson()}
+    return res
 
 
 def get_template_engine(app, engine_name):

@@ -1,6 +1,7 @@
 import os
 import os.path
 import logging
+from piecrust import ASSET_DIR_SUFFIX
 from piecrust.uriutil import multi_replace
 
 
@@ -31,8 +32,6 @@ def build_base_url(app, uri, rel_assets_path):
 
 
 class Assetor(object):
-    ASSET_DIR_SUFFIX = '-assets'
-
     debug_render_doc = """Helps render URLs to files in the current page's
                           asset folder."""
     debug_render = []
@@ -58,6 +57,10 @@ class Assetor(object):
         self._cacheAssets()
         return map(lambda i: i[0], self._cache.values())
 
+    def _getFilenames(self):
+        assert self._cache is not None
+        return map(lambda i: i[1], self._cache.values())
+
     def _debugRenderAssetNames(self):
         self._cacheAssets()
         return list(self._cache.keys())
@@ -68,7 +71,7 @@ class Assetor(object):
 
         self._cache = {}
         name, ext = os.path.splitext(self._page.path)
-        assets_dir = name + Assetor.ASSET_DIR_SUFFIX
+        assets_dir = name + ASSET_DIR_SUFFIX
         if not os.path.isdir(assets_dir):
             return
 
@@ -88,6 +91,5 @@ class Assetor(object):
 
         cpi = self._page.app.env.exec_info_stack.current_page_info
         if cpi is not None:
-            used_assets = list(map(lambda i: i[1], self._cache.values()))
-            cpi.render_ctx.used_assets = used_assets
+            cpi.render_ctx.used_assets = True
 
