@@ -190,9 +190,6 @@ class LoadJobHandler(JobHandler):
 
 
 class RenderFirstSubJobHandler(JobHandler):
-    def __init__(self, app, ctx):
-        super(RenderFirstSubJobHandler, self).__init__(app, ctx)
-
     def handleJob(self, job):
         # Render the segments for the first sub-page of this page.
         fac = job.payload.factory_info.build(self.app)
