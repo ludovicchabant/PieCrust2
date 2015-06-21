@@ -50,17 +50,23 @@ class PluginLoader(object):
 
     def getFormatters(self):
         return self._getPluginComponents(
-                'getFormatters', True, order_key=lambda f: f.priority)
+                'getFormatters',
+                initialize=True, register_timer=True,
+                order_key=lambda f: f.priority)
 
     def getTemplateEngines(self):
-        return self._getPluginComponents('getTemplateEngines', True)
+        return self._getPluginComponents(
+                'getTemplateEngines',
+                initialize=True, register_timer=True)
 
     def getDataProviders(self):
         return self._getPluginComponents('getDataProviders')
 
     def getProcessors(self):
         return self._getPluginComponents(
-                'getProcessors', True, order_key=lambda p: p.priority)
+                'getProcessors',
+                initialize=True, register_timer=True,
+                order_key=lambda p: p.priority)
 
     def getImporters(self):
         return self._getPluginComponents('getImporters')
@@ -86,8 +92,9 @@ class PluginLoader(object):
 
         to_install = self.app.config.get('site/plugins')
         if to_install:
-            for p in to_install:
-                self._loadPlugin(p)
+            for name in to_install:
+                plugin = self._loadPlugin(name)
+                self._plugins.append(plugin)
 
         for plugin in self._plugins:
             plugin.initialize(self.app)
@@ -113,9 +120,11 @@ class PluginLoader(object):
                          (plugin_name, ex))
             return
 
-        self._plugins.append(plugin)
+        return plugin
 
-    def _getPluginComponents(self, name, initialize=False, order_key=None):
+    def _getPluginComponents(self, name, *,
+                             initialize=False, register_timer=False,
+                             order_key=None):
         if name in self._componentCache:
             return self._componentCache[name]
 
@@ -123,9 +132,14 @@ class PluginLoader(object):
         for plugin in self.plugins:
             plugin_components = getattr(plugin, name)()
             all_components += plugin_components
+
             if initialize:
                 for comp in plugin_components:
                     comp.initialize(self.app)
+
+            if register_timer:
+                for comp in plugin_components:
+                    self.app.env.registerTimer(comp.__class__.__name__)
 
         if order_key is not None:
             all_components.sort(key=order_key)
