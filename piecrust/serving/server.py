@@ -81,7 +81,7 @@ class Server(object):
             # use process forking and we end up going here twice. We only want
             # to start the pipeline loop in the inner process most of the
             # time so we let the implementation tell us if this is OK.
-            from piecrust.processing.base import ProcessorPipeline
+            from piecrust.processing.pipeline import ProcessorPipeline
             from piecrust.serving.procloop import ProcessingLoop
             pipeline = ProcessorPipeline(app, self._out_dir)
             self._proc_loop = ProcessingLoop(pipeline)
