@@ -4,6 +4,7 @@ import logging
 import hashlib
 import fnmatch
 import datetime
+from colorama import Fore
 from piecrust.baking.baker import Baker
 from piecrust.baking.records import (
         BakeRecord, BakeRecordEntry, SubPageBakeInfo)
@@ -71,14 +72,9 @@ class BakeCommand(ChefCommand):
 
             # Show merged timers.
             if ctx.args.show_timers:
-                from colorama import Fore
                 logger.info("-------------------")
                 logger.info("Timing information:")
-                for name in sorted(ctx.timers.keys()):
-                    val_str = '%8.1f s' % ctx.timers[name]
-                    logger.info(
-                            "[%s%s%s] %s" %
-                            (Fore.GREEN, val_str, Fore.RESET, name))
+                _show_timers(ctx.timers)
 
             # All done.
             logger.info('-------------------------')
@@ -115,9 +111,30 @@ def _merge_timers(source, target):
         return
 
     for name, val in source.items():
-        if name not in target:
-            target[name] = 0
-        target[name] += val
+        if isinstance(val, float):
+            if name not in target:
+                target[name] = 0
+            target[name] += val
+        elif isinstance(val, dict):
+            if name not in target:
+                target[name] = {}
+            _merge_timers(val, target[name])
+
+
+def _show_timers(timers, indent=''):
+    sub_timer_names = []
+    for name in sorted(timers.keys()):
+        if isinstance(timers[name], float):
+            val_str = '%8.1f s' % timers[name]
+            logger.info(
+                    "%s[%s%s%s] %s" %
+                    (indent, Fore.GREEN, val_str, Fore.RESET, name))
+        else:
+            sub_timer_names.append(name)
+
+    for name in sub_timer_names:
+        logger.info('%s:' % name)
+        _show_timers(timers[name], indent + '  ')
 
 
 class ShowRecordCommand(ChefCommand):

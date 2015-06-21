@@ -134,16 +134,19 @@ class ProcessorPipeline(object):
 
         # Get timing information from the workers.
         record.current.timers = {}
-        for _ in range(len(pool.workers)):
+        for i in range(len(pool.workers)):
             try:
                 timers = pool.results.get(True, 0.1)
             except queue.Empty:
                 logger.error("Didn't get timing information from all workers.")
                 break
 
+            worker_name = 'PipelineWorker_%d' % i
+            record.current.timers[worker_name] = {}
             for name, val in timers['data'].items():
                 main_val = record.current.timers.setdefault(name, 0)
                 record.current.timers[name] = main_val + val
+                record.current.timers[worker_name][name] = val
 
         # Invoke post-processors.
         pipeline_ctx.record = record.current
@@ -256,7 +259,7 @@ class ProcessorPipeline(object):
             ctx.enabled_processors = self.enabled_processors
             ctx.additional_processors = self.additional_processors
             w = multiprocessing.Process(
-                    name='Worker_%d' % i,
+                    name='PipelineWorker_%d' % i,
                     target=worker_func, args=(i, ctx))
             w.start()
             pool.workers.append(w)

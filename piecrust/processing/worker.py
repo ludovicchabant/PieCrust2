@@ -73,7 +73,8 @@ class ProcessingWorker(object):
         # Create the app local to this worker.
         app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug)
         app.env.fs_cache_only_for_main_page = True
-        app.env.registerTimer("Worker_%d" % self.wid)
+        app.env.registerTimer("PipelineWorker_%d_Total" % self.wid)
+        app.env.registerTimer("PipelineWorkerInit")
         app.env.registerTimer("JobReceive")
         app.env.registerTimer('BuildProcessingTree')
         app.env.registerTimer('RunProcessingTree')
@@ -101,6 +102,8 @@ class ProcessingWorker(object):
         # Sort our processors again in case the pre-process step involved
         # patching the processors with some new ones.
         processors.sort(key=lambda p: p.priority)
+
+        app.env.stepTimerSince("PipelineWorkerInit", work_start_time)
 
         aborted_with_exception = None
         while not self.ctx.abort_event.is_set():
@@ -131,8 +134,8 @@ class ProcessingWorker(object):
         for proc in processors:
             proc.onPipelineEnd(pipeline_ctx)
 
-        app.env.stepTimer("Worker_%d" % self.wid,
-                          time.perf_counter() - work_start_time)
+        app.env.stepTimerSince("PipelineWorker_%d_Total" % self.wid,
+                               work_start_time)
         self.ctx.results.put_nowait({
                 'type': 'timers', 'data': app.env._timers})
 

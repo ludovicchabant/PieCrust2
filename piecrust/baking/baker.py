@@ -107,16 +107,19 @@ class Baker(object):
 
         # Get the timing information from the workers.
         record.current.timers = {}
-        for _ in range(len(pool.workers)):
+        for i in range(len(pool.workers)):
             try:
                 timers = pool.results.get(True, 0.1)
             except queue.Empty:
                 logger.error("Didn't get timing information from all workers.")
                 break
 
+            worker_name = 'BakeWorker_%d' % i
+            record.current.timers[worker_name] = {}
             for name, val in timers['data'].items():
                 main_val = record.current.timers.setdefault(name, 0)
                 record.current.timers[name] = main_val + val
+                record.current.timers[worker_name][name] = val
 
         # Delete files from the output.
         self._handleDeletetions(record)
@@ -549,7 +552,7 @@ class Baker(object):
                     pool.queue, pool.results, pool.abort_event,
                     force=self.force, debug=self.app.debug)
             w = multiprocessing.Process(
-                    name='Worker_%d' % i,
+                    name='BakeWorker_%d' % i,
                     target=worker_func, args=(i, ctx))
             w.start()
             pool.workers.append(w)

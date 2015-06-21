@@ -52,7 +52,8 @@ class BakeWorker(object):
         # Create the app local to this worker.
         app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug)
         app.env.fs_cache_only_for_main_page = True
-        app.env.registerTimer("Worker_%d" % self.wid)
+        app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
+        app.env.registerTimer("BakeWorkerInit")
         app.env.registerTimer("JobReceive")
 
         # Create the job handlers.
@@ -62,6 +63,8 @@ class BakeWorker(object):
                 JOB_BAKE: BakeJobHandler(app, self.ctx)}
         for jt, jh in job_handlers.items():
             app.env.registerTimer(type(jh).__name__)
+
+        app.env.stepTimerSince("BakeWorkerInit", work_start_time)
 
         # Start working!
         aborted_with_exception = None
@@ -91,8 +94,8 @@ class BakeWorker(object):
             self.ctx.results.put_nowait({'type': 'error', 'messages': msgs})
 
         # Send our timers to the main process before exiting.
-        app.env.stepTimer("Worker_%d" % self.wid,
-                          time.perf_counter() - work_start_time)
+        app.env.stepTimerSince("BakeWorker_%d_Total" % self.wid,
+                               work_start_time)
         self.ctx.results.put_nowait({
                 'type': 'timers', 'data': app.env._timers})
 
@@ -187,6 +190,9 @@ class LoadJobHandler(JobHandler):
 
 
 class RenderFirstSubJobHandler(JobHandler):
+    def __init__(self, app, ctx):
+        super(RenderFirstSubJobHandler, self).__init__(app, ctx)
+
     def handleJob(self, job):
         # Render the segments for the first sub-page of this page.
         fac = job.payload.factory_info.build(self.app)
