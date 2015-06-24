@@ -67,7 +67,7 @@ Second, change the code to:
     </section>
     {% endraw %}
 
-We're still showing links to the previous/next pagination at the bootom, but now
+We're still showing links to the previous/next pagination at the bottom, but now
 instead of showing a classic river of posts, we're showing a concise and simple
 list.
 
