@@ -47,6 +47,10 @@ class ExtensibleCache(object):
             logger.debug("Cleaning cache: %s" % cache_dir)
             shutil.rmtree(cache_dir)
 
+            # Re-create the cache-dir because now our Cache instance points
+            # to a directory that doesn't exist anymore.
+            os.makedirs(cache_dir, 0o755)
+
     def clearCaches(self, except_names=None):
         for name in self.getCacheNames(except_names=except_names):
             self.clearCache(name)
