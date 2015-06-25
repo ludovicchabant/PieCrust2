@@ -19,10 +19,11 @@ def worker_func(wid, ctx):
 
 
 class BakeWorkerContext(object):
-    def __init__(self, root_dir, out_dir,
+    def __init__(self, root_dir, sub_cache_dir, out_dir,
                  work_queue, results, abort_event,
                  force=False, debug=False):
         self.root_dir = root_dir
+        self.sub_cache_dir = sub_cache_dir
         self.out_dir = out_dir
         self.work_queue = work_queue
         self.results = results
@@ -51,6 +52,7 @@ class BakeWorker(object):
 
         # Create the app local to this worker.
         app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug)
+        app._useSubCacheDir(self.ctx.sub_cache_dir)
         app.env.fs_cache_only_for_main_page = True
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")

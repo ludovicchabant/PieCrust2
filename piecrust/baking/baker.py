@@ -548,7 +548,7 @@ class Baker(object):
         pool = _WorkerPool()
         for i in range(self.num_workers):
             ctx = BakeWorkerContext(
-                    self.app.root_dir, self.out_dir,
+                    self.app.root_dir, self.app.cache.base_dir, self.out_dir,
                     pool.queue, pool.results, pool.abort_event,
                     force=self.force, debug=self.app.debug)
             w = multiprocessing.Process(
