@@ -342,9 +342,7 @@ def _do_render_layout(layout_name, page, layout_data):
     assert cpi.page == page
 
     names = layout_name.split(',')
-    default_template_engine = get_template_engine(page.app, None)
-    default_exts = ['.' + e.lstrip('.')
-                    for e in default_template_engine.EXTENSIONS]
+    default_exts = page.app.env.default_layout_extensions
     full_names = []
     for name in names:
         if '.' not in name:

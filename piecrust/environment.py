@@ -50,6 +50,7 @@ class ExecutionInfoStack(object):
 
 class Environment(object):
     def __init__(self):
+        self.app = None
         self.start_time = None
         self.exec_info_stack = ExecutionInfoStack()
         self.was_cache_cleaned = False
@@ -59,13 +60,30 @@ class Environment(object):
         self.fs_caches = {
                 'renders': self.rendered_segments_repository}
         self.fs_cache_only_for_main_page = False
+        self._default_layout_extensions = None
         self._timers = {}
 
+    @property
+    def default_layout_extensions(self):
+        if self._default_layout_extensions is not None:
+            return self._default_layout_extensions
+
+        if self.app is None:
+            raise Exception("This environment has not been initialized yet.")
+
+        from piecrust.rendering import get_template_engine
+        dte = get_template_engine(self.app, None)
+        self._default_layout_extensions = ['.' + e.lstrip('.')
+                                           for e in dte.EXTENSIONS]
+        return self._default_layout_extensions
+
     def initialize(self, app):
+        self.app = app
         self.start_time = time.perf_counter()
         self.exec_info_stack.clear()
         self.was_cache_cleaned = False
         self.base_asset_url_format = '%uri%'
+
         self._onSubCacheDirChanged(app)
 
     def registerTimer(self, category, *, raise_if_registered=True):
