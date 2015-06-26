@@ -543,14 +543,20 @@ class Baker(object):
             logger.error("  " + e)
 
     def _createWorkerPool(self):
+        import sys
         from piecrust.baking.worker import BakeWorkerContext, worker_func
+
+        main_module = sys.modules['__main__']
+        is_profiling = os.path.basename(main_module.__file__) in [
+                'profile.py', 'cProfile.py']
 
         pool = _WorkerPool()
         for i in range(self.num_workers):
             ctx = BakeWorkerContext(
                     self.app.root_dir, self.app.cache.base_dir, self.out_dir,
                     pool.queue, pool.results, pool.abort_event,
-                    force=self.force, debug=self.app.debug)
+                    force=self.force, debug=self.app.debug,
+                    is_profiling=is_profiling)
             w = multiprocessing.Process(
                     name='BakeWorker_%d' % i,
                     target=worker_func, args=(i, ctx))

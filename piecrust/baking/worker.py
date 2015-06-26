@@ -13,6 +13,21 @@ logger = logging.getLogger(__name__)
 
 
 def worker_func(wid, ctx):
+    if ctx.is_profiling:
+        try:
+            import cProfile as profile
+        except ImportError:
+            import profile
+
+        ctx.is_profiling = False
+        profile.runctx('_real_worker_func(wid, ctx)',
+                       globals(), locals(),
+                       filename='BakeWorker-%d.prof' % wid)
+    else:
+        _real_worker_func(wid, ctx)
+
+
+def _real_worker_func(wid, ctx):
     logger.debug("Worker %d booting up..." % wid)
     w = BakeWorker(wid, ctx)
     w.run()
@@ -21,7 +36,7 @@ def worker_func(wid, ctx):
 class BakeWorkerContext(object):
     def __init__(self, root_dir, sub_cache_dir, out_dir,
                  work_queue, results, abort_event,
-                 force=False, debug=False):
+                 force=False, debug=False, is_profiling=False):
         self.root_dir = root_dir
         self.sub_cache_dir = sub_cache_dir
         self.out_dir = out_dir
@@ -30,6 +45,7 @@ class BakeWorkerContext(object):
         self.abort_event = abort_event
         self.force = force
         self.debug = debug
+        self.is_profiling = is_profiling
 
 
 JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE = range(0, 3)
