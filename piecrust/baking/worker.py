@@ -6,6 +6,7 @@ from piecrust.app import PieCrust
 from piecrust.baking.single import PageBaker, BakingError
 from piecrust.rendering import (
         QualifiedPage, PageRenderingContext, render_page_segments)
+from piecrust.routing import create_route_metadata
 from piecrust.sources.base import PageFactory
 
 
@@ -218,7 +219,7 @@ class RenderFirstSubJobHandler(JobHandler):
         assert route is not None
 
         page = fac.buildPage()
-        route_metadata = copy.deepcopy(fac.metadata)
+        route_metadata = create_route_metadata(page)
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
 
@@ -254,14 +255,16 @@ class BakeJobHandler(JobHandler):
                                       skip_taxonomies=True)
         assert route is not None
 
+        page = fac.buildPage()
+        qp = QualifiedPage(page, route, route_metadata)
+
         result = BakeJobResult(fac.path, tax_info)
         previous_entry = job.payload.previous_entry
         dirty_source_names = job.payload.dirty_source_names
         logger.debug("Baking page: %s" % fac.ref_spec)
         try:
             sub_entries = self.page_baker.bake(
-                    fac, route, route_metadata, previous_entry,
-                    dirty_source_names, tax_info)
+                    qp, previous_entry, dirty_source_names, tax_info)
             result.sub_entries = sub_entries
 
         except BakingError as ex:

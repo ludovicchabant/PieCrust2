@@ -2,6 +2,7 @@ import copy
 import time
 import logging
 from piecrust.data.assetor import Assetor
+from piecrust.routing import create_route_metadata
 from piecrust.uriutil import split_uri
 
 
@@ -154,12 +155,12 @@ class PaginationData(LazyPageConfigData):
         if self._route is None:
             # TODO: this is not quite correct, as we're missing parts of the
             #       route metadata if the current page is a taxonomy page.
-            self._route = page.app.getRoute(page.source.name,
-                                            page.source_metadata)
-            self._route_metadata = copy.deepcopy(page.source_metadata)
+            route_metadata = create_route_metadata(page)
+            self._route = page.app.getRoute(page.source.name, route_metadata)
+            self._route_metadata = route_metadata
             if self._route is None:
                 raise Exception("Can't get route for page: %s" % page.path)
-        return self._route.getUri(self._route_metadata, provider=page)
+        return self._route.getUri(self._route_metadata)
 
     def _loadCustom(self):
         page_url = self._get_uri()

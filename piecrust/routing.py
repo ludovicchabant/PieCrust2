@@ -15,6 +15,18 @@ template_func_arg_re = re.compile(r',\s*(?P<arg>\w+)')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
+def create_route_metadata(page):
+    route_metadata = copy.deepcopy(page.source_metadata)
+    route_metadata.update(page.getRouteMetadata())
+
+    # TODO: fix this hard-coded shit
+    for key in ['year', 'month', 'day']:
+        if key in route_metadata and isinstance(route_metadata[key], str):
+            route_metadata[key] = int(route_metadata[key])
+
+    return route_metadata
+
+
 class IRouteMetadataProvider(object):
     def getRouteMetadata(self):
         raise NotImplementedError()
@@ -122,16 +134,7 @@ class Route(object):
 
         return route_metadata
 
-    def getUri(self, route_metadata, *, sub_num=1, provider=None):
-        route_metadata = copy.deepcopy(route_metadata)
-        if provider:
-            route_metadata.update(provider.getRouteMetadata())
-
-        #TODO: fix this hard-coded shit
-        for key in ['year', 'month', 'day']:
-            if key in route_metadata and isinstance(route_metadata[key], str):
-                route_metadata[key] = int(route_metadata[key])
-
+    def getUri(self, route_metadata, *, sub_num=1):
         uri = self.uri_format % route_metadata
         suffix = None
         if sub_num > 1:

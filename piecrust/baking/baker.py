@@ -13,6 +13,7 @@ from piecrust.baking.worker import (
         JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE)
 from piecrust.chefutil import (
         format_timed_scope, format_timed)
+from piecrust.routing import create_route_metadata
 from piecrust.sources.base import (
         REALM_NAMES, REALM_USER, REALM_THEME)
 
@@ -485,7 +486,8 @@ class Baker(object):
             return False
 
         # Build the route metadata and find the appropriate route.
-        route_metadata = copy.deepcopy(fac.metadata)
+        page = fac.buildPage()
+        route_metadata = create_route_metadata(page)
         if tax_info is not None:
             tax = self.app.getTaxonomy(tax_info.taxonomy_name)
             route = self.app.getTaxonomyRoute(tax_info.taxonomy_name,
@@ -501,8 +503,7 @@ class Baker(object):
         # Figure out if this page is overriden by another previously
         # baked page. This happens for example when the user has
         # made a page that has the same page/URL as a theme page.
-        page = fac.buildPage()
-        uri = route.getUri(route_metadata, provider=page)
+        uri = route.getUri(route_metadata)
         override_entry = record.getOverrideEntry(page.path, uri)
         if override_entry is not None:
             override_source = self.app.getSource(

@@ -2,6 +2,7 @@ import time
 import logging
 import yaml
 from piecrust.processing.base import SimpleFileProcessor
+from piecrust.routing import create_route_metadata
 
 
 logger = logging.getLogger(__name__)
@@ -60,14 +61,15 @@ class SitemapProcessor(SimpleFileProcessor):
 
         for name in source_names:
             logger.debug("Generating automatic sitemap entries for '%s'." %
-                    name)
+                         name)
             source = self.app.getSource(name)
             if source is None:
                 raise Exception("No such source: %s" % name)
 
             for page in source.getPages():
-                route = self.app.getRoute(source.name, page.source_metadata)
-                uri = route.getUri(page.source_metadata, provider=page)
+                route_metadata = create_route_metadata(page)
+                route = self.app.getRoute(source.name, route_metadata)
+                uri = route.getUri(route_metadata)
 
                 t = page.datetime.timestamp()
                 sm_cfg = page.config.get('sitemap')

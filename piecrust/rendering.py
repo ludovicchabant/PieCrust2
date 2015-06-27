@@ -34,8 +34,7 @@ class QualifiedPage(object):
         self.route_metadata = route_metadata
 
     def getUri(self, sub_num=1):
-        return self.route.getUri(self.route_metadata, provider=self.page,
-                                 sub_num=sub_num)
+        return self.route.getUri(self.route_metadata, sub_num=sub_num)
 
     def __getattr__(self, name):
         return getattr(self.page, name)

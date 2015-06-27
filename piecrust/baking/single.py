@@ -14,14 +14,6 @@ from piecrust.uriutil import split_uri
 logger = logging.getLogger(__name__)
 
 
-def copy_public_page_config(config):
-    res = config.getDeepcopy()
-    for k in list(res.keys()):
-        if k.startswith('__'):
-            del res[k]
-    return res
-
-
 class BakingError(Exception):
     pass
 
@@ -50,11 +42,8 @@ class PageBaker(object):
 
         return os.path.normpath(os.path.join(*bake_path))
 
-    def bake(self, factory, route, route_metadata, prev_entry,
-             dirty_source_names, tax_info=None):
-        # Get the page.
-        page = factory.buildPage()
-
+    def bake(self, qualified_page, prev_entry, dirty_source_names,
+             tax_info=None):
         # Start baking the sub-pages.
         cur_sub = 1
         has_more_subs = True
@@ -62,8 +51,7 @@ class PageBaker(object):
 
         while has_more_subs:
             # Get the URL and path for this sub-page.
-            sub_uri = route.getUri(route_metadata, sub_num=cur_sub,
-                                   provider=page)
+            sub_uri = qualified_page.getUri(cur_sub)
             logger.debug("Baking '%s' [%d]..." % (sub_uri, cur_sub))
             out_path = self.getOutputPath(sub_uri)
 
@@ -88,7 +76,7 @@ class PageBaker(object):
             do_bake = True
             if not force_this_sub:
                 try:
-                    in_path_time = page.path_mtime
+                    in_path_time = qualified_page.path_mtime
                     out_path_time = os.path.getmtime(out_path)
                     if out_path_time >= in_path_time:
                         do_bake = False
@@ -122,10 +110,11 @@ class PageBaker(object):
                         SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
-                qp = QualifiedPage(page, route, route_metadata)
-                rp = self._bakeSingle(qp, cur_sub, out_path, tax_info)
+                rp = self._bakeSingle(qualified_page, cur_sub, out_path,
+                                      tax_info)
             except Exception as ex:
-                page_rel_path = os.path.relpath(page.path, self.app.root_dir)
+                page_rel_path = os.path.relpath(qualified_page.path,
+                                                self.app.root_dir)
                 raise BakingError("%s: error baking '%s'." %
                                   (page_rel_path, sub_uri)) from ex
 
@@ -147,8 +136,8 @@ class PageBaker(object):
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
 
-                page_dirname = os.path.dirname(page.path)
-                page_pathname, _ = os.path.splitext(page.path)
+                page_dirname = os.path.dirname(qualified_page.path)
+                page_pathname, _ = os.path.splitext(qualified_page.path)
                 in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
                 for fn in os.listdir(in_assets_dir):
                     full_fn = os.path.join(page_dirname, fn)
