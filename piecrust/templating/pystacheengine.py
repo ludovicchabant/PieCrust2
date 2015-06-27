@@ -1,5 +1,6 @@
 import logging
 import pystache
+import pystache.common
 from piecrust.templating.base import (
         TemplateEngine, TemplateNotFoundError, TemplatingError)
 
@@ -18,9 +19,9 @@ class PystacheTemplateEngine(TemplateEngine):
         self._ensureLoaded()
         try:
             return self.renderer.render(txt, data)
-        except pystache.TemplateNotFoundError as ex:
+        except pystache.common.TemplateNotFoundError as ex:
             raise TemplateNotFoundError() from ex
-        except pystache.PystacheError as ex:
+        except pystache.common.PystacheError as ex:
             raise TemplatingError(str(ex), filename) from ex
 
     def renderFile(self, paths, data):
@@ -45,7 +46,7 @@ class PystacheTemplateEngine(TemplateEngine):
 
         try:
             return self.renderer.render(tpl, data)
-        except pystache.PystacheError as ex:
+        except pystache.common.PystacheError as ex:
             raise TemplatingError(str(ex)) from ex
 
     def _ensureLoaded(self):
