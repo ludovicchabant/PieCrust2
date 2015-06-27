@@ -53,6 +53,26 @@ class PystacheTemplateEngine(TemplateEngine):
         if self.renderer:
             return
 
-        self.renderer = pystache.Renderer(
+        self.renderer = _WorkaroundRenderer(
                 search_dirs=self.app.templates_dirs)
+
+
+_knowns = ['PieCrustData', 'LazyPageConfigData', 'Paginator', 'Assetor',
+           'PageLinkerData']
+
+
+class _WorkaroundRenderer(pystache.Renderer):
+    def _make_resolve_context(self):
+        mrc = super(_WorkaroundRenderer, self)._make_resolve_context()
+
+        def _workaround(stack, name):
+            # Pystache will treat anything that's not a string or a dict as
+            # a list. This is just plain wrong, but it will take a while before
+            # the project can get patches on Pypi.
+            res = mrc(stack, name)
+            if res is not None and res.__class__.__name__ in _knowns:
+                res = [res]
+            return res
+
+        return _workaround
 
