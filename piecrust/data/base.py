@@ -44,14 +44,14 @@ class LazyPageConfigData(object):
     def __getattr__(self, name):
         try:
             return self._getValue(name)
-        except LazyPageConfigLoaderHasNoValue:
-            raise AttributeError
+        except LazyPageConfigLoaderHasNoValue as ex:
+            raise AttributeError("No such attribute: %s" % name) from ex
 
     def __getitem__(self, name):
         try:
             return self._getValue(name)
-        except LazyPageConfigLoaderHasNoValue:
-            raise KeyError
+        except LazyPageConfigLoaderHasNoValue as ex:
+            raise KeyError("No such key: %s" % name) from ex
 
     def _getValue(self, name):
         self._load()
