@@ -153,7 +153,7 @@ class ProcessingWorker(object):
                 tree_root = builder.build(rel_path)
                 result.flags |= FLAG_PREPARED
         except ProcessingTreeError as ex:
-            result.errors += _get_errors(ex)
+            result.errors = _get_errors(ex)
             return result
 
         # Prepare and run the tree.
@@ -177,7 +177,7 @@ class ProcessingWorker(object):
             if isinstance(ex, ProcessorError):
                 ex = ex.__cause__
             # Need to strip out colored errors from external processes.
-            result.errors += _get_errors(ex, strip_colors=True)
+            result.errors = _get_errors(ex, strip_colors=True)
 
         return result
 
