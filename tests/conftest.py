@@ -324,14 +324,14 @@ def _add_mock_files(fs, parent_path, spec):
 
 
 class CompareContext(object):
-    def __init__(self, path=None):
+    def __init__(self, path=None, t=None):
         self.path = path or ''
-        self.time = time.time()
+        self.time = t or time.time()
 
     def createChildContext(self, name):
         ctx = CompareContext(
                 path='%s/%s' % (self.path, name),
-                time=self.time)
+                t=self.time)
         return ctx
 
 
