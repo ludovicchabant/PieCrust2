@@ -282,7 +282,7 @@ def _build_render_data(ctx):
         data_ctx.pagination_filter = ctx.pagination_filter
         page_data = build_page_data(data_ctx)
         if ctx.custom_data:
-            page_data.update(ctx.custom_data)
+            page_data._appendMapping(ctx.custom_data)
         return page_data
 
 

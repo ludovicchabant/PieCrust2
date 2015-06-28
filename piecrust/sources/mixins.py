@@ -1,8 +1,8 @@
 import os
 import os.path
 import logging
-from piecrust.data.base import PaginationData
 from piecrust.data.filters import PaginationFilter, page_value_accessor
+from piecrust.data.paginationdata import PaginationData
 from piecrust.sources.base import PageFactory
 from piecrust.sources.interfaces import IPaginationSource, IListableSource
 from piecrust.sources.pageref import PageRef

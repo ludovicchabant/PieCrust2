@@ -3,6 +3,7 @@ import io
 import html
 import logging
 import collections
+import collections.abc
 from piecrust import APP_VERSION, PIECRUST_URL
 from piecrust.page import FLAG_RAW_CACHE_VALID
 
@@ -162,7 +163,7 @@ class DebugDataRenderer(object):
             self._write('&lt;null&gt;')
             return
 
-        if isinstance(data, dict):
+        if isinstance(data, (dict, collections.abc.Mapping)):
             self._renderCollapsableValueStart(path)
             with IndentScope(self):
                 self._renderDict(data, path)

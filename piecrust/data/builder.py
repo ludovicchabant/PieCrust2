@@ -1,15 +1,12 @@
-import re
-import time
-import copy
 import logging
 from werkzeug.utils import cached_property
-from piecrust import APP_VERSION
-from piecrust.configuration import merge_dicts
 from piecrust.data.assetor import Assetor
-from piecrust.data.base import LazyPageConfigData
-from piecrust.data.debug import build_debug_info
+from piecrust.data.base import MergedMapping
 from piecrust.data.linker import PageLinkerData
+from piecrust.data.pagedata import PageData
 from piecrust.data.paginator import Paginator
+from piecrust.data.piecrustdata import PieCrustData
+from piecrust.data.providersdata import DataProvidersData
 from piecrust.uriutil import split_sub_uri
 
 
@@ -36,10 +33,10 @@ def build_page_data(ctx):
     app = ctx.app
     page = ctx.page
     first_uri, _ = split_sub_uri(app, ctx.uri)
+    pgn_source = ctx.pagination_source or get_default_pagination_source(page)
 
     pc_data = PieCrustData()
-    config_data = LazyPageConfigData(page)
-    pgn_source = ctx.pagination_source or get_default_pagination_source(page)
+    config_data = PageData(page, ctx)
     paginator = Paginator(page, pgn_source,
                           page_num=ctx.page_num,
                           pgn_filter=ctx.pagination_filter)
@@ -53,20 +50,11 @@ def build_page_data(ctx):
             'family': linker
             }
 
-    for k, v in page.source_metadata.items():
-        config_data.mapValue(k, copy.deepcopy(v))
-    config_data.mapValue('url', ctx.uri, override_existing=True)
-    config_data.mapValue('timestamp', time.mktime(page.datetime.timetuple()),
-                         override_existing=True)
-    date_format = app.config.get('site/date_format')
-    if date_format:
-        config_data.mapValue('date', page.datetime.strftime(date_format),
-                             override_existing=True)
-
     #TODO: handle slugified taxonomy terms.
 
-    site_data = build_site_data(page)
-    merge_dicts(data, site_data)
+    site_data = app.config.getAll()
+    providers_data = DataProvidersData(page)
+    data = MergedMapping([data, providers_data, site_data])
 
     # Do this at the end because we want all the data to be ready to be
     # displayed in the debugger window.
@@ -82,58 +70,7 @@ def build_layout_data(page, page_data, contents):
         if name in page_data:
             logger.warning("Content segment '%s' will hide existing data." %
                            name)
-        page_data[name] = txt
-
-
-class PieCrustData(object):
-    debug_render = ['version', 'url', 'branding', 'debug_info']
-    debug_render_invoke = ['version', 'url', 'branding', 'debug_info']
-    debug_render_redirect = {'debug_info': '_debugRenderDebugInfo'}
-
-    def __init__(self):
-        self.version = APP_VERSION
-        self.url = 'http://bolt80.com/piecrust/'
-        self.branding = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
-                'http://bolt80.com/piecrust/', APP_VERSION)
-        self._page = None
-        self._data = None
-
-    @property
-    def debug_info(self):
-        if self._page is not None and self._data is not None:
-            try:
-                return build_debug_info(self._page, self._data)
-            except Exception as ex:
-                logger.exception(ex)
-                return ('An error occured while generating debug info. '
-                        'Please check the logs.')
-        return ''
-
-    def _enableDebugInfo(self, page, data):
-        self._page = page
-        self._data = data
-
-    def _debugRenderDebugInfo(self):
-        return "The very thing you're looking at!"
-
-
-re_endpoint_sep = re.compile(r'[\/\.]')
-
-
-def build_site_data(page):
-    app = page.app
-    data = app.config.getDeepcopy(app.debug)
-    for source in app.sources:
-        endpoint_bits = re_endpoint_sep.split(source.data_endpoint)
-        endpoint = data
-        for e in endpoint_bits[:-1]:
-            if e not in endpoint:
-                endpoint[e] = {}
-            endpoint = endpoint[e]
-        user_data = endpoint.get(endpoint_bits[-1])
-        provider = source.buildDataProvider(page, user_data)
-        endpoint[endpoint_bits[-1]] = provider
-    return data
+    page_data._prependMapping(contents)
 
 
 def get_default_pagination_source(page):

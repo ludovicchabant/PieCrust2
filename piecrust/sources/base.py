@@ -114,7 +114,7 @@ class PageSource(object):
     def findPageFactory(self, metadata, mode):
         raise NotImplementedError()
 
-    def buildDataProvider(self, page, user_data):
+    def buildDataProvider(self, page, override):
         if self._provider_type is None:
             cls = next((pt for pt in self.app.plugin_loader.getDataProviders()
                         if pt.PROVIDER_NAME == self.data_type),
@@ -124,7 +124,7 @@ class PageSource(object):
                         "Unknown data provider type: %s" % self.data_type)
             self._provider_type = cls
 
-        return self._provider_type(self, page, user_data)
+        return self._provider_type(self, page, override)
 
     def getTaxonomyPageRef(self, tax_name):
         tax_pages = self.config.get('taxonomy_pages')

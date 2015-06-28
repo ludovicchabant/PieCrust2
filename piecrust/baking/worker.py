@@ -198,7 +198,7 @@ class LoadJobHandler(JobHandler):
         try:
             page = fac.buildPage()
             page._load()
-            result.config = page.config.get()
+            result.config = page.config.getAll()
         except Exception as ex:
             logger.debug("Got loading error. Sending it to master.")
             result.errors = _get_errors(ex)

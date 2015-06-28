@@ -1,37 +1,19 @@
 import time
+import collections.abc
 from piecrust.data.iterators import PageIterator
 from piecrust.sources.array import ArraySource
 
 
 class DataProvider(object):
-    debug_render_dynamic = ['_debugRenderUserData']
-    debug_render_invoke_dynamic = ['_debugRenderUserData']
+    debug_render_dynamic = []
+    debug_render_invoke_dynamic = []
 
-    def __init__(self, source, page, user_data):
+    def __init__(self, source, page, override):
         if source.app is not page.app:
             raise Exception("The given source and page don't belong to "
                             "the same application.")
         self._source = source
         self._page = page
-        self._user_data = user_data
-
-    def __getattr__(self, name):
-        if self._user_data is not None:
-            try:
-                return self._user_data[name]
-            except KeyError:
-                pass
-        raise AttributeError()
-
-    def __getitem__(self, name):
-        if self._user_data is not None:
-            return self._user_data[name]
-        raise KeyError()
-
-    def _debugRenderUserData(self):
-        if self._user_data:
-            return list(self._user_data.keys())
-        return []
 
 
 class IteratorDataProvider(DataProvider):
@@ -40,16 +22,16 @@ class IteratorDataProvider(DataProvider):
     debug_render_doc_dynamic = ['_debugRenderDoc']
     debug_render_not_empty = True
 
-    def __init__(self, source, page, user_data):
+    def __init__(self, source, page, override):
+        super(IteratorDataProvider, self).__init__(source, page, override)
+
         self._innerIt = None
-        if isinstance(user_data, IteratorDataProvider):
+        if isinstance(override, IteratorDataProvider):
             # Iterator providers can be chained, like for instance with
             # `site.pages` listing both the theme pages and the user site's
             # pages.
-            self._innerIt = user_data
-            user_data = None
+            self._innerIt = override
 
-        super(IteratorDataProvider, self).__init__(source, page, user_data)
         self._pages = PageIterator(source, current_page=page)
         self._pages._iter_event += self._onIteration
         self._ctx_set = False
@@ -75,43 +57,47 @@ class IteratorDataProvider(DataProvider):
         return 'Provides a list of %d items' % len(self)
 
 
-class BlogDataProvider(DataProvider):
+class BlogDataProvider(DataProvider, collections.abc.Mapping):
     PROVIDER_NAME = 'blog'
 
     debug_render_doc = """Provides a list of blog posts and yearly/monthly
                           archives."""
-    debug_render = ['posts', 'years', 'months']
     debug_render_dynamic = (['_debugRenderTaxonomies'] +
             DataProvider.debug_render_dynamic)
 
-    def __init__(self, source, page, user_data):
-        super(BlogDataProvider, self).__init__(source, page, user_data)
+    def __init__(self, source, page, override):
+        super(BlogDataProvider, self).__init__(source, page, override)
         self._yearly = None
         self._monthly = None
         self._taxonomies = {}
         self._ctx_set = False
 
-    def __getattr__(self, name):
-        if self._source.app.getTaxonomy(name) is not None:
+    def __getitem__(self, name):
+        if name == 'posts':
+            return self._posts()
+        elif name == 'years':
+            return self._buildYearlyArchive()
+        elif name == 'months':
+            return self._buildMonthlyArchive()
+        elif self._source.app.getTaxonomy(name) is not None:
             return self._buildTaxonomy(name)
-        return super(BlogDataProvider, self).__getattr__(name)
+        raise KeyError("No such item: %s" % name)
 
-    @property
-    def posts(self):
-        it = PageIterator(self._source, current_page=self._page)
-        it._iter_event += self._onIteration
-        return it
+    def __iter__(self):
+        keys = ['posts', 'years', 'months']
+        keys += [t.name for t in self._source.app.taxonomies]
+        return iter(keys)
 
-    @property
-    def years(self):
-        return self._buildYearlyArchive()
-
-    @property
-    def months(self):
-        return self._buildMonthlyArchive()
+    def __len__(self):
+        return 3 + len(self._source.app.taxonomies)
 
     def _debugRenderTaxonomies(self):
         return [t.name for t in self._source.app.taxonomies]
+
+    def _posts(self):
+        it = PageIterator(self._source, current_page=self._page)
+        it._iter_event += self._onIteration
+        return it
 
     def _buildYearlyArchive(self):
         if self._yearly is not None:

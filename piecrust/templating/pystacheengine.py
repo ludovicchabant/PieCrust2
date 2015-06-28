@@ -1,4 +1,5 @@
 import logging
+import collections.abc
 import pystache
 import pystache.common
 from piecrust.templating.base import (
@@ -70,7 +71,9 @@ class _WorkaroundRenderer(pystache.Renderer):
             # a list. This is just plain wrong, but it will take a while before
             # the project can get patches on Pypi.
             res = mrc(stack, name)
-            if res is not None and res.__class__.__name__ in _knowns:
+            if res is not None and (
+                    res.__class__.__name__ in _knowns or
+                    isinstance(res, collections.abc.Mapping)):
                 res = [res]
             return res
 

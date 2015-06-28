@@ -13,13 +13,13 @@ from piecrust.configuration import (Configuration, ConfigurationLoader,
     ])
 def test_config_init(values, expected):
     config = Configuration(values)
-    assert config.get() == expected
+    assert config.getAll() == expected
 
 
 def test_config_set_all():
     config = Configuration()
     config.setAll({'foo': 'bar'})
-    assert config.get() == {'foo': 'bar'}
+    assert config.getAll() == {'foo': 'bar'}
 
 
 def test_config_get_and_set():
@@ -125,7 +125,7 @@ def test_config_merge():
                 'child10': 'ten'
                 }
             }
-    assert config.get() == expected
+    assert config.getAll() == expected
 
 
 def test_ordered_loader():

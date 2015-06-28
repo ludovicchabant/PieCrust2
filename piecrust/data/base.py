@@ -1,226 +1,62 @@
-import copy
-import time
-import logging
-from piecrust.data.assetor import Assetor
-from piecrust.routing import create_route_metadata
-from piecrust.uriutil import split_uri
+import collections.abc
 
 
-logger = logging.getLogger(__name__)
-
-
-class LazyPageConfigLoaderHasNoValue(Exception):
-    """ An exception that can be returned when a loader for `LazyPageConfig`
-        can't return any value.
+class MergedMapping(collections.abc.Mapping):
+    """ Provides a dictionary-like object that's really the aggregation of
+        multiple dictionary-like objects.
     """
-    pass
-
-
-class LazyPageConfigData(object):
-    """ An object that represents the configuration header of a page,
-        but also allows for additional data. It's meant to be exposed
-        to the templating system.
-    """
-    debug_render = []
-    debug_render_invoke = []
-    debug_render_dynamic = ['_debugRenderKeys']
-    debug_render_invoke_dynamic = ['_debugRenderKeys']
-
-    def __init__(self, page):
-        self._page = page
-        self._values = None
-        self._loaders = None
-
-    @property
-    def page(self):
-        return self._page
-
-    def get(self, name):
-        try:
-            return self._getValue(name)
-        except LazyPageConfigLoaderHasNoValue:
-            return None
+    def __init__(self, dicts, path=''):
+        self._dicts = dicts
+        self._path = path
 
     def __getattr__(self, name):
         try:
-            return self._getValue(name)
-        except LazyPageConfigLoaderHasNoValue as ex:
-            raise AttributeError("No such attribute: %s" % name) from ex
+            return self[name]
+        except KeyError:
+            raise AttributeError("No such attribute: %s" % self._subp(name))
 
     def __getitem__(self, name):
-        try:
-            return self._getValue(name)
-        except LazyPageConfigLoaderHasNoValue as ex:
-            raise KeyError("No such key: %s" % name) from ex
-
-    def _getValue(self, name):
-        self._load()
-
-        if name in self._values:
-            return self._values[name]
-
-        if self._loaders:
-            loader = self._loaders.get(name)
-            if loader is not None:
-                try:
-                    self._values[name] = loader(self, name)
-                except LazyPageConfigLoaderHasNoValue:
-                    raise
-                except Exception as ex:
-                    raise Exception(
-                            "Error while loading attribute '%s' for: %s" %
-                            (name, self._page.rel_path)) from ex
-
-                # We need to double-check `_loaders` here because
-                # the loader could have removed all loaders, which
-                # would set this back to `None`.
-                if self._loaders is not None:
-                    del self._loaders[name]
-                    if len(self._loaders) == 0:
-                        self._loaders = None
-
-            else:
-                loader = self._loaders.get('*')
-                if loader is not None:
-                    try:
-                        self._values[name] = loader(self, name)
-                    except LazyPageConfigLoaderHasNoValue:
-                        raise
-                    except Exception as ex:
-                        raise Exception(
-                                "Error while loading attribute '%s' for: %s" %
-                                (name, self._page.rel_path)) from ex
-                    # We always keep the wildcard loader in the loaders list.
-
-        if name not in self._values:
-            raise LazyPageConfigLoaderHasNoValue()
-        return self._values[name]
-
-    def _setValue(self, name, value):
-        if self._values is None:
-            raise Exception("Can't call _setValue before this data has been "
-                            "loaded")
-        self._values[name] = value
-
-    def mapLoader(self, attr_name, loader, override_existing=False):
-        if loader is None:
-            if self._loaders is None or attr_name not in self._loaders:
-                return
-            del self._loaders[attr_name]
-            if len(self._loaders) == 0:
-                self._loaders = None
-            return
-
-        if self._loaders is None:
-            self._loaders = {}
-        if not override_existing and attr_name in self._loaders:
-            raise Exception(
-                    "A loader has already been mapped for: %s" % attr_name)
-        self._loaders[attr_name] = loader
-
-    def mapValue(self, attr_name, value, override_existing=False):
-        loader = lambda _, __: value
-        self.mapLoader(attr_name, loader, override_existing=override_existing)
-
-    def _load(self):
-        if self._values is not None:
-            return
-        self._values = self._page.config.getDeepcopy(self._page.app.debug)
-        try:
-            self._loadCustom()
-        except Exception as ex:
-            raise Exception(
-                    "Error while loading data for: %s" %
-                    self._page.rel_path) from ex
-
-    def _loadCustom(self):
-        pass
-
-    def _debugRenderKeys(self):
-        self._load()
-        keys = set(self._values.keys())
-        if self._loaders:
-            keys |= set(self._loaders.keys())
-        return list(keys)
-
-
-class PaginationData(LazyPageConfigData):
-    def __init__(self, page):
-        super(PaginationData, self).__init__(page)
-        self._route = None
-        self._route_metadata = None
-
-    def _get_uri(self):
-        page = self._page
-        if self._route is None:
-            # TODO: this is not quite correct, as we're missing parts of the
-            #       route metadata if the current page is a taxonomy page.
-            route_metadata = create_route_metadata(page)
-            self._route = page.app.getRoute(page.source.name, route_metadata)
-            self._route_metadata = route_metadata
-            if self._route is None:
-                raise Exception("Can't get route for page: %s" % page.path)
-        return self._route.getUri(self._route_metadata)
-
-    def _loadCustom(self):
-        page_url = self._get_uri()
-        _, slug = split_uri(self.page.app, page_url)
-        self._setValue('url', page_url)
-        self._setValue('slug', slug)
-        self._setValue(
-                'timestamp',
-                time.mktime(self.page.datetime.timetuple()))
-        date_format = self.page.app.config.get('site/date_format')
-        if date_format:
-            self._setValue('date', self.page.datetime.strftime(date_format))
-        self._setValue('mtime', self.page.path_mtime)
-
-        assetor = Assetor(self.page, page_url)
-        self._setValue('assets', assetor)
-
-        segment_names = self.page.config.get('segments')
-        for name in segment_names:
-            self.mapLoader(name, self._load_rendered_segment)
-
-    def _load_rendered_segment(self, data, name):
-        do_render = True
-        eis = self._page.app.env.exec_info_stack
-        if eis is not None and eis.hasPage(self._page):
-            # This is the pagination data for the page that is currently
-            # being rendered! Inception! But this is possible... so just
-            # prevent infinite recursion.
-            do_render = False
-
-        assert self is data
-
-        if do_render:
-            uri = self._get_uri()
+        values = []
+        for d in self._dicts:
             try:
-                from piecrust.rendering import (
-                        QualifiedPage, PageRenderingContext,
-                        render_page_segments)
-                qp = QualifiedPage(self._page, self._route,
-                                   self._route_metadata)
-                ctx = PageRenderingContext(qp)
-                render_result = render_page_segments(ctx)
-                segs = render_result.segments
-            except Exception as e:
+                val = d[name]
+            except KeyError:
+                continue
+            values.append(val)
+
+        if len(values) == 0:
+            raise KeyError("No such item: %s" % self._subp(name))
+        if len(values) == 1:
+            return values[0]
+
+        for val in values:
+            if not isinstance(val, (dict, collections.abc.Mapping)):
                 raise Exception(
-                        "Error rendering segments for '%s'" % uri) from e
-        else:
-            segs = {}
-            for name in self.page.config.get('segments'):
-                segs[name] = "<unavailable: current page>"
+                        "Template data for '%s' contains an incompatible mix "
+                        "of data: %s" % (
+                            self._subp(name),
+                            ', '.join([str(type(v)) for v in values])))
 
-        for k, v in segs.items():
-            self.mapLoader(k, None)
-            self._setValue(k, v)
+        return MergedMapping(values, self._subp(name))
 
-        if 'content.abstract' in segs:
-            self._setValue('content', segs['content.abstract'])
-            self._setValue('has_more', True)
-            if name == 'content':
-                return segs['content.abstract']
+    def __iter__(self):
+        keys = set()
+        for d in self._dicts:
+            keys |= set(d.keys())
+        return iter(keys)
 
-        return segs[name]
+    def __len__(self):
+        keys = set()
+        for d in self._dicts:
+            keys |= set(d.keys())
+        return len(keys)
+
+    def _subp(self, name):
+        return '%s/%s' % (self._path, name)
+
+    def _prependMapping(self, d):
+        self._dicts.insert(0, d)
+
+    def _appendMapping(self, d):
+        self._dicts.append(d)
 

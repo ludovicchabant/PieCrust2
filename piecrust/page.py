@@ -284,7 +284,7 @@ def _do_load_page(app, path, path_mtime):
 
     # Save to the cache.
     cache_data = {
-            'config': config.get(),
+            'config': config.getAll(),
             'content': json_save_segments(content)}
     cache.write(cache_path, json.dumps(cache_data))
 

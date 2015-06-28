@@ -1,7 +1,6 @@
 import re
-import copy
 import logging
-import collections
+import collections.abc
 import yaml
 from yaml.constructor import ConstructorError
 
@@ -15,51 +14,28 @@ class ConfigurationError(Exception):
     pass
 
 
-class Configuration(object):
+class Configuration(collections.abc.MutableMapping):
     def __init__(self, values=None, validate=True):
         if values is not None:
-            self.setAll(values, validate)
+            self.setAll(values, validate=validate)
         else:
             self._values = None
 
-    def __contains__(self, key):
-        return self.has(key)
-
     def __getitem__(self, key):
-        value = self.get(key)
-        if value is None:
-            raise KeyError()
-        return value
-
-    def __setitem__(self, key, value):
-        return self.set(key, value)
-
-    def setAll(self, values, validate=True):
-        if validate:
-            self._validateAll(values)
-        self._values = values
-
-    def getDeepcopy(self, validate_types=False):
-        if validate_types:
-            self.validateTypes()
-        return copy.deepcopy(self.get())
-
-    def get(self, key_path=None, default_value=None):
         self._ensureLoaded()
-        if key_path is None:
-            return self._values
-        bits = key_path.split('/')
+        bits = key.split('/')
         cur = self._values
         for b in bits:
-            cur = cur.get(b)
-            if cur is None:
-                return default_value
+            try:
+                cur = cur[b]
+            except KeyError:
+                raise KeyError("No such item: %s" % key)
         return cur
 
-    def set(self, key_path, value):
+    def __setitem__(self, key, value):
         self._ensureLoaded()
-        value = self._validateValue(key_path, value)
-        bits = key_path.split('/')
+        value = self._validateValue(key, value)
+        bits = key.split('/')
         bitslen = len(bits)
         cur = self._values
         for i, b in enumerate(bits):
@@ -70,15 +46,31 @@ class Configuration(object):
                     cur[b] = {}
                 cur = cur[b]
 
-    def has(self, key_path):
+    def __delitem__(self, key):
+        raise NotImplementedError()
+
+    def __iter__(self):
         self._ensureLoaded()
-        bits = key_path.split('/')
-        cur = self._values
-        for b in bits:
-            cur = cur.get(b)
-            if cur is None:
-                return False
-        return True
+        return iter(self._values)
+
+    def __len__(self):
+        self._ensureLoaded()
+        return len(self._values)
+
+    def has(self, key):
+        return key in self
+
+    def set(self, key, value):
+        self[key] = value
+
+    def setAll(self, values, validate=False):
+        if validate:
+            self._validateAll(values)
+        self._values = values
+
+    def getAll(self):
+        self._ensureLoaded()
+        return self._values
 
     def merge(self, other):
         self._ensureLoaded()
