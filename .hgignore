@@ -3,8 +3,8 @@ syntax: glob
 venv
 tags
 build/lib
-build/messages/_cache
-build/messages/_counter
+util/messages/_cache
+util/messages/_counter
 dist
 docs/_cache
 docs/_counter
@@ -13,3 +13,4 @@ docs/node_modules
 piecrust.egg-info
 piecrust/__version__.py
 
+docs
