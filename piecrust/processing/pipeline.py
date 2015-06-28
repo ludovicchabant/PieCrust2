@@ -121,11 +121,16 @@ class ProcessorPipeline(object):
             entry.flags |= res.flags
             entry.proc_tree = res.proc_tree
             entry.rel_outputs = res.rel_outputs
+            if entry.flags & FLAG_PROCESSED:
+                record.current.processed_count += 1
             if res.errors:
                 entry.errors += res.errors
                 record.current.success = False
-            if entry.flags & FLAG_PROCESSED:
-                record.current.processed_count += 1
+
+                rel_path = os.path.relpath(res.path, self.app.root_dir)
+                logger.error("Errors found in %s:" % rel_path)
+                for e in entry.errors:
+                    logger.error("  " + e)
 
         pool = self._createWorkerPool()
         expected_result_count = self._process(src_dir_or_file, pool, record)
