@@ -8,7 +8,7 @@ from yaml.constructor import ConstructorError
 
 logger = logging.getLogger(__name__)
 
-default_allowed_types = (dict, list, tuple, int, bool, str)
+default_allowed_types = (dict, list, tuple, float, int, bool, str)
 
 
 class ConfigurationError(Exception):
