@@ -1,5 +1,6 @@
 import io
 import sys
+import time
 import pprint
 import os.path
 import logging
@@ -33,6 +34,8 @@ def pytest_collect_file(parent, path):
         category = os.path.basename(path.dirname)
         if category == 'bakes':
             return BakeTestFile(path, parent)
+        elif category == 'procs':
+            return PipelineTestFile(path, parent)
         elif category == 'cli':
             return ChefTestFile(path, parent)
         elif category == 'servings':
@@ -75,6 +78,37 @@ class YamlTestItemBase(pytest.Item):
             _add_mock_files(fs, '/kitchen', input_files)
 
         return fs
+
+
+def check_expected_outputs(spec, fs, error_type):
+    cctx = CompareContext()
+    expected_output_files = spec.get('out')
+    if expected_output_files:
+        actual = fs.getStructure('kitchen/_counter')
+        error = _compare_dicts(expected_output_files, actual, cctx)
+        if error:
+            raise error_type(error)
+
+    expected_partial_files = spec.get('outfiles')
+    if expected_partial_files:
+        keys = list(sorted(expected_partial_files.keys()))
+        for key in keys:
+            try:
+                actual = fs.getFileEntry('kitchen/_counter/' +
+                                         key.lstrip('/'))
+            except Exception as e:
+                raise error_type([
+                    "Can't access output file %s: %s" % (key, e)])
+
+            expected = expected_partial_files[key]
+            # HACK because for some reason PyYAML adds a new line for
+            # those and I have no idea why.
+            actual = actual.rstrip('\n')
+            expected = expected.rstrip('\n')
+            cctx.path = key
+            cmpres = _compare_str(expected, actual, cctx)
+            if cmpres:
+                raise error_type(cmpres)
 
 
 class ChefTestItem(YamlTestItemBase):
@@ -136,11 +170,6 @@ class BakeTestItem(YamlTestItemBase):
     def runtest(self):
         fs = self._prepareMockFs()
 
-        # Output file-system.
-        expected_output_files = self.spec.get('out')
-        expected_partial_files = self.spec.get('outfiles')
-
-        # Bake!
         from piecrust.baking.baker import Baker
         with mock_fs_scope(fs):
             out_dir = fs.path('kitchen/_counter')
@@ -154,30 +183,7 @@ class BakeTestItem(YamlTestItemBase):
                     errors += e.getAllErrors()
                 raise BakeError(errors)
 
-            if expected_output_files:
-                actual = fs.getStructure('kitchen/_counter')
-                error = _compare_dicts(expected_output_files, actual)
-                if error:
-                    raise ExpectedBakeOutputError(error)
-
-            if expected_partial_files:
-                keys = list(sorted(expected_partial_files.keys()))
-                for key in keys:
-                    try:
-                        actual = fs.getFileEntry('kitchen/_counter/' +
-                                                 key.lstrip('/'))
-                    except Exception as e:
-                        raise ExpectedBakeOutputError([
-                            "Can't access output file %s: %s" % (key, e)])
-
-                    expected = expected_partial_files[key]
-                    # HACK because for some reason PyYAML adds a new line for
-                    # those and I have no idea why.
-                    actual = actual.rstrip('\n')
-                    expected = expected.rstrip('\n')
-                    cmpres = _compare_str(expected, actual, key)
-                    if cmpres:
-                        raise ExpectedBakeOutputError(cmpres)
+            check_expected_outputs(self.spec, fs, ExpectedBakeOutputError)
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name
@@ -205,6 +211,58 @@ class ExpectedBakeOutputError(Exception):
 
 class BakeTestFile(YamlTestFileBase):
     __item_class__ = BakeTestItem
+
+
+class PipelineTestItem(YamlTestItemBase):
+    def runtest(self):
+        fs = self._prepareMockFs()
+
+        from piecrust.processing.pipeline import ProcessorPipeline
+        with mock_fs_scope(fs):
+            out_dir = fs.path('kitchen/_counter')
+            app = fs.getApp()
+            pipeline = ProcessorPipeline(app, out_dir)
+
+            proc_names = self.spec.get('processors')
+            if proc_names:
+                pipeline.enabled_processors = proc_names
+
+            record = pipeline.run()
+
+            if not record.success:
+                errors = []
+                for e in record.entries:
+                    errors += e.errors
+                raise PipelineError(errors)
+
+            check_expected_outputs(self.spec, fs, ExpectedPipelineOutputError)
+
+    def reportinfo(self):
+        return self.fspath, 0, "pipeline: %s" % self.name
+
+    def repr_failure(self, excinfo):
+        if isinstance(excinfo.value, ExpectedPipelineOutputError):
+            return ('\n'.join(
+                ['Unexpected pipeline output. Left is expected output, '
+                    'right is actual output'] +
+                excinfo.value.args[0]))
+        elif isinstance(excinfo.value, PipelineError):
+            return ('\n'.join(
+                ['Errors occured during processing:'] +
+                excinfo.value.args[0]))
+        return super(PipelineTestItem, self).repr_failure(excinfo)
+
+
+class PipelineError(Exception):
+    pass
+
+
+class ExpectedPipelineOutputError(Exception):
+    pass
+
+
+class PipelineTestFile(YamlTestFileBase):
+    __item_class__ = PipelineTestItem
 
 
 class ServeTestItem(YamlTestItemBase):
@@ -265,65 +323,86 @@ def _add_mock_files(fs, parent_path, spec):
             _add_mock_files(fs, path, subspec)
 
 
-def _compare(left, right, path):
+class CompareContext(object):
+    def __init__(self, path=None):
+        self.path = path or ''
+        self.time = time.time()
+
+    def createChildContext(self, name):
+        ctx = CompareContext(
+                path='%s/%s' % (self.path, name),
+                time=self.time)
+        return ctx
+
+
+def _compare(left, right, ctx):
     if type(left) != type(right):
         return (["Different items: ",
-                 "%s: %s" % (path, pprint.pformat(left)),
-                 "%s: %s" % (path, pprint.pformat(right))])
+                 "%s: %s" % (ctx.path, pprint.pformat(left)),
+                 "%s: %s" % (ctx.path, pprint.pformat(right))])
     if isinstance(left, str):
-        return _compare_str(left, right, path)
+        return _compare_str(left, right, ctx)
     elif isinstance(left, dict):
-        return _compare_dicts(left, right, path)
+        return _compare_dicts(left, right, ctx)
     elif isinstance(left, list):
-        return _compare_lists(left, right, path)
+        return _compare_lists(left, right, ctx)
     elif left != right:
         return (["Different items: ",
-                 "%s: %s" % (path, pprint.pformat(left)),
-                 "%s: %s" % (path, pprint.pformat(right))])
+                 "%s: %s" % (ctx.path, pprint.pformat(left)),
+                 "%s: %s" % (ctx.path, pprint.pformat(right))])
 
 
-def _compare_dicts(left, right, basepath=''):
+def _compare_dicts(left, right, ctx):
     key_diff = set(left.keys()) ^ set(right.keys())
     if key_diff:
         extra_left = set(left.keys()) - set(right.keys())
         if extra_left:
             return (["Left contains more items: "] +
-                    ['- %s/%s' % (basepath, k) for k in extra_left])
+                    ['- %s/%s' % (ctx.path, k) for k in extra_left])
         extra_right = set(right.keys()) - set(left.keys())
         if extra_right:
             return (["Right contains more items: "] +
-                    ['- %s/%s' % (basepath, k) for k in extra_right])
+                    ['- %s/%s' % (ctx.path, k) for k in extra_right])
         return ["Unknown difference"]
 
     for key in left.keys():
         lv = left[key]
         rv = right[key]
-        childpath = basepath + '/' + key
-        cmpres = _compare(lv, rv, childpath)
+        child_ctx = ctx.createChildContext(key)
+        cmpres = _compare(lv, rv, child_ctx)
         if cmpres:
             return cmpres
     return None
 
 
-def _compare_lists(left, right, path):
+def _compare_lists(left, right, ctx):
     for i in range(min(len(left), len(right))):
         l = left[i]
         r = right[i]
-        cmpres = _compare(l, r, path)
+        cmpres = _compare(l, r, ctx)
         if cmpres:
             return cmpres
     if len(left) > len(right):
-        return (["Left '%s' contains more items. First extra item: " % path,
-                 left[len(right)]])
+        return (["Left '%s' contains more items. First extra item: " %
+                 ctx.path, left[len(right)]])
     if len(right) > len(left):
-        return (["Right '%s' contains more items. First extra item: " % path,
-                 right[len(left)]])
+        return (["Right '%s' contains more items. First extra item: " %
+                 ctx.path, right[len(left)]])
     return None
 
 
-def _compare_str(left, right, path):
+def _compare_str(left, right, ctx):
     if left == right:
         return None
+
+    test_time_iso8601 = time.strftime('%Y-%m-%dT%H:%M:%SZ',
+                                      time.gmtime(ctx.time))
+    replacements = {
+            '%test_time_iso8601%': test_time_iso8601}
+    for token, repl in replacements.items():
+        left = left.replace(token, repl)
+        right = right.replace(token, repl)
+
     for i in range(min(len(left), len(right))):
         if left[i] != right[i]:
             start = max(0, i - 15)
@@ -346,7 +425,7 @@ def _compare_str(left, right, path):
                 if j < i:
                     r_offset += len(c)
 
-            return ["Items '%s' differ at index %d:" % (path, i), '',
+            return ["Items '%s' differ at index %d:" % (ctx.path, i), '',
                     "Left:", left, '',
                     "Right:", right, '',
                     "Difference:",
@@ -354,12 +433,12 @@ def _compare_str(left, right, path):
                     r_str, (' ' * r_offset + '^')]
     if len(left) > len(right):
         return ["Left is longer.",
-                "Left '%s': " % path, left,
-                "Right '%s': " % path, right,
+                "Left '%s': " % ctx.path, left,
+                "Right '%s': " % ctx.path, right,
                 "Extra items: %r" % left[len(right):]]
     if len(right) > len(left):
         return ["Right is longer.",
-                "Left '%s': " % path, left,
-                "Right '%s': " % path, right,
+                "Left '%s': " % ctx.path, left,
+                "Right '%s': " % ctx.path, right,
                 "Extra items: %r" % right[len(left):]]
 
