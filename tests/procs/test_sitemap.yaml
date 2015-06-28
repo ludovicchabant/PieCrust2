@@ -1,0 +1,40 @@
+---
+in:
+    assets/sitemap.sitemap: |
+        autogen: [pages, theme_pages]
+    pages/foo.md: This is a foo
+outfiles:
+    sitemap.xml: |
+        <?xml version="1.0" encoding="utf-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url>
+            <loc>/foo.html</loc>
+            <lastmod>%test_time_iso8601%</lastmod>
+          </url>
+          <url>
+            <loc>/</loc>
+            <lastmod>%test_time_iso8601%</lastmod>
+          </url>
+        </urlset>
+---
+in:
+    assets/sitemap.sitemap: |
+        autogen: [pages]
+    pages/foo.md: |
+        ---
+        sitemap:
+            changefreq: monthly
+            priority: 0.8
+        ---
+        This is a foo
+outfiles:
+    sitemap.xml: |
+        <?xml version="1.0" encoding="utf-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url>
+            <loc>/foo.html</loc>
+            <lastmod>%test_time_iso8601%</lastmod>
+            <changefreq>monthly</changefreq>
+            <priority>0.8</priority>
+          </url>
+        </urlset>

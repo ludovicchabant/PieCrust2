@@ -1,6 +1,7 @@
 import time
 import logging
 import yaml
+from piecrust.data.iterators import PageIterator
 from piecrust.processing.base import SimpleFileProcessor
 from piecrust.routing import create_route_metadata
 
@@ -10,8 +11,7 @@ logger = logging.getLogger(__name__)
 
 SITEMAP_HEADER = \
 """<?xml version="1.0" encoding="utf-8"?>
-<urlset
-  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 """
 SITEMAP_FOOTER = "</urlset>\n"
 
@@ -19,7 +19,7 @@ SITEURL_HEADER =     "  <url>\n"
 SITEURL_LOC =        "    <loc>%s</loc>\n"
 SITEURL_LASTMOD =    "    <lastmod>%s</lastmod>\n"
 SITEURL_CHANGEFREQ = "    <changefreq>%s</changefreq>\n"
-SITEURL_PRIORITY =   "    <priority>%f</priority>\n"
+SITEURL_PRIORITY =   "    <priority>%0.1f</priority>\n"
 SITEURL_FOOTER =     "  </url>\n"
 
 
@@ -59,6 +59,7 @@ class SitemapProcessor(SimpleFileProcessor):
         if not source_names:
             return
 
+        cur_time = strftime_iso8601(time.time())
         for name in source_names:
             logger.debug("Generating automatic sitemap entries for '%s'." %
                          name)
@@ -66,15 +67,12 @@ class SitemapProcessor(SimpleFileProcessor):
             if source is None:
                 raise Exception("No such source: %s" % name)
 
-            for page in source.getPages():
-                route_metadata = create_route_metadata(page)
-                route = self.app.getRoute(source.name, route_metadata)
-                uri = route.getUri(route_metadata)
+            it = PageIterator(source)
+            for page in it:
+                uri = page['url']
+                sm_cfg = page.get('sitemap')
 
-                t = page.datetime.timestamp()
-                sm_cfg = page.config.get('sitemap')
-
-                args = {'url': uri, 'lastmod': strftime_iso8601(t)}
+                args = {'url': uri, 'lastmod': cur_time}
                 if sm_cfg:
                     args.update(sm_cfg)
 
