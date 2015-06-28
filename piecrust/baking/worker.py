@@ -1,5 +1,4 @@
 import time
-import copy
 import queue
 import logging
 from piecrust.app import PieCrust
