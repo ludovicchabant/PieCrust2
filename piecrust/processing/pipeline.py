@@ -255,12 +255,19 @@ class ProcessorPipeline(object):
         ctx.pool.queue.put_nowait(job)
 
     def _createWorkerPool(self):
+        import sys
+
+        main_module = sys.modules['__main__']
+        is_profiling = os.path.basename(main_module.__file__) in [
+                'profile.py', 'cProfile.py']
+
         pool = _WorkerPool()
         for i in range(self.num_workers):
             ctx = ProcessingWorkerContext(
                     self.app.root_dir, self.out_dir, self.tmp_dir,
                     pool.queue, pool.results, pool.abort_event,
                     self.force, self.app.debug)
+            ctx.is_profiling = is_profiling
             ctx.enabled_processors = self.enabled_processors
             ctx.additional_processors = self.additional_processors
             w = multiprocessing.Process(

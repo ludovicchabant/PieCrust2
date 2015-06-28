@@ -23,6 +23,21 @@ re_ansicolors = re.compile('\033\\[\d+m')
 
 
 def worker_func(wid, ctx):
+    if ctx.is_profiling:
+        try:
+            import cProfile as profile
+        except ImportError:
+            import profile
+
+        ctx.is_profiling = False
+        profile.runctx('_real_worker_func(wid, ctx)',
+                       globals(), locals(),
+                       filename='PipelineWorker-%d.prof' % wid)
+    else:
+        _real_worker_func(wid, ctx)
+
+
+def _real_worker_func(wid, ctx):
     logger.debug("Worker %d booting up..." % wid)
     w = ProcessingWorker(wid, ctx)
     w.run()
@@ -40,6 +55,7 @@ class ProcessingWorkerContext(object):
         self.abort_event = abort_event
         self.force = force
         self.debug = debug
+        self.is_profiling = False
         self.enabled_processors = None
         self.additional_processors = None
 
