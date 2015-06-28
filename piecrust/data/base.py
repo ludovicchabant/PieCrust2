@@ -173,6 +173,7 @@ class PaginationData(LazyPageConfigData):
         date_format = self.page.app.config.get('site/date_format')
         if date_format:
             self._setValue('date', self.page.datetime.strftime(date_format))
+        self._setValue('mtime', self.page.path_mtime)
 
         assetor = Assetor(self.page, page_url)
         self._setValue('assets', assetor)
