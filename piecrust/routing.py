@@ -283,6 +283,9 @@ class Route(object):
                                 len(args)))
                 metadata = {}
                 for arg_name, arg_val in zip(self.template_func_args, args):
+                    #TODO: fix this hard-coded shit.
+                    if arg_name in ['year', 'month', 'day']:
+                        arg_val = int(arg_val)
                     metadata[arg_name] = arg_val
                 return self.getUri(metadata)
 
