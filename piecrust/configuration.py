@@ -3,6 +3,10 @@ import logging
 import collections.abc
 import yaml
 from yaml.constructor import ConstructorError
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader
 
 
 logger = logging.getLogger(__name__)
@@ -166,7 +170,7 @@ def parse_config_header(text):
     return config, offset
 
 
-class ConfigurationLoader(yaml.SafeLoader):
+class ConfigurationLoader(SafeLoader):
     """ A YAML loader that loads mappings into ordered dictionaries.
     """
     def __init__(self, *args, **kwargs):
