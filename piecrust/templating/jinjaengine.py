@@ -36,7 +36,6 @@ class JinjaTemplateEngine(TemplateEngine):
     def renderString(self, txt, data, filename=None):
         self._ensureLoaded()
 
-        offset = 0
         do_render = False
         index = txt.find('{')
         while index >= 0:
@@ -44,7 +43,7 @@ class JinjaTemplateEngine(TemplateEngine):
             if ch == '{' or ch == '%':
                 do_render = True
                 break
-            index = txt.find('{', offset + 1)
+            index = txt.find('{', index + 1)
 
         if not do_render:
             return txt
