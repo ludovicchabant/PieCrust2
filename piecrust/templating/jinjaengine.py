@@ -33,25 +33,19 @@ class JinjaTemplateEngine(TemplateEngine):
     def __init__(self):
         self.env = None
 
-    def renderString(self, txt, data, filename=None):
+    def renderSegmentPart(self, path, seg_part, data):
         self._ensureLoaded()
 
-        do_render = False
-        index = txt.find('{')
-        while index >= 0:
-            ch = txt[index + 1]
-            if ch == '{' or ch == '%':
-                do_render = True
-                break
-            index = txt.find('{', index + 1)
+        if not _string_needs_render(seg_part.content):
+            return seg_part.content
 
-        if not do_render:
-            return txt
-
+        part_path = _make_segment_part_path(path, seg_part.offset)
+        self.env.loader.segment_parts_cache[part_path] = (
+                path, seg_part.content)
         try:
-            tpl = self.env.from_string(txt)
+            tpl = self.env.get_template(part_path)
         except TemplateSyntaxError as tse:
-            raise self._getTemplatingError(tse, filename=filename)
+            raise self._getTemplatingError(tse, filename=path)
         except TemplateNotFound:
             raise TemplateNotFoundError()
 
@@ -99,8 +93,8 @@ class JinjaTemplateEngine(TemplateEngine):
             autoescape = True
 
         logger.debug("Creating Jinja environment with folders: %s" %
-                self.app.templates_dirs)
-        loader = FileSystemLoader(self.app.templates_dirs)
+                     self.app.templates_dirs)
+        loader = PieCrustLoader(self.app.templates_dirs)
         extensions = [
                 PieCrustHighlightExtension,
                 PieCrustCacheExtension,
@@ -112,6 +106,42 @@ class JinjaTemplateEngine(TemplateEngine):
                 self.app,
                 loader=loader,
                 extensions=extensions)
+
+
+def _string_needs_render(txt):
+    index = txt.find('{')
+    while index >= 0:
+        ch = txt[index + 1]
+        if ch == '{' or ch == '%':
+            return True
+        index = txt.find('{', index + 1)
+    return False
+
+
+def _make_segment_part_path(path, start):
+    return '$part=%s:%d' % (path, start)
+
+
+class PieCrustLoader(FileSystemLoader):
+    def __init__(self, searchpath, encoding='utf-8'):
+        super(PieCrustLoader, self).__init__(searchpath, encoding)
+        self.segment_parts_cache = {}
+
+    def get_source(self, environment, template):
+        if template.startswith('$part='):
+            filename, seg_part = self.segment_parts_cache[template]
+
+            mtime = os.path.getmtime(filename)
+
+            def uptodate():
+                try:
+                    return os.path.getmtime(filename) == mtime
+                except OSError:
+                    return False
+
+            return seg_part, filename, uptodate
+
+        return super(PieCrustLoader, self).get_source(environment, template)
 
 
 class PieCrustEnvironment(Environment):
@@ -313,7 +343,8 @@ class PieCrustHighlightExtension(Extension):
         args = [parser.parse_expression()]
 
         # Extract optional arguments.
-        kwarg_names = {'line_numbers': 0, 'use_classes': 0, 'class': 1, 'id': 1}
+        kwarg_names = {'line_numbers': 0, 'use_classes': 0, 'class': 1,
+                       'id': 1}
         kwargs = {}
         while not parser.stream.current.test('block_end'):
             name = parser.stream.expect('name')
@@ -333,7 +364,7 @@ class PieCrustHighlightExtension(Extension):
                          [], [], body).set_lineno(lineno)
 
     def _highlight(self, lang, line_numbers=False, use_classes=False,
-            css_class=None, css_id=None, caller=None):
+                   css_class=None, css_id=None, caller=None):
         # Try to be mostly compatible with Jinja2-highlight's settings.
         body = caller()
 
@@ -387,12 +418,12 @@ class PieCrustCacheExtension(Extension):
         # now we parse the body of the cache block up to `endpccache` and
         # drop the needle (which would always be `endpccache` in that case)
         body = parser.parse_statements(['name:endpccache', 'name:endcache'],
-                drop_needle=True)
+                                       drop_needle=True)
 
         # now return a `CallBlock` node that calls our _cache_support
         # helper method on this extension.
         return CallBlock(self.call_method('_cache_support', args),
-                               [], [], body).set_lineno(lineno)
+                         [], [], body).set_lineno(lineno)
 
     def _cache_support(self, name, caller):
         key = self.environment.piecrust_cache_prefix + name

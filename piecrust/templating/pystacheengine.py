@@ -16,14 +16,14 @@ class PystacheTemplateEngine(TemplateEngine):
     def __init__(self):
         self.renderer = None
 
-    def renderString(self, txt, data, filename=None):
+    def renderSegmentPart(self, path, seg_part, data):
         self._ensureLoaded()
         try:
-            return self.renderer.render(txt, data)
+            return self.renderer.render(seg_part.content, data)
         except pystache.common.TemplateNotFoundError as ex:
             raise TemplateNotFoundError() from ex
         except pystache.common.PystacheError as ex:
-            raise TemplatingError(str(ex), filename) from ex
+            raise TemplatingError(str(ex), path) from ex
 
     def renderFile(self, paths, data):
         self._ensureLoaded()

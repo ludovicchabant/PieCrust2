@@ -27,7 +27,7 @@ class TemplateEngine(object):
     def initialize(self, app):
         self.app = app
 
-    def renderString(self, txt, data, filename=None, line_offset=0):
+    def renderSegmentPart(self, path, seg_part, data):
         raise NotImplementedError()
 
     def renderFile(self, paths, data):

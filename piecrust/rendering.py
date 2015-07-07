@@ -310,9 +310,8 @@ def _do_render_page_segments(page, page_data):
             part_format = seg_part.fmt or format_name
             try:
                 with app.env.timerScope(engine.__class__.__name__):
-                    part_text = engine.renderString(
-                            seg_part.content, page_data,
-                            filename=page.path)
+                    part_text = engine.renderSegmentPart(
+                            page.path, seg_part, page_data)
             except TemplatingError as err:
                 err.lineno += seg_part.line
                 raise err

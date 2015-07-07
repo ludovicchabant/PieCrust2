@@ -199,19 +199,18 @@ class PageLoadingError(Exception):
 class ContentSegment(object):
     debug_render_func = 'debug_render'
 
-    def __init__(self, content=None, fmt=None):
+    def __init__(self):
         self.parts = []
-        if content is not None:
-            self.parts.append(ContentSegmentPart(content, fmt))
 
     def debug_render(self):
         return '\n'.join([p.content for p in self.parts])
 
 
 class ContentSegmentPart(object):
-    def __init__(self, content, fmt=None, line=-1):
+    def __init__(self, content, fmt=None, offset=-1, line=-1):
         self.content = content
         self.fmt = fmt
+        self.offset = offset
         self.line = line
 
     def __str__(self):
@@ -223,7 +222,8 @@ def json_load_segments(data):
     for key, seg_data in data.items():
         seg = ContentSegment()
         for p_data in seg_data:
-            part = ContentSegmentPart(p_data['c'], p_data['f'], p_data['l'])
+            part = ContentSegmentPart(p_data['c'], p_data['f'], p_data['o'],
+                                      p_data['l'])
             seg.parts.append(part)
         segments[key] = seg
     return segments
@@ -234,7 +234,8 @@ def json_save_segments(segments):
     for key, seg in segments.items():
         seg_data = []
         for part in seg.parts:
-            p_data = {'c': part.content, 'f': part.fmt, 'l': part.line}
+            p_data = {'c': part.content, 'f': part.fmt, 'o': part.offset,
+                      'l': part.line}
             seg_data.append(p_data)
         data[key] = seg_data
     return data
@@ -357,7 +358,8 @@ def parse_segment_parts(raw, start, end, line_offset, first_part_fmt=None):
         # First part, before the first format change.
         part_text = raw[start:matches[0].start()]
         parts.append(
-                ContentSegmentPart(part_text, first_part_fmt, line_offset))
+                ContentSegmentPart(part_text, first_part_fmt, start,
+                                   line_offset))
         line_offset += _count_lines(part_text)
 
         for i in range(1, num_matches):
@@ -366,17 +368,20 @@ def parse_segment_parts(raw, start, end, line_offset, first_part_fmt=None):
             part_text = raw[m1.end() + 1:m2.start()]
             parts.append(
                     ContentSegmentPart(
-                        part_text, m1.group('fmt'), line_offset))
+                        part_text, m1.group('fmt'), m1.end() + 1,
+                        line_offset))
             line_offset += _count_lines(part_text)
 
         lastm = matches[-1]
         part_text = raw[lastm.end() + 1:end]
         parts.append(ContentSegmentPart(
-                part_text, lastm.group('fmt'), line_offset))
+                part_text, lastm.group('fmt'), lastm.end() + 1,
+                line_offset))
 
         return parts, line_offset
     else:
         part_text = raw[start:end]
-        parts = [ContentSegmentPart(part_text, first_part_fmt, line_offset)]
+        parts = [ContentSegmentPart(part_text, first_part_fmt, start,
+                                    line_offset)]
         return parts, line_offset
 
