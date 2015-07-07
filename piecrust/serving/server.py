@@ -96,6 +96,8 @@ class Server(object):
             return self._try_run_request(environ, start_response)
         except Exception as ex:
             if self.debug:
+                if isinstance(ex, HTTPException):
+                    return ex
                 raise
             return self._handle_error(ex, environ, start_response)
 
