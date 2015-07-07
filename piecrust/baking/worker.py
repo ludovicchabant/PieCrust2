@@ -49,9 +49,9 @@ class BakeWorker(IWorker):
         app.env.stepTimerSince("BakeWorkerInit", self.work_start_time)
 
     def process(self, job):
-        handler = self.job_handlers[job.job_type]
+        handler = self.job_handlers[job['type']]
         with self.app.env.timerScope(type(handler).__name__):
-            return handler.handleJob(job)
+            return handler.handleJob(job['job'])
 
     def getReport(self):
         self.app.env.stepTimerSince("BakeWorker_%d_Total" % self.wid,
@@ -62,12 +62,6 @@ class BakeWorker(IWorker):
 
 
 JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE = range(0, 3)
-
-
-class BakeWorkerJob(object):
-    def __init__(self, job_type, payload):
-        self.job_type = job_type
-        self.payload = payload
 
 
 class JobHandler(object):
@@ -87,72 +81,35 @@ def _get_errors(ex):
     return errors
 
 
-class PageFactoryInfo(object):
-    def __init__(self, fac):
-        self.source_name = fac.source.name
-        self.rel_path = fac.rel_path
-        self.metadata = fac.metadata
-
-    def build(self, app):
-        source = app.getSource(self.source_name)
-        return PageFactory(source, self.rel_path, self.metadata)
+def save_factory(fac):
+    return {
+            'source_name': fac.source.name,
+            'rel_path': fac.rel_path,
+            'metadata': fac.metadata}
 
 
-class LoadJobPayload(object):
-    def __init__(self, fac):
-        self.factory_info = PageFactoryInfo(fac)
-
-
-class LoadJobResult(object):
-    def __init__(self, source_name, path):
-        self.source_name = source_name
-        self.path = path
-        self.config = None
-        self.errors = None
-
-
-class RenderFirstSubJobPayload(object):
-    def __init__(self, fac):
-        self.factory_info = PageFactoryInfo(fac)
-
-
-class RenderFirstSubJobResult(object):
-    def __init__(self, path):
-        self.path = path
-        self.errors = None
-
-
-class BakeJobPayload(object):
-    def __init__(self, fac, route_metadata, previous_entry,
-                 dirty_source_names, tax_info=None):
-        self.factory_info = PageFactoryInfo(fac)
-        self.route_metadata = route_metadata
-        self.previous_entry = previous_entry
-        self.dirty_source_names = dirty_source_names
-        self.taxonomy_info = tax_info
-
-
-class BakeJobResult(object):
-    def __init__(self, path, tax_info=None):
-        self.path = path
-        self.taxonomy_info = tax_info
-        self.sub_entries = None
-        self.errors = None
+def load_factory(app, info):
+    source = app.getSource(info['source_name'])
+    return PageFactory(source, info['rel_path'], info['metadata'])
 
 
 class LoadJobHandler(JobHandler):
     def handleJob(self, job):
         # Just make sure the page has been cached.
-        fac = job.payload.factory_info.build(self.app)
+        fac = load_factory(self.app, job)
         logger.debug("Loading page: %s" % fac.ref_spec)
-        result = LoadJobResult(fac.source.name, fac.path)
+        result = {
+                'source_name': fac.source.name,
+                'path': fac.path,
+                'config': None,
+                'errors': None}
         try:
             page = fac.buildPage()
             page._load()
-            result.config = page.config.getAll()
+            result['config'] = page.config.getAll()
         except Exception as ex:
             logger.debug("Got loading error. Sending it to master.")
-            result.errors = _get_errors(ex)
+            result['errors'] = _get_errors(ex)
             if self.ctx.debug:
                 logger.exception(ex)
         return result
@@ -161,7 +118,7 @@ class LoadJobHandler(JobHandler):
 class RenderFirstSubJobHandler(JobHandler):
     def handleJob(self, job):
         # Render the segments for the first sub-page of this page.
-        fac = job.payload.factory_info.build(self.app)
+        fac = load_factory(self.app, job)
 
         # These things should be OK as they're checked upstream by the baker.
         route = self.app.getRoute(fac.source.name, fac.metadata,
@@ -173,13 +130,15 @@ class RenderFirstSubJobHandler(JobHandler):
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
 
-        result = RenderFirstSubJobResult(fac.path)
+        result = {
+                'path': fac.path,
+                'errors': None}
         logger.debug("Preparing page: %s" % fac.ref_spec)
         try:
             render_page_segments(ctx)
         except Exception as ex:
             logger.debug("Got rendering error. Sending it to master.")
-            result.errors = _get_errors(ex)
+            result['errors'] = _get_errors(ex)
             if self.ctx.debug:
                 logger.exception(ex)
         return result
@@ -192,10 +151,10 @@ class BakeJobHandler(JobHandler):
 
     def handleJob(self, job):
         # Actually bake the page and all its sub-pages to the output folder.
-        fac = job.payload.factory_info.build(self.app)
+        fac = load_factory(self.app, job['factory_info'])
 
-        route_metadata = job.payload.route_metadata
-        tax_info = job.payload.taxonomy_info
+        route_metadata = job['route_metadata']
+        tax_info = job['taxonomy_info']
         if tax_info is not None:
             route = self.app.getTaxonomyRoute(tax_info.taxonomy_name,
                                               tax_info.source_name)
@@ -207,18 +166,22 @@ class BakeJobHandler(JobHandler):
         page = fac.buildPage()
         qp = QualifiedPage(page, route, route_metadata)
 
-        result = BakeJobResult(fac.path, tax_info)
-        previous_entry = job.payload.previous_entry
-        dirty_source_names = job.payload.dirty_source_names
+        result = {
+                'path': fac.path,
+                'taxonomy_info': tax_info,
+                'sub_entries': None,
+                'errors': None}
+        previous_entry = job['prev_entry']
+        dirty_source_names = job['dirty_source_names']
         logger.debug("Baking page: %s" % fac.ref_spec)
         try:
             sub_entries = self.page_baker.bake(
                     qp, previous_entry, dirty_source_names, tax_info)
-            result.sub_entries = sub_entries
+            result['sub_entries'] = sub_entries
 
         except BakingError as ex:
             logger.debug("Got baking error. Sending it to master.")
-            result.errors = _get_errors(ex)
+            result['errors'] = _get_errors(ex)
             if self.ctx.debug:
                 logger.exception(ex)
 

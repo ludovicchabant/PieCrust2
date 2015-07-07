@@ -1,15 +1,12 @@
-import copy
 import time
 import os.path
-import queue
 import hashlib
 import logging
 import multiprocessing
 from piecrust.baking.records import (
         BakeRecordEntry, TransitionalBakeRecord, TaxonomyInfo)
 from piecrust.baking.worker import (
-        BakeWorkerJob, LoadJobPayload, RenderFirstSubJobPayload,
-        BakeJobPayload,
+        save_factory,
         JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE)
 from piecrust.chefutil import (
         format_timed_scope, format_timed)
@@ -212,12 +209,15 @@ class Baker(object):
     def _loadRealmPages(self, record, pool, factories):
         def _handler(res):
             # Create the record entry for this page.
-            record_entry = BakeRecordEntry(res.source_name, res.path)
-            record_entry.config = res.config
-            if res.errors:
-                record_entry.errors += res.errors
+            # This will also update the `dirty_source_names` for the record
+            # as we add page files whose last modification times are later
+            # than the last bake.
+            record_entry = BakeRecordEntry(res['source_name'], res['path'])
+            record_entry.config = res['config']
+            if res['errors']:
+                record_entry.errors += res['errors']
                 record.current.success = False
-                self._logErrors(res.path, res.errors)
+                self._logErrors(res['path'], res['errors'])
             record.addEntry(record_entry)
 
         logger.debug("Loading %d realm pages..." % len(factories))
@@ -226,19 +226,22 @@ class Baker(object):
                                 level=logging.DEBUG, colored=False,
                                 timer_env=self.app.env,
                                 timer_category='LoadJob'):
-            jobs = [
-                BakeWorkerJob(JOB_LOAD, LoadJobPayload(fac))
-                for fac in factories]
+            jobs = []
+            for fac in factories:
+                job = {
+                        'type': JOB_LOAD,
+                        'job': save_factory(fac)}
+                jobs.append(job)
             ar = pool.queueJobs(jobs, handler=_handler)
             ar.wait()
 
     def _renderRealmPages(self, record, pool, factories):
         def _handler(res):
-            entry = record.getCurrentEntry(res.path)
-            if res.errors:
-                entry.errors += res.errors
+            entry = record.getCurrentEntry(res['path'])
+            if res['errors']:
+                entry.errors += res['errors']
                 record.current.success = False
-                self._logErrors(res.path, res.errors)
+                self._logErrors(res['path'], res['errors'])
 
         logger.debug("Rendering %d realm pages..." % len(factories))
         with format_timed_scope(logger,
@@ -273,9 +276,9 @@ class Baker(object):
                     continue
 
                 # All good, queue the job.
-                job = BakeWorkerJob(
-                        JOB_RENDER_FIRST,
-                        RenderFirstSubJobPayload(fac))
+                job = {
+                        'type': JOB_RENDER_FIRST,
+                        'job': save_factory(fac)}
                 jobs.append(job)
 
             ar = pool.queueJobs(jobs, handler=_handler)
@@ -283,16 +286,15 @@ class Baker(object):
 
     def _bakeRealmPages(self, record, pool, realm, factories):
         def _handler(res):
-            entry = record.getCurrentEntry(res.path, res.taxonomy_info)
-            entry.subs = res.sub_entries
-            if res.errors:
-                entry.errors += res.errors
-                self._logErrors(res.path, res.errors)
+            entry = record.getCurrentEntry(res['path'], res['taxonomy_info'])
+            entry.subs = res['sub_entries']
+            if res['errors']:
+                entry.errors += res['errors']
+                self._logErrors(res['path'], res['errors'])
             if entry.has_any_error:
                 record.current.success = False
-            if entry.was_any_sub_baked:
+            if entry.subs and entry.was_any_sub_baked:
                 record.current.baked_count[realm] += 1
-                record.dirty_source_names.add(entry.source_name)
 
         logger.debug("Baking %d realm pages..." % len(factories))
         with format_timed_scope(logger,
@@ -388,10 +390,10 @@ class Baker(object):
 
     def _bakeTaxonomyBuckets(self, record, pool, buckets):
         def _handler(res):
-            entry = record.getCurrentEntry(res.path, res.taxonomy_info)
-            entry.subs = res.sub_entries
-            if res.errors:
-                entry.errors += res.errors
+            entry = record.getCurrentEntry(res['path'], res['taxonomy_info'])
+            entry.subs = res['sub_entries']
+            if res['errors']:
+                entry.errors += res['errors']
             if entry.has_any_error:
                 record.current.success = False
 
@@ -503,11 +505,16 @@ class Baker(object):
             cur_entry.flags |= BakeRecordEntry.FLAG_OVERRIDEN
             return None
 
-        job = BakeWorkerJob(
-                JOB_BAKE,
-                BakeJobPayload(fac, route_metadata, prev_entry,
-                               record.dirty_source_names,
-                               tax_info))
+        job = {
+                'type': JOB_BAKE,
+                'job': {
+                        'factory_info': save_factory(fac),
+                        'taxonomy_info': tax_info,
+                        'route_metadata': route_metadata,
+                        'prev_entry': prev_entry,
+                        'dirty_source_names': record.dirty_source_names
+                        }
+                }
         return job
 
     def _handleDeletetions(self, record):
