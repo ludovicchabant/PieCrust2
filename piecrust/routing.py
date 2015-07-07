@@ -132,6 +132,11 @@ class Route(object):
             for k in missing_keys:
                 route_metadata[k] = ''
 
+        # TODO: fix this hard-coded shit
+        for key in ['year', 'month', 'day']:
+            if key in route_metadata and isinstance(route_metadata[key], str):
+                route_metadata[key] = int(route_metadata[key])
+
         return route_metadata
 
     def getUri(self, route_metadata, *, sub_num=1):
