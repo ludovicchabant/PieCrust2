@@ -50,7 +50,13 @@ def _real_worker_func(params):
 
     w = params.worker_class(*params.initargs)
     w.wid = wid
-    w.initialize()
+    try:
+        w.initialize()
+    except Exception as ex:
+        logger.error("Working failed to initialize:")
+        logger.exception(ex)
+        params.outqueue.put(None)
+        return
 
     get = params.inqueue.get
     put = params.outqueue.put
@@ -151,6 +157,9 @@ class WorkerPool(object):
             raise Exception("This worker pool has been closed.")
         if self._listener is not None:
             raise Exception("A previous job queue has not finished yet.")
+
+        if any([not p.is_alive() for p in self._pool]):
+            raise Exception("Some workers have prematurely exited.")
 
         if handler is not None:
             self.setHandler(handler)

@@ -1,6 +1,7 @@
 import time
 import logging
 from piecrust.app import PieCrust
+from piecrust.baking.records import BakeRecord, _get_transition_key
 from piecrust.baking.single import PageBaker, BakingError
 from piecrust.rendering import (
         QualifiedPage, PageRenderingContext, render_page_segments)
@@ -14,12 +15,17 @@ logger = logging.getLogger(__name__)
 
 class BakeWorkerContext(object):
     def __init__(self, root_dir, sub_cache_dir, out_dir,
+                 previous_record_path=None,
                  force=False, debug=False):
         self.root_dir = root_dir
         self.sub_cache_dir = sub_cache_dir
         self.out_dir = out_dir
+        self.previous_record_path = previous_record_path
         self.force = force
         self.debug = debug
+        self.app = None
+        self.previous_record = None
+        self.previous_record_index = None
 
 
 class BakeWorker(IWorker):
@@ -35,13 +41,22 @@ class BakeWorker(IWorker):
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")
         app.env.registerTimer("JobReceive")
-        self.app = app
+        self.ctx.app = app
+
+        # Load previous record
+        if self.ctx.previous_record_path:
+            self.ctx.previous_record = BakeRecord.load(
+                    self.ctx.previous_record_path)
+            self.ctx.previous_record_index = {}
+            for e in self.ctx.previous_record.entries:
+                key = _get_transition_key(e.path, e.taxonomy_info)
+                self.ctx.previous_record_index[key] = e
 
         # Create the job handlers.
         job_handlers = {
-                JOB_LOAD: LoadJobHandler(app, self.ctx),
-                JOB_RENDER_FIRST: RenderFirstSubJobHandler(app, self.ctx),
-                JOB_BAKE: BakeJobHandler(app, self.ctx)}
+                JOB_LOAD: LoadJobHandler(self.ctx),
+                JOB_RENDER_FIRST: RenderFirstSubJobHandler(self.ctx),
+                JOB_BAKE: BakeJobHandler(self.ctx)}
         for jt, jh in job_handlers.items():
             app.env.registerTimer(type(jh).__name__)
         self.job_handlers = job_handlers
@@ -50,24 +65,27 @@ class BakeWorker(IWorker):
 
     def process(self, job):
         handler = self.job_handlers[job['type']]
-        with self.app.env.timerScope(type(handler).__name__):
+        with self.ctx.app.env.timerScope(type(handler).__name__):
             return handler.handleJob(job['job'])
 
     def getReport(self):
-        self.app.env.stepTimerSince("BakeWorker_%d_Total" % self.wid,
-                                    self.work_start_time)
+        self.ctx.app.env.stepTimerSince("BakeWorker_%d_Total" % self.wid,
+                                        self.work_start_time)
         return {
                 'type': 'timers',
-                'data': self.app.env._timers}
+                'data': self.ctx.app.env._timers}
 
 
 JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE = range(0, 3)
 
 
 class JobHandler(object):
-    def __init__(self, app, ctx):
-        self.app = app
+    def __init__(self, ctx):
         self.ctx = ctx
+
+    @property
+    def app(self):
+        return self.ctx.app
 
     def handleJob(self, job):
         raise NotImplementedError()
@@ -145,9 +163,9 @@ class RenderFirstSubJobHandler(JobHandler):
 
 
 class BakeJobHandler(JobHandler):
-    def __init__(self, app, ctx):
-        super(BakeJobHandler, self).__init__(app, ctx)
-        self.page_baker = PageBaker(app, ctx.out_dir, ctx.force)
+    def __init__(self, ctx):
+        super(BakeJobHandler, self).__init__(ctx)
+        self.page_baker = PageBaker(ctx.app, ctx.out_dir, ctx.force)
 
     def handleJob(self, job):
         # Actually bake the page and all its sub-pages to the output folder.
@@ -171,8 +189,13 @@ class BakeJobHandler(JobHandler):
                 'taxonomy_info': tax_info,
                 'sub_entries': None,
                 'errors': None}
-        previous_entry = job['prev_entry']
         dirty_source_names = job['dirty_source_names']
+
+        previous_entry = None
+        if self.ctx.previous_record_index is not None:
+            key = _get_transition_key(fac.path, tax_info)
+            previous_entry = self.ctx.previous_record_index.get(key)
+
         logger.debug("Baking page: %s" % fac.ref_spec)
         try:
             sub_entries = self.page_baker.bake(

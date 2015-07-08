@@ -72,7 +72,9 @@ class Baker(object):
 
         # Figure out if we need to clean the cache because important things
         # have changed.
-        self._handleCacheValidity(record)
+        is_cache_valid = self._handleCacheValidity(record)
+        if not is_cache_valid:
+            previous_record_path = None
 
         # Pre-create all caches.
         for cache_name in ['app', 'baker', 'pages', 'renders']:
@@ -88,7 +90,7 @@ class Baker(object):
             srclist.append(source)
 
         # Create the worker processes.
-        pool = self._createWorkerPool()
+        pool = self._createWorkerPool(previous_record_path)
 
         # Bake the realms.
         realm_list = [REALM_USER, REALM_THEME]
@@ -179,11 +181,13 @@ class Baker(object):
             logger.info(format_timed(
                     start_time,
                     "cleaned cache (reason: %s)" % reason))
+            return False
         else:
             record.incremental_count += 1
             logger.debug(format_timed(
                     start_time, "cache is assumed valid",
                     colored=False))
+            return True
 
     def _bakeRealm(self, record, pool, realm, srclist):
         start_time = time.perf_counter()
@@ -511,7 +515,6 @@ class Baker(object):
                         'factory_info': save_factory(fac),
                         'taxonomy_info': tax_info,
                         'route_metadata': route_metadata,
-                        'prev_entry': prev_entry,
                         'dirty_source_names': record.dirty_source_names
                         }
                 }
@@ -535,12 +538,13 @@ class Baker(object):
         for e in errors:
             logger.error("  " + e)
 
-    def _createWorkerPool(self):
+    def _createWorkerPool(self, previous_record_path):
         from piecrust.workerpool import WorkerPool
         from piecrust.baking.worker import BakeWorkerContext, BakeWorker
 
         ctx = BakeWorkerContext(
                 self.app.root_dir, self.app.cache.base_dir, self.out_dir,
+                previous_record_path=previous_record_path,
                 force=self.force, debug=self.app.debug)
         pool = WorkerPool(
                 worker_class=BakeWorker,
