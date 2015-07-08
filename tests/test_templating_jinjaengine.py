@@ -37,7 +37,7 @@ def test_simple(contents, expected):
 def test_layout():
     contents = "Blah\n"
     layout = "{{content}}\nFor site: {{foo}}\n"
-    expected = "Blah\nFor site: bar"
+    expected = "Blah\n\nFor site: bar"
     fs = (mock_fs()
             .withConfig(app_config)
             .withAsset('templates/blah.jinja', layout)
