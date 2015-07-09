@@ -7,6 +7,10 @@ from piecrust.cache import MemCache
 logger = logging.getLogger(__name__)
 
 
+class AbortedSourceUseError(Exception):
+    pass
+
+
 class ExecutionInfo(object):
     def __init__(self, page, render_ctx):
         self.page = page
@@ -60,6 +64,7 @@ class Environment(object):
         self.fs_caches = {
                 'renders': self.rendered_segments_repository}
         self.fs_cache_only_for_main_page = False
+        self.abort_source_use = False
         self._default_layout_extensions = None
         self._timers = {}
 

@@ -1,6 +1,8 @@
 import logging
 from piecrust.data.filters import PaginationFilter
+from piecrust.environment import AbortedSourceUseError
 from piecrust.events import Event
+from piecrust.sources.base import PageSource
 from piecrust.sources.interfaces import IPaginationSource
 
 
@@ -288,6 +290,13 @@ class PageIterator(object):
     def _load(self):
         if self._pagesData is not None:
             return
+
+        if (self._current_page is not None and
+                self._current_page.app.env.abort_source_use and
+                isinstance(self._source, PageSource)):
+            logger.debug("Aborting iteration from %s." %
+                         self._current_page.ref_spec)
+            raise AbortedSourceUseError()
 
         self._ensureSorter()
 

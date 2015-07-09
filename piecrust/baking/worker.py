@@ -3,6 +3,7 @@ import logging
 from piecrust.app import PieCrust
 from piecrust.baking.records import BakeRecord, _get_transition_key
 from piecrust.baking.single import PageBaker, BakingError
+from piecrust.environment import AbortedSourceUseError
 from piecrust.rendering import (
         QualifiedPage, PageRenderingContext, render_page_segments)
 from piecrust.routing import create_route_metadata
@@ -147,18 +148,25 @@ class RenderFirstSubJobHandler(JobHandler):
         route_metadata = create_route_metadata(page)
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
+        self.app.env.abort_source_use = True
 
         result = {
                 'path': fac.path,
+                'aborted': False,
                 'errors': None}
         logger.debug("Preparing page: %s" % fac.ref_spec)
         try:
             render_page_segments(ctx)
+        except AbortedSourceUseError:
+            logger.debug("Page %s was aborted." % fac.ref_spec)
+            result['aborted'] = True
         except Exception as ex:
             logger.debug("Got rendering error. Sending it to master.")
             result['errors'] = _get_errors(ex)
             if self.ctx.debug:
                 logger.exception(ex)
+        finally:
+            self.app.env.abort_source_use = False
         return result
 
 
