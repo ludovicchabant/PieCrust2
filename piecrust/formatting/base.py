@@ -10,6 +10,7 @@ class Formatter(object):
 
     def __init__(self):
         self.priority = PRIORITY_NORMAL
+        self.enabled = True
 
     def initialize(self, app):
         self.app = app

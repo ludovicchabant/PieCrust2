@@ -382,6 +382,8 @@ def format_text(app, format_name, txt, exact_format=False):
     format_count = 0
     format_name = format_name or app.config.get('site/default_format')
     for fmt in app.plugin_loader.getFormatters():
+        if not fmt.enabled:
+            continue
         if fmt.FORMAT_NAMES is None or format_name in fmt.FORMAT_NAMES:
             with app.env.timerScope(fmt.__class__.__name__):
                 txt = fmt.render(format_name, txt)
