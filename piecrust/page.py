@@ -1,7 +1,6 @@
 import re
 import sys
 import json
-import codecs
 import os.path
 import hashlib
 import logging
@@ -270,7 +269,7 @@ def _do_load_page(app, path, path_mtime):
 
     # Nope, load the page from the source file.
     logger.debug("Loading page configuration from: %s" % path)
-    with codecs.open(path, 'r', 'utf-8') as fp:
+    with open(path, 'r', encoding='utf-8') as fp:
         raw = fp.read()
     header, offset = parse_config_header(raw)
 
