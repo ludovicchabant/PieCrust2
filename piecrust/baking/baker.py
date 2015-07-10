@@ -24,8 +24,6 @@ class Baker(object):
         self.app = app
         self.out_dir = out_dir
         self.force = force
-        self.num_workers = app.config.get('baker/workers',
-                                          multiprocessing.cpu_count())
 
         # Remember what taxonomy pages we should skip
         # (we'll bake them repeatedly later with each taxonomy term)
@@ -542,11 +540,14 @@ class Baker(object):
         from piecrust.workerpool import WorkerPool
         from piecrust.baking.worker import BakeWorkerContext, BakeWorker
 
+        worker_count = self.app.config.get('baker/workers')
+
         ctx = BakeWorkerContext(
                 self.app.root_dir, self.app.cache.base_dir, self.out_dir,
                 previous_record_path=previous_record_path,
                 force=self.force, debug=self.app.debug)
         pool = WorkerPool(
+                worker_count=worker_count,
                 worker_class=BakeWorker,
                 initargs=(ctx,))
         return pool
