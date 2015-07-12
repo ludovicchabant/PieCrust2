@@ -1,6 +1,6 @@
 import time
 import logging
-from piecrust.app import PieCrust
+from piecrust.app import PieCrust, apply_variant_and_values
 from piecrust.baking.records import BakeRecord, _get_transition_key
 from piecrust.baking.single import PageBaker, BakingError
 from piecrust.environment import AbortedSourceUseError
@@ -17,11 +17,14 @@ logger = logging.getLogger(__name__)
 class BakeWorkerContext(object):
     def __init__(self, root_dir, sub_cache_dir, out_dir,
                  previous_record_path=None,
+                 config_variant=None, config_values=None,
                  force=False, debug=False):
         self.root_dir = root_dir
         self.sub_cache_dir = sub_cache_dir
         self.out_dir = out_dir
         self.previous_record_path = previous_record_path
+        self.config_variant = config_variant
+        self.config_values = config_values
         self.force = force
         self.debug = debug
         self.app = None
@@ -42,6 +45,8 @@ class BakeWorker(IWorker):
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")
         app.env.registerTimer("JobReceive")
+        apply_variant_and_values(app, self.ctx.config_variant,
+                                 self.ctx.config_values)
         self.ctx.app = app
 
         # Load previous record

@@ -6,7 +6,8 @@ import logging
 import argparse
 import colorama
 from piecrust import APP_VERSION
-from piecrust.app import PieCrust, PieCrustConfiguration
+from piecrust.app import (
+        PieCrust, PieCrustConfiguration, apply_variant_and_values)
 from piecrust.chefutil import (
         format_timed, log_friendly_exception, print_help_item)
 from piecrust.commands.base import CommandContext
@@ -184,15 +185,16 @@ def _run_chef(pre_args, argv):
     # Build a hash for a custom cache directory.
     cache_key = 'default'
 
-    # Handle a configuration variant.
+    # Handle custom configurations.
+    if pre_args.config_variant is not None and not root:
+        raise SiteNotFoundError("Can't apply any variant.")
+    apply_variant_and_values(pre_args.config_variant,
+                             pre_args.config_values)
+
+    # Adjust the cache key.
     if pre_args.config_variant is not None:
-        if not root:
-            raise SiteNotFoundError("Can't apply any variant.")
-        app.config.applyVariant('variants/' + pre_args.config_variant)
         cache_key += ',variant=%s' % pre_args.config_variant
     for name, value in pre_args.config_values:
-        logger.debug("Setting configuration '%s' to: %s" % (name, value))
-        app.config.set(name, value)
         cache_key += ',%s=%s' % (name, value)
 
     # Setup the arg parser.
@@ -265,6 +267,9 @@ def _run_chef(pre_args, argv):
 
     # Run the command!
     ctx = CommandContext(app, parser, result)
+    ctx.config_variant = pre_args.config_variant
+    ctx.config_values = pre_args.config_values
+
     exit_code = result.func(ctx)
     if exit_code is None:
         return 0

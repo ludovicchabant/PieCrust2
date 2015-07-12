@@ -607,3 +607,14 @@ class PieCrust(object):
 
         return dirs
 
+
+def apply_variant_and_values(app, config_variant=None, config_values=None):
+    if config_variant is not None:
+        logger.debug("Applying configuration variant '%s'." % config_variant)
+        app.config.applyVariant('variants/' + config_variant)
+
+    if config_values is not None:
+        for name, value in config_values:
+            logger.debug("Setting configuration '%s' to: %s" % (name, value))
+            app.config.set(name, value)
+

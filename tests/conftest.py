@@ -7,6 +7,7 @@ import logging
 import pytest
 import yaml
 import colorama
+from piecrust.app import apply_variant_and_values
 from piecrust.configuration import merge_dicts
 from .mockutil import mock_fs, mock_fs_scope
 
@@ -174,7 +175,16 @@ class BakeTestItem(YamlTestItemBase):
         with mock_fs_scope(fs):
             out_dir = fs.path('kitchen/_counter')
             app = fs.getApp()
-            baker = Baker(app, out_dir)
+
+            variant = self.spec.get('config_variant')
+            values = self.spec.get('config_values')
+            if values is not None:
+                values = list(values.items())
+            apply_variant_and_values(app, variant, values)
+
+            baker = Baker(app, out_dir,
+                          applied_config_variant=variant,
+                          applied_config_values=values)
             record = baker.bake()
 
             if not record.success:

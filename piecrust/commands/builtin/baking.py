@@ -98,7 +98,9 @@ class BakeCommand(ChefCommand):
             ctx.app.config.set('baker/batch_size', ctx.args.batch_size)
         baker = Baker(
                 ctx.app, out_dir,
-                force=ctx.args.force)
+                force=ctx.args.force,
+                applied_config_variant=ctx.config_variant,
+                applied_config_values=ctx.config_values)
         record = baker.bake()
         _merge_timers(record.timers, ctx.timers)
         return record.success

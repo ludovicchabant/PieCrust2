@@ -2,7 +2,6 @@ import time
 import os.path
 import hashlib
 import logging
-import multiprocessing
 from piecrust.baking.records import (
         BakeRecordEntry, TransitionalBakeRecord, TaxonomyInfo)
 from piecrust.baking.worker import (
@@ -19,11 +18,15 @@ logger = logging.getLogger(__name__)
 
 
 class Baker(object):
-    def __init__(self, app, out_dir, force=False):
+    def __init__(self, app, out_dir, force=False,
+                 applied_config_variant=None,
+                 applied_config_values=None):
         assert app and out_dir
         self.app = app
         self.out_dir = out_dir
         self.force = force
+        self.applied_config_variant = applied_config_variant
+        self.applied_config_values = applied_config_values
 
         # Remember what taxonomy pages we should skip
         # (we'll bake them repeatedly later with each taxonomy term)
@@ -546,6 +549,8 @@ class Baker(object):
         ctx = BakeWorkerContext(
                 self.app.root_dir, self.app.cache.base_dir, self.out_dir,
                 previous_record_path=previous_record_path,
+                config_variant=self.applied_config_variant,
+                config_values=self.applied_config_values,
                 force=self.force, debug=self.app.debug)
         pool = WorkerPool(
                 worker_count=worker_count,

@@ -1,0 +1,21 @@
+---
+config:
+    what: not good
+    variants:
+        test:
+            what: awesome
+config_variant: test
+in:
+    pages/_index.md: 'This is {{what}}.'
+out:
+    index.html: 'This is awesome.'
+---
+config:
+    what: not good
+config_values:
+    what: awesome
+in:
+    pages/_index.md: 'This is {{what}}.'
+out:
+    index.html: 'This is awesome.'
+

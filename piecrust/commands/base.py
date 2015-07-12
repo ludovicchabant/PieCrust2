@@ -12,6 +12,8 @@ class CommandContext(object):
         self.app = app
         self.parser = parser
         self.args = args
+        self.config_variant = None
+        self.config_values = None
 
 
 class ChefCommand(object):
