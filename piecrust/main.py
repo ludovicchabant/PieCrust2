@@ -188,7 +188,7 @@ def _run_chef(pre_args, argv):
     # Handle custom configurations.
     if pre_args.config_variant is not None and not root:
         raise SiteNotFoundError("Can't apply any variant.")
-    apply_variant_and_values(pre_args.config_variant,
+    apply_variant_and_values(app, pre_args.config_variant,
                              pre_args.config_values)
 
     # Adjust the cache key.
