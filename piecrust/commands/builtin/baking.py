@@ -42,6 +42,10 @@ class BakeCommand(ChefCommand):
                 help="The number of worker processes to spawn.",
                 type=int, default=-1)
         parser.add_argument(
+                '--batch-size',
+                help="The number of jobs per batch.",
+                type=int, default=-1)
+        parser.add_argument(
                 '--assets-only',
                 help="Only bake the assets (don't bake the web pages).",
                 action='store_true')
@@ -90,6 +94,8 @@ class BakeCommand(ChefCommand):
     def _bakeSources(self, ctx, out_dir):
         if ctx.args.workers > 0:
             ctx.app.config.set('baker/workers', ctx.args.workers)
+        if ctx.args.batch_size > 0:
+            ctx.app.config.set('baker/batch_size', ctx.args.batch_size)
         baker = Baker(
                 ctx.app, out_dir,
                 force=ctx.args.force)

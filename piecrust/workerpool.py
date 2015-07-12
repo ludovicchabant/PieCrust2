@@ -115,7 +115,8 @@ class _WorkerParams(object):
 
 
 class WorkerPool(object):
-    def __init__(self, worker_class, worker_count=None, initargs=(),
+    def __init__(self, worker_class, initargs=(),
+                 worker_count=None, batch_size=None,
                  wrap_exception=False):
         worker_count = worker_count or os.cpu_count() or 1
 
@@ -131,6 +132,7 @@ class WorkerPool(object):
             self._quick_put = self._task_queue._writer.send
             self._quick_get = self._result_queue._reader.recv
 
+        self._batch_size = batch_size
         self._callback = None
         self._error_callback = None
         self._listener = None
@@ -188,6 +190,8 @@ class WorkerPool(object):
 
         self._listener = res
 
+        if chunk_size is None:
+            chunk_size = self._batch_size
         if chunk_size is None:
             chunk_size = max(1, job_count // 50)
             logger.debug("Using chunk size of %d" % chunk_size)

@@ -541,6 +541,7 @@ class Baker(object):
         from piecrust.baking.worker import BakeWorkerContext, BakeWorker
 
         worker_count = self.app.config.get('baker/workers')
+        batch_size = self.app.config.get('baker/batch_size')
 
         ctx = BakeWorkerContext(
                 self.app.root_dir, self.app.cache.base_dir, self.out_dir,
@@ -548,6 +549,7 @@ class Baker(object):
                 force=self.force, debug=self.app.debug)
         pool = WorkerPool(
                 worker_count=worker_count,
+                batch_size=batch_size,
                 worker_class=BakeWorker,
                 initargs=(ctx,))
         return pool
