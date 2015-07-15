@@ -41,6 +41,8 @@ class BakeWorker(IWorker):
         # Create the app local to this worker.
         app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug)
         app._useSubCacheDir(self.ctx.sub_cache_dir)
+        app.config.set('baker/is_baking', True)
+        app.env.base_asset_url_format = '%uri%'
         app.env.fs_cache_only_for_main_page = True
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")
