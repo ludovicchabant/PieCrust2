@@ -136,11 +136,10 @@ class PageBaker(object):
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
 
-                page_dirname = os.path.dirname(qualified_page.path)
                 page_pathname, _ = os.path.splitext(qualified_page.path)
                 in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
                 for fn in os.listdir(in_assets_dir):
-                    full_fn = os.path.join(page_dirname, fn)
+                    full_fn = os.path.join(in_assets_dir, fn)
                     if os.path.isfile(full_fn):
                         dest_ap = os.path.join(out_assets_dir, fn)
                         logger.debug("  %s -> %s" % (full_fn, dest_ap))

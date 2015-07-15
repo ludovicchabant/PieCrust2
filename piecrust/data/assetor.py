@@ -91,5 +91,5 @@ class Assetor(object):
 
         cpi = self._page.app.env.exec_info_stack.current_page_info
         if cpi is not None:
-            cpi.render_ctx.used_assets = True
+            cpi.render_ctx.current_pass_info.used_assets = True
 
