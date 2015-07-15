@@ -1,0 +1,30 @@
+---
+in:
+    posts/2010-01-01_post1-assets/blah.png: 'fake image'
+    posts/2010-01-01_post1.md: 'my image: {{assets.blah}}'
+    pages/_index.md: 'something'
+out:
+    '2010':
+        '01':
+            '01':
+                post1.html: 'my image: /2010/01/01/post1/blah.png'
+                post1:
+                    blah.png: 'fake image'
+    index.html: 'something'
+---
+config:
+    site:
+        pretty_urls: true
+in:
+    posts/2010-01-01_post1-assets/blah.png: 'fake image'
+    posts/2010-01-01_post1.md: 'my image: {{assets.blah}}'
+    pages/_index.md: 'something'
+out:
+    '2010':
+        '01':
+            '01':
+                'post1':
+                    index.html: 'my image: /2010/01/01/post1/blah.png'
+                    blah.png: 'fake image'
+    index.html: 'something'
+

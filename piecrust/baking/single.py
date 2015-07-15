@@ -131,7 +131,8 @@ class PageBaker(object):
                     out_assets_dir, out_name = os.path.split(out_path)
                     if sub_uri != self.site_root:
                         out_name_noext, _ = os.path.splitext(out_name)
-                        out_assets_dir += out_name_noext
+                        out_assets_dir = os.path.join(out_assets_dir,
+                                                      out_name_noext)
 
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
