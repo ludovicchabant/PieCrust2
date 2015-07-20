@@ -41,6 +41,9 @@ class ThemesCommand(ChefCommand):
         p.set_defaults(sub_func=self._overrideTheme)
 
     def checkedRun(self, ctx):
+        if not hasattr(ctx.args, 'sub_func'):
+            ctx.parser.parse_args(['themes', '--help'])
+            return
         ctx.args.sub_func(ctx)
 
     def _createTheme(self, ctx):
