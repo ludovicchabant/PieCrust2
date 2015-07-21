@@ -40,6 +40,15 @@ class ThemesCommand(ChefCommand):
                 help="Copies a theme to the website for customization.")
         p.set_defaults(sub_func=self._overrideTheme)
 
+        p = subparsers.add_parser(
+                'link',
+                help="Installs a theme as a link to an already existing "
+                     "theme on disk.")
+        p.add_argument(
+                'theme_dir',
+                help="The directory of the theme to link.")
+        p.set_defaults(sub_func=self._linkTheme)
+
     def checkedRun(self, ctx):
         if not hasattr(ctx.args, 'sub_func'):
             ctx.parser.parse_args(['themes', '--help'])
@@ -130,4 +139,25 @@ class ThemesCommand(ChefCommand):
             if not os.path.exists(os.path.dirname(c[1])):
                 os.makedirs(os.path.dirname(c[1]))
             shutil.copy2(c[0], c[1])
+
+    def _linkTheme(self, ctx):
+        if not os.path.isdir(ctx.args.theme_dir):
+            logger.error("Invalid theme directory: %s" % ctx.args.theme_dir)
+            return 1
+
+        theme_dir = os.path.join(ctx.app.root_dir, THEME_DIR)
+
+        if os.path.islink(theme_dir):
+            logger.debug("Unlinking: %s" % theme_dir)
+            os.unlink(theme_dir)
+        elif os.path.isdir(theme_dir):
+            logger.warning("A theme already exists, and will be overwritten. "
+                           "Are you sure? [Y/n]")
+            ans = input()
+            if len(ans) > 0 and ans.lower() not in ['y', 'yes']:
+                return 1
+
+            shutil.rmtree(theme_dir)
+
+        os.symlink(ctx.args.theme_dir, theme_dir)
 
