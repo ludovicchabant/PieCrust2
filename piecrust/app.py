@@ -443,8 +443,11 @@ class PieCrust(object):
                     return
                 if isinstance(tplc, str):
                     tplc = [tplc]
-                sitec['templates_dirs'] = list(filter(tplc,
-                        lambda p: os.path.join(self.theme_dir, p)))
+                sitec['templates_dirs'] = list(
+                        map(
+                            lambda p: os.path.join(self.theme_dir, p),
+                            tplc))
+
             config.fixups.append(_fixupThemeTemplatesDir)
 
             # We'll also need to flag all page sources as coming from
