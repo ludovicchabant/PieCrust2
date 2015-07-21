@@ -63,8 +63,11 @@ class PieCrustConfiguration(Configuration):
             return
 
         path_times = [os.path.getmtime(p) for p in self.paths]
-        cache_key = hashlib.md5(("version=%s&cache=%d" % (
-                APP_VERSION, CACHE_VERSION)).encode('utf8')).hexdigest()
+        cache_key_hash = hashlib.md5(("version=%s&cache=%d" % (
+                APP_VERSION, CACHE_VERSION)).encode('utf8'))
+        for p in self.paths:
+            cache_key_hash.update(("&path=%s" % p).encode('utf8'))
+        cache_key = cache_key_hash.hexdigest()
 
         if self.cache.isValid('config.json', path_times):
             logger.debug("Loading configuration from cache...")
