@@ -87,6 +87,10 @@ class Route(object):
         self._createTemplateFunc(cfg.get('func'))
 
     @property
+    def is_taxonomy_route(self):
+        return self.taxonomy_name is not None
+
+    @property
     def source(self):
         for src in self.app.sources:
             if src.name == self.source_name:

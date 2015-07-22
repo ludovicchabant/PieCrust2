@@ -450,11 +450,15 @@ content_type_map = {
 
 def find_routes(routes, uri):
     res = []
+    tax_res = []
     for route in routes:
         metadata = route.matchUri(uri)
         if metadata is not None:
-            res.append((route, metadata))
-    return res
+            if route.is_taxonomy_route:
+                tax_res.append((route, metadata))
+            else:
+                res.append((route, metadata))
+    return res + tax_res
 
 
 class ErrorMessageLoader(FileSystemLoader):
