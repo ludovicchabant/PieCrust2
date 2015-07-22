@@ -135,7 +135,10 @@ class Route(object):
         # TODO: fix this hard-coded shit
         for key in ['year', 'month', 'day']:
             if key in route_metadata and isinstance(route_metadata[key], str):
-                route_metadata[key] = int(route_metadata[key])
+                try:
+                    route_metadata[key] = int(route_metadata[key])
+                except ValueError:
+                    pass
 
         return route_metadata
 
