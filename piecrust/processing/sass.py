@@ -27,8 +27,8 @@ class SassProcessor(SimpleFileProcessor):
     def onPipelineStart(self, pipeline):
         super(SassProcessor, self).onPipelineStart(pipeline)
 
+        self._map_dir = os.path.join(pipeline.tmp_dir, 'sass')
         if pipeline.is_first_worker:
-            self._map_dir = os.path.join(pipeline.tmp_dir, 'sass')
             if not os.path.isdir(self._map_dir):
                 os.makedirs(self._map_dir)
 
