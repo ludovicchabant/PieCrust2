@@ -23,6 +23,11 @@ class ThemesCommand(ChefCommand):
 
         subparsers = parser.add_subparsers()
         p = subparsers.add_parser(
+                'info',
+                help="Provides information about the current theme.")
+        p.set_defaults(sub_func=self._info)
+
+        p = subparsers.add_parser(
                 'create',
                 help="Create a new theme for the current website.")
         p.add_argument(
@@ -41,19 +46,43 @@ class ThemesCommand(ChefCommand):
         p.set_defaults(sub_func=self._overrideTheme)
 
         p = subparsers.add_parser(
-                'link',
-                help="Installs a theme as a link to an already existing "
-                     "theme on disk.")
+                'activate',
+                help="Makes a given theme the active one for the current "
+                     "website by creating a symbolic link to it from the "
+                     "'theme' directory. If a symbolic link can't be created "
+                     "the theme will be copied to the 'theme' directory.")
         p.add_argument(
                 'theme_dir',
                 help="The directory of the theme to link.")
-        p.set_defaults(sub_func=self._linkTheme)
+        p.add_argument(
+                '--link-only',
+                action='store_true',
+                help="Abort the activation if a symbolic link can't be "
+                     "created")
+        p.set_defaults(sub_func=self._activateTheme)
+
+        p = subparsers.add_parser(
+                'deactivate',
+                help="Removes the currently active theme for the website. "
+                     "This removes the symbolic link to the theme, if any, or "
+                     "deletes the theme folder if it was copied locally.")
+        p.set_defaults(sub_func=self._deactivateTheme)
 
     def checkedRun(self, ctx):
         if not hasattr(ctx.args, 'sub_func'):
-            ctx.parser.parse_args(['themes', '--help'])
-            return
+            ctx.args = ctx.parser.parse_args(['themes', 'info'])
         ctx.args.sub_func(ctx)
+
+    def _info(self, ctx):
+        theme_dir = os.path.join(ctx.app.root_dir, THEME_DIR)
+        if not os.path.exists(theme_dir):
+            logger.info("Using default theme, from: %s" % ctx.app.theme_dir)
+        elif os.path.islink(theme_dir):
+            target = os.readlink(theme_dir)
+            target = os.path.join(os.path.dirname(theme_dir), target)
+            logger.info("Using theme, from: %s" % target)
+        else:
+            logger.info("Using local theme.")
 
     def _createTheme(self, ctx):
         theme_dir = os.path.join(ctx.app.root_dir, THEME_DIR)
@@ -140,7 +169,7 @@ class ThemesCommand(ChefCommand):
                 os.makedirs(os.path.dirname(c[1]))
             shutil.copy2(c[0], c[1])
 
-    def _linkTheme(self, ctx):
+    def _activateTheme(self, ctx):
         if not os.path.isdir(ctx.args.theme_dir):
             logger.error("Invalid theme directory: %s" % ctx.args.theme_dir)
             return 1
@@ -159,5 +188,34 @@ class ThemesCommand(ChefCommand):
 
             shutil.rmtree(theme_dir)
 
-        os.symlink(ctx.args.theme_dir, theme_dir)
+        try:
+            os.symlink(ctx.args.theme_dir, theme_dir)
+        except (NotImplementedError, OSError) as ex:
+            if ctx.args.link_only:
+                logger.error("Couldn't symlink the theme: %s" % ex)
+                return 1
+
+            # pre-Vista Windows, or unprivileged user... gotta copy the
+            # theme the old fashioned way.
+            logging.warning("Can't create a symbolic link... copying the "
+                            "theme directory instead.")
+            ignore = shutil.ignore_patterns('.git*', '.hg*', '.svn', '.bzr')
+            shutil.copytree(ctx.args.theme_dir, theme_dir, ignore=ignore)
+
+    def _deactivateTheme(self, ctx):
+        theme_dir = os.path.join(ctx.app.root_dir, THEME_DIR)
+
+        if os.path.islink(theme_dir):
+            logger.debug("Unlinking: %s" % theme_dir)
+            os.unlink(theme_dir)
+        elif os.path.isdir(theme_dir):
+            logger.warning("The active theme is local. Are you sure you want "
+                           "to delete the theme directory? [Y/n]")
+            ans = input()
+            if len(ans) > 0 and ans.lower() not in ['y', 'yes']:
+                return 1
+
+            shutil.rmtree(theme_dir)
+        else:
+            logger.info("No currently active theme.")
 
