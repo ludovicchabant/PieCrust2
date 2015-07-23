@@ -29,7 +29,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 20
+CACHE_VERSION = 21
 
 
 class VariantNotFoundError(Exception):
@@ -433,27 +433,7 @@ class PieCrust(object):
         config_cache = self.cache.getCache('app')
         config = PieCrustConfiguration(paths, config_cache)
         if self.theme_dir:
-            # We'll need to patch the templates directories to be relative
-            # to the site's root, and not the theme root.
-            def _fixupThemeTemplatesDir(index, config):
-                if index != 0:
-                    return
-                sitec = config.get('site')
-                if sitec is None:
-                    return
-                tplc = sitec.get('templates_dirs')
-                if tplc is None:
-                    return
-                if isinstance(tplc, str):
-                    tplc = [tplc]
-                sitec['templates_dirs'] = list(
-                        map(
-                            lambda p: os.path.join(self.theme_dir, p),
-                            tplc))
-
-            config.fixups.append(_fixupThemeTemplatesDir)
-
-            # We'll also need to flag all page sources as coming from
+            # We'll need to flag all page sources as coming from
             # the theme.
             def _fixupThemeSources(index, config):
                 if index != 0:
