@@ -33,16 +33,12 @@ class TestFileSystemBase(object):
         return PieCrust(root_dir, cache=cache, debug=True)
 
     def withDir(self, path):
-        path = path.replace('\\', '/')
-        path = path.lstrip('/')
-        path = '/%s/%s' % (self._root, path)
+        path = self.path(path)
         self._createDir(path)
         return self
 
     def withFile(self, path, contents):
-        path = path.replace('\\', '/')
-        path = path.lstrip('/')
-        path = '/%s/%s' % (self._root, path)
+        path = self.path(path)
         self._createFile(path, contents)
         return self
 
