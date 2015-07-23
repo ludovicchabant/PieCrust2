@@ -169,7 +169,7 @@ def _pre_parse_chef_args(argv):
 
 def _run_chef(pre_args, argv):
     # Setup the app.
-    start_time = time.clock()
+    start_time = time.perf_counter()
     root = pre_args.root
     if root is None:
         try:
