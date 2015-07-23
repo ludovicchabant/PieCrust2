@@ -149,9 +149,9 @@ class HugoBenchmarkSiteGenerator(BenchmarkSiteGenerator):
 
     def writePost(self, post_info):
         out_dir = os.path.join(self.out_dir, 'content', 'post')
-        dtstr = post_info['datetime'].strftime('%Y-%m-%d_%H-%M-%S-00:00')
-        with open('%s/%s.md' % (out_dir, dtstr), 'w',
-                  encoding='utf8') as f:
+        dtstr = post_info['datetime'].strftime('%Y-%m-%d_%H-%M-%S')
+        post_path = os.path.join(out_dir, '%s.md' % dtstr)
+        with open(post_path, 'w', encoding='utf8') as f:
             f.write('+++\n')
             f.write('title = "%s"\n' % post_info['title'])
             f.write('description = "%s"\n' % post_info['description'])
