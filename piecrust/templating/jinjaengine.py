@@ -86,22 +86,36 @@ class JinjaTemplateEngine(TemplateEngine):
         if self.env:
             return
 
-        autoescape = self.app.config.get('jinja/auto_escape')
-        if autoescape is None:
-            autoescape = self.app.config.get('twig/auto_escape')
-        if autoescape is None:
-            autoescape = True
+        # Get the list of extensions to load.
+        ext_names = self.app.config.get('jinja/extensions', [])
+        if not isinstance(ext_names, list):
+            ext_names = [ext_names]
 
-        logger.debug("Creating Jinja environment with folders: %s" %
-                     self.app.templates_dirs)
-        loader = PieCrustLoader(self.app.templates_dirs)
+        # Turn on autoescape by default.
+        autoescape = self.app.config.get('twig/auto_escape')
+        if autoescape is not None:
+            logger.warning("The `twig/auto_escape` setting is now called "
+                           "`jinja/auto_escape`.")
+        else:
+            autoescape = self.app.config.get('jinja/auto_escape', True)
+        if autoescape:
+            ext_names.append('autoescape')
+
+        # Create the final list of extensions.
         extensions = [
                 PieCrustHighlightExtension,
                 PieCrustCacheExtension,
                 PieCrustSpacelessExtension,
                 PieCrustFormatExtension]
-        if autoescape:
-            extensions.append('jinja2.ext.autoescape')
+        for n in ext_names:
+            if '.' not in n:
+                n = 'jinja2.ext.' + n
+            extensions.append(n)
+
+        # Create the Jinja environment.
+        logger.debug("Creating Jinja environment with folders: %s" %
+                     self.app.templates_dirs)
+        loader = PieCrustLoader(self.app.templates_dirs)
         self.env = PieCrustEnvironment(
                 self.app,
                 loader=loader,
