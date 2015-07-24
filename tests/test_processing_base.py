@@ -97,7 +97,8 @@ def test_two_levels_dirtyness():
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
         pp.enabled_processors = ['copy']
-        pp.additional_processors = [FooProcessor(('foo', 'bar'))]
+        pp.additional_processors_factories = [
+                lambda: FooProcessor(('foo', 'bar'))]
         pp.run()
         expected = {'blah.bar': 'FOO: A test file.'}
         assert expected == fs.getStructure('counter')
@@ -145,9 +146,9 @@ def test_record_version_change():
             .withFile('kitchen/assets/blah.foo', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
-        noop = NoopProcessor(('foo', 'foo'))
         pp.enabled_processors = ['copy']
-        pp.additional_processors = [noop]
+        pp.additional_processors_factories = [
+                lambda: NoopProcessor(('foo', 'foo'))]
         pp.run()
         assert os.path.exists(fs.path('/counter/blah.foo')) is True
         mtime = os.path.getmtime(fs.path('/counter/blah.foo'))

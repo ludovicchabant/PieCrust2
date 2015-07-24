@@ -57,8 +57,15 @@ class ProcessorPipeline(object):
         self.force_patterns = make_re(baker_params.get('force', []))
 
         # Those things are mostly for unit-testing.
+        #
+        # Note that additiona processors can't be passed as instances.
+        # Instead, we need some factory functions because we need to create
+        # one instance right away to use during the initialization phase, and
+        # another instance to pass to the worker pool. The initialized one will
+        # be tied to the PieCrust app instance, which can't be pickled across
+        # processes.
         self.enabled_processors = None
-        self.additional_processors = None
+        self.additional_processors_factories = None
 
     def addIgnorePatterns(self, patterns):
         self.ignore_patterns += make_re(patterns)
@@ -74,10 +81,11 @@ class ProcessorPipeline(object):
                          self.enabled_processors)
             processors = get_filtered_processors(processors,
                                                  self.enabled_processors)
-        if self.additional_processors is not None:
+        if self.additional_processors_factories is not None:
             logger.debug("Adding %s additional processors." %
-                         len(self.additional_processors))
-            for proc in self.additional_processors:
+                         len(self.additional_processors_factories))
+            for proc_fac in self.additional_processors_factories:
+                proc = proc_fac()
                 self.app.env.registerTimer(proc.__class__.__name__,
                                            raise_if_registered=False)
                 proc.initialize(self.app)
@@ -248,7 +256,10 @@ class ProcessorPipeline(object):
                 self.app.root_dir, self.out_dir, self.tmp_dir,
                 self.force, self.app.debug)
         ctx.enabled_processors = self.enabled_processors
-        ctx.additional_processors = self.additional_processors
+        if self.additional_processors_factories is not None:
+            ctx.additional_processors = [
+                    proc_fac()
+                    for proc_fac in self.additional_processors_factories]
 
         pool = WorkerPool(
                 worker_class=ProcessingWorker,
