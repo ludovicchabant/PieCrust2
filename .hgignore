@@ -14,4 +14,3 @@ docs/node_modules
 piecrust.egg-info
 piecrust/__version__.py
 
-docs
