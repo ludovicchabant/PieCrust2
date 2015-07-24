@@ -145,7 +145,11 @@ class ChefTestItem(YamlTestItemBase):
                 logging.getLogger().removeHandler(hdl)
 
             assert expected_code == exit_code
-            assert expected_out == memstream.getvalue()
+
+            actual_out = memstream.getvalue()
+            if self.spec.get('replace_out_path_sep'):
+                expected_out = expected_out.replace('/', os.sep)
+            assert expected_out == actual_out
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name

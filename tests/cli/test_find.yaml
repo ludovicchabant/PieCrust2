@@ -3,12 +3,14 @@ args: find
 out: ''
 ---
 args: find
+replace_out_path_sep: true
 in:
     pages/foo.md: ''
 out: |
     pages/foo.md
 ---
 args: find
+replace_out_path_sep: true
 in:
     pages/foo.md: ''
     posts/2015-01-10_blah.md: ''
@@ -17,6 +19,7 @@ out: |
     posts/2015-01-10_blah.md
 ---
 args: find foo
+replace_out_path_sep: true
 in:
     pages/foo.md: ''
     pages/bar.md: ''
@@ -27,6 +30,7 @@ out: |
     pages/foo/child.md
 ---
 args: find --exact *foo.md
+replace_out_path_sep: true
 in:
     pages/foo.md: ''
     pages/bar.md: ''
