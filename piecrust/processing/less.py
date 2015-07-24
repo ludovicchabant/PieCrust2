@@ -33,34 +33,45 @@ class LessProcessor(SimpleFileProcessor):
         try:
             with open(map_path, 'r') as f:
                 dep_map = json.load(f)
-
-            # Check the version, since the `sources` list has changed
-            # meanings over time.
-            if dep_map.get('version') != 3:
-                logger.warning("Unknown LESS map version. Force rebuilding.")
-                return FORCE_BUILD
-
-            # Get the sources, but make all paths absolute.
-            sources = dep_map.get('sources')
-            path_dir = os.path.dirname(path)
-
-            def _makeAbs(p):
-                return os.path.join(path_dir, p)
-            deps = list(map(_makeAbs, sources))
-            return [map_path] + deps
-        except IOError:
+        except OSError:
             # Map file not found... rebuild.
             logger.debug("No map file found for LESS file '%s' at '%s'. "
                          "Rebuilding" % (path, map_path))
             return FORCE_BUILD
 
+        # Check the version, since the `sources` list has changed
+        # meanings over time.
+        if dep_map.get('version') != 3:
+            logger.warning("Unknown LESS map version. Force rebuilding.")
+            return FORCE_BUILD
+
+        # Get the sources, but make all paths absolute.
+        sources = dep_map.get('sources')
+        path_dir = os.path.dirname(path)
+
+        def _makeAbs(p):
+            return os.path.join(path_dir, p)
+        deps = list(map(_makeAbs, sources))
+        return [map_path] + deps
+
     def _doProcess(self, in_path, out_path):
         self._ensureInitialized()
 
         map_path = self._getMapPath(in_path)
-        map_url = '/' + os.path.relpath(map_path, self.app.root_dir)
+        map_url = '/' + os.path.relpath(
+                map_path, self.app.root_dir).replace('\\', '/')
+
+        # On Windows, it looks like LESSC is confused with paths when the
+        # map file is not to be created in the same directory as the input
+        # file (it ends up writing invalid dependencies in the map file, with
+        # a mix of relative and absolute paths stuck together).
+        # So create it there and move it afterwards... :(
+        temp_map_path = os.path.join(
+                os.path.dirname(in_path),
+                os.path.basename(map_path))
+
         args = [self._conf['bin'],
-                '--source-map=%s' % map_path,
+                '--source-map=%s' % temp_map_path,
                 '--source-map-url=%s' % map_url]
         args += self._conf['options']
         args.append(in_path)
@@ -83,6 +94,11 @@ class LessProcessor(SimpleFileProcessor):
         if proc.returncode != 0:
             raise ExternalProcessException(
                     stderr_data.decode(sys.stderr.encoding))
+
+        logger.debug("Moving map file: %s -> %s" % (temp_map_path, map_path))
+        if os.path.exists(map_path):
+            os.remove(map_path)
+        os.rename(temp_map_path, map_path)
 
         return True
 
