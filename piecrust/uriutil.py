@@ -92,7 +92,7 @@ def split_sub_uri(app, uri):
     trailing_slash = app.config.get('site/trailing_slash')
     if not pretty_urls:
         uri, ext = os.path.splitext(uri)
-    elif trailing_slash:
+    else:
         uri = uri.rstrip('/')
 
     page_num = 1
