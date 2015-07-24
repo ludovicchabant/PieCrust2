@@ -1,6 +1,5 @@
 ---
 title: Documentation
-layout: doc
 ---
 
 Using PieCrust is mostly a matter of editing text files and, sometimes, running
