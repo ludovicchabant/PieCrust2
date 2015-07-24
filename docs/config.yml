@@ -10,11 +10,19 @@ site:
             type: ordered
             data_endpoint: site.docs
             default_layout: doc
+        api:
+            type: ordered
+            data_endpoint: site.api
+            default_layout: api
     routes:
         -
             url: /docs/%path:slug%
             source: docs
             func: docurl(slug)
+        -
+            url: /api/%path:slug%
+            source: api
+            func: apiurl(slug)
 
 baker:
     assets_dirs:

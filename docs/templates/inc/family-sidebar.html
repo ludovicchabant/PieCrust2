@@ -1,0 +1,20 @@
+{% macro pagelink(title, url) -%}
+    <a href="{{url}}"{% if url == page.url %} class="active"{% endif %}>{{title}}</a>
+{%- endmacro %}
+
+<ul class="doc-level1">
+{% for p in family.root %}
+{% if p.is_dir and p.is_page %}
+    <li>{{ pagelink(p.title, p.url) }}
+        <ul class="doc-level2">
+        {% for p2 in p.children %}
+            <li>{{ pagelink(p2.title, p2.url) }}</li>
+        {% endfor %}
+        </ul>
+    </li>
+{% elif not p.is_dir and p.order %}
+    <li>{{ pagelink(p.title, p.url) }}</li>
+{% endif %}
+{% endfor %}
+</ul>
+

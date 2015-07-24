@@ -30,12 +30,7 @@
                     <a class="navbar-brand" href="{{site.root}}">PieCrust</a>
                 </div>
                 <div class="collapse navbar-collapse" id="piecrust-menu">
-                    <ul class="nav navbar-nav navbar-right">
-                        <li><a href="{{ pcurl('getting-started') }}">Getting Started</a></li>
-                        <li><a href="{{ pcurl('docs') }}">Documentation</a></li>
-                        <li><a href="{{ pcurl('code') }}">Code</a></li>
-                        <li><a href="{{ pcurl('support') }}">Support</a></li>
-                    </ul>
+                    {% include 'inc/main-navigation.html' %}
                 </div>
             </div>
         </nav>

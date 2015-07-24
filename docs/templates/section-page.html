@@ -1,0 +1,22 @@
+{% extends "default.html" %}
+
+{% block head %}
+{% if page.needs_pygments %}
+    <style type="text/css">
+    {{highlight_css()}}
+    </style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <section class="col-md-8">
+    {{ content|safe }}
+    </section>
+    <aside class="col-md-4">
+        {% include 'inc/family-sidebar.html' %}
+    </aside>
+</div>
+{% endblock %}
+
+

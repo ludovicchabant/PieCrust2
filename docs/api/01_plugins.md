@@ -1,9 +1,6 @@
 ---
-title: Code
-header_class: code
+title: Plugins
 ---
-
-## PieCrust plugins
 
 To create a PieCrust plugin, you need to do a few things:
 
@@ -12,7 +9,7 @@ To create a PieCrust plugin, you need to do a few things:
 * Write a couple lines of boilerplate code.
 
 
-### Packaging plugins
+## Packaging plugins
 
 PieCrust plugins are expected to be available on [Pypi][] for better integration
 with `chef` commands. For instance, the `chef plugins list -a` will list all
@@ -27,7 +24,7 @@ A PieCrust plugin package must:
 You can refer to the [`setuptools` documentation][st] for more information.
 
 
-### The plugin class
+## The plugin class
 
 A PieCrust plugin is an instance of a class that derives from `PieCrustPlugin`.
 The only required thing you need to override is the name of the plugin:
@@ -46,7 +43,7 @@ Check the `piecrust.plugins.builtin.BuiltInPlugin` to see how all PieCrust
 functionality is implemented.
 
 
-### Boilerplate code
+## Boilerplate code
 
 Now we have a plugin class, and a Pypi package that PieCrust can find if needed.
 All we need is a way to tell PieCrust how to find your plugin class in that
@@ -60,7 +57,7 @@ In the required `piecrust_foobar` module, you need to define a
 That's what PieCrust will use to instantiate your plugin.
 
 
-### Loading the plugin
+## Loading the plugin
 
 Now you can add your plugin to a PieCrust website by adding this to the website
 configuration:
