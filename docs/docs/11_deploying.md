@@ -2,10 +2,10 @@
 title: Deploying
 ---
 
-PieCrust can be used either as a static website generator or as a dynamic CMS.
-This section is about deploying a PieCrust website as a dynamic CMS. For how to
-bake a website and publish it statically, see the [publishing
-documentation][publish].
+> PieCrust can be used either as a static website generator or as a dynamic CMS.
+> **This section is about deploying a PieCrust website as a dynamic CMS.** For
+> how to bake a website and publish it statically, see the [publishing
+> documentation][publish].
 
 Using PieCrust as a dynamic CMS requires setting up a web server to execute code
 and serve requests. PieCrust itself can be wrapped in a [WSGI
