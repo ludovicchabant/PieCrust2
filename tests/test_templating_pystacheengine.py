@@ -49,6 +49,8 @@ def test_layout():
         route = app.getRoute('pages', None)
         route_metadata = {'slug': 'foo'}
         output = render_simple_page(page, route, route_metadata)
+        # On Windows, pystache unexplicably adds `\r` to some newlines... wtf.
+        output = output.replace('\r', '')
         assert output == expected
 
 
@@ -66,5 +68,7 @@ def test_partial():
         route = app.getRoute('pages', None)
         route_metadata = {'slug': 'foo'}
         output = render_simple_page(page, route, route_metadata)
+        # On Windows, pystache unexplicably adds `\r` to some newlines... wtf.
+        output = output.replace('\r', '')
         assert output == expected
 
