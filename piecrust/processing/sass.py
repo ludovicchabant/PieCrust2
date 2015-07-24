@@ -101,10 +101,9 @@ class SassProcessor(SimpleFileProcessor):
         if self.app.cache.enabled:
             src_map_file = out_path + '.map'
             dst_map_file = self._getMapPath(in_path)
-            try:
-                os.rename(src_map_file, dst_map_file)
-            except OSError:
-                pass
+            if os.path.exists(dst_map_file):
+                os.remove(dst_map_file)
+            os.rename(src_map_file, dst_map_file)
 
         if retcode != 0:
             raise Exception("Error occured in Sass compiler. Please check "
