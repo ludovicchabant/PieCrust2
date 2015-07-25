@@ -334,6 +334,6 @@ class OrderTrailSortIterator(object):
 
     def _key_getter(self, item):
         values = self.value_accessor(item, self.trail_name)
-        key = ''.join(values)
+        key = ''.join(map(lambda v: str(v), values))
         return key
 
