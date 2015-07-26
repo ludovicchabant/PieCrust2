@@ -27,6 +27,7 @@ from piecrust.processing.compass import CompassProcessor
 from piecrust.processing.compressors import (
         CleanCssProcessor, UglifyJSProcessor)
 from piecrust.processing.less import LessProcessor
+from piecrust.processing.pygments_style import PygmentsStyleProcessor
 from piecrust.processing.requirejs import RequireJSProcessor
 from piecrust.processing.sass import SassProcessor
 from piecrust.processing.sitemap import SitemapProcessor
@@ -99,6 +100,7 @@ class BuiltInPlugin(PieCrustPlugin):
         return [
                 CopyFileProcessor(),
                 ConcatProcessor(),
+                PygmentsStyleProcessor(),
                 CompassProcessor(),
                 LessProcessor(),
                 SassProcessor(),
