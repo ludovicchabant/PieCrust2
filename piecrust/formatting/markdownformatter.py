@@ -26,14 +26,15 @@ class MarkdownFormatter(Formatter):
             raise Exception("The `markdown` configuration setting must be "
                             "a dictionary.")
 
-        extensions = config.get('extensions')
-        if extensions is None:
-            extensions = []
+        extensions = config.get('extensions', [])
         if isinstance(extensions, str):
             extensions = [e.strip() for e in extensions.split(',')]
         # Compatibility with PieCrust 1.x
         if config.get('use_markdown_extra'):
             extensions.append('extra')
 
-        self._formatter = Markdown(extensions=extensions)
+        extension_configs = config.get('extension_configs', {})
+
+        self._formatter = Markdown(extensions=extensions,
+                                   extension_configs=extension_configs)
 
