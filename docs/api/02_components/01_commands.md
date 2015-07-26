@@ -1,27 +1,25 @@
 ---
 title: Chef Commands
-needs_pygments: true
 ---
 
 To provide new `chef` commands, you need to override the `getCommands` method of
 your plugin, and return command instances:
 
 
-{% highlight 'python' %}
+```python
 class MyPlugin(PieCrustPlugin):
     name = 'myplugin'
 
     def getCommands(self):
         return [
                 MyNewCommand()]
-{% endhighlight %}
+```
 
 
 To create a command class, inherit from the `ChefCommand` base class:
 
-{% highlight 'python' %}
+```python
 from piecrust.commands.base import ChefCommand
-
 
 class MyNewCommand(ChefCommand):
     def __init__(self):
@@ -34,7 +32,7 @@ class MyNewCommand(ChefCommand):
 
     def run(self, ctx):
         print("Doing %s" % ctx.args.thing)
-{% endhighlight %}
+```
 
 
 * The `name` will be used for command line invocation, _i.e._ your new command
