@@ -30,12 +30,13 @@ baker:
             # Ignore stuff that will get concatenated into the main JS file.
             ignore: js/piecrust
 
-smartypants:
-    enable: true
-
 # This is 2015, come on Markdown.
 markdown:
-    extensions: abbr, fenced_code, footnotes, smart_strong
+    extensions: abbr, fenced_code, footnotes, smart_strong, codehilite, smarty
+    extension_configs:
+        codehilite:
+            css_class: highlight
+            guess_lang: false
 
 # Need Foundation for CSS/JS. Install with Bower.
 sass:
