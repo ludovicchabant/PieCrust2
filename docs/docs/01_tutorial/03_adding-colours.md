@@ -13,7 +13,11 @@ Edit the `templates/default.html` layout and delete the whole part between
 `{%raw%}{% if site.css %}{%endraw%}` and `{%raw%}{% endif %}{%endraw%}`. Replace
 it with:
 
-    <link rel="stylesheet" type="text/css" href="{{ site.root }}myblog.css"/>
+```htmldjango
+{% raw %}
+<link rel="stylesheet" type="text/css" href="{{ site.root }}myblog.css"/>
+{% endraw %}
+```
 
 Now create the file `assets/myblog.less`. Leave it empty for now.
 
@@ -29,33 +33,35 @@ terminal, an entry that shows that it processed `myblog.less`.
 Now start writing some Less CSS code in the empty file (you can learn more about
 the Less CSS syntax on the [official website][less]):
 
-    @color-primary: #FF481C;
-    @color-secondary1: #083D78;
-    @color-secondary2: #CBF66E;
-    @color-secondary2-dark: #74AC00;
+```css
+@color-primary: #FF481C;
+@color-secondary1: #083D78;
+@color-secondary2: #CBF66E;
+@color-secondary2-dark: #74AC00;
 
-    body {
-        font-family: sans-serif;
-        color: @color-primary;
-        background: darken(@color-secondary1, 20%);
+body {
+    font-family: sans-serif;
+    color: @color-primary;
+    background: darken(@color-secondary1, 20%);
+}
+
+a {
+    color: @color-secondary2;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
     }
-
-    a {
-        color: @color-secondary2;
-        text-decoration: none;
-
-        &:hover {
-            text-decoration: underline;
-        }
-        &:visited {
-            color: @color-secondary2-dark;
-        }
+    &:visited {
+        color: @color-secondary2-dark;
     }
+}
 
-    #container {
-        width: 640px;
-        margin: 0 auto;
-    }
+#container {
+    width: 640px;
+    margin: 0 auto;
+}
+```
 
 When you save, you should see that PieCrust picks it up right away and compiles
 the Less file into a CSS file that your browser can fetch.

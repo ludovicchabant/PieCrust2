@@ -1,5 +1,6 @@
 ---
 title: "Part 2: Making Things Pretty"
+needs_pygments: true
 ---
 
 In the [first part of this tutorial][part1], we created a very simple blog with
@@ -56,16 +57,18 @@ revert the page back to the default Markdown formatter.
 
 Second, change the code to:
 
-    {% raw %}
-    {% for post in pagination.posts %}
-    * {{post.date}} **[{{post.title}}]({{post.url}})**
-    {% endfor %}
+```htmldjango
+{% raw %}
+{% for post in pagination.posts %}
+* {{post.date}} **[{{post.title}}]({{post.url}})**
+{% endfor %}
 
-    <section>
-        {% if pagination.prev_page %}<div class="prev"><a href="{{ pagination.prev_page }}">Next Posts</a></div>{% endif %}
-        {% if pagination.next_page %}<div class="next"><a href="{{ pagination.next_page }}">Previous Posts</a></div>{% endif %}
-    </section>
-    {% endraw %}
+<section>
+    {% if pagination.prev_page %}<div class="prev"><a href="{{ pagination.prev_page }}">Next Posts</a></div>{% endif %}
+    {% if pagination.next_page %}<div class="next"><a href="{{ pagination.next_page }}">Previous Posts</a></div>{% endif %}
+</section>
+{% endraw %}
+```
 
 We're still showing links to the previous/next pagination at the bottom, but now
 instead of showing a classic river of posts, we're showing a concise and simple
@@ -84,11 +87,13 @@ and using metadata on your content is super easy in PieCrust.
 
 Let's change the loop to:
 
-    {% raw %}
-    {% for post in pagination.posts %}
-    * {{post.date}} **[{{post.title}}]({{post.url}})**{%if post.hint%}: {{post.hint}}{%endif%}
-    {% endfor %}
-    {% endraw %}
+```jinja
+{% raw %}
+{% for post in pagination.posts %}
+* {{post.date}} **[{{post.title}}]({{post.url}})**{%if post.hint%}: {{post.hint}}{%endif%}
+{% endfor %}
+{% endraw %}
+```
 
 This will show a post's `hint` if it is defined. Of course, if you refresh the
 page now, nothing will change.
@@ -96,10 +101,12 @@ page now, nothing will change.
 Now go into some of your posts, and add something like this to their
 configuration header:
 
-    ---
-    <existing configuration settings...>
-    hint: Where we announce things
-    ---
+```
+---
+<existing configuration settings...>
+hint: Where we announce things
+---
+```
 
 Refresh the home page, and you'll see this new piece of metadata displayed next
 to the post's title!
@@ -123,7 +130,11 @@ page.
 Edit `templates/default.html` and replace the last line of the footer
 (_i.e._ just before `</footer>`) with this:
 
-    <p><a href="{{pcurl('about')}}">About this site</a> &ndash; {{ piecrust.branding|safe }}</p>
+```jinja
+{% raw %}
+<p><a href="{{pcurl('about')}}">About this site</a> &ndash; {{ piecrust.branding|safe }}</p>
+{% endraw %}
+```
 
 Refresh your browser, and you should see a link to the "_About_" page at the
 bottom of every page, including blog posts.

@@ -64,11 +64,13 @@ intermediate text into the final text.
 
 The default formatter is [Markdown][]. So our page becomes:
 
-    <p>This page lists all the recipes written so far in Ludovic&#8217;s Blog:</p>
-    <ul>
-    <li><a href="/recipes/rhubarb-pie">Rhubarb Pie</a></li>
-    <li><a href="/recipes/pound-cake">Pound Cake</a></li>
-    </ul>
+```html
+<p>This page lists all the recipes written so far in Ludovic&#8217;s Blog:</p>
+<ul>
+<li><a href="/recipes/rhubarb-pie">Rhubarb Pie</a></li>
+<li><a href="/recipes/pound-cake">Pound Cake</a></li>
+</ul>
+```
 
 
 ### Layout rendering
@@ -78,27 +80,31 @@ Last, the page's templated and formatted contents are put inside a _layout_
 example page is using the `simple` layout, and if we assume the file
 `templates/simple.html` looks like this:
 
-    {%raw%}
-    <html>
-    <head><title>{{page.title}}</title></head>
-    <body>
-    {{content|safe}}
-    </body>
-    </html>
-    {%endraw%}
+```htmldjango
+{%raw%}
+<html>
+<head><title>{{page.title}}</title></head>
+<body>
+{{content|safe}}
+</body>
+</html>
+{%endraw%}
+```
 
 ...then our final page will be:
 
-    <html>
-    <head><title>All Recipes</title></head>
-    <body>
-    <p>This page lists all the recipes written so far in Ludovic&#8217;s Blog:</p>
-    <ul>
-    <li><a href="/recipes/rhubarb-pie">Rhubarb Pie</a></li>
-    <li><a href="/recipes/pound-cake">Pound Cake</a></li>
-    </ul>
-    </body>
-    </html>
+```html
+<html>
+<head><title>All Recipes</title></head>
+<body>
+<p>This page lists all the recipes written so far in Ludovic&#8217;s Blog:</p>
+<ul>
+<li><a href="/recipes/rhubarb-pie">Rhubarb Pie</a></li>
+<li><a href="/recipes/pound-cake">Pound Cake</a></li>
+</ul>
+</body>
+</html>
+```
 
 Of course, we glossed over a lot of things here, which you will want to learn
 about:
