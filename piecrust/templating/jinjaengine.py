@@ -403,8 +403,8 @@ class PieCrustHighlightExtension(Extension):
         return code
 
 
-def get_highlight_css(class_name='.highlight'):
-    return HtmlFormatter().get_style_defs(class_name)
+def get_highlight_css(style_name='default', class_name='.highlight'):
+    return HtmlFormatter(style=style_name).get_style_defs(class_name)
 
 
 class PieCrustCacheExtension(Extension):
