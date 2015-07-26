@@ -1,13 +1,5 @@
 {% extends "default.html" %}
 
-{% block head %}
-{% if page.needs_pygments %}
-    <style type="text/css">
-    {{highlight_css()}}
-    </style>
-{% endif %}
-{% endblock %}
-
 {% block content %}
 <div class="container">
     <section class="col-md-8">
@@ -18,5 +10,4 @@
     </aside>
 </div>
 {% endblock %}
-
 
