@@ -9,7 +9,6 @@ from piecrust.sources.base import (
         MODE_CREATING, MODE_PARSING)
 from piecrust.sources.interfaces import IPreparingSource
 from piecrust.sources.mixins import SimplePaginationSourceMixin
-from piecrust.sources.pageref import PageNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -88,10 +87,10 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 raise ValueError("Not enough information to find a post path.")
             possible_paths = glob.glob(path)
             if len(possible_paths) != 1:
-                raise PageNotFoundError()
+                return None
             path = possible_paths[0]
         elif mode == MODE_PARSING and not os.path.isfile(path):
-            raise PageNotFoundError(path)
+            return None
 
         rel_path = os.path.relpath(path, self.fs_endpoint_path)
         rel_path = rel_path.replace('\\', '/')
