@@ -53,6 +53,23 @@ class WsgiServerWrapper(object):
         return self.server._run_request(environ, start_response)
 
 
+class MultipleNotFound(HTTPException):
+    code = 404
+
+    def __init__(self, description, nfes):
+        super(MultipleNotFound, self).__init__(description)
+        self._nfes = nfes
+
+    def get_description(self, environ=None):
+        from werkzeug.utils import escape
+        desc = '<p>' + self.description + '</p>'
+        desc += '<p>'
+        for nfe in self._nfes:
+            desc += '<li>' + escape(nfe.description) + '</li>'
+        desc += '</p>'
+        return desc
+
+
 class Server(object):
     def __init__(self, root_dir,
                  debug=False, sub_cache_dir=None, enable_debug_info=True,
@@ -96,8 +113,6 @@ class Server(object):
             return self._try_run_request(environ, start_response)
         except Exception as ex:
             if self.debug:
-                if isinstance(ex, HTTPException):
-                    return ex
                 raise
             return self._handle_error(ex, environ, start_response)
 
@@ -145,7 +160,7 @@ class Server(object):
             response = self._try_serve_page(app, environ, request)
             return response(environ, start_response)
         except (RouteNotFoundError, SourceNotFoundError) as ex:
-            raise NotFound(str(ex)) from ex
+            raise NotFound() from ex
         except HTTPException:
             raise
         except Exception as ex:
@@ -224,7 +239,7 @@ class Server(object):
             raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
         rendered_page = None
-        first_not_found = None
+        not_found_errors = []
         for route, route_metadata in routes:
             try:
                 logger.debug("Trying to render match from source '%s'." %
@@ -234,19 +249,15 @@ class Server(object):
                 if rendered_page is not None:
                     break
             except NotFound as nfe:
-                if first_not_found is None:
-                    first_not_found = nfe
-        else:
-            raise SourceNotFoundError(
-                    "Can't find path for: %s (looked in: %s)" %
-                    (req_path, [r.source_name for r, _ in routes]))
+                not_found_errors.append(nfe)
 
         # If we haven't found any good match, raise whatever exception we
         # first got. Otherwise, raise a generic exception.
         if rendered_page is None:
-            first_not_found = first_not_found or NotFound(
-                    "This page couldn't be found.")
-            raise first_not_found
+            msg = ("Can't find path for '%s', looked in sources: %s" %
+                   (req_path,
+                    ', '.join([r.source_name for r, _ in routes])))
+            raise MultipleNotFound(msg, not_found_errors)
 
         # Start doing stuff.
         page = rendered_page.page
@@ -314,13 +325,10 @@ class Server(object):
         if route.taxonomy_name is None:
             factory = source.findPageFactory(route_metadata, MODE_PARSING)
             if factory is None:
-                return None
+                raise NotFound("No path found for '%s' in source '%s'." %
+                               (req_path, source.name))
         else:
             taxonomy = app.getTaxonomy(route.taxonomy_name)
-            route_terms = route_metadata.get(taxonomy.term_name)
-            if route_terms is None:
-                return None
-
             tax_terms = route.getTaxonomyTerms(route_metadata)
             taxonomy_info = (taxonomy, tax_terms)
 
@@ -401,7 +409,7 @@ class Server(object):
             code = exception.code
 
         path = 'error'
-        if isinstance(exception, NotFound):
+        if isinstance(exception, (NotFound, MultipleNotFound)):
             path += '404'
 
         descriptions = self._get_exception_descriptions(exception)
@@ -416,7 +424,9 @@ class Server(object):
     def _get_exception_descriptions(self, exception):
         desc = []
         while exception is not None:
-            if isinstance(exception, HTTPException):
+            if isinstance(exception, MultipleNotFound):
+                desc += [e.description for e in exception._nfes]
+            elif isinstance(exception, HTTPException):
                 desc.append(exception.description)
             else:
                 desc.append(str(exception))
