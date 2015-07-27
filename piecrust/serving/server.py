@@ -321,11 +321,11 @@ class Server(object):
             if route_terms is None:
                 return None
 
+            tax_terms = route.getTaxonomyTerms(route_metadata)
+            taxonomy_info = (taxonomy, tax_terms)
+
             tax_page_ref = taxonomy.getPageRef(source)
             factory = tax_page_ref.getFactory()
-            tax_terms = route.unslugifyTaxonomyTerm(route_terms)
-            route_metadata[taxonomy.term_name] = tax_terms
-            taxonomy_info = (taxonomy, tax_terms)
 
         # Build the page.
         page = factory.buildPage()
@@ -336,8 +336,8 @@ class Server(object):
                                           page_num=page_num,
                                           force_render=True)
         if taxonomy_info is not None:
-            taxonomy, tax_terms = taxonomy_info
-            render_ctx.setTaxonomyFilter(taxonomy, tax_terms)
+            _, tax_terms = taxonomy_info
+            render_ctx.setTaxonomyFilter(tax_terms)
 
         # See if this page is known to use sources. If that's the case,
         # just don't use cached rendered segments for that page (but still

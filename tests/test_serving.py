@@ -77,11 +77,10 @@ def test_serve_tag_page(tag, expected_indices):
         page = app.getSource('pages').getPage({'slug': '_tag', 'tag': tag})
         route = app.getTaxonomyRoute('tags', 'posts')
         route_metadata = {'slug': '_tag', 'tag': tag}
-        taxonomy = app.getTaxonomy('tags')
 
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
-        ctx.setTaxonomyFilter(taxonomy, tag)
+        ctx.setTaxonomyFilter(tag)
         rp = render_page(ctx)
 
         expected = "Pages in %s\n" % tag
@@ -122,11 +121,10 @@ def test_serve_category_page(category, expected_indices):
                                                'category': category})
         route = app.getTaxonomyRoute('categories', 'posts')
         route_metadata = {'slug': '_category', 'category': category}
-        taxonomy = app.getTaxonomy('categories')
 
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
-        ctx.setTaxonomyFilter(taxonomy, category)
+        ctx.setTaxonomyFilter(category)
         rp = render_page(ctx)
 
         expected = "Pages in %s\n" % category

@@ -42,6 +42,7 @@ class Route(object):
 
         self.source_name = cfg['source']
         self.taxonomy_name = cfg.get('taxonomy')
+        self.taxonomy_term_sep = cfg.get('term_separator', '/')
 
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
@@ -191,18 +192,25 @@ class Route(object):
 
         return uri
 
+    def getTaxonomyTerms(self, route_metadata):
+        if not self.is_taxonomy_route:
+            raise Exception("This route isn't a taxonomy route.")
+
+        tax = self.app.getTaxonomy(self.taxonomy_name)
+        all_values = route_metadata.get(tax.term_name)
+        if all_values is None:
+            raise Exception("'%s' values couldn't be found in route metadata" %
+                            tax.term_name)
+
+        if self.taxonomy_term_sep in all_values:
+            return tuple(all_values.split(self.taxonomy_term_sep))
+        return all_values
+
     def slugifyTaxonomyTerm(self, term):
         #TODO: add options for transliterating and combining terms.
         if isinstance(term, tuple):
             return '/'.join(term)
         return term
-
-    def unslugifyTaxonomyTerm(self, term):
-        #TODO: same as above.
-        split_terms = term.split('/')
-        if len(split_terms) == 1:
-            return term
-        return tuple(split_terms)
 
     def _uriFormatRepl(self, m):
         name = m.group('name')

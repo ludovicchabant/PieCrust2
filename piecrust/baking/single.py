@@ -157,8 +157,7 @@ class PageBaker(object):
     def _bakeSingle(self, qualified_page, num, out_path, tax_info=None):
         ctx = PageRenderingContext(qualified_page, page_num=num)
         if tax_info:
-            tax = self.app.getTaxonomy(tax_info.taxonomy_name)
-            ctx.setTaxonomyFilter(tax, tax_info.term)
+            ctx.setTaxonomyFilter(tax_info.term)
 
         rp = render_page(ctx)
 

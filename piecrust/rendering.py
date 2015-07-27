@@ -6,8 +6,7 @@ from werkzeug.utils import cached_property
 from piecrust.data.builder import (
         DataBuildingContext, build_page_data, build_layout_data)
 from piecrust.data.filters import (
-        PaginationFilter, HasFilterClause, IsFilterClause, AndBooleanClause,
-        page_value_accessor)
+        PaginationFilter, SettingFilterClause, page_value_accessor)
 from piecrust.sources.base import PageSource
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
 
@@ -167,22 +166,18 @@ class PageRenderingContext(object):
             pass_info = self.current_pass_info
             pass_info.used_source_names.add(source.name)
 
-    def setTaxonomyFilter(self, taxonomy, term_value):
-        is_combination = isinstance(term_value, tuple)
+    def setTaxonomyFilter(self, term_value):
+        if not self.page.route.is_taxonomy_route:
+            raise Exception("The page for this context is not tied to a "
+                            "taxonomy route: %s" % self.uri)
+
+        taxonomy = self.app.getTaxonomy(self.page.route.taxonomy_name)
         flt = PaginationFilter(value_accessor=page_value_accessor)
-        if taxonomy.is_multiple:
-            if is_combination:
-                abc = AndBooleanClause()
-                for t in term_value:
-                    abc.addClause(HasFilterClause(taxonomy.setting_name, t))
-                flt.addClause(abc)
-            else:
-                flt.addClause(
-                        HasFilterClause(taxonomy.setting_name, term_value))
-        else:
-            flt.addClause(IsFilterClause(taxonomy.setting_name, term_value))
+        flt.addClause(HasTaxonomyTermsFilterClause(
+                taxonomy, term_value, self.page.route.slugifyTaxonomyTerm))
         self.pagination_filter = flt
 
+        is_combination = isinstance(term_value, tuple)
         self.custom_data = {
                 taxonomy.term_name: term_value,
                 'is_multiple_%s' % taxonomy.term_name: is_combination}
@@ -190,6 +185,44 @@ class PageRenderingContext(object):
     def _raiseIfNoCurrentPass(self):
         if self._current_pass == PASS_NONE:
             raise Exception("No rendering pass is currently active.")
+
+
+class HasTaxonomyTermsFilterClause(SettingFilterClause):
+    def __init__(self, taxonomy, value, slugifier):
+        super(HasTaxonomyTermsFilterClause, self).__init__(
+                taxonomy.setting_name, value)
+        self._taxonomy = taxonomy
+        self._slugifier = slugifier
+        self._is_combination = isinstance(self.value, tuple)
+
+    def pageMatches(self, fil, page):
+        if self._taxonomy.is_multiple:
+            # Multiple taxonomy, i.e. it supports multiple terms, like tags.
+            page_values = fil.value_accessor(page, self.name)
+            if page_values is None or not isinstance(page_values, list):
+                return False
+
+            if self._slugifier is not None:
+                page_set = set(map(self._slugifier, page_values))
+            else:
+                page_set = set(page_values)
+
+            if self._is_combination:
+                # Multiple taxonomy, and multiple terms to match. Check that
+                # the ones to match are all in the page's terms.
+                value_set = set(self.value)
+                return value_set.issubset(page_set)
+            else:
+                # Multiple taxonomy, one term to match.
+                return self.value in page_set
+
+        # Single taxonomy. Just compare the values.
+        page_value = fil.value_accessor(page, self.name)
+        if page_value is None:
+            return False
+        if self._slugifier is not None:
+            page_value = self._slugifier(page_value)
+        return page_value == self.value
 
 
 def render_page(ctx):
