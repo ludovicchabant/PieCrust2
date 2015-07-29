@@ -15,6 +15,7 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import get_lexer_by_name, guess_lexer
 from piecrust.data.paginator import Paginator
+from piecrust.environment import AbortedSourceUseError
 from piecrust.rendering import format_text
 from piecrust.routing import CompositeRouteFunction
 from piecrust.templating.base import (TemplateEngine, TemplateNotFoundError,
@@ -53,6 +54,8 @@ class JinjaTemplateEngine(TemplateEngine):
             return tpl.render(data)
         except TemplateSyntaxError as tse:
             raise self._getTemplatingError(tse)
+        except AbortedSourceUseError:
+            raise
         except Exception as ex:
             msg = "Error rendering Jinja markup"
             rel_path = os.path.relpath(path, self.app.root_dir)
@@ -80,6 +83,8 @@ class JinjaTemplateEngine(TemplateEngine):
             return tpl.render(data)
         except TemplateSyntaxError as tse:
             raise self._getTemplatingError(tse)
+        except AbortedSourceUseError:
+            raise
         except Exception as ex:
             msg = "Error rendering Jinja markup"
             rel_path = os.path.relpath(rendered_path, self.app.root_dir)
