@@ -167,8 +167,8 @@ class Server(object):
             if app.debug:
                 logger.exception(ex)
                 raise
-            msg = str(ex)
-            logger.error(msg)
+            logger.error(str(ex))
+            msg = "There was an error trying to serve: %s" % request.path
             raise InternalServerError(msg) from ex
 
     def _try_special_request(self, environ, request):
@@ -312,8 +312,8 @@ class Server(object):
                     rp_content = gzip_buffer.getvalue()
                     response.content_encoding = 'gzip'
             except Exception:
-                logger.exception("Error compressing response, "
-                                 "falling back to uncompressed.")
+                logger.error("Error compressing response, "
+                             "falling back to uncompressed.")
         response.set_data(rp_content)
 
         return response
