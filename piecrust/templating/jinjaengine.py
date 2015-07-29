@@ -205,6 +205,7 @@ class PieCrustEnvironment(Environment):
 
         # Now add globals and filters.
         self.globals.update({
+                'now': get_now_date(),
                 'fail': raise_exception,
                 'highlight_css': get_highlight_css})
 
@@ -317,6 +318,10 @@ def get_email_date(value, localtime=False):
     return email.utils.formatdate(value, localtime=localtime)
 
 
+def get_now_date():
+    return time.time()
+
+
 def get_date(value, fmt):
     if value == 'now':
         value = time.time()
@@ -328,12 +333,13 @@ def get_date(value, fmt):
         else:
             suggest_message = ("We can't suggest a proper date format "
                                "for you right now, though.")
-        raise Exception("PieCrust 1 date formats won't work in PieCrust 2. "
+        raise Exception("Got incorrect date format: '%s\n"
+                        "PieCrust 1 date formats won't work in PieCrust 2. "
                         "%s\n"
                         "Please check the `strftime` formatting page here: "
                         "https://docs.python.org/3/library/datetime.html"
                         "#strftime-and-strptime-behavior" %
-                        suggest_message)
+                        (fmt, suggest_message))
     return time.strftime(fmt, time.localtime(value))
 
 
