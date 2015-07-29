@@ -24,7 +24,7 @@ if sys.platform == 'darwin':
 
     def _glob(pathname):
         pathname = _to_osx_fs(pathname)
-        matches = _glob.glob(pathname)
+        matches = _system_glob.glob(pathname)
         return list(map(_from_osx_fs, matches))
 
     def _from_osx_fs(s):
@@ -32,6 +32,8 @@ if sys.platform == 'darwin':
 
     def _to_osx_fs(s):
         return unicodedata.ucd_3_2_0.normalize('NFD', s)
+
+    global walk, listdir, glob
 
     walk = _walk
     listdir = _listdir
