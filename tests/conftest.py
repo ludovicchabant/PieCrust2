@@ -46,7 +46,7 @@ def pytest_collect_file(parent, path):
 
 class YamlTestFileBase(pytest.File):
     def collect(self):
-        spec = yaml.load_all(self.fspath.open())
+        spec = yaml.load_all(self.fspath.open(encoding='utf8'))
         for i, item in enumerate(spec):
             name = '%s_%d' % (self.fspath.basename, i)
             if 'test_name' in item:
