@@ -110,7 +110,6 @@ class LinkedPageData(PaginationData):
     def parent(self):
         if self._child_linker is not None:
             return self._child_linker.parent
-        print("No parent for ", self.url, self.title)
         return None
 
     @property
