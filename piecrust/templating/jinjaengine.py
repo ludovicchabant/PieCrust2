@@ -53,14 +53,20 @@ class JinjaTemplateEngine(TemplateEngine):
             return tpl.render(data)
         except TemplateSyntaxError as tse:
             raise self._getTemplatingError(tse)
+        except Exception as ex:
+            msg = "Error rendering Jinja markup"
+            rel_path = os.path.relpath(path, self.app.root_dir)
+            raise TemplatingError(msg, rel_path) from ex
 
     def renderFile(self, paths, data):
         self._ensureLoaded()
         tpl = None
         logger.debug("Looking for template: %s" % paths)
+        rendered_path = None
         for p in paths:
             try:
                 tpl = self.env.get_template(p)
+                rendered_path = p
                 break
             except TemplateSyntaxError as tse:
                 raise self._getTemplatingError(tse)
@@ -74,6 +80,10 @@ class JinjaTemplateEngine(TemplateEngine):
             return tpl.render(data)
         except TemplateSyntaxError as tse:
             raise self._getTemplatingError(tse)
+        except Exception as ex:
+            msg = "Error rendering Jinja markup"
+            rel_path = os.path.relpath(rendered_path, self.app.root_dir)
+            raise TemplatingError(msg, rel_path) from ex
 
     def _getTemplatingError(self, tse, filename=None):
         filename = tse.filename or filename
