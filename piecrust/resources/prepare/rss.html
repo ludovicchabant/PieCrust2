@@ -23,8 +23,8 @@ content_type: xml
         {% else %}
         <description>Latest news from {{site.title}}</description>
         {% endif %}
-        <lastBuildDate>{{now|date("r")}}</lastBuildDate>
-        <pubDate>{{now|date("r")}}</pubDate>
+        <lastBuildDate>{{now|atomdate}}</lastBuildDate>
+        <pubDate>{{now|atomdate}}</pubDate>
         <generator>PieCrust {{piecrust.version}}</generator>
         {% if page.language %}<language>{{page.language}}</language>{% endif %}
         {% for c in page.categories %}
@@ -46,7 +46,7 @@ content_type: xml
             {% for t in post.tags %}
             <category>{{t}}</category>
             {% endfor %}
-            <pubDate>{{post.timestamp|date("r")}}</pubDate>
+            <pubDate>{{post.timestamp|atomdate}}</pubDate>
             <guid>{{post.url}}</guid>
             <description>{{post.content}}
             {% if post.has_more and page.read_more_text %}
