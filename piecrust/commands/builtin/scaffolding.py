@@ -141,6 +141,8 @@ class UserDefinedPrepareTemplatesCommandExtension(ChefCommandExtension):
         return os.path.join(app.root_dir, 'scaffold/pages')
 
     def supports(self, app):
+        if not app.root_dir:
+            return False
         return os.path.isdir(self._getTemplatesDir(app))
 
     def getTemplateNames(self, app):
