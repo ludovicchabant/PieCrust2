@@ -150,9 +150,8 @@ class PieCrustConfiguration(Configuration):
         if not isinstance(sitec['auto_formats'], dict):
             raise ConfigurationError("The 'site/auto_formats' setting must be "
                                      "a dictionary.")
-        html_auto_format = sitec['auto_formats']
-        if not html_auto_format:
-            sitec['auto_formats']['html'] = sitec['default_format']
+        # Check that `.html` is in there.
+        sitec['auto_formats'].setdefault('html', sitec['default_format'])
         cachec['auto_formats_re'] = r"\.(%s)$" % (
                 '|'.join(
                         [re.escape(i) for i in
