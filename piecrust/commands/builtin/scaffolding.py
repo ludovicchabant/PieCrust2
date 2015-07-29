@@ -53,7 +53,8 @@ class PrepareCommand(ExtendableChefCommand):
             src.setupPrepareParser(p, app)
             p.add_argument('-t', '--template', default='default',
                            help="The template to use, which will change the "
-                                "generated text and header.")
+                                "generated text and header. Run `chef help "
+                                "scaffolding` for more information.")
             p.set_defaults(source=src)
 
     def run(self, ctx):
@@ -192,6 +193,9 @@ class DefaultPrepareTemplatesHelpTopic(ChefCommandExtension):
                 "\n\n" +
                 textwrap.fill("The following templates are available:") +
                 "\n\n" +
-                help_list)
+                help_list +
+                "\n" +
+                "You can add user-defined templates by creating pages in a "
+                "`scaffold/pages` sub-directory in your website.")
         return help_txt
 
