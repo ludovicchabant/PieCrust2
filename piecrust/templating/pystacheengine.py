@@ -39,7 +39,7 @@ class PystacheTemplateEngine(TemplateEngine):
             try:
                 tpl = self.renderer.load_template(name)
             except Exception as ex:
-                print(p, ex)
+                logger.debug("Mustache error: %s" % ex)
                 pass
 
         if tpl is None:
