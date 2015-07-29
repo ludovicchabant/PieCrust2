@@ -1,9 +1,9 @@
 import os
 import os.path
 import re
-import glob
 import logging
 import datetime
+from piecrust import osutil
 from piecrust.sources.base import (
         PageSource, InvalidFileSystemEndpointError, PageFactory,
         MODE_CREATING, MODE_PARSING)
@@ -85,7 +85,7 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         if needs_recapture:
             if mode == MODE_CREATING:
                 raise ValueError("Not enough information to find a post path.")
-            possible_paths = glob.glob(path)
+            possible_paths = osutil.glob(path)
             if len(possible_paths) != 1:
                 return None
             path = possible_paths[0]
@@ -183,7 +183,7 @@ class FlatPostsSource(PostsSource):
             return
         logger.debug("Scanning for posts (flat) in: %s" % self.fs_endpoint_path)
         pattern = re.compile(r'(\d{4})-(\d{2})-(\d{2})_(.*)\.(\w+)$')
-        _, __, filenames = next(os.walk(self.fs_endpoint_path))
+        _, __, filenames = next(osutil.walk(self.fs_endpoint_path))
         for f in filenames:
             match = pattern.match(f)
             if match is None:
@@ -212,7 +212,7 @@ class ShallowPostsSource(PostsSource):
         logger.debug("Scanning for posts (shallow) in: %s" % self.fs_endpoint_path)
         year_pattern = re.compile(r'(\d{4})$')
         file_pattern = re.compile(r'(\d{2})-(\d{2})_(.*)\.(\w+)$')
-        _, year_dirs, __ = next(os.walk(self.fs_endpoint_path))
+        _, year_dirs, __ = next(osutil.walk(self.fs_endpoint_path))
         year_dirs = [d for d in year_dirs if year_pattern.match(d)]
         for yd in year_dirs:
             if year_pattern.match(yd) is None:
@@ -222,7 +222,7 @@ class ShallowPostsSource(PostsSource):
             year = int(yd)
             year_dir = os.path.join(self.fs_endpoint_path, yd)
 
-            _, __, filenames = next(os.walk(year_dir))
+            _, __, filenames = next(osutil.walk(year_dir))
             for f in filenames:
                 match = file_pattern.match(f)
                 if match is None:
@@ -252,19 +252,19 @@ class HierarchyPostsSource(PostsSource):
         year_pattern = re.compile(r'(\d{4})$')
         month_pattern = re.compile(r'(\d{2})$')
         file_pattern = re.compile(r'(\d{2})_(.*)\.(\w+)$')
-        _, year_dirs, __ = next(os.walk(self.fs_endpoint_path))
+        _, year_dirs, __ = next(osutil.walk(self.fs_endpoint_path))
         year_dirs = [d for d in year_dirs if year_pattern.match(d)]
         for yd in year_dirs:
             year = int(yd)
             year_dir = os.path.join(self.fs_endpoint_path, yd)
 
-            _, month_dirs, __ = next(os.walk(year_dir))
+            _, month_dirs, __ = next(osutil.walk(year_dir))
             month_dirs = [d for d in month_dirs if month_pattern.match(d)]
             for md in month_dirs:
                 month = int(md)
                 month_dir = os.path.join(year_dir, md)
 
-                _, __, filenames = next(os.walk(month_dir))
+                _, __, filenames = next(osutil.walk(month_dir))
                 for f in filenames:
                     match = file_pattern.match(f)
                     if match is None:

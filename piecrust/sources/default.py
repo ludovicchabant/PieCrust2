@@ -1,6 +1,6 @@
-import os
 import os.path
 import logging
+from piecrust import osutil
 from piecrust.sources.base import (
         PageFactory, PageSource, InvalidFileSystemEndpointError,
         MODE_CREATING)
@@ -41,13 +41,14 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
             raise InvalidFileSystemEndpointError(self.name,
                                                  self.fs_endpoint_path)
 
-        for dirpath, dirnames, filenames in os.walk(self.fs_endpoint_path):
+        for dirpath, dirnames, filenames in osutil.walk(self.fs_endpoint_path):
             rel_dirpath = os.path.relpath(dirpath, self.fs_endpoint_path)
             dirnames[:] = list(filter(filter_page_dirname, dirnames))
             for f in sorted(filter(filter_page_filename, filenames)):
                 fac_path = f
                 if rel_dirpath != '.':
                     fac_path = os.path.join(rel_dirpath, f)
+
                 slug = self._makeSlug(fac_path)
                 metadata = {'slug': slug}
                 fac_path = fac_path.replace('\\', '/')
@@ -95,7 +96,7 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
     def listPath(self, rel_path):
         rel_path = rel_path.lstrip('\\/')
         path = os.path.join(self.fs_endpoint_path, rel_path)
-        names = sorted(os.listdir(path))
+        names = sorted(osutil.listdir(path))
         items = []
         for name in names:
             if os.path.isdir(os.path.join(path, name)):

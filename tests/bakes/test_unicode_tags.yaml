@@ -1,0 +1,44 @@
+---
+in:
+    posts/2015-03-01_post01.md: |
+      ---
+      title: Post 01
+      tags: [étrange]
+      ---
+    posts/2015-03-02_post02.md: |
+      ---
+      title: Post 02
+      tags: [étrange, sévère]
+      ---
+    pages/_tag.md: |
+      Pages in {{pctagurl(tag)}}
+      {% for p in pagination.posts -%}
+      {{p.title}}
+      {% endfor %}
+    pages/_index.md: ''
+outfiles:
+    tag/étrange.html: |
+      Pages in /tag/%C3%A9trange.html
+      Post 02
+      Post 01
+    tag/sévère.html: |
+      Pages in /tag/s%C3%A9v%C3%A8re.html
+      Post 02
+---
+in:
+    posts/2015-03-01_post01.md: |
+      ---
+      title: Post 01
+      tags: [Это тэг]
+      ---
+    pages/_tag.md: |
+      Pages in {{pctagurl(tag)}}
+      {% for p in pagination.posts -%}
+      {{p.title}}
+      {% endfor %}
+    pages/_index.md: ''
+outfiles:
+    tag/это тэг.html: |
+      Pages in /tag/%D1%8D%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html
+      Post 01
+

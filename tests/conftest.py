@@ -7,6 +7,7 @@ import logging
 import pytest
 import yaml
 import colorama
+from werkzeug.exceptions import HTTPException
 from piecrust.app import apply_variant_and_values
 from piecrust.configuration import merge_dicts
 from .mockutil import mock_fs, mock_fs_scope
@@ -323,6 +324,19 @@ class ServeTestItem(YamlTestItemBase):
     def reportinfo(self):
         return self.fspath, 0, "serve: %s" % self.name
 
+    def repr_failure(self, excinfo):
+        from piecrust.serving.server import MultipleNotFound
+        if isinstance(excinfo.value, MultipleNotFound):
+            return '\n'.join(
+                    ["HTTP error 404 returned:",
+                     excinfo.value.description] +
+                    [e.description for e in excinfo.value._nfes])
+        elif isinstance(excinfo.value, HTTPException):
+            return '\n'.join(
+                    ["HTTP error %s returned:" % excinfo.value.code,
+                     excinfo.value.description])
+        return super(ServeTestItem, self).repr_failure(excinfo)
+
 
 class ServeTestFile(YamlTestFileBase):
     __item_class__ = ServeTestItem
@@ -372,11 +386,15 @@ def _compare_dicts(left, right, ctx):
         extra_left = set(left.keys()) - set(right.keys())
         if extra_left:
             return (["Left contains more items: "] +
-                    ['- %s/%s' % (ctx.path, k) for k in extra_left])
+                    ['- %s/%s' % (ctx.path, k) for k in extra_left] +
+                    ['Left:', ', '.join(left.keys())] +
+                    ['Right:', ', '.join(right.keys())])
         extra_right = set(right.keys()) - set(left.keys())
         if extra_right:
             return (["Right contains more items: "] +
-                    ['- %s/%s' % (ctx.path, k) for k in extra_right])
+                    ['- %s/%s' % (ctx.path, k) for k in extra_right] +
+                    ['Left:', ', '.join(left.keys())] +
+                    ['Right:', ', '.join(right.keys())])
         return ["Unknown difference"]
 
     for key in left.keys():

@@ -166,15 +166,19 @@ class PageRenderingContext(object):
             pass_info = self.current_pass_info
             pass_info.used_source_names.add(source.name)
 
-    def setTaxonomyFilter(self, term_value):
+    def setTaxonomyFilter(self, term_value, *, needs_slugifier=False):
         if not self.page.route.is_taxonomy_route:
             raise Exception("The page for this context is not tied to a "
                             "taxonomy route: %s" % self.uri)
 
+        slugifier = None
+        if needs_slugifier:
+            slugifier = self.page.route.slugifyTaxonomyTerm
         taxonomy = self.app.getTaxonomy(self.page.route.taxonomy_name)
+
         flt = PaginationFilter(value_accessor=page_value_accessor)
         flt.addClause(HasTaxonomyTermsFilterClause(
-                taxonomy, term_value, self.page.route.slugifyTaxonomyTerm))
+                taxonomy, term_value, slugifier))
         self.pagination_filter = flt
 
         is_combination = isinstance(term_value, tuple)

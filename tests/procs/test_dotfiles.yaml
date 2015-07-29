@@ -1,0 +1,8 @@
+---
+in:
+    assets/something.txt: Foo bar
+    assets/.htaccess: "# Apache config"
+outfiles:
+    something.txt: Foo bar
+    .htaccess: "# Apache config"
+

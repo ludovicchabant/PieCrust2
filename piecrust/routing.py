@@ -2,6 +2,8 @@ import re
 import os.path
 import copy
 import logging
+import urllib.parse
+import unidecode
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +34,34 @@ class IRouteMetadataProvider(object):
         raise NotImplementedError()
 
 
+SLUGIFY_ENCODE = 1
+SLUGIFY_TRANSLITERATE = 2
+SLUGIFY_LOWERCASE = 4
+SLUGIFY_DOT_TO_DASH = 8
+
+
+re_first_dot_to_dash = re.compile(r'^\.+')
+re_dot_to_dash = re.compile(r'\.+')
+
+
+def _parse_slugify_mode(value):
+    mapping = {
+            'encode': SLUGIFY_ENCODE,
+            'transliterate': SLUGIFY_TRANSLITERATE,
+            'lowercase': SLUGIFY_LOWERCASE,
+            'dot_to_dash': SLUGIFY_DOT_TO_DASH}
+    mode = 0
+    for v in value.split(','):
+        f = mapping.get(v.strip())
+        if f is None:
+            if v == 'iconv':
+                raise Exception("'iconv' is not supported as a slugify mode "
+                                "in PieCrust2. Use 'transliterate'.")
+            raise Exception("Unknown slugify flag: %s" % v)
+        mode |= f
+    return mode
+
+
 class Route(object):
     """ Information about a route for a PieCrust application.
         Each route defines the "shape" of an URL and how it maps to
@@ -43,6 +73,8 @@ class Route(object):
         self.source_name = cfg['source']
         self.taxonomy_name = cfg.get('taxonomy')
         self.taxonomy_term_sep = cfg.get('term_separator', '/')
+        self.slugify_mode = _parse_slugify_mode(
+                cfg.get('slugify_mode', 'encode,lowercase'))
 
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
@@ -185,7 +217,7 @@ class Route(object):
                 else:
                     uri = base_uri + ext
 
-        uri = self.uri_root + uri
+        uri = urllib.parse.quote(self.uri_root + uri)
 
         if self.show_debug_info:
             uri += '?!debug'
@@ -207,9 +239,19 @@ class Route(object):
         return all_values
 
     def slugifyTaxonomyTerm(self, term):
-        #TODO: add options for transliterating and combining terms.
         if isinstance(term, tuple):
-            return '/'.join(term)
+            return self.taxonomy_term_sep.join(
+                    map(self._slugifyOne, term))
+        return self._slugifyOne(term)
+
+    def _slugifyOne(self, term):
+        if self.slugify_mode & SLUGIFY_TRANSLITERATE:
+            term = unidecode.unidecode(term)
+        if self.slugify_mode & SLUGIFY_LOWERCASE:
+            term = term.lower()
+        if self.slugify_mode & SLUGIFY_DOT_TO_DASH:
+            term = re_first_dot_to_dash.sub('', term)
+            term = re_dot_to_dash.sub('-', term)
         return term
 
     def _uriFormatRepl(self, m):

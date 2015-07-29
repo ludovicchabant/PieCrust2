@@ -1,0 +1,21 @@
+---
+in:
+    posts/2010-01-01_déjà-des-accents.md: 'POST URL: {{page.url}}'
+    pages/présentation.md: 'PAGE URL: {{page.url}}'
+    pages/_index.md: ''
+out:
+    '2010':
+        '01':
+            '01':
+                déjà-des-accents.html: 'POST URL: /2010/01/01/d%C3%A9j%C3%A0-des-accents.html'
+    présentation.html: 'PAGE URL: /pr%C3%A9sentation.html'
+    index.html: ''
+---
+in:
+    pages/special/Это тэг.md: 'PAGE URL: {{page.url}}'
+    pages/_index.md: ''
+out:
+    special:
+        Это тэг.html: 'PAGE URL: /special/%D0%AD%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html'
+    index.html: ''
+

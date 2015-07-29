@@ -2,6 +2,7 @@ import os
 import os.path
 import shutil
 import random
+import unicodedata
 from .basefs import TestFileSystemBase
 
 
@@ -37,6 +38,7 @@ class TempDirFileSystem(TestFileSystemBase):
             return fp.read()
 
     def _getStructureRecursive(self, target, parent, cur):
+        cur = unicodedata.normalize('NFC', cur)
         full_cur = os.path.join(parent, cur)
         if os.path.isdir(full_cur):
             e = {}

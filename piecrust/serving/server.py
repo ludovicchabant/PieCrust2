@@ -345,7 +345,7 @@ class Server(object):
                                           force_render=True)
         if taxonomy_info is not None:
             _, tax_terms = taxonomy_info
-            render_ctx.setTaxonomyFilter(tax_terms)
+            render_ctx.setTaxonomyFilter(tax_terms, needs_slugifier=True)
 
         # See if this page is known to use sources. If that's the case,
         # just don't use cached rendered segments for that page (but still
