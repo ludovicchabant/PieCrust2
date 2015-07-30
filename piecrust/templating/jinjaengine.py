@@ -311,10 +311,14 @@ def title_case(value):
 
 
 def get_xml_date(value):
+    if value == 'now':
+        value = time.time()
     return strict_rfc3339.timestamp_to_rfc3339_localoffset(int(value))
 
 
 def get_email_date(value, localtime=False):
+    if value == 'now':
+        value = time.time()
     return email.utils.formatdate(value, localtime=localtime)
 
 
