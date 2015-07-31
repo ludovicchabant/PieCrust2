@@ -57,6 +57,7 @@ class FileWalkingImporter(Importer):
             for fn in filenames:
                 full_fn = os.path.join(dirpath, fn)
                 rel_fn = os.path.join(rel_dirpath, fn)
+                logger.debug("Importing file: %s" % rel_fn)
                 self._importFile(full_fn, rel_fn, *args, **kwargs)
 
 
