@@ -23,18 +23,27 @@ class PieCrust1Importer(FileWalkingImporter):
                 help="Upgrade the current website in place.")
 
     def importWebsite(self, app, args):
-        if app.root_dir and args.upgrade:
+        if args.root_dir and args.upgrade:
             raise Exception("Can't specifiy both a root directory and `--upgrade`.")
-        if app.root_dir is None and not args.upgrade:
+        if args.root_dir is None and not args.upgrade:
             raise Exception("Need to specify either a root directory or `--upgrade`.")
 
-        root_dir = os.getcwd() if args.upgrade else app.root_dir
-        logger.debug("Importing PieCrust 1 site from: %s" % root_dir)
+        if app.root_dir is None and not args.upgrade:
+            raise Exception("Need to run the import from inside a PieCrust 2 "
+                            "website. Use `--upgrade` to upgrade from inside "
+                            "a PieCrust 1 website.")
+        if app.root_dir is not None and args.upgrade:
+            raise Exception("Already in a PieCrust 2 website. Specify the "
+                            "PieCrust 1 website to import from.")
+
+        src_root_dir = os.getcwd() if args.upgrade else args.root_dir
+        out_root_dir = src_root_dir if args.upgrade else app.root_dir
+        logger.debug("Importing PieCrust 1 site from: %s" % src_root_dir)
         exclude = args.exclude or []
         exclude += ['_cache', '_counter']
-        self._startWalk(root_dir, exclude, root_dir, args.upgrade)
+        self._startWalk(src_root_dir, exclude, out_root_dir, args.upgrade)
         if args.upgrade:
-            self._cleanEmptyDirectories(root_dir)
+            self._cleanEmptyDirectories(src_root_dir)
         logger.info("The PieCrust website was successfully imported.")
 
     def _importFile(self, full_fn, rel_fn, out_root_dir, is_move):
