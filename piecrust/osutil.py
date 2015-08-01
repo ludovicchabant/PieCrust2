@@ -13,8 +13,8 @@ if sys.platform == 'darwin':
     def _walk(top, **kwargs):
         for dirpath, dirnames, filenames in os.walk(top, **kwargs):
             dirpath = _from_osx_fs(dirpath)
-            dirnames = list(map(_from_osx_fs, dirnames))
-            filenames = list(map(_from_osx_fs, filenames))
+            dirnames[:] = list(map(_from_osx_fs, dirnames))
+            filenames[:] = list(map(_from_osx_fs, filenames))
             yield dirpath, dirnames, filenames
 
     def _listdir(path='.'):
