@@ -32,4 +32,12 @@ in:
 outfiles:
     foo.html: |
         This page is /foo.html
+---
+config:
+    site:
+        author: Amélie Poulain
+in:
+    pages/foo.md: 'Site by {{site.author}}'
+outfiles:
+    foo.html: 'Site by Amélie Poulain'
 
