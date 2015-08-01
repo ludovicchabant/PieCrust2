@@ -119,7 +119,8 @@ class PieCrust1Importer(FileWalkingImporter):
                 config['baker']['force'] = config['baker']['force_patterns']
                 del config['baker']['force_patterns']
 
-        content = yaml.dump(config, default_flow_style=False)
+        content = yaml.dump(config, default_flow_style=False,
+                            allow_unicode=True)
         return content
 
     def convertPage(self, content):
