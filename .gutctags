@@ -1,0 +1,11 @@
+--exclude=build
+--exclude=dist
+--exclude=docs/_cache
+--exclude=docs/_counter
+--exclude=docs/bower_components
+--exclude=docs/node_modules
+--exclude=docs/raw
+--exclude=*.egg-info
+--exclude=__pycache__
+--exclude=__tmpfs__
+
