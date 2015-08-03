@@ -38,9 +38,10 @@ class LazyPageConfigData(collections.abc.Mapping):
             raise KeyError("No such key: %s" % name) from ex
 
     def __iter__(self):
-        keys = list(self._page.config.keys())
-        keys += list(self._values.keys())
-        keys += list(self._loaders.keys())
+        keys = set(self._page.config.keys())
+        keys |= set(self._values.keys())
+        keys |= set(self._loaders.keys())
+        keys.discard('*')
         return iter(keys)
 
     def __len__(self):
@@ -136,6 +137,7 @@ class LazyPageConfigData(collections.abc.Mapping):
         keys = set(self._values.keys())
         if self._loaders:
             keys |= set(self._loaders.keys())
+            keys.discard('*')
         return list(keys)
 
 
