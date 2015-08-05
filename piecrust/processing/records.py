@@ -19,6 +19,7 @@ FLAG_NONE = 0
 FLAG_PREPARED = 2**0
 FLAG_PROCESSED = 2**1
 FLAG_BYPASSED_STRUCTURED_PROCESSING = 2**3
+FLAG_COLLAPSED_FROM_LAST_RUN = 2**4
 
 
 def _get_transition_key(path):
@@ -46,6 +47,10 @@ class ProcessorPipelineRecordEntry(object):
     @property
     def was_processed_successfully(self):
         return self.was_processed and not self.errors
+
+    @property
+    def was_collapsed_from_last_run(self):
+        return self.flags & FLAG_COLLAPSED_FROM_LAST_RUN
 
 
 class TransitionalProcessorPipelineRecord(TransitionalRecord):
@@ -75,7 +80,7 @@ class TransitionalProcessorPipelineRecord(TransitionalRecord):
             if prev and cur and not cur.was_processed:
                 # This asset wasn't processed, so the information from
                 # last time is still valid.
-                cur.flags = prev.flags
+                cur.flags = prev.flags | FLAG_COLLAPSED_FROM_LAST_RUN
                 cur.rel_outputs = list(prev.rel_outputs)
                 cur.errors = list(prev.errors)
 
