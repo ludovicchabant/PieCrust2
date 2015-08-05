@@ -122,7 +122,7 @@ class ProcessorPipeline(object):
         def _handler(res):
             entry = record.getCurrentEntry(res.path)
             assert entry is not None
-            entry.flags |= res.flags
+            entry.flags = res.flags
             entry.proc_tree = res.proc_tree
             entry.rel_outputs = res.rel_outputs
             if entry.flags & FLAG_PROCESSED:
