@@ -110,13 +110,19 @@ class Server(object):
 
     def _run_request(self, environ, start_response):
         try:
-            return self._try_run_request(environ, start_response)
+            response = self._try_run_request(environ)
+            if isinstance(response, tuple):
+                response, close_func = response
+                return ClosingIterator(response(environ, start_response),
+                                       [close_func])
+            else:
+                return response(environ, start_response)
         except Exception as ex:
             if self.debug:
                 raise
             return self._handle_error(ex, environ, start_response)
 
-    def _try_run_request(self, environ, start_response):
+    def _try_run_request(self, environ):
         request = Request(environ)
 
         # We don't support anything else than GET requests since we're
@@ -129,12 +135,12 @@ class Server(object):
         # Handle special requests right away.
         response = self._try_special_request(environ, request)
         if response is not None:
-            return response(environ, start_response)
+            return response
 
         # Also handle requests to a pipeline-built asset right away.
         response = self._try_serve_asset(environ, request)
         if response is not None:
-            return response(environ, start_response)
+            return response
 
         # Create the app for this request.
         app = PieCrust(root_dir=self.root_dir, debug=self.debug)
@@ -153,12 +159,12 @@ class Server(object):
         # Let's see if it can be a page asset.
         response = self._try_serve_page_asset(app, environ, request)
         if response is not None:
-            return response(environ, start_response)
+            return response
 
         # Nope. Let's see if it's an actual page.
         try:
             response = self._try_serve_page(app, environ, request)
-            return response(environ, start_response)
+            return response
         except (RouteNotFoundError, SourceNotFoundError) as ex:
             raise NotFound() from ex
         except HTTPException:
@@ -187,19 +193,24 @@ class Server(object):
         debug_mount = '/__piecrust_debug/'
         if request.path.startswith(debug_mount):
             rel_req_path = request.path[len(debug_mount):]
+            if rel_req_path == 'werkzeug_shutdown':
+                shutdown_func = environ.get('werkzeug.server.shutdown')
+                if shutdown_func is None:
+                    raise RuntimeError('Not running with the Werkzeug Server')
+                shutdown_func()
+                return Response("Server shutting down...")
+
             if rel_req_path == 'pipeline_status':
                 from piecrust.serving.procloop import (
-                        PipelineStatusServerSideEventProducer)
-                provider = PipelineStatusServerSideEventProducer(
-                        self._proc_loop.status_queue)
-                it = ClosingIterator(provider.run(), [provider.close])
-                response = Response(it)
+                        PipelineStatusServerSentEventProducer)
+                provider = PipelineStatusServerSentEventProducer(
+                        self._proc_loop)
+                it = provider.run()
+                response = Response(it, mimetype='text/event-stream')
                 response.headers['Cache-Control'] = 'no-cache'
-                if 'text/event-stream' in request.accept_mimetypes:
-                    response.mimetype = 'text/event-stream'
-                response.direct_passthrough = True
-                response.implicit_sequence_conversion = False
-                return response
+                response.headers['Last-Event-ID'] = \
+                    self._proc_loop.last_status_id
+                return response, provider.close
 
         return None
 

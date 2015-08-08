@@ -1,0 +1,32 @@
+@keyframes slideNotification {
+    0% { opacity: 1; }
+    100% { opacity: 0; right: -11em; }
+}
+
+.piecrust-debug-notifications {
+    font-size: 1rem;
+}
+
+.piecrust-debug-notification {
+    padding: 0.5em;
+    position: fixed;
+    bottom: 0.5em;
+    right: 0.5em;
+    width: 30%;
+    min-width: 10em;
+    border-radius: 5px;
+    animation-name: slideNotification;
+    animation-delay: 1s;
+    animation-duration: 1s;
+}
+
+.piecrust-debug-notification-success {
+    background-color: #4BB025;
+    border: 2px solid #3AA014;
+}
+
+.piecrust-debug-notification-error {
+    background-color: #920C0C;
+    border: 2px solid #810B0B;
+}
+

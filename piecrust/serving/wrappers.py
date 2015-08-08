@@ -1,6 +1,11 @@
 import os
+import logging
+import threading
+import urllib.request
 from piecrust.serving.server import Server
-from piecrust.serving.procloop import _sse_abort
+
+
+logger = logging.getLogger(__name__)
 
 
 def run_werkzeug_server(root_dir, host, port,
@@ -22,13 +27,39 @@ def run_werkzeug_server(root_dir, host, port,
                                debug=debug_piecrust,
                                sub_cache_dir=sub_cache_dir,
                                run_sse_check=_run_sse_check)
-    try:
+
+    # We need to run Werkzeug in a background thread because we may have some
+    # SSE responses running. In theory we should be using a proper async
+    # server for this kind of stuff, but I'd rather avoid additional
+    # dependencies on stuff that's not necessarily super portable.
+    # Anyway we run the server in multi-threading mode, but the request
+    # threads are not set to `daemon` mode (and there's no way to set that
+    # flag without re-implementing `run_simple` apparently). So instead we
+    # run the server in a background thread so we keep the main thread to
+    # ourselves here, which means we can trap `KeyboardInterrupt`, and set
+    # a global flag that will kill all the long-running SSE threads and make
+    # this whole thing exit cleanly and properly (hopefully).
+    def _inner():
         run_simple(host, port, app,
                    threaded=True,
                    use_debugger=use_debugger,
                    use_reloader=use_reloader)
+
+    t = threading.Thread(name='WerkzeugServer', target=_inner)
+    t.start()
+    try:
+        while t.is_alive():
+            t.join(0.5)
+    except KeyboardInterrupt:
+        shutdown_url = 'http://%s:%s/__piecrust_debug/werkzeug_shutdown' % (
+                host, port)
+        logger.info("")
+        logger.info("Shutting down server...")
+        urllib.request.urlopen(shutdown_url)
     finally:
-        _sse_abort.set()
+        logger.debug("Terminating push notifications...")
+        from piecrust.serving import procloop
+        procloop.server_shutdown = True
 
 
 def run_gunicorn_server(root_dir,
