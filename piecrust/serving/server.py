@@ -401,6 +401,7 @@ class Server(object):
         response.last_modified = datetime.datetime.fromtimestamp(mtime)
         response.mimetype = self._mimetype_map.get(
                 ext.lstrip('.'), 'text/plain')
+        response.direct_passthrough = True
         return response
 
     def _handle_error(self, exception, environ, start_response):
