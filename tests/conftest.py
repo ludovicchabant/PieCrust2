@@ -286,7 +286,8 @@ class ServeTestItem(YamlTestItemBase):
             self.server = server
 
         def __call__(self, environ, start_response):
-            return self.server._try_run_request(environ, start_response)
+            response = self.server._try_run_request(environ)
+            return response(environ, start_response)
 
     def runtest(self):
         fs = self._prepareMockFs()

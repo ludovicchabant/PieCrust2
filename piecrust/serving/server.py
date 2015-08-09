@@ -1,25 +1,31 @@
 import io
 import os
-import re
 import gzip
 import time
 import os.path
 import hashlib
 import logging
-import datetime
 from werkzeug.exceptions import (
         NotFound, MethodNotAllowed, InternalServerError, HTTPException)
 from werkzeug.wrappers import Request, Response
-from werkzeug.wsgi import ClosingIterator, wrap_file
 from jinja2 import FileSystemLoader, Environment
 from piecrust import CACHE_DIR, RESOURCES_DIR
 from piecrust.app import PieCrust
 from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
+from piecrust.serving.util import content_type_map, make_wrapped_file_response
 from piecrust.sources.base import MODE_PARSING
 from piecrust.uriutil import split_sub_uri
 
 
 logger = logging.getLogger(__name__)
+
+
+class WsgiServer(object):
+    def __init__(self, root_dir, **kwargs):
+        self.server = Server(root_dir, **kwargs)
+
+    def __call__(self, environ, start_response):
+        return self.server._run_request(environ, start_response)
 
 
 class ServeRecord(object):
@@ -45,14 +51,6 @@ class ServeRecordPageEntry(object):
         self.used_source_names = set()
 
 
-class WsgiServerWrapper(object):
-    def __init__(self, server):
-        self.server = server
-
-    def __call__(self, environ, start_response):
-        return self.server._run_request(environ, start_response)
-
-
 class MultipleNotFound(HTTPException):
     code = 404
 
@@ -73,50 +71,21 @@ class MultipleNotFound(HTTPException):
 class Server(object):
     def __init__(self, root_dir,
                  debug=False, sub_cache_dir=None, enable_debug_info=True,
-                 static_preview=True, run_sse_check=None):
+                 static_preview=True):
         self.root_dir = root_dir
         self.debug = debug
         self.sub_cache_dir = sub_cache_dir
         self.enable_debug_info = enable_debug_info
-        self.run_sse_check = run_sse_check
         self.static_preview = static_preview
         self._page_record = ServeRecord()
         self._out_dir = os.path.join(root_dir, CACHE_DIR, 'server')
-        self._proc_loop = None
-        self._mimetype_map = load_mimetype_map()
-
-    def getWsgiApp(self):
-        # Bake all the assets so we know what we have, and so we can serve
-        # them to the client. We need a temp app for this.
-        app = PieCrust(root_dir=self.root_dir, debug=self.debug)
-        if self.sub_cache_dir:
-            app._useSubCacheDir(self.sub_cache_dir)
-        self._out_dir = os.path.join(app.sub_cache_dir, 'server')
-
-        if not self.run_sse_check or self.run_sse_check():
-            # When using a server with code reloading, some implementations
-            # use process forking and we end up going here twice. We only want
-            # to start the pipeline loop in the inner process most of the
-            # time so we let the implementation tell us if this is OK.
-            from piecrust.processing.pipeline import ProcessorPipeline
-            from piecrust.serving.procloop import ProcessingLoop
-            pipeline = ProcessorPipeline(app, self._out_dir)
-            self._proc_loop = ProcessingLoop(pipeline)
-            self._proc_loop.start()
-
-        # Run the WSGI app.
-        wsgi_wrapper = WsgiServerWrapper(self)
-        return wsgi_wrapper
+        if sub_cache_dir:
+            self._out_dir = os.path.join(sub_cache_dir, 'server')
 
     def _run_request(self, environ, start_response):
         try:
             response = self._try_run_request(environ)
-            if isinstance(response, tuple):
-                response, close_func = response
-                return ClosingIterator(response(environ, start_response),
-                                       [close_func])
-            else:
-                return response(environ, start_response)
+            return response(environ, start_response)
         except Exception as ex:
             if self.debug:
                 raise
@@ -131,11 +100,6 @@ class Server(object):
             logger.error("Only GET requests are allowed, got %s" %
                          request.method)
             raise MethodNotAllowed()
-
-        # Handle special requests right away.
-        response = self._try_special_request(environ, request)
-        if response is not None:
-            return response
 
         # Also handle requests to a pipeline-built asset right away.
         response = self._try_serve_asset(environ, request)
@@ -177,43 +141,6 @@ class Server(object):
             msg = "There was an error trying to serve: %s" % request.path
             raise InternalServerError(msg) from ex
 
-    def _try_special_request(self, environ, request):
-        static_mount = '/__piecrust_static/'
-        if request.path.startswith(static_mount):
-            rel_req_path = request.path[len(static_mount):]
-            mount = os.path.join(RESOURCES_DIR, 'server')
-            full_path = os.path.join(mount, rel_req_path)
-            try:
-                response = self._make_wrapped_file_response(
-                        environ, request, full_path)
-                return response
-            except OSError:
-                pass
-
-        debug_mount = '/__piecrust_debug/'
-        if request.path.startswith(debug_mount):
-            rel_req_path = request.path[len(debug_mount):]
-            if rel_req_path == 'werkzeug_shutdown':
-                shutdown_func = environ.get('werkzeug.server.shutdown')
-                if shutdown_func is None:
-                    raise RuntimeError('Not running with the Werkzeug Server')
-                shutdown_func()
-                return Response("Server shutting down...")
-
-            if rel_req_path == 'pipeline_status':
-                from piecrust.serving.procloop import (
-                        PipelineStatusServerSentEventProducer)
-                provider = PipelineStatusServerSentEventProducer(
-                        self._proc_loop)
-                it = provider.run()
-                response = Response(it, mimetype='text/event-stream')
-                response.headers['Cache-Control'] = 'no-cache'
-                response.headers['Last-Event-ID'] = \
-                    self._proc_loop.last_status_id
-                return response, provider.close
-
-        return None
-
     def _try_serve_asset(self, environ, request):
         rel_req_path = request.path.lstrip('/').replace('/', os.sep)
         if request.path.startswith('/_cache/'):
@@ -224,8 +151,7 @@ class Server(object):
             full_path = os.path.join(self._out_dir, rel_req_path)
 
         try:
-            response = self._make_wrapped_file_response(
-                    environ, request, full_path)
+            response = make_wrapped_file_response(environ, request, full_path)
             return response
         except OSError:
             pass
@@ -239,7 +165,7 @@ class Server(object):
         if not os.path.isfile(full_path):
             return None
 
-        return self._make_wrapped_file_response(environ, request, full_path)
+        return make_wrapped_file_response(environ, request, full_path)
 
     def _try_serve_page(self, app, environ, request):
         # Try to find what matches the requested URL.
@@ -393,28 +319,6 @@ class Server(object):
         # Ok all good.
         return rendered_page
 
-    def _make_wrapped_file_response(self, environ, request, path):
-        logger.debug("Serving %s" % path)
-
-        # Check if we can return a 304 status code.
-        mtime = os.path.getmtime(path)
-        etag_str = '%s$$%s' % (path, mtime)
-        etag = hashlib.md5(etag_str.encode('utf8')).hexdigest()
-        if etag in request.if_none_match:
-            response = Response()
-            response.status_code = 304
-            return response
-
-        wrapper = wrap_file(environ, open(path, 'rb'))
-        response = Response(wrapper)
-        _, ext = os.path.splitext(path)
-        response.set_etag(etag)
-        response.last_modified = datetime.datetime.fromtimestamp(mtime)
-        response.mimetype = self._mimetype_map.get(
-                ext.lstrip('.'), 'text/plain')
-        response.direct_passthrough = True
-        return response
-
     def _handle_error(self, exception, environ, start_response):
         code = 500
         if isinstance(exception, HTTPException):
@@ -458,18 +362,6 @@ class SourceNotFoundError(Exception):
     pass
 
 
-content_type_map = {
-        'html': 'text/html',
-        'xml': 'text/xml',
-        'txt': 'text/plain',
-        'text': 'text/plain',
-        'css': 'text/css',
-        'xhtml': 'application/xhtml+xml',
-        'atom': 'application/atom+xml',  # or 'text/xml'?
-        'rss': 'application/rss+xml',    # or 'text/xml'?
-        'json': 'application/json'}
-
-
 def find_routes(routes, uri):
     res = []
     tax_res = []
@@ -492,16 +384,4 @@ class ErrorMessageLoader(FileSystemLoader):
         template += '.html'
         return super(ErrorMessageLoader, self).get_source(env, template)
 
-
-def load_mimetype_map():
-    mimetype_map = {}
-    sep_re = re.compile(r'\s+')
-    path = os.path.join(os.path.dirname(__file__), 'mime.types')
-    with open(path, 'r') as f:
-        for line in f:
-            tokens = sep_re.split(line)
-            if len(tokens) > 1:
-                for t in tokens[1:]:
-                    mimetype_map[t] = tokens[0]
-    return mimetype_map
 

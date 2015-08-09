@@ -6,6 +6,8 @@ import queue
 import logging
 import itertools
 import threading
+from piecrust.app import PieCrust
+from piecrust.processing.pipeline import ProcessorPipeline
 
 
 logger = logging.getLogger(__name__)
@@ -72,10 +74,14 @@ class PipelineStatusServerSentEventProducer(object):
 
 
 class ProcessingLoop(threading.Thread):
-    def __init__(self, pipeline):
+    def __init__(self, root_dir, out_dir, sub_cache_dir=None, debug=False):
         super(ProcessingLoop, self).__init__(
                 name='pipeline-reloader', daemon=True)
-        self.pipeline = pipeline
+        # TODO: re-create the app when `config.yml` is changed.
+        self.app = PieCrust(root_dir=root_dir, debug=debug)
+        if sub_cache_dir:
+            self.app._useSubCacheDir(sub_cache_dir)
+        self.pipeline = ProcessorPipeline(self.app, out_dir)
         self.last_status_id = 0
         self.interval = 1
         self._paths = set()
@@ -94,8 +100,7 @@ class ProcessingLoop(threading.Thread):
 
     def run(self):
         # Build the first list of known files and run the pipeline once.
-        app = self.pipeline.app
-        roots = [os.path.join(app.root_dir, r)
+        roots = [os.path.join(self.app.root_dir, r)
                  for r in self.pipeline.mounts.keys()]
         for root in roots:
             for dirpath, dirnames, filenames in os.walk(root):

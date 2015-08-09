@@ -2,7 +2,6 @@ import os
 import logging
 import threading
 import urllib.request
-from piecrust.serving.server import Server
 
 
 logger = logging.getLogger(__name__)
@@ -90,8 +89,15 @@ def run_gunicorn_server(root_dir,
     app_wrapper.run()
 
 
-def _get_piecrust_server(root_dir, **kwargs):
-    server = Server(root_dir, **kwargs)
-    app = server.getWsgiApp()
+def _get_piecrust_server(root_dir, debug=False, sub_cache_dir=None,
+                         run_sse_check=None):
+    from piecrust.serving.middlewares import (
+            StaticResourcesMiddleware, PieCrustDebugMiddleware)
+    from piecrust.serving.server import WsgiServer
+    app = WsgiServer(root_dir, debug=debug, sub_cache_dir=sub_cache_dir)
+    app = StaticResourcesMiddleware(app)
+    app = PieCrustDebugMiddleware(app, root_dir,
+                                  sub_cache_dir=sub_cache_dir,
+                                  run_sse_check=run_sse_check)
     return app
 
