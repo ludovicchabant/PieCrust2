@@ -202,7 +202,7 @@ class Server(object):
 
         # Profiling.
         if app.config.get('site/show_debug_info'):
-            now_time = time.clock()
+            now_time = time.perf_counter()
             timing_info = (
                     '%8.1f ms' %
                     ((now_time - app.env.start_time) * 1000.0))
