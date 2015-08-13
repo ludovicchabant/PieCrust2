@@ -1,3 +1,6 @@
+
+/*****************************************************************************/
+
 @keyframes slideNotification {
     0% { opacity: 1; }
     100% { opacity: 0; right: -11em; }
@@ -29,4 +32,66 @@
     background-color: #920C0C;
     border: 2px solid #810B0B;
 }
+
+/*****************************************************************************/
+
+.piecrust-debug-window {
+    padding: 1em;
+    text-align: left;
+    font-family: serif;
+    font-style: normal;
+    font-size: 1rem;
+    font-weight: normal;
+    background: #a42;
+    color: #fff;
+    position: fixed;
+    width: 50%;
+    bottom: 0;
+    right: 0;
+    overflow: auto;
+    max-height: 50%;
+    box-shadow: 0 0 10px #633;
+}
+
+.piecrust-debug-info {
+}
+
+.piecrust-debug-info a {
+    color: #fff;
+    text-decoration: none;
+}
+
+.piecrust-debug-icon {
+    height: 2em;
+}
+
+.piecrust-debug-info-header1 {
+    margin: 0.5em 0;
+    font-weight: bold;
+}
+
+.piecrust-debug-info-header2 {
+    margin: 0.5em 0;
+    font-weight: bold;
+}
+
+.piecrust-debug-info-data {
+    font-family: Courier, sans-serif;
+    font-size: 0.9em;
+}
+
+.piecrust-debug-info-datablock {
+    margin-left: 2em;
+}
+
+.piecrust-debug-info-datavalue {
+    color: #fca;
+}
+
+.piecrust-debug-info-doc {
+    color: #fa8;
+    font-size: 0.9em;
+}
+
+/*****************************************************************************/
 

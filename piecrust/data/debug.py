@@ -14,75 +14,38 @@ logger = logging.getLogger(__name__)
 css_id_re = re.compile(r'[^\w\d\-]+')
 
 
-# CSS for the debug window.
-CSS_DEBUGWINDOW = """
-text-align: left;
-font-family: serif;
-font-style: normal;
-font-weight: normal;
-position: fixed;
-width: 50%;
-bottom: 0;
-right: 0;
-overflow: auto;
-max-height: 50%;
-box-shadow: 0 0 10px #633;
-"""
+CSS_DATA = 'piecrust-debug-info-data'
+CSS_DATABLOCK = 'piecrust-debug-info-datablock'
+CSS_VALUE = 'piecrust-debug-info-datavalue'
+CSS_DOC = 'piecrust-debug-info-doc'
+CSS_BIGHEADER = 'piecrust-debug-info-header1'
+CSS_HEADER = 'piecrust-debug-info-header2'
 
-CSS_PIPELINESTATUS = """
-background: #fff;
-color: #a22;
-"""
-
-CSS_DEBUGINFO = """
-padding: 1em;
-background: #a42;
-color: #fff;
-"""
-
-# HTML elements.
-CSS_P = 'margin: 0; padding: 0;'
-CSS_A = 'color: #fff; text-decoration: none;'
-
-# Headers.
-CSS_BIGHEADER = 'margin: 0.5em 0; font-weight: bold;'
-CSS_HEADER = 'margin: 0.5em 0; font-weight: bold;'
-
-# Data block elements.
-CSS_DATA = 'font-family: Courier, sans-serif; font-size: 0.9em;'
-CSS_DATABLOCK = 'margin-left: 2em;'
-CSS_VALUE = 'color: #fca;'
-CSS_DOC = 'color: #fa8; font-size: 0.9em;'
 
 # 'Baked with PieCrust' text
 BRANDING_TEXT = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
         PIECRUST_URL, APP_VERSION)
 
 
-def build_debug_info(page, data):
+def build_debug_info(page):
     """ Generates HTML debug info for the given page's data.
     """
     output = io.StringIO()
     try:
-        _do_build_debug_info(page, data, output)
+        _do_build_debug_info(page, output)
         return output.getvalue()
     finally:
         output.close()
 
 
-def _do_build_debug_info(page, data, output):
+def _do_build_debug_info(page, output):
     app = page.app
 
-    print('<div id="piecrust-debug-info" style="%s">' % CSS_DEBUGWINDOW,
+    print('<div id="piecrust-debug-window" class="piecrust-debug-window">',
           file=output)
 
-    print('<div id="piecrust-debug-info-pipeline-status" style="%s">' %
-          CSS_PIPELINESTATUS, file=output)
-    print('</div>', file=output)
-
-    print('<div style="%s">' % CSS_DEBUGINFO, file=output)
-    print('<p style="%s"><strong>PieCrust %s</strong> &mdash; ' %
-          (CSS_P, APP_VERSION), file=output)
+    print('<div><strong>PieCrust %s</strong> &mdash; ' % APP_VERSION,
+          file=output)
 
     # If we have some execution info in the environment,
     # add more information.
@@ -101,46 +64,78 @@ def _do_build_debug_info(page, data, output):
 
     output.write(', ')
     if app.env.start_time != 0:
-        output.write('in __PIECRUST_TIMING_INFORMATION__')
+        output.write('in __PIECRUST_TIMING_INFORMATION__. ')
     else:
-        output.write('no timing information available')
+        output.write('no timing information available. ')
 
-    print('</p>', file=output)
+    print('<a class="piecrust-debug-expander" hred="#">[+]</a>',
+          file=output)
+
     print('</div>', file=output)
 
-    if data:
-        print('<div style="%s padding-top: 0;">' % CSS_DEBUGINFO, file=output)
-        print(('<p style="%s cursor: pointer;" onclick="var l = '
-                         'document.getElementById(\'piecrust-debug-details\'); '
-                         'if (l.style.display == \'none\') l.style.display = '
-                         '\'block\'; else l.style.display = \'none\';">' % CSS_P), file=output)
-        print(('<span style="%s">Template engine data</span> '
-                         '&mdash; click to toggle</a>.</p>' % CSS_BIGHEADER), file=output)
-
-        print('<div id="piecrust-debug-details" style="display: none;">', file=output)
-        print(('<p style="%s">The following key/value pairs are '
-                         'available in the layout\'s markup, and most are '
-                         'available in the page\'s markup.</p>' % CSS_DOC), file=output)
-
-        filtered_data = dict(data)
-        for k in list(filtered_data.keys()):
-            if k.startswith('__'):
-                del filtered_data[k]
-
-        renderer = DebugDataRenderer(output)
-        renderer.external_docs['data-site'] = (
-                "This section comes from the site configuration file.")
-        renderer.external_docs['data-page'] = (
-                "This section comes from the page's configuration header.")
-        renderer.renderData(filtered_data)
-
-        print('</div>', file=output)
-        print('</div>', file=output)
+    print('<div class="piecrust-debug-info piecrust-debug-info-unloaded">',
+          file=output)
+    print('</div>', file=output)
 
     print('</div>', file=output)
 
     print('<script src="/__piecrust_static/piecrust-debug-info.js"></script>',
-            file=output)
+          file=output)
+
+
+def build_var_debug_info(data, var_path=None):
+    output = io.StringIO()
+    try:
+        _do_build_var_debug_info(data, output, var_path)
+        return output.getvalue()
+    finally:
+        output.close()
+
+
+def _do_build_var_debug_info(data, output, var_path=None):
+    if False:
+        print('<html>', file=output)
+        print('<head>', file=output)
+        print('<meta charset="utf-8" />', file=output)
+        print('<link rel="stylesheet" type="text/css" '
+              'href="/__piecrust_static/piecrust-debug-info.css" />',
+              file=output)
+        print('</head>', file=output)
+        print('<body class="piecrust-debug-page">', file=output)
+
+    #print('<div class="piecrust-debug-info">', file=output)
+    #print(('<p style="cursor: pointer;" onclick="var l = '
+    #       'document.getElementById(\'piecrust-debug-details\'); '
+    #       'if (l.style.display == \'none\') l.style.display = '
+    #       '\'block\'; else l.style.display = \'none\';">'),
+    #      file=output)
+    #print(('<span class="%s">Template engine data</span> '
+    #       '&mdash; click to toggle</a>.</p>' % CSS_BIGHEADER), file=output)
+
+    #print('<div id="piecrust-debug-details" style="display: none;">',
+    #      file=output)
+    #print(('<p class="%s">The following key/value pairs are '
+    #       'available in the layout\'s markup, and most are '
+    #       'available in the page\'s markup.</p>' % CSS_DOC), file=output)
+
+    filtered_data = dict(data)
+    for k in list(filtered_data.keys()):
+        if k.startswith('__'):
+            del filtered_data[k]
+
+    renderer = DebugDataRenderer(output)
+    renderer.external_docs['data-site'] = (
+            "This section comes from the site configuration file.")
+    renderer.external_docs['data-page'] = (
+            "This section comes from the page's configuration header.")
+    renderer.renderData(filtered_data)
+
+    print('</div>', file=output)
+    #print('</div>', file=output)
+
+    if False:
+        print('</body>', file=output)
+        print('</html>', file=output)
 
 
 class DebugDataRenderer(object):
@@ -154,7 +149,7 @@ class DebugDataRenderer(object):
     def renderData(self, data):
         if not isinstance(data, dict):
             raise Exception("Expected top level data to be a dict.")
-        self._writeLine('<div style="%s">' % CSS_DATA)
+        self._writeLine('<div class="%s">' % CSS_DATA)
         self._renderDict(data, 'data')
         self._writeLine('</div>')
 
@@ -179,16 +174,16 @@ class DebugDataRenderer(object):
 
         data_type = type(data)
         if data_type is bool:
-            self._write('<span style="%s">%s</span>' % (CSS_VALUE,
-                'true' if bool(data) else 'false'))
+            self._write('<span class="%s">%s</span>' % (CSS_VALUE,
+                        'true' if bool(data) else 'false'))
             return
 
         if data_type is int:
-            self._write('<span style="%s">%d</span>' % (CSS_VALUE, data))
+            self._write('<span class="%s">%d</span>' % (CSS_VALUE, data))
             return
 
         if data_type is float:
-            self._write('<span style="%s">%4.2f</span>' % (CSS_VALUE, data))
+            self._write('<span class="%s">%4.2f</span>' % (CSS_VALUE, data))
             return
 
         if data_type is str:
@@ -196,7 +191,7 @@ class DebugDataRenderer(object):
                 data = data[:DebugDataRenderer.MAX_VALUE_LENGTH - 5]
                 data += '[...]'
             data = html.escape(data)
-            self._write('<span style="%s">%s</span>' % (CSS_VALUE, data))
+            self._write('<span class="%s">%s</span>' % (CSS_VALUE, data))
             return
 
         self._renderCollapsableValueStart(path)
@@ -205,24 +200,27 @@ class DebugDataRenderer(object):
         self._renderCollapsableValueEnd()
 
     def _renderList(self, data, path):
-        self._writeLine('<div style="%s">' % CSS_DATABLOCK)
+        self._writeLine('<div class="%s">' % CSS_DATABLOCK)
         self._renderDoc(data, path)
         self._renderAttributes(data, path)
-        rendered_count = self._renderIterable(data, path, lambda d: enumerate(d))
+        rendered_count = self._renderIterable(
+                data, path, lambda d: enumerate(d))
         if (rendered_count == 0 and
                 not hasattr(data.__class__, 'debug_render_not_empty')):
-            self._writeLine('<p style="%s %s">(empty array)</p>' % (CSS_P, CSS_DOC))
+            self._writeLine('<p class="%s">(empty array)</p>' % (CSS_DOC))
         self._writeLine('</div>')
 
     def _renderDict(self, data, path):
-        self._writeLine('<div style="%s">' % CSS_DATABLOCK)
+        self._writeLine('<div class="%s">' % CSS_DATABLOCK)
         self._renderDoc(data, path)
         self._renderAttributes(data, path)
-        rendered_count = self._renderIterable(data, path,
+        rendered_count = self._renderIterable(
+                data, path,
                 lambda d: sorted(iter(d.items()), key=lambda i: i[0]))
         if (rendered_count == 0 and
                 not hasattr(data.__class__, 'debug_render_not_empty')):
-            self._writeLine('<p style="%s %s">(empty dictionary)</p>' % (CSS_P, CSS_DOC))
+            self._writeLine('<p class="%s %s">(empty dictionary)</p>' %
+                            CSS_DOC)
         self._writeLine('</div>')
 
     def _renderObject(self, data, path):
@@ -234,22 +232,22 @@ class DebugDataRenderer(object):
             self._renderValue(value, path)
             return
 
-        self._writeLine('<div style="%s">' % CSS_DATABLOCK)
+        self._writeLine('<div class="%s">' % CSS_DATABLOCK)
         self._renderDoc(data, path)
         rendered_attrs = self._renderAttributes(data, path)
 
         if (hasattr(data, '__iter__') and
                 hasattr(data.__class__, 'debug_render_items') and
                 data.__class__.debug_render_items):
-            rendered_count = self._renderIterable(data, path,
-                    lambda d: enumerate(d))
+            rendered_count = self._renderIterable(
+                    data, path, lambda d: enumerate(d))
             if (rendered_count == 0 and
                     not hasattr(data.__class__, 'debug_render_not_empty')):
-                self._writeLine('<p style="%s %s">(empty)</p>' % (CSS_P, CSS_DOC))
+                self._writeLine('<p class="%s">(empty)</p>' % CSS_DOC)
 
         elif (rendered_attrs == 0 and
                 not hasattr(data.__class__, 'debug_render_not_empty')):
-            self._writeLine('<p style="%s %s">(empty)</p>' % (CSS_P, CSS_DOC))
+            self._writeLine('<p class="%s">(empty)</p>' % CSS_DOC)
 
         self._writeLine('</div>')
 
@@ -267,20 +265,20 @@ class DebugDataRenderer(object):
 
     def _renderDoc(self, data, path):
         if hasattr(data.__class__, 'debug_render_doc'):
-            self._writeLine('<span style="%s">&ndash; %s</span>' %
-                    (CSS_DOC, data.__class__.debug_render_doc))
+            self._writeLine('<span class="%s">&ndash; %s</span>' %
+                            (CSS_DOC, data.__class__.debug_render_doc))
 
         if hasattr(data.__class__, 'debug_render_doc_dynamic'):
             drdd = data.__class__.debug_render_doc_dynamic
             for ng in drdd:
                 doc = getattr(data, ng)
-                self._writeLine('<span style="%s">&ndash; %s</span>' %
-                        (CSS_DOC, doc()))
+                self._writeLine('<span class="%s">&ndash; %s</span>' %
+                                (CSS_DOC, doc()))
 
         doc = self.external_docs.get(path)
         if doc is not None:
-            self._writeLine('<span style="%s">&ndash; %s</span>' %
-                    (CSS_DOC, doc))
+            self._writeLine('<span class="%s">&ndash; %s</span>' %
+                            (CSS_DOC, doc))
 
     def _renderAttributes(self, data, path):
         if not hasattr(data.__class__, 'debug_render'):
@@ -355,19 +353,19 @@ class DebugDataRenderer(object):
 
     def _renderCollapsableValueStart(self, path):
         self._writeLine('<span style="cursor: pointer;" onclick="var l = '
-                    'document.getElementById(\'piecrust-debug-data-%s\'); '
-                    'if (l.style.display == \'none\') {'
-                    '  l.style.display = \'block\';'
-                    '  this.innerHTML = \'[-]\';'
-                    '} else {'
-                    '  l.style.display = \'none\';'
-                    '  this.innerHTML = \'[+]\';'
-                    '}">'
-                    '[+]'
-                    '</span>' %
-                    path)
+                        'document.getElementById(\'piecrust-debug-data-%s\'); '
+                        'if (l.style.display == \'none\') {'
+                        '  l.style.display = \'block\';'
+                        '  this.innerHTML = \'[-]\';'
+                        '} else {'
+                        '  l.style.display = \'none\';'
+                        '  this.innerHTML = \'[+]\';'
+                        '}">'
+                        '[+]'
+                        '</span>' %
+                        path)
         self._writeLine('<div style="display: none"'
-                         'id="piecrust-debug-data-%s">' % path)
+                        'id="piecrust-debug-data-%s">' % path)
 
     def _renderCollapsableValueEnd(self):
         self._writeLine('</div>')

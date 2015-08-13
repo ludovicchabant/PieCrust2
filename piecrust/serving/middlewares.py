@@ -1,8 +1,15 @@
 import os.path
+from werkzeug.exceptions import NotFound, Forbidden
 from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator
 from piecrust import RESOURCES_DIR, CACHE_DIR
-from piecrust.serving.util import make_wrapped_file_response
+from piecrust.data.builder import (
+        DataBuildingContext, build_page_data)
+from piecrust.data.debug import build_var_debug_info
+from piecrust.routing import RouteNotFoundError
+from piecrust.serving.util import (
+        make_wrapped_file_response, get_requested_page, get_app_for_server)
+from piecrust.sources.pageref import PageNotFoundError
 
 
 class StaticResourcesMiddleware(object):
@@ -38,12 +45,14 @@ class PieCrustDebugMiddleware(object):
         self.app = app
         self.root_dir = root_dir
         self.debug = debug
+        self.sub_cache_dir = sub_cache_dir
         self.run_sse_check = run_sse_check
         self._proc_loop = None
         self._out_dir = os.path.join(root_dir, CACHE_DIR, 'server')
         if sub_cache_dir:
             self._out_dir = os.path.join(sub_cache_dir, 'server')
         self._handlers = {
+                'debug_info': self._getDebugInfo,
                 'werkzeug_shutdown': self._shutdownWerkzeug,
                 'pipeline_status': self._startSSEProvider}
 
@@ -69,6 +78,34 @@ class PieCrustDebugMiddleware(object):
                 return handler(request, start_response)
 
         return self.app(environ, start_response)
+
+    def _getDebugInfo(self, request, start_response):
+        app = get_app_for_server(self.root_dir, debug=self.debug,
+                                 sub_cache_dir=self.sub_cache_dir)
+        if not app.config.get('site/enable_debug_info'):
+            return Forbidden()
+
+        found = False
+        page_path = request.args.get('page')
+        try:
+            req_page = get_requested_page(app, page_path)
+            found = (req_page is not None)
+        except (RouteNotFoundError, PageNotFoundError):
+            pass
+        if not found:
+            return NotFound("No such page: %s" % page_path)
+
+        ctx = DataBuildingContext(req_page.qualified_page,
+                                  page_num=req_page.page_num)
+        data = build_page_data(ctx)
+
+        var_path = request.args.getlist('var')
+        if not var_path:
+            var_path = None
+        output = build_var_debug_info(data, var_path)
+
+        response = Response(output, mimetype='text/html')
+        return response(request.environ, start_response)
 
     def _shutdownWerkzeug(self, request, start_response):
         shutdown_func = request.environ.get('werkzeug.server.shutdown')

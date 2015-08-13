@@ -60,7 +60,7 @@ def build_page_data(ctx):
     # displayed in the debugger window.
     if (app.config.get('site/show_debug_info') and
             not app.config.get('baker/is_baking')):
-        pc_data._enableDebugInfo(page, data)
+        pc_data.enableDebugInfo(page)
 
     return data
 

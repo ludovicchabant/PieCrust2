@@ -263,6 +263,46 @@ ImageReloader.prototype._reloadStylesheetImage = function(styleSheet, path,
 
 ///////////////////////////////////////////////////////////////////////////////
 
+function toggleDebugInfo() {
+    var info = document.querySelector('.piecrust-debug-info');
+    if (info.classList.contains('piecrust-debug-info-unloaded')) {
+        loadDebugInfo();
+        info.classList.remove('piecrust-debug-info-unloaded');
+    }
+    if (this.innerHTML == '[+]') {
+        this.innerHTML = '[-]';
+        info.style = "";
+    } else {
+        this.innerHTML = '[+]';
+        info.style = "display: none;";
+    }
+}
+
+function loadDebugInfo() {
+    var xmlHttp = new XMLHttpRequest();
+
+    xmlHttp.onreadystatechange = function() {
+        if (xmlHttp.readyState == XMLHttpRequest.DONE) {
+            var info = document.querySelector('.piecrust-debug-info');
+            if(xmlHttp.status == 200) {
+                info.innerHTML = xmlHttp.responseText;
+            }
+            else if(xmlHttp.status == 400) {
+                info.innerHTML = "Error fetching debug info.";
+            }
+            else {
+                info.innerHTML = "Unknown error.";
+            }
+        }
+    }
+
+    var pageUrl = window.location.pathname;
+    xmlHttp.open("GET", "/__piecrust_debug/debug_info?page=" + pageUrl, true);
+    xmlHttp.send();
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 var notification = new NotificationArea();
 var assetReloader = new AssetReloader();
 
@@ -274,6 +314,9 @@ window.onload = function() {
     style.type = 'text/css';
     style.href = '/__piecrust_static/piecrust-debug-info.css' + cacheBust;
     document.head.appendChild(style);
+
+    var expander = document.querySelector('.piecrust-debug-expander');
+    expander.onclick = toggleDebugInfo;
 };
 
 

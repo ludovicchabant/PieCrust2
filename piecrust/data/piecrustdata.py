@@ -17,22 +17,20 @@ class PieCrustData(object):
         self.branding = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
                 'http://bolt80.com/piecrust/', APP_VERSION)
         self._page = None
-        self._data = None
 
     @property
     def debug_info(self):
-        if self._page is not None and self._data is not None:
+        if self._page is not None:
             try:
-                return build_debug_info(self._page, self._data)
+                return build_debug_info(self._page)
             except Exception as ex:
                 logger.exception(ex)
                 return ('An error occured while generating debug info. '
                         'Please check the logs.')
         return ''
 
-    def _enableDebugInfo(self, page, data):
+    def enableDebugInfo(self, page):
         self._page = page
-        self._data = data
 
     def _debugRenderDebugInfo(self):
         return "The very thing you're looking at!"
