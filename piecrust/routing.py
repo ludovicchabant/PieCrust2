@@ -17,6 +17,10 @@ template_func_arg_re = re.compile(r',\s*(?P<arg>\w+)')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
+class RouteNotFoundError(Exception):
+    pass
+
+
 def create_route_metadata(page):
     route_metadata = copy.deepcopy(page.source_metadata)
     route_metadata.update(page.getRouteMetadata())

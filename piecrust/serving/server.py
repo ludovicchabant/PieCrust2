@@ -10,11 +10,12 @@ from werkzeug.exceptions import (
 from werkzeug.wrappers import Request, Response
 from jinja2 import FileSystemLoader, Environment
 from piecrust import CACHE_DIR, RESOURCES_DIR
-from piecrust.app import PieCrust
-from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
-from piecrust.serving.util import content_type_map, make_wrapped_file_response
-from piecrust.sources.base import MODE_PARSING
-from piecrust.uriutil import split_sub_uri
+from piecrust.rendering import PageRenderingContext, render_page
+from piecrust.routing import RouteNotFoundError
+from piecrust.serving.util import (
+        content_type_map, make_wrapped_file_response, get_requested_page,
+        get_app_for_server)
+from piecrust.sources.base import SourceNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ class MultipleNotFound(HTTPException):
         desc = '<p>' + self.description + '</p>'
         desc += '<p>'
         for nfe in self._nfes:
-            desc += '<li>' + escape(nfe.description) + '</li>'
+            desc += '<li>' + escape(str(nfe)) + '</li>'
         desc += '</p>'
         return desc
 
@@ -107,11 +108,8 @@ class Server(object):
             return response
 
         # Create the app for this request.
-        app = PieCrust(root_dir=self.root_dir, debug=self.debug)
-        if self.sub_cache_dir:
-            app._useSubCacheDir(self.sub_cache_dir)
-        app.config.set('site/root', '/')
-        app.config.set('server/is_serving', True)
+        app = get_app_for_server(self.root_dir, debug=self.debug,
+                                 sub_cache_dir=self.sub_cache_dir)
         if (app.config.get('site/enable_debug_info') and
                 self.enable_debug_info and
                 '!debug' in request.args):
@@ -168,33 +166,56 @@ class Server(object):
         return make_wrapped_file_response(environ, request, full_path)
 
     def _try_serve_page(self, app, environ, request):
-        # Try to find what matches the requested URL.
-        req_path, page_num = split_sub_uri(app, request.path)
+        # Find a matching page.
+        req_page = get_requested_page(app, request.path)
 
-        routes = find_routes(app.routes, req_path)
-        if len(routes) == 0:
-            raise RouteNotFoundError("Can't find route for: %s" % req_path)
+        # If we haven't found any good match, report all the places we didn't
+        # find it at.
+        qp = req_page.qualified_page
+        if qp is None:
+            msg = "Can't find path for '%s':" % request.path
+            raise MultipleNotFound(msg, req_page.not_found_errors)
 
-        rendered_page = None
-        not_found_errors = []
-        for route, route_metadata in routes:
-            try:
-                logger.debug("Trying to render match from source '%s'." %
-                             route.source_name)
-                rendered_page = self._try_render_page(
-                        app, route, route_metadata, page_num, req_path)
-                if rendered_page is not None:
-                    break
-            except NotFound as nfe:
-                not_found_errors.append(nfe)
+        # We have a page, let's try to render it.
+        render_ctx = PageRenderingContext(qp,
+                                          page_num=req_page.page_num,
+                                          force_render=True)
+        if qp.route.taxonomy_name is not None:
+            taxonomy = app.getTaxonomy(qp.route.taxonomy_name)
+            tax_terms = qp.route.getTaxonomyTerms(qp.route_metadata)
+            render_ctx.setTaxonomyFilter(tax_terms, needs_slugifier=True)
 
-        # If we haven't found any good match, raise whatever exception we
-        # first got. Otherwise, raise a generic exception.
-        if rendered_page is None:
-            msg = ("Can't find path for '%s', looked in sources: %s" %
-                   (req_path,
-                    ', '.join([r.source_name for r, _ in routes])))
-            raise MultipleNotFound(msg, not_found_errors)
+        # See if this page is known to use sources. If that's the case,
+        # just don't use cached rendered segments for that page (but still
+        # use them for pages that are included in it).
+        uri = qp.getUri()
+        entry = self._page_record.getEntry(uri, req_page.page_num)
+        if (qp.route.taxonomy_name is not None or entry is None or
+                entry.used_source_names):
+            cache_key = '%s:%s' % (uri, req_page.page_num)
+            app.env.rendered_segments_repository.invalidate(cache_key)
+
+        # Render the page.
+        rendered_page = render_page(render_ctx)
+
+        # Check if this page is a taxonomy page that actually doesn't match
+        # anything.
+        if qp.route.taxonomy_name is not None:
+            paginator = rendered_page.data.get('pagination')
+            if (paginator and paginator.is_loaded and
+                    len(paginator.items) == 0):
+                taxonomy = app.getTaxonomy(qp.route.taxonomy_name)
+                message = ("This URL matched a route for taxonomy '%s' but "
+                           "no pages have been found to have it. This page "
+                           "won't be generated by a bake." % taxonomy.name)
+                raise NotFound(message)
+
+        # Remember stuff for next time.
+        if entry is None:
+            entry = ServeRecordPageEntry(req_page.req_path, req_page.page_num)
+            self._page_record.addEntry(entry)
+        for p, pinfo in render_ctx.render_passes.items():
+            entry.used_source_names |= pinfo.used_source_names
 
         # Start doing stuff.
         page = rendered_page.page
@@ -255,70 +276,6 @@ class Server(object):
 
         return response
 
-    def _try_render_page(self, app, route, route_metadata, page_num, req_path):
-        # Match the route to an actual factory.
-        taxonomy_info = None
-        source = app.getSource(route.source_name)
-        if route.taxonomy_name is None:
-            factory = source.findPageFactory(route_metadata, MODE_PARSING)
-            if factory is None:
-                raise NotFound("No path found for '%s' in source '%s'." %
-                               (req_path, source.name))
-        else:
-            taxonomy = app.getTaxonomy(route.taxonomy_name)
-            tax_terms = route.getTaxonomyTerms(route_metadata)
-            taxonomy_info = (taxonomy, tax_terms)
-
-            tax_page_ref = taxonomy.getPageRef(source)
-            factory = tax_page_ref.getFactory()
-
-        # Build the page.
-        page = factory.buildPage()
-        # We force the rendering of the page because it could not have
-        # changed, but include pages that did change.
-        qp = QualifiedPage(page, route, route_metadata)
-        render_ctx = PageRenderingContext(qp,
-                                          page_num=page_num,
-                                          force_render=True)
-        if taxonomy_info is not None:
-            _, tax_terms = taxonomy_info
-            render_ctx.setTaxonomyFilter(tax_terms, needs_slugifier=True)
-
-        # See if this page is known to use sources. If that's the case,
-        # just don't use cached rendered segments for that page (but still
-        # use them for pages that are included in it).
-        uri = qp.getUri()
-        entry = self._page_record.getEntry(uri, page_num)
-        if (taxonomy_info is not None or entry is None or
-                entry.used_source_names):
-            cache_key = '%s:%s' % (uri, page_num)
-            app.env.rendered_segments_repository.invalidate(cache_key)
-
-        # Render the page.
-        rendered_page = render_page(render_ctx)
-
-        # Check if this page is a taxonomy page that actually doesn't match
-        # anything.
-        if taxonomy_info is not None:
-            paginator = rendered_page.data.get('pagination')
-            if (paginator and paginator.is_loaded and
-                    len(paginator.items) == 0):
-                taxonomy = taxonomy_info[0]
-                message = ("This URL matched a route for taxonomy '%s' but "
-                           "no pages have been found to have it. This page "
-                           "won't be generated by a bake." % taxonomy.name)
-                raise NotFound(message)
-
-        # Remember stuff for next time.
-        if entry is None:
-            entry = ServeRecordPageEntry(req_path, page_num)
-            self._page_record.addEntry(entry)
-        for p, pinfo in render_ctx.render_passes.items():
-            entry.used_source_names |= pinfo.used_source_names
-
-        # Ok all good.
-        return rendered_page
-
     def _handle_error(self, exception, environ, start_response):
         code = 500
         if isinstance(exception, HTTPException):
@@ -352,27 +309,6 @@ class Server(object):
                 inner_ex = exception.__context__
             exception = inner_ex
         return desc
-
-
-class RouteNotFoundError(Exception):
-    pass
-
-
-class SourceNotFoundError(Exception):
-    pass
-
-
-def find_routes(routes, uri):
-    res = []
-    tax_res = []
-    for route in routes:
-        metadata = route.matchUri(uri)
-        if metadata is not None:
-            if route.is_taxonomy_route:
-                tax_res.append((route, metadata))
-            else:
-                res.append((route, metadata))
-    return res + tax_res
 
 
 class ErrorMessageLoader(FileSystemLoader):

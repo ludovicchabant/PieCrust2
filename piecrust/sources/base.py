@@ -24,6 +24,10 @@ def build_pages(app, factories):
         yield f.buildPage()
 
 
+class SourceNotFoundError(Exception):
+    pass
+
+
 class InvalidFileSystemEndpointError(Exception):
     def __init__(self, source_name, fs_endpoint):
         super(InvalidFileSystemEndpointError, self).__init__(
