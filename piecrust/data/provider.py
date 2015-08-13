@@ -178,7 +178,8 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     def _onIteration(self):
         if not self._ctx_set:
             eis = self._page.app.env.exec_info_stack
-            eis.current_page_info.render_ctx.addUsedSource(self._source)
+            if eis.current_page_info:
+                eis.current_page_info.render_ctx.addUsedSource(self._source)
             self._ctx_set = True
 
 
