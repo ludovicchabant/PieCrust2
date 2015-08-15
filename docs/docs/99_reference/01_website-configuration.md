@@ -77,6 +77,22 @@ given between parenthesis:
 * `routes` (special, see [content model][cm]): Defines how URLs are parsed and
   generated for this site.
 
+* `slugify_mode` (`encode`): Specifies how taxonomy terms (tags, categories,
+  etc.) will be "_slugified_", _i.e._ turned into URL parts. The acceptable
+  values detailed below, and can be combined by separating them with a comma
+  (like, say, `transliterate,lowercase`):
+
+    * `encode`: The term will be kept as-is, but non-ASCII characters (like
+      accented characters and non-latin letters) will be percent-encoded. Modern
+      browsers will usually show the decoded version however so it will look
+      natural in the address bar.
+    * `transliterate`: The term will be converted to ASCII, which means any
+      accented or non-latin character will be tentatively replaced with an
+      unaccented latin character.
+    * `lowercase`: Convert the term to lower-case.
+    * `dot_to_dash`: Convert dots to dashes.
+    * `space_to_dash`: Convert spaces to dashes.
+
 * `sources` (special, see [content model][cm]): Defines the page sources that
   define where the site's contents are located.
 
