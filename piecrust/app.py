@@ -29,7 +29,7 @@ from piecrust.taxonomies import Taxonomy
 logger = logging.getLogger(__name__)
 
 
-CACHE_VERSION = 21
+CACHE_VERSION = 22
 
 
 class VariantNotFoundError(Exception):
@@ -122,6 +122,7 @@ class PieCrustConfiguration(Configuration):
                     ('textile', 'textile')]),
                 'default_auto_format': 'md',
                 'pagination_suffix': '/%num%',
+                'slugify_mode': 'encode',
                 'plugins': None,
                 'themes_sources': [DEFAULT_THEME_SOURCE],
                 'cache_time': 28800,

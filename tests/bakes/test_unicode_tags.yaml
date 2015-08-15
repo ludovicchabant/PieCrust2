@@ -39,6 +39,55 @@ in:
     pages/_index.md: ''
 outfiles:
     tag/это тэг.html: |
-      Pages in /tag/%D1%8D%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html
+      Pages in /tag/%D0%AD%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html
+      Post 01
+---
+config:
+    site:
+        slugify_mode: lowercase,transliterate
+in:
+    posts/2015-03-01_post01.md: |
+      ---
+      title: Post 01
+      tags: [étrange]
+      ---
+    posts/2015-03-02_post02.md: |
+      ---
+      title: Post 02
+      tags: [étrange, sévère]
+      ---
+    pages/_tag.md: |
+      Pages in {{pctagurl(tag)}}
+      {% for p in pagination.posts -%}
+      {{p.title}}
+      {% endfor %}
+    pages/_index.md: ''
+outfiles:
+    tag/etrange.html: |
+      Pages in /tag/etrange.html
+      Post 02
+      Post 01
+    tag/severe.html: |
+      Pages in /tag/severe.html
+      Post 02
+---
+config:
+    site:
+        slugify_mode: lowercase,transliterate,space_to_dash
+in:
+    posts/2015-03-01_post01.md: |
+      ---
+      title: Post 01
+      tags: [Это тэг]
+      ---
+    pages/_tag.md: |
+      Pages in {{pctagurl(tag)}}
+      {% for p in pagination.posts -%}
+      {{p.title}}
+      {% endfor %}
+    pages/_index.md: ''
+outfiles:
+    tag/eto-teg.html: |
+      Pages in /tag/eto-teg.html
       Post 01
 

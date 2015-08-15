@@ -42,10 +42,12 @@ SLUGIFY_ENCODE = 1
 SLUGIFY_TRANSLITERATE = 2
 SLUGIFY_LOWERCASE = 4
 SLUGIFY_DOT_TO_DASH = 8
+SLUGIFY_SPACE_TO_DASH = 16
 
 
 re_first_dot_to_dash = re.compile(r'^\.+')
 re_dot_to_dash = re.compile(r'\.+')
+re_space_to_dash = re.compile(r'\s+')
 
 
 def _parse_slugify_mode(value):
@@ -53,7 +55,8 @@ def _parse_slugify_mode(value):
             'encode': SLUGIFY_ENCODE,
             'transliterate': SLUGIFY_TRANSLITERATE,
             'lowercase': SLUGIFY_LOWERCASE,
-            'dot_to_dash': SLUGIFY_DOT_TO_DASH}
+            'dot_to_dash': SLUGIFY_DOT_TO_DASH,
+            'space_to_dash': SLUGIFY_SPACE_TO_DASH}
     mode = 0
     for v in value.split(','):
         f = mapping.get(v.strip())
@@ -77,8 +80,11 @@ class Route(object):
         self.source_name = cfg['source']
         self.taxonomy_name = cfg.get('taxonomy')
         self.taxonomy_term_sep = cfg.get('term_separator', '/')
-        self.slugify_mode = _parse_slugify_mode(
-                cfg.get('slugify_mode', 'encode,lowercase'))
+
+        sm = cfg.get('slugify_mode')
+        if not sm:
+            sm = app.config.get('site/slugify_mode', 'encode')
+        self.slugify_mode = _parse_slugify_mode(sm)
 
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
@@ -256,6 +262,8 @@ class Route(object):
         if self.slugify_mode & SLUGIFY_DOT_TO_DASH:
             term = re_first_dot_to_dash.sub('', term)
             term = re_dot_to_dash.sub('-', term)
+        if self.slugify_mode & SLUGIFY_SPACE_TO_DASH:
+            term = re_space_to_dash.sub('-', term)
         return term
 
     def _uriFormatRepl(self, m):
