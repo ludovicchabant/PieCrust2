@@ -13,7 +13,7 @@ in:
         {{piecrust.debug_info}}
 out_contains: |
     BLAH
-    <div id="piecrust-debug-info"
+    <div id="piecrust-debug-window"
 ---
 url: /foo
 in:
