@@ -5,7 +5,7 @@ from piecrust.data.filters import (
         PaginationFilter, HasFilterClause, IsFilterClause,
         page_value_accessor)
 from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
-from piecrust.serving.server import find_routes
+from piecrust.serving.util import find_routes
 from piecrust.sources.base import REALM_USER, REALM_THEME
 from .mockutil import mock_fs, mock_fs_scope
 
