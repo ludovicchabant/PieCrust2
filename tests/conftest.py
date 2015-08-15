@@ -99,8 +99,11 @@ def check_expected_outputs(spec, fs, error_type):
                 actual = fs.getFileEntry('kitchen/_counter/' +
                                          key.lstrip('/'))
             except Exception as e:
+                lines = print_fs_tree(fs.path('kitchen/_counter'))
                 raise error_type([
-                    "Can't access output file %s: %s" % (key, e)])
+                    "Can't access output file %s: %s" % (key, e),
+                    "Got output directory:"] +
+                    lines)
 
             expected = expected_partial_files[key]
             # HACK because for some reason PyYAML adds a new line for
@@ -111,6 +114,21 @@ def check_expected_outputs(spec, fs, error_type):
             cmpres = _compare_str(expected, actual, cctx)
             if cmpres:
                 raise error_type(cmpres)
+
+
+def print_fs_tree(rootpath):
+    import os
+    import os.path
+    lines = []
+    offset = len(rootpath)
+    for pathname, dirnames, filenames in os.walk(rootpath):
+        level = pathname[offset:].count(os.sep)
+        indent = ' ' * 4 * (level)
+        lines.append(indent + os.path.basename(pathname) + '/')
+        indent2 = ' ' * 4 * (level + 1)
+        for f in filenames:
+            lines.append(indent2 + f)
+    return lines
 
 
 class ChefTestItem(YamlTestItemBase):
