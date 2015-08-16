@@ -85,6 +85,7 @@ class PreParsedChefArgs(object):
         self.log_debug = log_debug
         self.config_variant = config_variant
         self.config_values = []
+        self.debug_only = []
 
 
 def _parse_config_value(arg):
@@ -125,6 +126,9 @@ def _pre_parse_chef_args(argv):
             i += 1
         elif arg == '--log-debug':
             res.log_debug = True
+        elif arg == '--debug-only':
+            res.debug_only.append(argv[i + 1])
+            i += 1
         elif arg == '--no-cache':
             res.cache = False
         elif arg == '--debug':
@@ -146,8 +150,11 @@ def _pre_parse_chef_args(argv):
     if res.debug or res.log_debug:
         root_logger.setLevel(logging.DEBUG)
 
+    for n in res.debug_only:
+        logging.getLogger(n).setLevel(logging.DEBUG)
+
     log_handler = logging.StreamHandler(sys.stdout)
-    if res.debug:
+    if res.debug or res.debug_only:
         log_handler.setLevel(logging.DEBUG)
         log_handler.setFormatter(ColoredFormatter("[%(name)s] %(message)s"))
     else:
@@ -218,6 +225,9 @@ def _run_chef(pre_args, argv):
     parser.add_argument(
             '--debug',
             help="Show debug information.", action='store_true')
+    parser.add_argument(
+            '--debug-only',
+            help="Only show debug information for the given categories.")
     parser.add_argument(
             '--no-cache',
             help="When applicable, disable caching.",
