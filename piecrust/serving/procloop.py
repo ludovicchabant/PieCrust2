@@ -168,7 +168,7 @@ class ProcessingLoop(threading.Thread):
                 for entry in self._record.entries:
                     if entry.errors:
                         asset_item = {
-                                'path': entry.rel_input,
+                                'path': entry.path,
                                 'errors': list(entry.errors)}
                         item['assets'].append(asset_item)
 
