@@ -47,8 +47,10 @@ def _real_worker_func(params):
     # In a context where `multiprocessing` is using the `spawn` forking model,
     # the new process doesn't inherit anything, so we lost all our logging
     # configuration here. Let's set it up again.
-    from piecrust.main import _pre_parse_chef_args
-    _pre_parse_chef_args(sys.argv[1:])
+    if (hasattr(multiprocessing, 'get_start_method') and
+            multiprocessing.get_start_method() == 'spawn'):
+        from piecrust.main import _pre_parse_chef_args
+        _pre_parse_chef_args(sys.argv[1:])
 
     wid = params.wid
     logger.debug("Worker %d initializing..." % wid)
