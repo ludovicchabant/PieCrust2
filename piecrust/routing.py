@@ -227,7 +227,7 @@ class Route(object):
                 else:
                     uri = base_uri + ext
 
-        uri = urllib.parse.quote(self.uri_root + uri)
+        uri = self.uri_root + urllib.parse.quote(uri)
 
         if self.show_debug_info:
             uri += '?!debug'

@@ -1,5 +1,6 @@
 import time
 import os.path
+import urllib.parse
 import pytest
 from piecrust.baking.baker import Baker
 from piecrust.baking.single import PageBaker
@@ -41,8 +42,8 @@ def test_get_output_path(uri, pretty, expected):
         app.config.set('site/pretty_urls', True)
     assert app.config.get('site/pretty_urls') == pretty
 
-    for site_root in ['/', '/whatever/']:
-        app.config.set('site/root', site_root)
+    for site_root in ['/', '/whatever/', '/~johndoe/']:
+        app.config.set('site/root', urllib.parse.quote(site_root))
         baker = PageBaker(app, '/destination')
         path = baker.getOutputPath(site_root + uri)
         expected = os.path.normpath(

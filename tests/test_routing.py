@@ -1,3 +1,4 @@
+import urllib.parse
 import pytest
 from piecrust.routing import Route
 from .mockutil import get_mock_app
@@ -34,7 +35,11 @@ def test_matches_metadata(config, metadata, expected):
             ('/something', '/%foo%', set(['foo'])),
             ('/something', '/%path:foo%', set(['foo'])),
             ('/something', '/%foo%/%bar%', set(['foo', 'bar'])),
-            ('/something', '/%foo%/%path:bar%', set(['foo', 'bar']))
+            ('/something', '/%foo%/%path:bar%', set(['foo', 'bar'])),
+            ('/~johndoe', '/%foo%', set(['foo'])),
+            ('/~johndoe', '/%path:foo%', set(['foo'])),
+            ('/~johndoe', '/%foo%/%bar%', set(['foo', 'bar'])),
+            ('/~johndoe', '/%foo%/%path:bar%', set(['foo', 'bar']))
             ])
 def test_required_metadata(site_root, route_pattern,
                            expected_required_metadata):
@@ -91,22 +96,44 @@ def test_required_metadata(site_root, route_pattern,
             ('/blah', {'url': '/prefix/%path:foo%'},
                 'prefix',
                 {'foo': ''}),
+
+            ('/~johndoe', {'url': '/%foo%'},
+                'something',
+                {'foo': 'something'}),
+            ('/~johndoe', {'url': '/%foo%'},
+                'something/other',
+                None),
+            ('/~johndoe', {'url': '/%path:foo%'},
+                'something/other',
+                {'foo': 'something/other'}),
+            ('/~johndoe', {'url': '/%path:foo%'},
+                '',
+                {'foo': ''}),
+            ('/~johndoe', {'url': '/prefix/%path:foo%'},
+                'prefix/something/other',
+                {'foo': 'something/other'}),
+            ('/~johndoe', {'url': '/prefix/%path:foo%'},
+                'prefix/',
+                {'foo': ''}),
+            ('/~johndoe', {'url': '/prefix/%path:foo%'},
+                'prefix',
+                {'foo': ''}),
             ])
 def test_match_uri(site_root, config, uri, expected_match):
     site_root = site_root.rstrip('/') + '/'
     app = get_mock_app()
-    app.config.set('site/root', site_root)
+    app.config.set('site/root', urllib.parse.quote(site_root))
     config.setdefault('source', 'blah')
     route = Route(app, config)
     assert route.uri_pattern == config['url'].lstrip('/')
-    m = route.matchUri(site_root + uri)
+    m = route.matchUri(urllib.parse.quote(site_root) + uri)
     assert m == expected_match
 
 
 @pytest.mark.parametrize(
         'site_root',
         [
-            ('/'), ('/whatever')
+            ('/'), ('/whatever'), ('/~johndoe')
             ])
 def test_match_uri_requires_absolute_uri(site_root):
     with pytest.raises(Exception):
@@ -148,14 +175,15 @@ def test_match_uri_requires_absolute_uri(site_root):
             ('foo.bar.ext', 2, False, 'foo.bar/2.ext')
             ])
 def test_get_uri(slug, page_num, pretty, expected):
-    app = get_mock_app()
-    app.config.set('site/root', '/blah/')
-    app.config.set('site/pretty_urls', pretty)
-    app.config.set('site/trailing_slash', False)
-    app.config.set('__cache/pagination_suffix_format', '/%(num)d')
+    for root in ['/', '/blah/', '/~johndoe/']:
+        app = get_mock_app()
+        app.config.set('site/root', urllib.parse.quote(root))
+        app.config.set('site/pretty_urls', pretty)
+        app.config.set('site/trailing_slash', False)
+        app.config.set('__cache/pagination_suffix_format', '/%(num)d')
 
-    config = {'url': '/%path:slug%', 'source': 'blah'}
-    route = Route(app, config)
-    uri = route.getUri({'slug': slug}, sub_num=page_num)
-    assert uri == ('/blah/' + expected)
+        config = {'url': '/%path:slug%', 'source': 'blah'}
+        route = Route(app, config)
+        uri = route.getUri({'slug': slug}, sub_num=page_num)
+        assert uri == (urllib.parse.quote(root) + expected)
 

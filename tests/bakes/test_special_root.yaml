@@ -1,0 +1,10 @@
+---
+config:
+    site:
+        root: /~john/public/
+in:
+    pages/about.md: 'URL: {{page.url}}, LINK: {{pcurl("missing")}}'
+    pages/_index.md: 'URL: {{page.url}}'
+out:
+    about.html: 'URL: /%7Ejohn/public/about.html, LINK: /%7Ejohn/public/missing.html'
+    index.html: 'URL: /%7Ejohn/public/'

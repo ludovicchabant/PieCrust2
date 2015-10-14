@@ -2,6 +2,7 @@ import re
 import json
 import time
 import os.path
+import urllib.parse
 import codecs
 import hashlib
 import logging
@@ -145,7 +146,7 @@ class PieCrustConfiguration(Configuration):
         if not sitec['root'].startswith('/'):
             raise ConfigurationError("The `site/root` setting must start "
                                      "with a slash.")
-        sitec['root'] = sitec['root'].rstrip('/') + '/'
+        sitec['root'] = urllib.parse.quote(sitec['root'].rstrip('/') + '/')
 
         # Cache auto-format regexes.
         if not isinstance(sitec['auto_formats'], dict):
