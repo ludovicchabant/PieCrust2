@@ -35,7 +35,11 @@ class ShowConfigCommand(ChefCommand):
                 nargs='?')
 
     def run(self, ctx):
-        show = ctx.app.config.get(ctx.args.path)
+        if ctx.args.path:
+            show = ctx.app.config.get(ctx.args.path)
+        else:
+            show = ctx.app.config.getAll()
+
         if show is not None:
             if isinstance(show, (dict, list)):
                 import yaml

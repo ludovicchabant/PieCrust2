@@ -149,7 +149,7 @@ class ChefTestItem(YamlTestItemBase):
             argv = argv.split(' ')
 
         expected_code = self.spec.get('code', 0)
-        expected_out = self.spec.get('out', '')
+        expected_out = self.spec.get('out', None)
 
         with mock_fs_scope(fs):
             memstream = io.StringIO()
@@ -165,10 +165,11 @@ class ChefTestItem(YamlTestItemBase):
 
             assert expected_code == exit_code
 
-            actual_out = memstream.getvalue()
-            if self.spec.get('replace_out_path_sep'):
-                expected_out = expected_out.replace('/', os.sep)
-            assert expected_out == actual_out
+            if expected_out is not None:
+                actual_out = memstream.getvalue()
+                if self.spec.get('replace_out_path_sep'):
+                    expected_out = expected_out.replace('/', os.sep)
+                assert expected_out == actual_out
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name
