@@ -77,16 +77,20 @@ class ProcessingLoop(threading.Thread):
     def __init__(self, root_dir, out_dir, sub_cache_dir=None, debug=False):
         super(ProcessingLoop, self).__init__(
                 name='pipeline-reloader', daemon=True)
-        # TODO: re-create the app when `config.yml` is changed.
-        self.app = PieCrust(root_dir=root_dir, debug=debug)
-        if sub_cache_dir:
-            self.app._useSubCacheDir(sub_cache_dir)
-        self.pipeline = ProcessorPipeline(self.app, out_dir)
+        self.root_dir = root_dir
+        self.out_dir = out_dir
+        self.sub_cache_dir = sub_cache_dir
+        self.debug = debug
         self.last_status_id = 0
         self.interval = 1
+        self.app = None
+        self._roots = []
+        self._monitor_assets_root = False
         self._paths = set()
+        self._config_path = os.path.join(root_dir, 'config.yml')
         self._record = None
         self._last_bake = 0
+        self._last_config_mtime = 0
         self._obs = []
         self._obs_lock = threading.Lock()
 
@@ -99,18 +103,32 @@ class ProcessingLoop(threading.Thread):
             self._obs.remove(obs)
 
     def run(self):
-        # Build the first list of known files and run the pipeline once.
-        roots = [os.path.join(self.app.root_dir, r)
-                 for r in self.pipeline.mounts.keys()]
-        for root in roots:
-            for dirpath, dirnames, filenames in os.walk(root):
-                self._paths |= set([os.path.join(dirpath, f)
-                                    for f in filenames])
+        self._initPipeline()
+
         self._last_bake = time.time()
+        self._last_config_mtime = os.path.getmtime(self._config_path)
         self._record = self.pipeline.run()
 
         while True:
-            for root in roots:
+            cur_config_time = os.path.getmtime(self._config_path)
+            if self._last_config_mtime < cur_config_time:
+                logger.info("Site configuration changed, reloading pipeline.")
+                self._last_config_mtime = cur_config_time
+                self._initPipeline()
+                for root in self._roots:
+                    self._runPipeline(root)
+                continue
+
+            if self._monitor_assets_root:
+                assets_dir = os.path.join(self.app.root_dir, 'assets')
+                if os.path.isdir(assets_dir):
+                    logger.info("Assets directory was created, reloading "
+                                "pipeline.")
+                    self._initPipeline()
+                    self._runPipeline(assets_dir)
+                    continue
+
+            for root in self._roots:
                 # For each mount root we try to find the first new or
                 # modified file. If any, we just run the pipeline on
                 # that mount.
@@ -135,6 +153,28 @@ class ProcessingLoop(threading.Thread):
                     self._runPipeline(root)
 
             time.sleep(self.interval)
+
+    def _initPipeline(self):
+        # Create the app and pipeline.
+        self.app = PieCrust(root_dir=self.root_dir, debug=self.debug)
+        if self.sub_cache_dir:
+            self.app._useSubCacheDir(self.sub_cache_dir)
+        self.pipeline = ProcessorPipeline(self.app, self.out_dir)
+
+        # Get the list of assets directories.
+        self._roots = list(self.pipeline.mounts.keys())
+
+        # The 'assets' folder may not be in the mounts list if it doesn't
+        # exist yet, but we want to monitor for when the user creates it.
+        default_root = os.path.join(self.app.root_dir, 'assets')
+        self._monitor_assets_root = (default_root not in self._roots)
+
+        # Build the list of initial asset files.
+        self._paths = set()
+        for root in self._roots:
+            for dirpath, dirnames, filenames in os.walk(root):
+                self._paths |= set([os.path.join(dirpath, f)
+                                    for f in filenames])
 
     def _runPipeline(self, root):
         self._last_bake = time.time()

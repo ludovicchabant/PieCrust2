@@ -39,10 +39,10 @@ class ProcessorPipeline(object):
             tmp_dir = os.path.join(tempfile.gettempdir(), 'piecrust')
         self.tmp_dir = os.path.join(tmp_dir, 'proc')
 
-        baker_params = app.config.get('baker') or {}
+        baker_params = app.config.get('baker', {})
 
-        assets_dirs = baker_params.get('assets_dirs', app.assets_dirs)
-        self.mounts = make_mount_infos(assets_dirs, self.app.root_dir)
+        mount_params = baker_params.get('assets_dirs', {})
+        self.mounts = make_mount_infos(app, mount_params)
 
         self.num_workers = baker_params.get(
                 'workers', multiprocessing.cpu_count())
@@ -193,14 +193,13 @@ class ProcessorPipeline(object):
         if src_dir_or_file is not None:
             # Process only the given path.
             # Find out what mount point this is in.
-            for name, info in self.mounts.items():
-                path = info['path']
+            for path, info in self.mounts.items():
                 if src_dir_or_file[:len(path)] == path:
                     base_dir = path
                     mount_info = info
                     break
             else:
-                known_roots = [i['path'] for i in self.mounts.values()]
+                known_roots = list(self.mounts.keys())
                 raise Exception("Input path '%s' is not part of any known "
                                 "mount point: %s" %
                                 (src_dir_or_file, known_roots))
@@ -215,8 +214,7 @@ class ProcessorPipeline(object):
 
         else:
             # Process everything.
-            for name, info in self.mounts.items():
-                path = info['path']
+            for path, info in self.mounts.items():
                 ctx = _ProcessingContext(jobs, record, path, info)
                 logger.debug("Initiating processing pipeline on: %s" % path)
                 self._processDirectory(ctx, path)
@@ -267,16 +265,23 @@ class ProcessorPipeline(object):
         return pool
 
 
-def make_mount_infos(mounts, root_dir):
-    if isinstance(mounts, list):
-        mounts = {m: {} for m in mounts}
+def make_mount_infos(app, mount_params):
+    mounts = {d: {} for d in app.assets_dirs}
 
-    for name, info in mounts.items():
-        if not isinstance(info, dict):
-            raise Exception("Asset directory info for '%s' is not a "
-                            "dictionary." % name)
+    for name, cfg in mount_params.items():
+        mdir = os.path.join(app.root_dir, name)
+        mounts[mdir] = cfg
+
+    for mdir, info in mounts.items():
+        mname = os.path.basename(mdir)
+        info_from_config = mount_params.get(mname)
+        if info_from_config is not None:
+            if not isinstance(info, dict):
+                raise Exception("Asset directory info for '%s' is not a "
+                                "dictionary." % mname)
+            info.update(info_from_config)
         info.setdefault('processors', 'all -uglifyjs -cleancss')
-        info['path'] = os.path.join(root_dir, name)
+        info['name'] = mname
 
     return mounts
 
