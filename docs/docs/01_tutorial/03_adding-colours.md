@@ -3,11 +3,11 @@ title: "Part 3: Adding Colours"
 ---
 
 In the first two parts of this [tutorial][tut], we created a simple blog website
-and added some content. In the third part, we'll take a look at PieCrust's
+and added some content. In the third part, we'll take a look at PieCrust's 
 [built-in asset pipeline][pip].
 
 
-## Stylesheets with Less
+## Stylesheets
 
 Edit the `templates/default.html` layout and delete the whole part between
 `{%raw%}{% if site.css %}{%endraw%}` and `{%raw%}{% endif %}{%endraw%}`. Replace
@@ -19,41 +19,35 @@ it with:
 {% endraw %}
 ```
 
-Now create the file `assets/myblog.less`. Leave it empty for now.
-
-> __*Important*__: If you still had the `chef serve` command running since the
-> beginning of the tutorial, restart it now by pressing `CTRL+C` and running it
-> again. This is because we want it to monitor the new `assets/` folder you just
-> created.
+Now create the file `assets/myblog.css`. Leave it empty for now. If you're not
+running `chef serve` anymore, run it again.
 
 Refresh you browser, and you should see your blog revert to your browser's
 default styles. You should also see, in the `chef serve` command output in your
-terminal, an entry that shows that it processed `myblog.less`.
+terminal, an entry that shows that it processed `myblog.css`:
 
-Now start writing some Less CSS code in the empty file (you can learn more about
-the Less CSS syntax on the [official website][less]):
+```
+[    26.1 ms] processed 1 assets.
+```
+
+Now start writing some CSS code in the empty file:
 
 ```css
-@color-primary: #FF481C;
-@color-secondary1: #083D78;
-@color-secondary2: #CBF66E;
-@color-secondary2-dark: #74AC00;
-
 body {
     font-family: sans-serif;
-    color: @color-primary;
-    background: darken(@color-secondary1, 20%);
+    color: #FF481C;
+    background: #063B76;
 }
 
 a {
-    color: @color-secondary2;
+    color: #083D78;
     text-decoration: none;
 
     &:hover {
         text-decoration: underline;
     }
     &:visited {
-        color: @color-secondary2-dark;
+        color: #74AC00;
     }
 }
 
@@ -63,13 +57,17 @@ a {
 }
 ```
 
-When you save, you should see that PieCrust picks it up right away and compiles
-the Less file into a CSS file that your browser can fetch.
+When you save, you should see that PieCrust picks it up right away and copies it
+to a place that your browser can fetch it from. In this case, only copying is
+needed because it's a simple CSS file, but if it was a [LessCSS][] or
+[Sass][] file, it would run the appropriate compiler. The same applies for
+any other type of file for which PieCrust has a "processor" defined. Otherwise,
+it just copies the file.
 
 Refresh your browser, and you should see the same blog with a completely
-different look. You can go back to the Less file and work some more on it -- by
-the time you've swtiched back to your browser and pressed `F5`, the Less
-compiler should have already finished.
+different look. You can go back to the CSS file and work some more on it -- by
+the time you've swtiched back to your browser and pressed `F5`, PieCrust has
+typically finished processing the updated file.
 
 
 ## More assets
@@ -92,7 +90,8 @@ For example, it's common these days to use a package manager like [npm][] or
 [Bower][] to download libraries and utilities to use with a given website. Those
 will create directories of their own, like `node_modules/` and
 `bower_components`, along with root files like `package.json` and `bower.json`.
-That's all fine!
+That's all fine! PieCrust won't do anything about all those directories unless
+you ask it to.
 
 
 ## Next steps
@@ -105,7 +104,8 @@ magnificent blog][part4].
 [pip]: {{docurl('asset-pipeline')}}
 [procs]: {{docurl('reference/asset-processors')}}
 [part4]: {{docurl('tutorial/making-it-public')}}
-[less]: http://lesscss.org/
+[lesscss]: http://lesscss.org/
+[sass]: http://sass-lang.com/
 [npm]: https://www.npmjs.com/
 [bower]: http://bower.io/
 
