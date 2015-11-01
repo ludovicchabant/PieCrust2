@@ -10,7 +10,74 @@ This is the changelog for PieCrust_.
 
 
 ==================================
-1. PieCrust 2.0.0b2 (2015-07-29)
+1. PieCrust 2.0.0 (2015-10-31)
+==================================
+
+
+1.0 Commands
+----------------------
+
+* serve: Fix corner cases where the pipeline doesn't run correctly.
+* showconfig: Don't crash when the whole config should be shown.
+* bake: Don't re-setup logging for workers unless we're sure we need it.
+* serve: Fix error reporting when the background pipeline fails.
+* chef: Add ``--debug-only`` option to only show debug logging for a given logger.
+* routes: Add better support for taxonomy slugification.
+* serve: Improve reloading and shutdown of the preview server.
+* serve: Don't crash when looking at the debug info in a stand-alone window.
+* serve: Improve debug information in the preview server.
+* serve: Refactor the server to make pieces usable by the debugging middleware.
+* serve: Fix timing information in the debug window.
+* serve: Extract some of the server's functionality into WSGI middlewares.
+* serve: Rewrite of the Server-Sent Event code for build notifications.
+* serve: Werkzeug docs say you need to pass a flag with ``wrap_file`` .
+* bake: Add a flag to know which record entries got collapsed from last run.
+* bake: Set the flags, don't combine.
+
+1.1 Core
+----------------------
+
+* bug: Correctly handle root URLs with special characters.
+* debug: Fix a crash when rendering debug info for some pages.
+
+1.2 Project
+----------------------
+
+* tests: Fix broken unit test.
+* tests: Fix another broken test.
+* docs: Add reference entry about the ``site/slugify_mode`` setting.
+* tests: Fix broken test.
+* tests: Print more information when a bake test fails to find an output file.
+
+==================================
+2. PieCrust 2.0.0b3 (2015-08-01)
+==================================
+
+
+1.0 Commands
+----------------------
+
+* import: Correctly convert unicode characters in site configuration.
+* import: Fix the PieCrust 1 importer.
+* import: Add some debug logging.
+
+1.1 Core
+----------------------
+
+* internal: Fix a severe bug with the file-system wrappers on OSX.
+* templating: Make more date functions accept 'now' as an input.
+
+1.2 Project
+----------------------
+
+* cm: Update changelog.
+* cm: Changelog generator script.
+* cm: Add a Gutentags config file for ``ctags`` generation.
+* tests: Check accented characters work in configurations.
+* cm: Ignore Rope cache.
+
+==================================
+3. PieCrust 2.0.0b2 (2015-07-29)
 ==================================
 
 
@@ -25,7 +92,7 @@ This is the changelog for PieCrust_.
 * bug: Fix crash running ``chef help scaffolding`` outside of a website.
 
 ==================================
-2. PieCrust 2.0.0b1 (2015-07-29)
+4. PieCrust 2.0.0b1 (2015-07-29)
 ==================================
 
 
@@ -104,7 +171,7 @@ This is the changelog for PieCrust_.
 * jinja: Support ``.j2`` file extensions.
 
 ==================================
-3. PieCrust 2.0.0a13 (2015-07-14)
+5. PieCrust 2.0.0a13 (2015-07-14)
 ==================================
 
 
@@ -120,7 +187,7 @@ This is the changelog for PieCrust_.
 * bug: Correctly setup the environment/app for bake workers.
 
 ==================================
-4. PieCrust 2.0.0a12 (2015-07-14)
+6. PieCrust 2.0.0a12 (2015-07-14)
 ==================================
 
 
@@ -206,7 +273,7 @@ This is the changelog for PieCrust_.
 * markdown: Cache the formatter once.
 
 ==================================
-5. PieCrust 2.0.0a11 (2015-05-18)
+7. PieCrust 2.0.0a11 (2015-05-18)
 ==================================
 
 
@@ -240,7 +307,7 @@ This is the changelog for PieCrust_.
 * jinja: Look for ``html`` extension first instead of last.
 
 ==================================
-6. PieCrust 2.0.0a10 (2015-05-15)
+8. PieCrust 2.0.0a10 (2015-05-15)
 ==================================
 
 
@@ -250,7 +317,7 @@ This is the changelog for PieCrust_.
 * setup: Add ``requirements.txt`` to ``MANIFEST.in`` so it can be used by the setup.
 
 ==================================
-7. PieCrust 2.0.0a9 (2015-05-11)
+9. PieCrust 2.0.0a9 (2015-05-11)
 ==================================
 
 
@@ -281,7 +348,7 @@ This is the changelog for PieCrust_.
 * setup: Keep the requirements in sync between ``setuptools`` and ``pip`` .
 
 ==================================
-8. PieCrust 2.0.0a8 (2015-05-03)
+10. PieCrust 2.0.0a8 (2015-05-03)
 ==================================
 
 
@@ -315,7 +382,7 @@ This is the changelog for PieCrust_.
 * Update ``requirements.txt`` .
 
 ==================================
-9. PieCrust 2.0.0a7 (2015-04-20)
+11. PieCrust 2.0.0a7 (2015-04-20)
 ==================================
 
 
@@ -366,7 +433,7 @@ This is the changelog for PieCrust_.
 * cleancss: Fix stupid bug.
 
 ==================================
-10. PieCrust 2.0.0a6 (2015-03-30)
+12. PieCrust 2.0.0a6 (2015-03-30)
 ==================================
 
 
@@ -533,7 +600,7 @@ This is the changelog for PieCrust_.
 * processing: Add more information to the pipeline record.
 
 ==================================
-11. PieCrust 2.0.0a5 (2015-01-03)
+13. PieCrust 2.0.0a5 (2015-01-03)
 ==================================
 
 

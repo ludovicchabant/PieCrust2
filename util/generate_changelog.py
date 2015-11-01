@@ -1,7 +1,8 @@
 import os
 import os.path
 import re
-import sys
+import time
+import argparse
 import subprocess
 
 
@@ -32,11 +33,18 @@ category_names = list(map(lambda i: i[0], categories))
 
 
 def generate():
-    out_file = 'CHANGELOG.rst'
-    if len(sys.argv) > 1:
-        out_file = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Generate CHANGELOG file.')
+    parser.add_argument(
+            'out_file',
+            nargs='?',
+            default='CHANGELOG.rst',
+            help='The output file.')
+    parser.add_argument(
+            '--last',
+            help="The version for the last few untagged changes.")
+    args = parser.parse_args()
 
-    print("Generating %s" % out_file)
+    print("Generating %s" % args.out_file)
 
     if not os.path.exists('.hg'):
         raise Exception("You must run this script from the root of a "
@@ -49,7 +57,7 @@ def generate():
 
     templates = _get_templates()
 
-    with open(out_file, 'w') as fp:
+    with open(args.out_file, 'w') as fp:
         fp.write(templates['header'])
 
         skip = False
@@ -57,6 +65,13 @@ def generate():
         current_version = 0
         current_version_info = None
         current_changes = None
+
+        if args.last:
+            current_version = 1
+            cur_date = time.strftime('%Y-%m-%d')
+            current_version_info = args.last, cur_date
+            current_changes = {}
+
         for line in hglog.splitlines():
             if line == '':
                 skip = False
