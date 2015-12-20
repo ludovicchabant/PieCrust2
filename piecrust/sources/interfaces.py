@@ -23,7 +23,7 @@ class IPaginationSource(object):
         raise NotImplementedError()
 
 
-class IListableSource:
+class IListableSource(object):
     """ Defines the interface for a source that can be iterated on in a
         hierarchical manner, for use with the `family` data endpoint.
     """
@@ -37,7 +37,7 @@ class IListableSource:
         raise NotImplementedError()
 
 
-class IPreparingSource:
+class IPreparingSource(object):
     """ Defines the interface for a source whose pages can be created by the
         `chef prepare` command.
     """
@@ -47,4 +47,18 @@ class IPreparingSource:
     def buildMetadata(self, args):
         raise NotImplementedError()
 
+
+class InteractiveField(object):
+    TYPE_STRING = 0
+    TYPE_INT = 1
+
+    def __init__(self, name, field_type, default_value):
+        self.name = name
+        self.field_type = field_type
+        self.default_value = default_value
+
+
+class IInteractiveSource(object):
+    def getInteractiveFields(self):
+        raise NotImplementedError()
 

@@ -7,14 +7,16 @@ from piecrust import osutil
 from piecrust.sources.base import (
         PageSource, InvalidFileSystemEndpointError, PageFactory,
         MODE_CREATING, MODE_PARSING)
-from piecrust.sources.interfaces import IPreparingSource
+from piecrust.sources.interfaces import (
+        IPreparingSource, IInteractiveSource, InteractiveField)
 from piecrust.sources.mixins import SimplePaginationSourceMixin
 
 
 logger = logging.getLogger(__name__)
 
 
-class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
+class PostsSource(PageSource, IPreparingSource, IInteractiveSource,
+                  SimplePaginationSourceMixin):
     PATH_FORMAT = None
 
     def __init__(self, app, name, config):
@@ -98,7 +100,8 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         return PageFactory(self, rel_path, fac_metadata)
 
     def setupPrepareParser(self, parser, app):
-        parser.add_argument('-d', '--date', help="The date of the post, "
+        parser.add_argument(
+                '-d', '--date', help="The date of the post, "
                 "in `year/month/day` format (defaults to today).")
         parser.add_argument('slug', help="The URL slug for the new post.")
 
@@ -106,7 +109,7 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
         dt = datetime.date.today()
         if args.date:
             if args.date == 'today':
-                pass # Keep the default we had.
+                pass  # Keep the default we had.
             elif args.date == 'tomorrow':
                 dt += datetime.timedelta(days=1)
             elif args.date.startswith('+'):
@@ -118,11 +121,20 @@ class PostsSource(PageSource, IPreparingSource, SimplePaginationSourceMixin):
                 try:
                     year, month, day = [int(s) for s in args.date.split('/')]
                 except ValueError:
-                    raise Exception("Dates must be of the form: YEAR/MONTH/DAY.")
+                    raise Exception("Dates must be of the form: "
+                                    "YEAR/MONTH/DAY.")
                 dt = datetime.date(year, month, day)
 
         year, month, day = dt.year, dt.month, dt.day
         return {'year': year, 'month': month, 'day': day, 'slug': args.slug}
+
+    def getInteractiveFields(self):
+        dt = datetime.date.today()
+        return [
+            InteractiveField('year', InteractiveField.TYPE_INT, dt.year),
+            InteractiveField('month', InteractiveField.TYPE_INT, dt.month),
+            InteractiveField('day', InteractiveField.TYPE_INT, dt.day),
+            InteractiveField('slug', InteractiveField.TYPE_STRING, 'new-post')]
 
     def _checkFsEndpointPath(self):
         if not os.path.isdir(self.fs_endpoint_path):

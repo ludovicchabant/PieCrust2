@@ -4,7 +4,9 @@ from piecrust import osutil
 from piecrust.sources.base import (
         PageFactory, PageSource, InvalidFileSystemEndpointError,
         MODE_CREATING)
-from piecrust.sources.interfaces import IListableSource, IPreparingSource
+from piecrust.sources.interfaces import (
+        IListableSource, IPreparingSource, IInteractiveSource,
+        InteractiveField)
 from piecrust.sources.mixins import SimplePaginationSourceMixin
 
 
@@ -21,7 +23,8 @@ def filter_page_filename(f):
             f not in ['Thumbs.db'])  # Windows bullshit
 
 
-class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
+class DefaultPageSource(PageSource,
+                        IListableSource, IPreparingSource, IInteractiveSource,
                         SimplePaginationSourceMixin):
     SOURCE_NAME = 'default'
 
@@ -133,6 +136,11 @@ class DefaultPageSource(PageSource, IListableSource, IPreparingSource,
 
     def buildMetadata(self, args):
         return {'slug': args.uri}
+
+    def getInteractiveFields(self):
+        return [
+                InteractiveField('slug', InteractiveField.TYPE_STRING,
+                                 'new-page')]
 
     def _makeSlug(self, rel_path):
         slug, ext = os.path.splitext(rel_path)
