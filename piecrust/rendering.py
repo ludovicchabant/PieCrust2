@@ -279,7 +279,7 @@ def render_page(ctx):
                 layout_result['pass_info'])
         return rp
     except Exception as ex:
-        page_rel_path = os.path.relpath(page.path, ctx.app.root_dir)
+        page_rel_path = os.path.relpath(ctx.page.path, ctx.app.root_dir)
         raise Exception("Error rendering page: %s" % page_rel_path) from ex
     finally:
         ctx.setCurrentPass(PASS_NONE)
