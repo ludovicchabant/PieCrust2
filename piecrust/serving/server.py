@@ -72,11 +72,12 @@ class MultipleNotFound(HTTPException):
 class Server(object):
     def __init__(self, root_dir,
                  debug=False, sub_cache_dir=None, enable_debug_info=True,
-                 static_preview=True):
+                 root_url='/', static_preview=True):
         self.root_dir = root_dir
         self.debug = debug
         self.sub_cache_dir = sub_cache_dir
         self.enable_debug_info = enable_debug_info
+        self.root_url = root_url
         self.static_preview = static_preview
         self._page_record = ServeRecord()
         self._out_dir = os.path.join(root_dir, CACHE_DIR, 'server')
@@ -109,14 +110,15 @@ class Server(object):
 
         # Create the app for this request.
         app = get_app_for_server(self.root_dir, debug=self.debug,
-                                 sub_cache_dir=self.sub_cache_dir)
+                                 sub_cache_dir=self.sub_cache_dir,
+                                 root_url=self.root_url)
         if (app.config.get('site/enable_debug_info') and
                 self.enable_debug_info and
                 '!debug' in request.args):
             app.config.set('site/show_debug_info', True)
 
         # We'll serve page assets directly from where they are.
-        app.env.base_asset_url_format = '/_asset/%path%'
+        app.env.base_asset_url_format = self.root_url + '_asset/%path%'
 
         # Let's see if it can be a page asset.
         response = self._try_serve_page_asset(app, environ, request)
@@ -140,7 +142,8 @@ class Server(object):
             raise InternalServerError(msg) from ex
 
     def _try_serve_asset(self, environ, request):
-        rel_req_path = request.path.lstrip('/').replace('/', os.sep)
+        offset = len(self.root_url)
+        rel_req_path = request.path[offset:].replace('/', os.sep)
         if request.path.startswith('/_cache/'):
             # Some stuff needs to be served directly from the cache directory,
             # like LESS CSS map files.
@@ -156,10 +159,11 @@ class Server(object):
         return None
 
     def _try_serve_page_asset(self, app, environ, request):
-        if not request.path.startswith('/_asset/'):
+        if not request.path.startswith(self.root_url + '_asset/'):
             return None
 
-        full_path = os.path.join(app.root_dir, request.path[len('/_asset/'):])
+        offset = len(self.root_url + '_asset/')
+        full_path = os.path.join(app.root_dir, request.path[offset:])
         if not os.path.isfile(full_path):
             return None
 

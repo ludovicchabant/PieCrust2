@@ -16,11 +16,12 @@ from piecrust.uriutil import split_sub_uri
 logger = logging.getLogger(__name__)
 
 
-def get_app_for_server(root_dir, debug=False, sub_cache_dir=None):
+def get_app_for_server(root_dir, debug=False, sub_cache_dir=None,
+                       root_url='/'):
     app = PieCrust(root_dir=root_dir, debug=debug)
     if sub_cache_dir:
         app._useSubCacheDir(sub_cache_dir)
-    app.config.set('site/root', '/')
+    app.config.set('site/root', root_url)
     app.config.set('server/is_serving', True)
     return app
 
