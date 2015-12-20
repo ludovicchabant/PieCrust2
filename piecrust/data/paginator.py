@@ -208,7 +208,7 @@ class Paginator(object):
         if self._pgn_filter is not None:
             f.addClause(self._pgn_filter.root_clause)
 
-        if isinstance(self._source, IPaginationSource):
+        if self._parent_page and isinstance(self._source, IPaginationSource):
             sf = self._source.getPaginationFilter(self._parent_page)
             if sf is not None:
                 f.addClause(sf.root_clause)
