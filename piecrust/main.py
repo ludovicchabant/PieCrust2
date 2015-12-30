@@ -86,6 +86,7 @@ class PreParsedChefArgs(object):
         self.config_variant = config_variant
         self.config_values = []
         self.debug_only = []
+        self.no_color = False
 
 
 def _parse_config_value(arg):
@@ -135,6 +136,8 @@ def _pre_parse_chef_args(argv):
             res.debug = True
         elif arg == '--quiet':
             res.quiet = True
+        elif arg == '--no-color':
+            res.no_color = True
         else:
             break
 
@@ -144,7 +147,11 @@ def _pre_parse_chef_args(argv):
     if res.debug and res.quiet:
         raise Exception("You can't specify both --debug and --quiet.")
 
-    colorama.init()
+    strip_colors = None
+    if res.no_color:
+        strip_colors = True
+
+    colorama.init(strip=strip_colors)
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     if res.debug or res.log_debug:
@@ -242,6 +249,10 @@ def _run_chef(pre_args, argv):
     parser.add_argument(
             '--log-debug',
             help="Log debug messages to the log file.",
+            action='store_true')
+    parser.add_argument(
+            '--no-color',
+            help="Don't use colorized output.",
             action='store_true')
 
     commands = sorted(app.plugin_loader.getCommands(),
