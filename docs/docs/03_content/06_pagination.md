@@ -65,6 +65,6 @@ name is just a number!
 
 [tpl]: {{docurl('content/templating')}}
 [tpldata]: {{docurl('reference/templating-data')}}
-[dcm]: {{docurl('content-model/default-content-model')}}
+[dcm]: {{docurl('content-model/default-model')}}
 [fil]: {{docurl('content/filtering')}}
 
