@@ -1,5 +1,5 @@
 import logging
-from piecrust.data.filters import PaginationFilter
+from piecrust.data.filters import PaginationFilter, IsFilterClause, NotClause
 from piecrust.environment import AbortedSourceUseError
 from piecrust.events import Event
 from piecrust.sources.base import PageSource
@@ -131,6 +131,20 @@ class PageIterator(object):
             src_it = source.getSourceIterator()
             if src_it is not None:
                 self._pages = src_it
+
+        # If we're currently baking, apply the default baker filter
+        # to exclude things like draft posts.
+        if (isinstance(source, PageSource) and
+                source.app.config.get('baker/is_baking')):
+            setting_name = source.app.config.get('baker/no_bake_setting',
+                                                 'draft')
+            accessor = self._getSettingAccessor()
+            draft_filter = PaginationFilter(accessor)
+            draft_filter.root_clause = NotClause()
+            draft_filter.root_clause.addClause(
+                    IsFilterClause(setting_name, True))
+            self._simpleNonSortedWrap(
+                    PaginationFilterIterator, draft_filter)
 
         # Apply any filter first, before we start sorting or slicing.
         if pagination_filter is not None:
