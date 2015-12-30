@@ -344,7 +344,7 @@ def _do_render_page_segments(page, page_data):
     engine = get_template_engine(app, engine_name)
 
     formatted_segments = {}
-    for seg_name, seg in page.raw_content.items():
+    for seg_name, seg in page.segments.items():
         seg_text = ''
         for seg_part in seg.parts:
             part_format = seg_part.fmt or format_name

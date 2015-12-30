@@ -43,7 +43,7 @@ class Page(IRouteMetadataProvider):
         self.source_metadata = source_metadata
         self.rel_path = rel_path
         self._config = None
-        self._raw_content = None
+        self._segments = None
         self._flags = FLAG_NONE
         self._datetime = None
 
@@ -74,9 +74,9 @@ class Page(IRouteMetadataProvider):
         return self._config
 
     @property
-    def raw_content(self):
+    def segments(self):
         self._load()
-        return self._raw_content
+        return self._segments
 
     @property
     def datetime(self):
@@ -123,7 +123,7 @@ class Page(IRouteMetadataProvider):
         self._datetime = value
 
     def getSegment(self, name='content'):
-        return self.raw_content[name]
+        return self.segments[name]
 
     def _load(self):
         if self._config is not None:
@@ -135,7 +135,7 @@ class Page(IRouteMetadataProvider):
             config.merge(self.source_metadata['config'])
 
         self._config = config
-        self._raw_content = content
+        self._segments = content
         if was_cache_valid:
             self._flags |= FLAG_RAW_CACHE_VALID
 
