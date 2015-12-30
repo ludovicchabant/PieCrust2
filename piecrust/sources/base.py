@@ -109,6 +109,9 @@ class PageSource(object):
     def buildPageFactories(self):
         raise NotImplementedError()
 
+    def buildPageFactory(self, path):
+        raise NotImplementedError()
+
     def resolveRef(self, ref_path):
         """ Returns the full path and source metadata given a source
             (relative) path, like a ref-spec.

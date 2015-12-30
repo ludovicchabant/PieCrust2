@@ -10,6 +10,7 @@ from piecrust.sources.base import (
 from piecrust.sources.interfaces import (
         IPreparingSource, IInteractiveSource, InteractiveField)
 from piecrust.sources.mixins import SimplePaginationSourceMixin
+from piecrust.uriutil import multi_replace
 
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,36 @@ class PostsSource(PageSource, IPreparingSource, IInteractiveSource,
         path = os.path.normpath(os.path.join(self.fs_endpoint_path, ref_path))
         metadata = self._parseMetadataFromPath(ref_path)
         return path, metadata
+
+    def buildPageFactory(self, path):
+        if not path.startswith(self.fs_endpoint_path):
+            raise Exception("Page path '%s' isn't inside '%s'." % (
+                    path, self.fs_endpoint_path))
+        rel_path = path[len(self.fs_endpoint_path):].lstrip('\\/')
+        pat = self.PATH_FORMAT % {
+                'year': 'YEAR',
+                'month': 'MONTH',
+                'day': 'DAY',
+                'slug': 'SLUG',
+                'ext': 'EXT'}
+        pat = re.escape(pat)
+        pat = multi_replace(pat, {
+                'YEAR': '(\d{4})',
+                'MONTH': '(\d{2})',
+                'DAY': '(\d{2})',
+                'SLUG': '(.*)',
+                'EXT': '(.*)'})
+        m = re.match(pat, rel_path)
+        if m is None:
+            raise Exception("'%s' isn't a proper %s page path." % (
+                    rel_path, self.SOURCE_NAME))
+        return self._makeFactory(
+                rel_path,
+                m.group(4),
+                int(m.group(1)),
+                int(m.group(2)),
+                int(m.group(3)))
+
 
     def findPageFactory(self, metadata, mode):
         year = metadata.get('year')

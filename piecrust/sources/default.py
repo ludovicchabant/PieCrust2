@@ -58,6 +58,17 @@ class DefaultPageSource(PageSource,
                 self._populateMetadata(fac_path, metadata)
                 yield PageFactory(self, fac_path, metadata)
 
+    def buildPageFactory(self, path):
+        if not path.startswith(self.fs_endpoint_path):
+            raise Exception("Page path '%s' isn't inside '%s'." % (
+                    path, self.fs_enpoint_path))
+        rel_path = path[len(self.fs_endpoint_path):].lstrip('\\/')
+        slug = self._makeSlug(rel_path)
+        metadata = {'slug': slug}
+        fac_path = rel_path.replace('\\', '/')
+        self._populateMetadata(fac_path, metadata)
+        return PageFactory(self, fac_path, metadata)
+
     def resolveRef(self, ref_path):
         path = os.path.normpath(
                 os.path.join(self.fs_endpoint_path, ref_path.lstrip("\\/")))
