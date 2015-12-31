@@ -449,13 +449,32 @@ def _compare_str(left, right, ctx):
 
     test_time_iso8601 = time.strftime('%Y-%m-%dT%H:%M:%SZ',
                                       time.gmtime(ctx.time))
-    replacements = {
-            '%test_time_iso8601%': test_time_iso8601}
-    for token, repl in replacements.items():
-        left = left.replace(token, repl)
-        right = right.replace(token, repl)
+    test_time_iso8601_pattern = '%test_time_iso8601%'
+
+    left_time_indices = []
+    i = -1
+    while True:
+        i = left.find(test_time_iso8601_pattern, i + 1)
+        if i >= 0:
+            left_time_indices.append(i)
+            left = (left[:i] + test_time_iso8601 +
+                    left[i + len(test_time_iso8601_pattern):])
+        else:
+            break
 
     for i in range(min(len(left), len(right))):
+        if i in left_time_indices:
+            # This is where the time starts. Let's compare that the time
+            # values are within a few seconds of each other (usually 0 or 1).
+            right_time_str = right[i:i + len(test_time_iso8601)]
+            right_time = time.strptime(right_time_str, '%Y-%m-%dT%H:%M:%SZ')
+            left_time = time.gmtime(ctx.time)
+            difference = time.mktime(left_time) - time.mktime(right_time)
+            print("Got time difference: %d" % difference)
+            if abs(difference) <= 2:
+                print("(good enough, moving to end of timestamp)")
+                i += len(test_time_iso8601)
+
         if left[i] != right[i]:
             start = max(0, i - 15)
             l_end = min(len(left), i + 15)
