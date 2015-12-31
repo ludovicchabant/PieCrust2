@@ -74,27 +74,50 @@ def main():
     sys.exit(exit_code)
 
 
-class PreParsedChefArgs(object):
-    def __init__(self, root=None, cache=True, debug=False, quiet=False,
-                 log_file=None, log_debug=False, config_variant=None):
-        self.root = root
-        self.cache = cache
-        self.debug = debug
-        self.quiet = quiet
-        self.log_file = log_file
-        self.log_debug = log_debug
-        self.config_variant = config_variant
-        self.config_values = []
-        self.debug_only = []
-        self.no_color = False
-
-
-def _parse_config_value(arg):
-    try:
-        name, value = arg.split('=')
-    except Exception:
-        raise Exception("Invalid configuration name and value: %s" % arg)
-    return (name, value)
+def _setup_main_parser_arguments(parser):
+    parser.add_argument(
+            '--version',
+            action='version',
+            version=('%(prog)s ' + APP_VERSION))
+    parser.add_argument(
+            '--root',
+            help="The root directory of the website.")
+    parser.add_argument(
+            '--config',
+            dest='config_variant',
+            help="The configuration variant to use for this command.")
+    parser.add_argument(
+            '--config-set',
+            nargs='*',
+            dest='config_values',
+            help="Sets a specific site configuration setting.")
+    parser.add_argument(
+            '--debug',
+            help="Show debug information.", action='store_true')
+    parser.add_argument(
+            '--debug-only',
+            nargs='*',
+            help="Only show debug information for the given categories.")
+    parser.add_argument(
+            '--no-cache',
+            help="When applicable, disable caching.",
+            action='store_true')
+    parser.add_argument(
+            '--quiet',
+            help="Print only important information.",
+            action='store_true')
+    parser.add_argument(
+            '--log',
+            dest='log_file',
+            help="Send log messages to the specified file.")
+    parser.add_argument(
+            '--log-debug',
+            help="Log debug messages to the log file.",
+            action='store_true')
+    parser.add_argument(
+            '--no-color',
+            help="Don't use colorized output.",
+            action='store_true')
 
 
 def _pre_parse_chef_args(argv):
@@ -102,46 +125,10 @@ def _pre_parse_chef_args(argv):
     # parser, because it can affect which plugins will be loaded. Also, log-
     # related arguments must be parsed first because we want to log everything
     # from the beginning.
-    res = PreParsedChefArgs()
-    i = 0
-    while i < len(argv):
-        arg = argv[i]
-        if arg.startswith('--root='):
-            res.root = os.path.expanduser(arg[len('--root='):])
-        elif arg == '--root':
-            res.root = os.path.expanduser(argv[i + 1])
-            i += 1
-        elif arg.startswith('--config='):
-            res.config_variant = arg[len('--config='):]
-        elif arg == '--config':
-            res.config_variant = argv[i + 1]
-            i += 1
-        elif arg.startswith('--config-set='):
-            res.config_values.append(
-                    _parse_config_value(arg[len('--config-set='):]))
-        elif arg == '--config-set':
-            res.config_values.append(_parse_config_value(argv[i + 1]))
-            i += 1
-        elif arg == '--log':
-            res.log_file = argv[i + 1]
-            i += 1
-        elif arg == '--log-debug':
-            res.log_debug = True
-        elif arg == '--debug-only':
-            res.debug_only.append(argv[i + 1])
-            i += 1
-        elif arg == '--no-cache':
-            res.cache = False
-        elif arg == '--debug':
-            res.debug = True
-        elif arg == '--quiet':
-            res.quiet = True
-        elif arg == '--no-color':
-            res.no_color = True
-        else:
-            break
-
-        i = i + 1
+    parser = argparse.ArgumentParser()
+    _setup_main_parser_arguments(parser)
+    parser.add_argument('args', nargs=argparse.REMAINDER)
+    res, _ = parser.parse_known_args(argv)
 
     # Setup the logger.
     if res.debug and res.quiet:
@@ -157,8 +144,9 @@ def _pre_parse_chef_args(argv):
     if res.debug or res.log_debug:
         root_logger.setLevel(logging.DEBUG)
 
-    for n in res.debug_only:
-        logging.getLogger(n).setLevel(logging.DEBUG)
+    if res.debug_only:
+        for n in res.debug_only:
+            logging.getLogger(n).setLevel(logging.DEBUG)
 
     log_handler = logging.StreamHandler(sys.stdout)
     if res.debug or res.debug_only:
@@ -184,8 +172,10 @@ def _pre_parse_chef_args(argv):
 def _run_chef(pre_args, argv):
     # Setup the app.
     start_time = time.perf_counter()
-    root = pre_args.root
-    if root is None:
+    root = None
+    if pre_args.root:
+        root = os.path.expanduser(pre_args.root)
+    else:
         try:
             root = find_app_root()
         except SiteNotFoundError:
@@ -194,7 +184,8 @@ def _run_chef(pre_args, argv):
     if not root:
         app = NullPieCrust()
     else:
-        app = PieCrust(root, cache=pre_args.cache, debug=pre_args.debug)
+        app = PieCrust(root, cache=(not pre_args.no_cache),
+                       debug=pre_args.debug)
 
     # Build a hash for a custom cache directory.
     cache_key = 'default'
@@ -208,52 +199,16 @@ def _run_chef(pre_args, argv):
     # Adjust the cache key.
     if pre_args.config_variant is not None:
         cache_key += ',variant=%s' % pre_args.config_variant
-    for name, value in pre_args.config_values:
-        cache_key += ',%s=%s' % (name, value)
+    if pre_args.config_values:
+        for name, value in pre_args.config_values:
+            cache_key += ',%s=%s' % (name, value)
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
             prog='chef',
             description="The PieCrust chef manages your website.",
             formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument(
-            '--version',
-            action='version',
-            version=('%(prog)s ' + APP_VERSION))
-    parser.add_argument(
-            '--root',
-            help="The root directory of the website.")
-    parser.add_argument(
-            '--config',
-            help="The configuration variant to use for this command.")
-    parser.add_argument(
-            '--config-set',
-            help="Sets a specific site configuration setting.")
-    parser.add_argument(
-            '--debug',
-            help="Show debug information.", action='store_true')
-    parser.add_argument(
-            '--debug-only',
-            help="Only show debug information for the given categories.")
-    parser.add_argument(
-            '--no-cache',
-            help="When applicable, disable caching.",
-            action='store_true')
-    parser.add_argument(
-            '--quiet',
-            help="Print only important information.",
-            action='store_true')
-    parser.add_argument(
-            '--log',
-            help="Send log messages to the specified file.")
-    parser.add_argument(
-            '--log-debug',
-            help="Log debug messages to the log file.",
-            action='store_true')
-    parser.add_argument(
-            '--no-color',
-            help="Don't use colorized output.",
-            action='store_true')
+    _setup_main_parser_arguments(parser)
 
     commands = sorted(app.plugin_loader.getCommands(),
                       key=lambda c: c.name)

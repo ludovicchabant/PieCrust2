@@ -156,9 +156,9 @@ class ChefTestItem(YamlTestItemBase):
             hdl = logging.StreamHandler(stream=memstream)
             logging.getLogger().addHandler(hdl)
             try:
-                from piecrust.main import PreParsedChefArgs, _run_chef
-                pre_args = PreParsedChefArgs(
-                        root=fs.path('/kitchen'))
+                from piecrust.main import _pre_parse_chef_args, _run_chef
+                pre_args = _pre_parse_chef_args([
+                        '--root', fs.path('/kitchen')])
                 exit_code = _run_chef(pre_args, argv)
             finally:
                 logging.getLogger().removeHandler(hdl)
