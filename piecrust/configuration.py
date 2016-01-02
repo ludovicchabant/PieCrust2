@@ -1,5 +1,6 @@
 import re
 import logging
+import collections
 import collections.abc
 import yaml
 from yaml.constructor import ConstructorError
@@ -69,7 +70,7 @@ class Configuration(collections.abc.MutableMapping):
 
     def setAll(self, values, validate=False):
         if validate:
-            self._validateAll(values)
+            values = self._validateAll(values)
         self._values = values
 
     def getAll(self):
@@ -129,11 +130,10 @@ class Configuration(collections.abc.MutableMapping):
 
 
 def merge_dicts(source, merging, validator=None, *args):
-    if validator is None:
-        validator = lambda k, v: v
     _recurse_merge_dicts(source, merging, None, validator)
     for other in args:
         _recurse_merge_dicts(source, other, None, validator)
+    return source
 
 
 def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
@@ -149,9 +149,28 @@ def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
             elif isinstance(v, list) and isinstance(local_v, list):
                 local_cur[k] = v + local_v
             else:
-                local_cur[k] = validator(key_path, v)
+                if validator is not None:
+                    v = validator(key_path, v)
+                local_cur[k] = v
         else:
-            local_cur[k] = validator(key_path, v)
+            if validator is not None:
+                v = validator(key_path, v)
+            local_cur[k] = v
+
+
+def visit_dict(subject, visitor):
+    _recurse_visit_dict(subject, None, visitor)
+
+
+def _recurse_visit_dict(cur, parent_path, visitor):
+    for k, v in cur.items():
+        key_path = k
+        if parent_path is not None:
+            key_path = parent_path + '/' + k
+
+        visitor(key_path, v, cur, k)
+        if isinstance(v, dict):
+            _recurse_visit_dict(v, key_path, visitor)
 
 
 header_regex = re.compile(

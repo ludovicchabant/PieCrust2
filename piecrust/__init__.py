@@ -17,6 +17,8 @@ DEFAULT_THEME_SOURCE = 'http://bitbucket.org/ludovicchabant/'
 
 PIECRUST_URL = 'http://bolt80.com/piecrust/'
 
+CACHE_VERSION = 22
+
 try:
     from piecrust.__version__ import APP_VERSION
 except ImportError:

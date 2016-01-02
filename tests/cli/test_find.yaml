@@ -15,8 +15,8 @@ in:
     pages/foo.md: ''
     posts/2015-01-10_blah.md: ''
 out: |
-    pages/foo.md
     posts/2015-01-10_blah.md
+    pages/foo.md
 ---
 args: find foo
 replace_out_path_sep: true
