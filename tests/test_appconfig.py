@@ -29,7 +29,7 @@ def test_config_site_add_source():
     config = PieCrustConfiguration(values=values)
     # The order of routes is important. Sources, not so much.
     assert list(map(lambda v: v['source'], config.get('site/routes'))) == [
-            'notes', 'pages', 'posts', 'posts', 'posts', 'theme_pages']
+            'notes', 'posts', 'posts', 'posts', 'pages', 'theme_pages']
     assert list(config.get('site/sources').keys()) == [
-            'posts', 'pages', 'notes', 'theme_pages']
+            'pages', 'posts', 'notes', 'theme_pages']
 

@@ -78,21 +78,25 @@ class PieCrustConfiguration(Configuration):
 
         logger.debug("Loading configuration from: %s" % self.paths)
         values = {}
-        for i, p in enumerate(self.paths):
-            with open(p, 'r', encoding='utf-8') as fp:
-                loaded_values = yaml.load(
-                        fp.read(),
-                        Loader=ConfigurationLoader)
-            if loaded_values is None:
-                loaded_values = {}
+        try:
+            for i, p in enumerate(self.paths):
+                with open(p, 'r', encoding='utf-8') as fp:
+                    loaded_values = yaml.load(
+                            fp.read(),
+                            Loader=ConfigurationLoader)
+                if loaded_values is None:
+                    loaded_values = {}
+                for fixup in self.fixups:
+                    fixup(i, loaded_values)
+                merge_dicts(values, loaded_values)
+
             for fixup in self.fixups:
-                fixup(i, loaded_values)
-            merge_dicts(values, loaded_values)
+                fixup(len(self.paths), values)
 
-        for fixup in self.fixups:
-            fixup(len(self.paths), values)
-
-        self._values = self._validateAll(values)
+            self._values = self._validateAll(values)
+        except Exception as ex:
+            raise Exception("Error loading configuration from: %s" %
+                            ', '.join(self.paths)) from ex
 
         logger.debug("Caching configuration...")
         self._values['__cache_key'] = cache_key
@@ -129,7 +133,11 @@ class PieCrustConfiguration(Configuration):
             callback_name = '_validate_' + path.replace('/', '_')
             callback = globs.get(callback_name)
             if callback:
-                val2 = callback(val, values, cache_writer)
+                try:
+                    val2 = callback(val, values, cache_writer)
+                except Exception as ex:
+                    raise Exception("Error raised in validator '%s'." %
+                                    callback_name) from ex
                 if val2 is None:
                     raise Exception("Validator '%s' isn't returning a "
                                     "coerced value." % callback_name)
@@ -143,9 +151,6 @@ class PieCrustConfiguration(Configuration):
         dcmcopy = copy.deepcopy(default_content_model_base)
         values = merge_dicts(dcmcopy, values)
 
-        dcm = get_default_content_model(values)
-        values = merge_dicts(dcm, values)
-
         blogsc = values['site'].get('blogs')
         if blogsc is None:
             blogsc = ['posts']
@@ -156,6 +161,9 @@ class PieCrustConfiguration(Configuration):
             blog_cfg = get_default_content_model_for_blog(
                     blog_name, is_only_blog, values)
             values = merge_dicts(blog_cfg, values)
+
+        dcm = get_default_content_model(values)
+        values = merge_dicts(dcm, values)
 
         return values
 
@@ -184,6 +192,7 @@ default_configuration = collections.OrderedDict({
                 ('md', 'markdown'),
                 ('textile', 'textile')]),
             'default_auto_format': 'md',
+            'default_pagination_source': None,
             'pagination_suffix': '/%num%',
             'slugify_mode': 'encode',
             'themes_sources': [DEFAULT_THEME_SOURCE],
@@ -193,7 +202,9 @@ default_configuration = collections.OrderedDict({
             'use_default_content': True
             }),
         'baker': collections.OrderedDict({
-            'no_bake_setting': 'draft'
+            'no_bake_setting': 'draft',
+            'workers': None,
+            'batch_size': None
             })
         })
 
@@ -426,6 +437,9 @@ def _validate_site_sources(v, values, cache):
 
     # Sources have the `default` scanner by default, duh. Also, a bunch
     # of other default values for other configuration stuff.
+    reserved_endpoints = set(['piecrust', 'site', 'page', 'route',
+                              'assets', 'pagination', 'siblings',
+                              'family'])
     for sn, sc in v.items():
         if not isinstance(sc, dict):
             raise ConfigurationError("All sources in 'site/sources' must "
@@ -439,6 +453,13 @@ def _validate_site_sources(v, values, cache):
         sc.setdefault('items_per_page', 5)
         sc.setdefault('date_format', DEFAULT_DATE_FORMAT)
         sc.setdefault('realm', REALM_USER)
+
+        # Validate endpoints.
+        endpoint = sc['data_endpoint']
+        if endpoint in reserved_endpoints:
+            raise ConfigurationError(
+                    "Source '%s' is using a reserved endpoint name: %s" %
+                    (sn, endpoint))
 
     return v
 
@@ -478,17 +499,6 @@ def _validate_site_taxonomies(v, values, cache):
         tc.setdefault('multiple', False)
         tc.setdefault('term', tn)
         tc.setdefault('page', '_%s.%%ext%%' % tc['term'])
-
-    # Validate endpoints, and make sure the theme has a default source.
-    reserved_endpoints = set(['piecrust', 'site', 'page', 'route',
-                              'assets', 'pagination', 'siblings',
-                              'family'])
-    for name, src in values['site']['sources'].items():
-        endpoint = src['data_endpoint']
-        if endpoint in reserved_endpoints:
-            raise ConfigurationError(
-                    "Source '%s' is using a reserved endpoint name: %s" %
-                    (name, endpoint))
 
     return v
 
