@@ -159,13 +159,15 @@ class PageBaker(object):
         if tax_info:
             ctx.setTaxonomyFilter(tax_info.term)
 
-        rp = render_page(ctx)
+        with self.app.env.timerScope("PageRender"):
+            rp = render_page(ctx)
 
-        out_dir = os.path.dirname(out_path)
-        _ensure_dir_exists(out_dir)
+        with self.app.env.timerScope("PageSerialize"):
+            out_dir = os.path.dirname(out_path)
+            _ensure_dir_exists(out_dir)
 
-        with codecs.open(out_path, 'w', 'utf8') as fp:
-            fp.write(rp.content)
+            with open(out_path, 'w', encoding='utf8') as fp:
+                fp.write(rp.content)
 
         return rp
 

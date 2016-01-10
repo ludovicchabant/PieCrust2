@@ -234,7 +234,8 @@ def render_page(ctx):
     eis.pushPage(ctx.page, ctx)
     try:
         # Build the data for both segment and layout rendering.
-        page_data = _build_render_data(ctx)
+        with ctx.app.env.timerScope("BuildRenderData"):
+            page_data = _build_render_data(ctx)
 
         # Render content segments.
         ctx.setCurrentPass(PASS_FORMATTING)
@@ -242,16 +243,17 @@ def render_page(ctx):
         save_to_fs = True
         if ctx.app.env.fs_cache_only_for_main_page and not eis.is_main_page:
             save_to_fs = False
-        if repo and not ctx.force_render:
-            render_result = repo.get(
-                    ctx.uri,
-                    lambda: _do_render_page_segments(ctx.page, page_data),
-                    fs_cache_time=ctx.page.path_mtime,
-                    save_to_fs=save_to_fs)
-        else:
-            render_result = _do_render_page_segments(ctx.page, page_data)
-            if repo:
-                repo.put(ctx.uri, render_result, save_to_fs)
+        with ctx.app.env.timerScope("PageRenderSegments"):
+            if repo and not ctx.force_render:
+                render_result = repo.get(
+                        ctx.uri,
+                        lambda: _do_render_page_segments(ctx.page, page_data),
+                        fs_cache_time=ctx.page.path_mtime,
+                        save_to_fs=save_to_fs)
+            else:
+                render_result = _do_render_page_segments(ctx.page, page_data)
+                if repo:
+                    repo.put(ctx.uri, render_result, save_to_fs)
 
         # Render layout.
         page = ctx.page
@@ -261,8 +263,11 @@ def render_page(ctx):
             layout_name = page.source.config.get('default_layout', 'default')
         null_names = ['', 'none', 'nil']
         if layout_name not in null_names:
-            build_layout_data(page, page_data, render_result['segments'])
-            layout_result = _do_render_layout(layout_name, page, page_data)
+            with ctx.app.env.timerScope("BuildRenderData"):
+                build_layout_data(page, page_data, render_result['segments'])
+
+            with ctx.app.env.timerScope("PageRenderLayout"):
+                layout_result = _do_render_layout(layout_name, page, page_data)
         else:
             layout_result = {
                     'content': render_result['segments']['content'],
