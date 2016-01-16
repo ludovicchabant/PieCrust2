@@ -1,0 +1,17 @@
+{
+  "name": "FoodTruck",
+  "description": "",
+  "authors": [
+    "Ludovic Chabant <ludovic@chabant.com>"
+  ],
+  "homepage": "http://bolt80.com/piecrust",
+  "ignore": [
+    "node_modules",
+    "bower_components"
+  ],
+  "dependencies": {
+    "bootstrap-sass": "~3.3.5",
+    "font-awesome": "fontawesome#~4.5.0",
+    "Ionicons": "ionicons#~2.0.1"
+  }
+}

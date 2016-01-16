@@ -1,0 +1,17 @@
+<ul>
+    {%-for e in menu.entries%}
+        <li><a href="{{e.url}}" class="{%if e.active%}ft-nav-active{%elif e.entries and not e.open%}ft-nav-collapsed{%endif%}">
+        {%-if e.icon%}<span class="icon ion-{{e.icon}}"></span> {%endif%}{{e.title}}</a>
+        {%-if e.entries%}
+        <ul>
+            {%-for e2 in e.entries%}
+            <li><a href="{{e2.url}}" class="{%if e2.active%}ft-nav-active{%endif%}">{{e2.title}}</a></li>
+            {%endfor%}
+        </ul>
+        {%endif-%}
+    </li>
+    {%endfor%}
+</ul>
+{%if menu.user.is_authenticated%}
+<p class="ft-nav-auth">Logged in as {{menu.user.id}}. <a href="{{menu.url_logout}}">Logout</a>.</p>
+{%endif%}

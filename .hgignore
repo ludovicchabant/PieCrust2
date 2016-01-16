@@ -1,16 +1,18 @@
 syntax: glob
 *.pyc
 *.egg-info
+__pycache__
 venv
 tags
+bower_components
+node_modules
 build/lib
 util/messages/_cache
 util/messages/_counter
 dist
 docs/_cache
 docs/_counter
-docs/bower_components
-docs/node_modules
+foodtruck/static
 piecrust.egg-info
 piecrust/__version__.py
 .ropeproject

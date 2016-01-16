@@ -1,0 +1,35 @@
+{% set title = 'Create' %}
+
+{% extends 'layouts/default.html' %}
+
+{% block content %}
+<form action="{{url_postback}}" method="POST" class="ft-create-form">
+<div class="container">
+    {% for field in fields %}
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="form-group">
+                <div class="input-group input-group-lg">
+                    <span class="input-group-addon" id="meta-{{field.name}}">{{field.display_name}}</span>
+                    <input type="text" class="form-control" placeholder="{{field.value}}" aria-describedby="meta-{{field.name}}" name="meta-{{field.name}}" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% endfor %}
+
+    <input type="hidden" name="source_name" value="{{source_name}}" />
+
+    <div class="row">
+        <div class="col-md-6 col-md-offset-1">
+            <a class="btn btn-danger" href="{{url_cancel}}">Cancel</a>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" name="do_save" class="btn btn-primary btn-lg pull-right">Create and Edit</button>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}
+

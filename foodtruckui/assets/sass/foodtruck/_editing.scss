@@ -1,0 +1,13 @@
+//
+// Page editing
+// --------------------------------------------------
+
+.ft-write-form textarea {
+    @include resizable(vertical);
+
+    outline: none;
+    overflow: auto;
+    font-family: 'Courier', 'Courier New', sans-serif;
+    padding: 1em;
+}
+

@@ -1,0 +1,39 @@
+{% set title = 'Write' %}
+
+{% extends 'layouts/default.html' %}
+
+{% block content %}
+<form action="{{url_postback}}" method="POST" class="ft-write-form" id="ft-write-form">
+<div class="container">
+    <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+            <div class="form-group">
+                <textarea name="page_text" class="form-control" placeholder="Post contents..." rows="20">{{page_text}}</textarea>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" name="is_dos_nl" value="{{is_dos_nl}}" />
+
+    <div class="row">
+        <div class="col-md-8 col-md-offset-1">
+            <button type="submit" formtarget="_blank" name="do_preview" class="btn btn-info">Preview</button>
+            <a class="btn btn-danger" href="{{url_cancel}}">Cancel</a>
+        </div>
+        <div class="col-md-2">
+            <div class="btn-group">
+                <button type="button" name="do_save" class="btn btn-primary">Save</button>
+                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <span class="caret"></span>
+                    <span class="sr-only">Toggle Dropdown</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><button type="submit" name="do_save_and_commit" class="btn btn-link">Save and Commit</button></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+{% endblock %}
+

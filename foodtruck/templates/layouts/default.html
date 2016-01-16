@@ -1,0 +1,14 @@
+{% set wrapper_classes = 'ft-nav-container' %}
+
+{% extends 'layouts/master.html' %}
+
+{% block after_content %}
+<nav class="ft-nav">
+    <div class="ft-nav-title">
+        <img src="/static/img/foodtruck.png" alt="Food Truck" />
+        <div class="ft-nav-brand">FoodTruck</div>
+    </div>
+    {% include 'layouts/menu.html' %}
+</nav>
+{% endblock %}
+

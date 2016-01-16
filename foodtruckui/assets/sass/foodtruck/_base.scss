@@ -1,0 +1,62 @@
+
+$ft-color-gray-darkest:  #1A2226;
+$ft-color-gray-darker:   #1E282C;
+$ft-color-gray-dark:     #222D32;
+$ft-color-gray:          #2C3B41;
+$ft-color-gray-light:    #8AA4AF;
+$ft-color-gray-lighter:  #B8C7CE;
+$ft-color-white:         #FFF;
+$ft-color-black:         #000;
+$ft-color-red:           #D33939;
+$ft-color-blue:          #3C8DBC;
+$ft-color-yellow:        #C9C836;
+
+
+header h1, header.title {
+    text-align: center;
+}
+
+footer {
+    text-align: center;
+    font-size: 0.8em;
+    letter-spacing: -0.02em;
+    color: #777;
+    margin: 4em 2em 2em 2em;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin-bottom: 1em;
+}
+
+.ft-login {
+    padding: 1em;
+    margin: 2em 0;
+    box-shadow: 0 5px 10px #ddd;
+    border: 1px solid #dcdcdc;
+}
+
+.ft-pagination {
+    text-align: center;
+    color: $ft-color-gray;
+    font-size: 2em;
+    margin: 1em 0;
+}
+.ft-pagination-a {
+    padding: 0 0.2em;
+}
+
+#ft-bakelog {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    margin: 0.5em;
+    padding: 1em;
+    width: 50%;
+    max-width: 30em;
+    color: $ft-color-gray;
+    background: $ft-color-gray-lighter;
+    border: 1px solid $ft-color-gray-light;
+    border-radius: 0.5em;
+    display: none;
+}
+

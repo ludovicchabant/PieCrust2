@@ -1,0 +1,38 @@
+{% extends 'layouts/default.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-xs-12">
+            {% for p in pages %}
+            <div><a href="{{p.url}}">{{p.title}}</a></div>
+            {% endfor %}
+        </div>
+
+        {% if pagination.prev_page or pagination.next_page %}
+        <div class="col-sm-6 col-sm-offset-3">
+            <div class="ft-pagination">
+                {% if pagination.prev_page %}
+                <a href="{{pagination.prev_page}}"><span class="icon ion-chevron-left"></span> prev</a>
+                {% else %}
+                <span class="icon ion-chevron-left"></span> prev
+                {% endif %}
+
+                {% for p in pagination.nums %}
+                {% if p.url %}<a href="{{p.url}}" class="ft-pagination-a">{{p.num}}</a>{% else %}<span class="ft-pagination-a">{{p.num}}</span>{% endif %}
+                {% endfor %}
+
+                {% if pagination.next_page %}
+                <a href="{{pagination.next_page}}">next <span class="icon ion-chevron-right"></span></a>
+                {% else %}
+                next <span class="icon ion-chevron-right"></span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+

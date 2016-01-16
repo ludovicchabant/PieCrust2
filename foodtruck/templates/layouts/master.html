@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="">
+    <head>
+        <meta charset="utf-8"/>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+        <title>{%if title%}{{title}} &ndash; {%endif%}FoodTruck</title>
+        <meta name="description" content="A PieCrust management dashboard"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+        <link rel="stylesheet" href="/static/css/foodtruck.min.css"/>
+        <link href='https://fonts.googleapis.com/css?family=Lobster' rel='stylesheet' type='text/css'/>
+    </head>
+    <body>
+        <div id="ft-wrapper" class="{{wrapper_classes}}">
+            <header>
+                {% if title %}<h1 class="title">{{title}}</h1>{% endif %}
+                {% block sub_header %}{% endblock %}
+            </header>
+            {% block before_content %}{% endblock %}
+            <section>
+                {% block content %}{% endblock %}
+            </section>
+            {% block after_content %}{% endblock %}
+            <div id="ft-bakelog"></div>
+            <footer>
+                <p>Prepared by <a href="http://bolt80.com">BOLT80</a>.</p>
+                <p>Much <span class="icon ion-heart"></span> to
+                <a href="http://python.org">Python</a>,
+                <a href="http://flask.pocoo.org">Flask</a>,
+                <a href="http://getbootstrap.com">Bootstrap</a>,
+                <a href="http://ionicons.com/">Ionicons</a>,
+                and many more.</p>
+            </footer>
+        </div>
+        <script src="/static/js/foodtruck.min.js"></script>
+    </body>
+</html>
+
