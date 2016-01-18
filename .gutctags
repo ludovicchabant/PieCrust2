@@ -5,6 +5,8 @@
 --exclude=docs/bower_components
 --exclude=docs/node_modules
 --exclude=docs/raw
+--exclude=foodtruckui/bower_components
+--exclude=foodtruckui/node_modules
 --exclude=*.egg-info
 --exclude=__pycache__
 --exclude=__tmpfs__
