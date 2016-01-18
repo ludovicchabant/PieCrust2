@@ -38,9 +38,9 @@
 .piecrust-debug-window {
     padding: 1em;
     text-align: left;
-    font-family: serif;
+    font-family: sans-serif;
     font-style: normal;
-    font-size: 1rem;
+    font-size: 14px;
     font-weight: normal;
     background: #a42;
     color: #fff;
