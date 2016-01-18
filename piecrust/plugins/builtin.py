@@ -1,4 +1,5 @@
 from piecrust.commands.base import HelpCommand
+from piecrust.commands.builtin.admin import AdministrationPanelCommand
 from piecrust.commands.builtin.baking import (
         BakeCommand, ShowRecordCommand)
 from piecrust.commands.builtin.info import (
@@ -62,7 +63,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 PluginsCommand(),
                 BakeCommand(),
                 ShowRecordCommand(),
-                ServeCommand()]
+                ServeCommand(),
+                AdministrationPanelCommand()]
 
     def getCommandExtensions(self):
         return [

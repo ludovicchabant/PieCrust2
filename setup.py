@@ -199,8 +199,7 @@ setup(
             'Programming Language :: Python :: 3'
             ],
         entry_points={'console_scripts': [
-            'chef = piecrust.main:main',
-            'foodtruck = foodtruck.main:main'
+            'chef = piecrust.main:main'
             ]}
         )
 
