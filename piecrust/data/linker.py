@@ -15,7 +15,13 @@ class PageLinkerData(object):
     """
     debug_render = ['parent', 'ancestors', 'siblings', 'children', 'root',
                     'forpath']
-    debug_render_invoke = ['parent', 'siblings', 'children']
+    debug_render_invoke = ['parent', 'ancestors', 'siblings', 'children',
+                           'root']
+    debug_render_redirect = {
+            'ancestors': '_debugRenderAncestors',
+            'siblings': '_debugRenderSiblings',
+            'children': '_debugRenderChildren',
+            'root': '_debugRenderRoot'}
 
     def __init__(self, source, page_path):
         self._source = source
@@ -83,6 +89,21 @@ class PageLinkerData(object):
         dir_path = self._source.getDirpath(self._root_page_path)
         self._linker = Linker(self._source, dir_path,
                               root_page_path=self._root_page_path)
+
+    def _debugRenderAncestors(self):
+        return [i.name for i in self.ancestors]
+
+    def _debugRenderSiblings(self):
+        return [i.name for i in self.siblings]
+
+    def _debugRenderChildren(self):
+        return [i.name for i in self.children]
+
+    def _debugRenderRoot(self):
+        r = self.root
+        if r is not None:
+            return r.name
+        return None
 
 
 class LinkedPageData(PaginationData):
