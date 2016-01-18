@@ -309,9 +309,11 @@ class DebugDataRenderer(object):
             value = None
             render_name = name
             should_call = name in invoke_attrs
+            is_redirect = False
 
             if name in redirects:
                 name = redirects[name]
+                is_redirect = True
 
             query_instance = False
             try:
@@ -329,7 +331,10 @@ class DebugDataRenderer(object):
                 argcount = attr_func.__code__.co_argcount
                 var_names = attr_func.__code__.co_varnames
                 if argcount == 1 and should_call:
-                    render_name += '()'
+                    if not is_redirect:
+                        # Most of the time, redirects are for making a
+                        # property render better. So don't add parenthesis.
+                        render_name += '()'
                     value = attr_func()
                 else:
                     if should_call:
