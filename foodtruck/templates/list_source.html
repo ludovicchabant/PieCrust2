@@ -5,7 +5,10 @@
     <div class="row">
         <div class="col-xs-12">
             {% for p in pages %}
-            <div><a href="{{p.url}}">{{p.title}}</a></div>
+            <div>
+                <h3><a href="{{p.url}}">{{p.title}}</a></h3>
+                <p>{{p.text}}</p>
+            </div>
             {% endfor %}
         </div>
 

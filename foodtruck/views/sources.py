@@ -1,6 +1,7 @@
 from flask import g, abort, render_template, url_for
 from flask.ext.login import login_required
 from piecrust.data.paginator import Paginator
+from ..textutil import text_preview, html_to_text
 from ..views import with_menu_context
 from ..web import app
 
@@ -23,7 +24,8 @@ def list_source(source_name, page_num):
                 'title': p['title'],
                 'slug': p['slug'],
                 'source': source_name,
-                'url': url_for('edit_page', slug=p['slug'])}
+                'url': url_for('edit_page', slug=p['slug']),
+                'text': text_preview(html_to_text(p['content']), length=300)}
         data['pages'].append(page_data)
 
     prev_page_url = None
