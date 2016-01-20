@@ -34,10 +34,10 @@ def get_menu_context():
                 }
         entries.append(ctx)
 
-    entries.append({
-        'url': url_for('settings'),
-        'title': "Settings",
-        'icon': 'gear-b'})
+    # entries.append({
+    #     'url': url_for('settings'),
+    #     'title': "Settings",
+    #     'icon': 'gear-b'})
 
     for e in entries:
         needs_more_break = False

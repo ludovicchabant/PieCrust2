@@ -3,6 +3,24 @@
 {% block content %}
 <div class="container">
     <div class="row">
+        <div class="col-md-4 col-md-offset-8">
+        {% if needs_switch %}
+            <form action="{{url_switch}}" method="POST">
+            {% for site in sites %}
+                {% if site.name != site_name %}
+                <button type="submit" name="site_name" value="{{site.name}}" class="btn">Switch to {{site.display_name}}</button>
+                {% endif %}
+            {% endfor %}
+            </form>
+        {% endif %}
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <h1>{{site_title}} <a href="{{url_preview}}"><span class="icon ion-arrow-right-c"></span></a></h1>
+        </div>
+    </div>
+    <div class="row">
         <div class="col-md-6">
             <h2><span class="icon ion-stats-bars"></span> Site Summary</h2>
             {% for s in sources %}
@@ -10,9 +28,6 @@
                 <a href="{{s.list_url}}">{{s.page_count}} {{s.name}}</a>
             </div>
             {% endfor %}
-
-            <h2><span class="icon ion-pinpoint"></span> Preview Site</h2>
-            <a href="{{url_preview}}">Preview {{site_name}}</a>
         </div>
         <div class="col-md-6">
             <h2><span class="icon ion-erlenmeyer-flask"></span> Work in Progress</h2>
@@ -38,12 +53,6 @@
             <p>No work in progress.</p>
             {% endif %}
 
-            <h2><span class="icon"></span> Switch Site</h2>
-            <form action="{{url_switch}}" method="POST">
-                {% for site in sites %}
-                <p><button type="submit" name="site_name" value="{{site.name}}" class="btn btn-link">{{site.display_name}}</a></p>
-                {% endfor %}
-            </form>
         </div>
     </div>
     <div class="row">

@@ -3,11 +3,12 @@ import os.path
 import logging
 from flask import (
         g, request,
-        render_template, url_for, redirect, make_response)
+        render_template, url_for, redirect)
 from flask.ext.login import login_user, logout_user, login_required
 from piecrust.configuration import parse_config_header
 from piecrust.rendering import QualifiedPage
 from piecrust.uriutil import split_uri
+from ..textutil import text_preview
 from ..views import with_menu_context
 from ..web import app, load_user, after_this_request
 
@@ -52,6 +53,7 @@ def index():
             data['edited_pages'].append(pd)
 
     data['site_name'] = site.name
+    data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
     data['url_bake'] = url_for('bake_site')
     data['url_preview'] = url_for('preview_site_root', sitename=site.name)
 
@@ -62,6 +64,7 @@ def index():
             'display_name': v.get('name', k),
             'url': url_for('index', site_name=site_name)
             })
+    data['needs_switch'] = len(g.config.get('sites')) > 1
     data['url_switch'] = url_for('switch_site')
 
     with_menu_context(data)
@@ -90,20 +93,8 @@ def _getWipData(path, site, fs_endpoints):
     with open(fac.path, 'r', encoding='utf8') as fp:
         raw_text = fp.read()
 
-    preferred_length = 100
-    max_length = 150
     header, offset = parse_config_header(raw_text)
-    extract = raw_text[offset:offset + preferred_length]
-    if len(raw_text) > offset + preferred_length:
-        for i in range(offset + preferred_length,
-                       min(offset + max_length, len(raw_text))):
-            c = raw_text[i]
-            if c not in [' ', '\t', '\r', '\n']:
-                extract += c
-            else:
-                extract += '...'
-                break
-
+    extract = text_preview(raw_text, offset=offset)
     return {
             'title': qp.config.get('title'),
             'slug': slug,
