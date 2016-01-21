@@ -24,9 +24,10 @@ def _shutdown_server_and_raise_sigint():
     raise KeyboardInterrupt()
 
 
-# Make sure CTRL+C works correctly.
-signal.signal(signal.SIGINT,
-              lambda *args: _shutdown_server_and_raise_sigint())
+if app.config['FOODTRUCK_CMDLINE_MODE']:
+    # Make sure CTRL+C works correctly.
+    signal.signal(signal.SIGINT,
+                  lambda *args: _shutdown_server_and_raise_sigint())
 
 
 class _BakeLogReader(object):

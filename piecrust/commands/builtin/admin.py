@@ -39,6 +39,8 @@ class AdministrationPanelCommand(ChefCommand):
         return ctx.args.sub_func(ctx)
 
     def _runFoodTruck(self, ctx):
+        from foodtruck import settings
+        settings.FOODTRUCK_CMDLINE_MODE = True
         from foodtruck.main import run_foodtruck
         run_foodtruck(debug=ctx.args.debug)
 
@@ -61,20 +63,24 @@ class AdministrationPanelCommand(ChefCommand):
             admin_password = hashpw
 
         ft_config = """
-foodtruck:
-    secret_key: %(secret_key)s
 security:
     username: %(username)s
     # You can generate another hashed password with `chef admin genpass`.
     password: %(password)s
 """
         ft_config = ft_config % {
-                'secret_key': secret_key,
                 'username': admin_username,
                 'password': admin_password
                 }
         with open('foodtruck.yml', 'w', encoding='utf8') as fp:
             fp.write(ft_config)
+
+        flask_config = """
+secret_key = '%(secret_key)s'
+"""
+        flask_config = flask_config % {'secret_key': secret_key}
+        with open('app.cfg', 'w', encoding='utf8') as fp:
+            fp.write(flask_config)
 
     def _generatePassword(self, ctx):
         import bcrypt

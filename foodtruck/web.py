@@ -1,3 +1,5 @@
+import os
+import os.path
 import logging
 from flask import Flask, g, request, render_template
 from .config import (
@@ -8,10 +10,19 @@ from .sites import FoodTruckSites
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.config.from_object('foodtruck.settings')
+app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
 
-c = get_foodtruck_config()
-app.secret_key = c.get('foodtruck/secret_key')
-del c
+admin_root = app.config['FOODTRUCK_ROOT'] or os.getcwd()
+config_path = os.path.join(admin_root, 'app.cfg')
+if os.path.isfile(config_path):
+    app.config.from_pyfile(config_path)
+
+if app.config['DEBUG']:
+    l = logging.getLogger()
+    l.setLevel(logging.DEBUG)
+
+app.logger.debug("Using FoodTruck admin root: %s" % admin_root)
 
 
 def after_this_request(f):
@@ -36,11 +47,20 @@ class LazySomething(object):
 
 @app.before_request
 def _setup_foodtruck_globals():
+    def _get_config():
+        return get_foodtruck_config(admin_root)
+
     def _get_sites():
-        s = FoodTruckSites(g.config,
-                           request.cookies.get('foodtruck_site_name'))
+        current = request.cookies.get('foodtruck_site_name')
+        if current is None:
+            names = g.config.get('sites')
+            if not names or not isinstance(names, dict):
+                raise FoodTruckConfigNotFoundError()
+            current = next(iter(names.keys()))
+        s = FoodTruckSites(g.config, current)
         return s
-    g.config = LazySomething(get_foodtruck_config)
+
+    g.config = LazySomething(_get_config)
     g.sites = LazySomething(_get_sites)
 
 

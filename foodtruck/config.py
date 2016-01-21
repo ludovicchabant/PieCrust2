@@ -10,8 +10,9 @@ from piecrust.configuration import (
 logger = logging.getLogger(__name__)
 
 
-def get_foodtruck_config():
-    cfg_path = os.path.join(os.getcwd(), 'foodtruck.yml')
+def get_foodtruck_config(dirname=None):
+    dirname = dirname or os.getcwd()
+    cfg_path = os.path.join(dirname, 'foodtruck.yml')
     return FoodTruckConfiguration(cfg_path)
 
 
