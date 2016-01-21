@@ -102,11 +102,13 @@ class _BakeThread(threading.Thread):
 
 
 class FoodTruckSites():
-    def __init__(self, config, current_site=None):
+    def __init__(self, config, current_site):
         self._sites = {}
         self._site_dirs = {}
         self.config = config
         self.current_site = current_site
+        if current_site is None:
+            raise Exception("No current site was given.")
 
     def get_root_dir(self, name=None):
         name = name or self.current_site
@@ -115,6 +117,8 @@ class FoodTruckSites():
             return s
 
         scfg = self.config.get('sites/%s' % name)
+        if scfg is None:
+            raise Exception("No such site: %s" % name)
         root_dir = scfg.get('path')
         if root_dir is None:
             raise Exception("Site '%s' has no path defined." % name)
