@@ -1,5 +1,6 @@
 import os
 import os.path
+import copy
 import shlex
 import logging
 import threading
@@ -35,12 +36,27 @@ class Site(object):
     @property
     def scm(self):
         if self._scm is None:
-            scm_type = self.config.get('scm/type')
-            if scm_type == 'hg':
+            cfg = None
+            scm_cfg = self.config.get('sites/%s/scm' % self.name)
+            global_scm_cfg = self.config.get('scm')
+            if scm_cfg:
+                if global_scm_cfg:
+                    cfg = copy.deepcopy(global_scm_cfg)
+                    merge_dicts(cfg, scm_cfg)
+                else:
+                    cfg = copy.deepcopy(scm_cfg)
+            elif global_scm_cfg:
+                cfg = copy.deepcopy(global_scm_cfg)
+
+            if not cfg or not 'type' in cfg:
+                raise Exception("No SCM available for site: %s" % self.name)
+
+            if cfg['type'] == 'hg':
                 from .scm.mercurial import MercurialSourceControl
-                self._scm = MercurialSourceControl(self.root_dir)
+                self._scm = MercurialSourceControl(self.root_dir, cfg)
             else:
                 raise NotImplementedError()
+
         return self._scm
 
     @property

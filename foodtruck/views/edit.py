@@ -39,10 +39,9 @@ def edit_page(slug):
                     page.path, site_app.root_dir))
 
         if 'do_save_and_commit' in request.form:
-            author = g.config.get('scm/username')
             message = "Edit %s" % os.path.relpath(
                     page.path, site_app.root_dir)
-            site.scm.commit([page.path], author, message)
+            site.scm.commit([page.path], message)
 
         if 'do_preview' in request.form:
             return _preview_page(page)

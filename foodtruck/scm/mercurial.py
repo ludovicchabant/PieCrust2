@@ -33,7 +33,7 @@ class MercurialSourceControl(SourceControl):
                 res.edited_files.append(line[2:])
         return res
 
-    def commit(self, paths, author, message):
+    def _doCommit(self, paths, message, author):
         if not message:
             raise ValueError("No commit message specified.")
 
