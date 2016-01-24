@@ -2,9 +2,9 @@ import os
 import os.path
 import logging
 from flask import Flask, g, request, render_template
-from .config import (
+from .configuration import (
         FoodTruckConfigNotFoundError, get_foodtruck_config)
-from .sites import FoodTruckSites
+from .sites import FoodTruckSites, InvalidSiteError
 
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,8 @@ def _setup_foodtruck_globals():
         if current is None:
             names = g.config.get('sites')
             if not names or not isinstance(names, dict):
-                raise FoodTruckConfigNotFoundError()
+                raise InvalidSiteError(
+                        "No sites are defined in the configuration file.")
             current = next(iter(names.keys()))
         s = FoodTruckSites(g.config, current)
         return s
@@ -71,9 +72,17 @@ def _call_after_request_callbacks(response):
     return response
 
 
-@app.errorhandler(FoodTruckConfigNotFoundError)
-def _on_config_missing(ex):
-    return render_template('install.html')
+if not app.config['DEBUG']:
+    app.logger.debug("Registering exception handlers.")
+
+    @app.errorhandler(FoodTruckConfigNotFoundError)
+    def _on_config_missing(ex):
+        return render_template('install.html')
+
+    @app.errorhandler(InvalidSiteError)
+    def _on_invalid_site(ex):
+        data = {'error': 'invalid_site', 'exception': str(ex)}
+        return render_template('error.html', **data)
 
 
 @app.errorhandler
@@ -132,8 +141,8 @@ app.bcrypt = Bcrypt(app)
 
 import foodtruck.views.baking  # NOQA
 import foodtruck.views.create  # NOQA
+import foodtruck.views.dashboard  # NOQA
 import foodtruck.views.edit  # NOQA
-import foodtruck.views.main  # NOQA
 import foodtruck.views.menu  # NOQA
 import foodtruck.views.preview  # NOQA
 import foodtruck.views.settings  # NOQA

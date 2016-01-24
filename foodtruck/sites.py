@@ -6,12 +6,17 @@ import logging
 import threading
 import subprocess
 from piecrust.app import PieCrust
+from piecrust.configuration import merge_dicts
 
 
 logger = logging.getLogger(__name__)
 
 
 class UnauthorizedSiteAccessError(Exception):
+    pass
+
+
+class InvalidSiteError(Exception):
     pass
 
 
@@ -48,7 +53,7 @@ class Site(object):
             elif global_scm_cfg:
                 cfg = copy.deepcopy(global_scm_cfg)
 
-            if not cfg or not 'type' in cfg:
+            if not cfg or 'type' not in cfg:
                 raise Exception("No SCM available for site: %s" % self.name)
 
             if cfg['type'] == 'hg':
@@ -134,12 +139,12 @@ class FoodTruckSites():
 
         scfg = self.config.get('sites/%s' % name)
         if scfg is None:
-            raise Exception("No such site: %s" % name)
+            raise InvalidSiteError("No such site: %s" % name)
         root_dir = scfg.get('path')
         if root_dir is None:
-            raise Exception("Site '%s' has no path defined." % name)
+            raise InvalidSiteError("Site '%s' has no path defined." % name)
         if not os.path.isdir(root_dir):
-            raise Exception("Site '%s' has an invalid path." % name)
+            raise InvalidSiteError("Site '%s' has an invalid path." % name)
         self._site_dirs[name] = root_dir
         return root_dir
 

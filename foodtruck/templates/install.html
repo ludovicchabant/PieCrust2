@@ -1,8 +1,10 @@
-{% extends 'layouts/default.html' %}
+{% set title = 'Configuration File Missing' %}
+
+{% extends 'layouts/master.html' %}
 
 {% block content %}
 <div class="container">
-Please install this shit.
+    No FoodTruck configuration file was found. Did you run <code>chef admin init</code>?
 </div>
 {% endblock %}
 

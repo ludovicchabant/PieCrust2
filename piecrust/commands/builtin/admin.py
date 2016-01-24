@@ -41,6 +41,7 @@ class AdministrationPanelCommand(ChefCommand):
     def _runFoodTruck(self, ctx):
         from foodtruck import settings
         settings.FOODTRUCK_CMDLINE_MODE = True
+        settings.FOODTRUCK_ROOT = os.getcwd()
         from foodtruck.main import run_foodtruck
         run_foodtruck(debug=ctx.args.debug)
 
@@ -76,7 +77,7 @@ security:
             fp.write(ft_config)
 
         flask_config = """
-secret_key = '%(secret_key)s'
+SECRET_KEY = %(secret_key)s
 """
         flask_config = flask_config % {'secret_key': secret_key}
         with open('app.cfg', 'w', encoding='utf8') as fp:

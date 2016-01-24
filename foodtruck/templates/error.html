@@ -1,0 +1,13 @@
+{% set title = 'An Error Occured' %}
+
+{% extends 'layouts/master.html' %}
+
+{% block content %}
+<div class="container">
+    {% if error == 'invalid_site' %}
+        <p>There was an error with your configuration file: {{exception}}</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+
