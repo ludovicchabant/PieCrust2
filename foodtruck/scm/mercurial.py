@@ -17,9 +17,9 @@ def _s(strs):
 
 
 class MercurialSourceControl(SourceControl):
-    def __init__(self, root_dir):
-        super(MercurialSourceControl, self).__init__(root_dir)
-        self.hg = 'hg'
+    def __init__(self, root_dir, cfg):
+        super(MercurialSourceControl, self).__init__(root_dir, cfg)
+        self.hg = cfg.get('exe', 'hg')
 
     def getStatus(self):
         res = RepoStatus()
