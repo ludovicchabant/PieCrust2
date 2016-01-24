@@ -5,6 +5,10 @@ logger = logging.getLogger(__name__)
 
 
 def run_foodtruck(debug=False):
+    if debug:
+        import foodtruck.settings
+        foodtruck.settings.DEBUG = debug
+
     from .web import app
     try:
         app.run(debug=debug, threaded=True)
