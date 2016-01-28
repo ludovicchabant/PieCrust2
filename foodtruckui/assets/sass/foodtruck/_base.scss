@@ -45,18 +45,21 @@ h1, h2, h3, h4, h5, h6 {
     padding: 0 0.2em;
 }
 
-#ft-bakelog {
+#ft-publog {
     position: fixed;
     right: 0;
     bottom: 0;
     margin: 0.5em;
-    padding: 1em;
     width: 50%;
     max-width: 30em;
-    color: $ft-color-gray;
-    background: $ft-color-gray-lighter;
-    border: 1px solid $ft-color-gray-light;
-    border-radius: 0.5em;
     display: none;
+}
+#ft-publog>div {
+    padding: 1em 35px 1em 1em;
+    margin: 0.3em;
+    color: $ft-color-gray-light;
+    background: $ft-color-gray-darker;
+    border-radius: 0.5em;
+    box-shadow: 0 0 10px $ft-color-gray-dark;
 }
 

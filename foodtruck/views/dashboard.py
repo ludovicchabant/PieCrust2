@@ -54,7 +54,7 @@ def index():
 
     data['site_name'] = site.name
     data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
-    data['url_bake'] = url_for('bake_site')
+    data['url_publish'] = url_for('publish')
     data['url_preview'] = url_for('preview_site_root', sitename=site.name)
 
     data['sites'] = []

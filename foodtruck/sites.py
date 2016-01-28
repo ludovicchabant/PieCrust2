@@ -6,7 +6,7 @@ import logging
 import threading
 import subprocess
 from piecrust.app import PieCrust
-from piecrust.configuration import merge_dicts
+from piecrust.configuration import merge_dicts, Configuration
 
 
 logger = logging.getLogger(__name__)
@@ -24,10 +24,11 @@ class Site(object):
     def __init__(self, name, root_dir, config):
         self.name = name
         self.root_dir = root_dir
-        self.config = config
+        self.config = Configuration(values=config.get('sites/%s' % name, {}))
+        self._global_config = config
         self._piecrust_app = None
         self._scm = None
-        self._bake_thread = None
+        self._publish_thread = None
         logger.debug("Creating site object for %s" % self.name)
 
     @property
@@ -41,70 +42,70 @@ class Site(object):
     @property
     def scm(self):
         if self._scm is None:
-            cfg = None
-            scm_cfg = self.config.get('sites/%s/scm' % self.name)
-            global_scm_cfg = self.config.get('scm')
-            if scm_cfg:
-                if global_scm_cfg:
-                    cfg = copy.deepcopy(global_scm_cfg)
-                    merge_dicts(cfg, scm_cfg)
-                else:
-                    cfg = copy.deepcopy(scm_cfg)
-            elif global_scm_cfg:
-                cfg = copy.deepcopy(global_scm_cfg)
+            cfg = copy.deepcopy(self._global_config.get('scm', {}))
+            merge_dicts(cfg, self.config.get('scm', {}))
 
-            if not cfg or 'type' not in cfg:
-                raise Exception("No SCM available for site: %s" % self.name)
-
-            if cfg['type'] == 'hg':
+            if os.path.isdir(os.path.join(self.root_dir, '.hg')):
                 from .scm.mercurial import MercurialSourceControl
                 self._scm = MercurialSourceControl(self.root_dir, cfg)
+            elif os.path.isdir(os.path.join(self.root_dir, '.git')):
+                from .scm.git import GitSourceControl
+                self._scm = GitSourceControl(self.root_dir, cfg)
             else:
-                raise NotImplementedError()
+                self._scm = False
 
         return self._scm
 
     @property
-    def is_bake_running(self):
-        return self._bake_thread is not None and self._bake_thread.is_alive()
+    def is_publish_running(self):
+        return (self._publish_thread is not None and
+                self._publish_thread.is_alive())
 
     @property
-    def bake_thread(self):
-        return self._bake_thread
+    def publish_thread(self):
+        return self._publish_thread
 
-    def bake(self):
-        bake_cmd = self.config.get('triggers/bake')
-        bake_args = shlex.split(bake_cmd)
+    def publish(self, target):
+        target_cfg = self.config.get('publish/%s' % target)
+        if not target_cfg:
+            raise Exception("No such publish target: %s" % target)
 
-        logger.debug("Running bake: %s" % bake_args)
-        proc = subprocess.Popen(bake_args, cwd=self.root_dir,
+        target_cmd = target_cfg.get('cmd')
+        if not target_cmd:
+            raise Exception("No command specified for publish target: %s" %
+                            target)
+        publish_args = shlex.split(target_cmd)
+
+        logger.debug(
+                "Executing publish target '%s': %s" % (target, publish_args))
+        proc = subprocess.Popen(publish_args, cwd=self.root_dir,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
 
-        pid_file_path = os.path.join(self.root_dir, 'foodtruck_bake.pid')
+        pid_file_path = os.path.join(self.root_dir, '.ft_pub.pid')
         with open(pid_file_path, 'w') as fp:
             fp.write(str(proc.pid))
 
-        logger.debug("Running bake monitor for PID %d" % proc.pid)
-        self._bake_thread = _BakeThread(self.name, self.root_dir, proc,
-                                        self._onBakeEnd)
-        self._bake_thread.start()
+        logger.debug("Running publishing monitor for PID %d" % proc.pid)
+        self._publish_thread = _PublishThread(
+                self.name, self.root_dir, proc, self._onPublishEnd)
+        self._publish_thread.start()
 
-    def _onBakeEnd(self):
-        os.unlink(os.path.join(self.root_dir, 'foodtruck_bake.pid'))
-        self._bake_thread = None
+    def _onPublishEnd(self):
+        os.unlink(os.path.join(self.root_dir, '.ft_pub.pid'))
+        self._publish_thread = None
 
 
-class _BakeThread(threading.Thread):
+class _PublishThread(threading.Thread):
     def __init__(self, sitename, siteroot, proc, callback):
-        super(_BakeThread, self).__init__(
-                name='%s_bake' % sitename, daemon=True)
+        super(_PublishThread, self).__init__(
+                name='%s_publish' % sitename, daemon=True)
         self.sitename = sitename
         self.siteroot = siteroot
         self.proc = proc
         self.callback = callback
 
-        log_file_path = os.path.join(self.siteroot, 'foodtruck_bake.log')
+        log_file_path = os.path.join(self.siteroot, '.ft_pub.log')
         self.log_fp = open(log_file_path, 'w', encoding='utf8')
 
     def run(self):
@@ -114,11 +115,11 @@ class _BakeThread(threading.Thread):
             self.log_fp.write(line.decode('utf8'))
         self.proc.communicate()
         if self.proc.returncode != 0:
-            self.log_fp.write("Error, bake process returned code %d" %
+            self.log_fp.write("Error, publish process returned code %d" %
                               self.proc.returncode)
         self.log_fp.close()
 
-        logger.debug("Bake ended for %s." % self.sitename)
+        logger.debug("Publish ended for %s." % self.sitename)
         self.callback()
 
 

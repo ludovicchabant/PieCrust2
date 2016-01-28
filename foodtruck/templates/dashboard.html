@@ -8,7 +8,9 @@
             <form action="{{url_switch}}" method="POST">
             {% for site in sites %}
                 {% if site.name != site_name %}
-                <button type="submit" name="site_name" value="{{site.name}}" class="btn">Switch to {{site.display_name}}</button>
+                    <button type="submit" name="site_name" value="{{site.name}}" class="btn">
+                    <span class="icon ion-shuffle"></span>
+                    Switch to {{site.display_name}}</button>
                 {% endif %}
             {% endfor %}
             </form>
@@ -53,15 +55,6 @@
             <p>No work in progress.</p>
             {% endif %}
 
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <h2><span class="icon ion-radio-waves"></span> Publishing</h2>
-            <form action="{{url_bake}}" method="POST">
-                <button name="do_bake" type="submit" class="btn btn-primary btn-lg">
-                    <span class="icon ion-upload"></span> Bake!</button>
-            </form>
         </div>
     </div>
 </div>

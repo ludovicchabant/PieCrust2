@@ -14,7 +14,7 @@ def get_menu_context():
         if s.is_theme_source:
             continue
 
-        source_icon = s.config.get('foodtruck_icon/document')
+        source_icon = s.config.get('admin_icon', 'document')
         if s.name == 'pages':
             source_icon = 'document-text'
         elif 'blog' in s.name:
@@ -33,6 +33,11 @@ def get_menu_context():
                     ]
                 }
         entries.append(ctx)
+
+    entries.append({
+        'url': url_for('publish'),
+        'title': "Publish",
+        'icon': 'upload'})
 
     # entries.append({
     #     'url': url_for('settings'),

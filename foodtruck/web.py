@@ -22,7 +22,7 @@ if app.config['DEBUG']:
     l = logging.getLogger()
     l.setLevel(logging.DEBUG)
 
-app.logger.debug("Using FoodTruck admin root: %s" % admin_root)
+logger.debug("Using FoodTruck admin root: %s" % admin_root)
 
 
 def after_this_request(f):
@@ -73,7 +73,7 @@ def _call_after_request_callbacks(response):
 
 
 if not app.config['DEBUG']:
-    app.logger.debug("Registering exception handlers.")
+    logger.debug("Registering exception handlers.")
 
     @app.errorhandler(FoodTruckConfigNotFoundError)
     def _on_config_missing(ex):
@@ -81,7 +81,8 @@ if not app.config['DEBUG']:
 
     @app.errorhandler(InvalidSiteError)
     def _on_invalid_site(ex):
-        data = {'error': 'invalid_site', 'exception': str(ex)}
+        data = {'error': "The was an error with your configuration file: %s" %
+                str(ex)}
         return render_template('error.html', **data)
 
 
@@ -139,12 +140,12 @@ except ImportError:
 app.bcrypt = Bcrypt(app)
 
 
-import foodtruck.views.baking  # NOQA
 import foodtruck.views.create  # NOQA
 import foodtruck.views.dashboard  # NOQA
 import foodtruck.views.edit  # NOQA
 import foodtruck.views.menu  # NOQA
 import foodtruck.views.preview  # NOQA
+import foodtruck.views.publish  # NOQA
 import foodtruck.views.settings  # NOQA
 import foodtruck.views.sources  # NOQA
 

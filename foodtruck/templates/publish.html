@@ -1,0 +1,22 @@
+{% extends 'layouts/default.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>Publish {{site_title}}</h1>
+
+    {% for target in targets %}
+    <div>
+        <h2>{{target.name}}</h2>
+        {% if target.description %}<div>{{target.description}}</div>{% endif %}
+        {% if target.cmd %}<p>Run <code>{{target.cmd}}</code>.</p>{% endif %}
+        <form action="{{url_run}}" method="POST">
+            <input type="hidden" name="target" value="{{target.name}}" />
+            <button type="submit" class="btn btn-default">Execute</button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+{% endblock %}
+
+

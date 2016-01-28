@@ -16,8 +16,8 @@ def run_foodtruck(debug=False):
         # This is needed for Werkzeug's code reloader to be able to correctly
         # shutdown the child process in order to restart it (otherwise, SSE
         # generators will keep it alive).
-        from .views import baking
+        from . import pubutil
         logger.debug("Shutting down SSE generators from main...")
-        baking.server_shutdown = True
+        pubutil.server_shutdown = True
         raise
 
