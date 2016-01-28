@@ -22,14 +22,38 @@
         </div>
         <div class="col-md-2">
             <div class="btn-group">
-                <button type="button" name="do_save" class="btn btn-primary">Save</button>
+                <button type="submit" name="do_save" class="btn btn-primary">Save</button>
                 <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <span class="caret"></span>
                     <span class="sr-only">Toggle Dropdown</span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li><button type="submit" name="do_save_and_commit" class="btn btn-link">Save and Commit</button></li>
+                    <li><button type="button" class="btn btn-link" data-toggle="modal" data-target="#ft-commit-modal">Save and Commit</button></li>
                 </ul>
+            </div>
+        </div>
+    </div>
+
+    <div id="ft-commit-modal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="ft-commit-modal-label">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="ft-commit-modal-label">Commit Page</h4>
+                </div>
+                <div class="modal-body">
+                    <p>This will commit the current page to your source control.</p>
+                    <div class="form-group">
+                        <div class="input-group">
+                            <span class="input-group-addon" id="ft-commit-msg-label">Message: </span>
+                            <input type="text" class="form-control" placeholder="{{commit_msg}}" aria-describedby="ft-commit-msg-label" name="commit_msg" id="ft-commit-msg" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" name="do_save_and_commit">Save and Commit</button>
+                </div>
             </div>
         </div>
     </div>

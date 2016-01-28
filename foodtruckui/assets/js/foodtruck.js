@@ -1,6 +1,10 @@
 
 $(document).ready(function() {
     $('.ft-nav-collapsed + ul').hide();
+
+    $('#ft-commit-modal').on('shown.bs.modal', function () {
+        $('#ft-commit-msg').focus();
+    });
 });
 
 var onPublishEvent = function(e) {

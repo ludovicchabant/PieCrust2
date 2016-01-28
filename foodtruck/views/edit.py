@@ -39,7 +39,9 @@ def edit_page(slug):
                     page.path, site_app.root_dir))
 
         if 'do_save_and_commit' in request.form:
-            message = "Edit %s" % os.path.relpath(
+            message = request.form.get('commit_msg')
+            if not message:
+                message = "Edit %s" % os.path.relpath(
                     page.path, site_app.root_dir)
             site.scm.commit([page.path], message)
 
