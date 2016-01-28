@@ -22,7 +22,7 @@ gulp.task('sass', function() {
         //.pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
         .pipe(minify())
-        .pipe(gulp.dest('../foodtruck/static/css'));
+        .pipe(gulp.dest('foodtruck/static/css'));
 });
 gulp.task('sass:watch', function() {
     return gulp.watch('foodtruckui/assets/sass/**/*.scss', ['sass']);
@@ -36,6 +36,7 @@ gulp.task('js', function() {
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/button.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/collapse.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/dropdown.js',
+            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/modal.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/tooltip.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/transition.js',
             'foodtruckui/assets/js/**/*.js'
@@ -45,7 +46,7 @@ gulp.task('js', function() {
         .pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
         //.pipe(uglify())
-        .pipe(gulp.dest('../foodtruck/static/js'));
+        .pipe(gulp.dest('foodtruck/static/js'));
 });
 gulp.task('js:watch', function() {
     return gulp.watch('foodtruckui/assets/js/**/*.js', ['js']);
@@ -57,7 +58,7 @@ gulp.task('fonts', function() {
             'bower_components/bootstrap-sass/assets/fonts/bootstrap/*',
             'bower_components/Ionicons/fonts/*'
         ])
-        .pipe(gulp.dest('../foodtruck/static/fonts'));
+        .pipe(gulp.dest('foodtruck/static/fonts'));
 });
 
 gulp.task('images', function() {
@@ -65,7 +66,7 @@ gulp.task('images', function() {
             'bower_components/bootstrap-sass/assets/images/*',
             'foodtruckui/assets/img/*'
         ])
-        .pipe(gulp.dest('../foodtruck/static/img'));
+        .pipe(gulp.dest('foodtruck/static/img'));
 });
 
 // Launch tasks
