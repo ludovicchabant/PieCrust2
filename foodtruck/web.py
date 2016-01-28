@@ -91,6 +91,15 @@ def _on_error(ex):
     logging.exception(ex)
 
 
+_missing_secret_key = False
+
+if not app.secret_key:
+    # If there's no secret key, create a temp one but mark the app as not
+    # correctly installed so it shows the installation information page.
+    app.secret_key = 'temp-key'
+    _missing_secret_key = True
+
+
 from flask.ext.login import LoginManager, UserMixin
 
 
@@ -112,6 +121,14 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.user_loader(load_user)
+
+if _missing_secret_key:
+    def _handler():
+        raise FoodTruckConfigNotFoundError()
+
+    logger.debug("No secret key found, disabling website.")
+    login_manager.unauthorized_handler(_handler)
+    login_manager.login_view = None
 
 
 try:
