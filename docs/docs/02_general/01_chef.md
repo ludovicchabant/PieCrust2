@@ -28,7 +28,7 @@ The most common commands are:
   templates, layouts, assets -- into a self-contained static website that you
   can upload to your public server.
 
-[1]: {{docurl('general/website-structure')}}
+[1]: {{docurl('general/creating-websites')}}
 [2]: {{docurl('content/creating-pages')}}
 
 
