@@ -1,7 +1,7 @@
 path_mode: absolute
 files:
-  - bower_components/jquery/dist/jquery.js
-  - bower_components/bootstrap/js/transition.js
-  - bower_components/bootstrap/js/collapse.js
-  - bower_components/bootstrap/js/scrollspy.js
+  - ../bower_components/jquery/dist/jquery.js
+  - ../bower_components/bootstrap/js/transition.js
+  - ../bower_components/bootstrap/js/collapse.js
+  - ../bower_components/bootstrap/js/scrollspy.js
 

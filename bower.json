@@ -1,6 +1,8 @@
 {
-  "name": "FoodTruck",
+  "name": "PieCrust",
   "description": "",
+  "version": "0.0.1",
+  "private": "true",
   "authors": [
     "Ludovic Chabant <ludovic@chabant.com>"
   ],
@@ -10,8 +12,10 @@
     "bower_components"
   ],
   "dependencies": {
+    "bootstrap": "~3.3.5",
     "bootstrap-sass": "~3.3.5",
     "font-awesome": "fontawesome#~4.5.0",
     "Ionicons": "ionicons#~2.0.1"
   }
 }
+
