@@ -29,14 +29,14 @@ if app.config['FOODTRUCK_CMDLINE_MODE']:
 
 class PublishLogReader(object):
     _pub_max_time = 10 * 60   # Don't bother about pubs older than 10mins.
-    _poll_interval = 2        # Check the PID file every 2 seconds.
+    _poll_interval = 1        # Check the PID file every 1 seconds.
     _ping_interval = 30       # Send a ping message every 30 seconds.
 
     def __init__(self, pid_path, log_path):
         self.pid_path = pid_path
         self.log_path = log_path
         self._pub_pid_mtime = 0
-        self._last_seek = 0
+        self._last_seek = -1
         self._last_ping_time = 0
 
     def run(self):
@@ -64,9 +64,10 @@ class PublishLogReader(object):
                 # Send data.
                 new_data = None
                 if self._pub_pid_mtime > 0 or prev_mtime > 0:
-                    if self._last_seek == 0:
+                    if self._last_seek < 0:
                         outstr = 'event: message\ndata: Publish started.\n\n'
                         yield bytes(outstr, 'utf8')
+                        self._last_seek = 0
 
                     try:
                         with open(self.log_path, 'r', encoding='utf8') as fp:
