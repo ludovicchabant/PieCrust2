@@ -20,12 +20,9 @@ logger = logging.getLogger(__name__)
 @login_required
 def index():
     data = {}
-    site_name = request.cookies.get('foodtruck_site_name')
-    site = g.sites.get(site_name)
-    assert site is not None
-
-    fs_endpoints = {}
     data['sources'] = []
+    site = g.site
+    fs_endpoints = {}
     for source in site.piecrust_app.sources:
         if source.is_theme_source:
             continue
@@ -58,11 +55,11 @@ def index():
     data['url_preview'] = url_for('preview_site_root', sitename=site.name)
 
     data['sites'] = []
-    for k, v in g.config.get('sites').items():
+    for s in g.sites.getall():
         data['sites'].append({
-            'name': k,
-            'display_name': v.get('name', k),
-            'url': url_for('index', site_name=site_name)
+            'name': s.name,
+            'display_name': s.piecrust_app.config.get('site/title'),
+            'url': url_for('index', site_name=s.name)
             })
     data['needs_switch'] = len(g.config.get('sites')) > 1
     data['url_switch'] = url_for('switch_site')

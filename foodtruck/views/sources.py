@@ -10,7 +10,7 @@ from ..web import app
 @app.route('/list/<source_name>/<int:page_num>')
 @login_required
 def list_source(source_name, page_num):
-    site = g.sites.get().piecrust_app
+    site = g.site.piecrust_app
     source = site.getSource(source_name)
     if source is None:
         abort(400)

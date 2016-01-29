@@ -15,6 +15,21 @@ app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
 
 admin_root = app.config['FOODTRUCK_ROOT'] or os.getcwd()
 config_path = os.path.join(admin_root, 'app.cfg')
+
+# If we're being run as the `chef admin run` command, from inside a PieCrust
+# website, do a few things differently.
+_procedural_config = None
+
+if (app.config['FOODTRUCK_CMDLINE_MODE'] and
+        os.path.isfile(os.path.join(admin_root, 'config.yml'))):
+    app.secret_key = os.urandom(22)
+    app.config['LOGIN_DISABLED'] = True
+    _procedural_config = {
+            'sites': {
+                'local': admin_root}
+            }
+
+
 if os.path.isfile(config_path):
     app.config.from_pyfile(config_path)
 
@@ -48,21 +63,28 @@ class LazySomething(object):
 @app.before_request
 def _setup_foodtruck_globals():
     def _get_config():
-        return get_foodtruck_config(admin_root)
+        return get_foodtruck_config(admin_root, _procedural_config)
 
     def _get_sites():
+        names = g.config.get('sites')
+        if not names or not isinstance(names, dict):
+            raise InvalidSiteError(
+                    "No sites are defined in the configuration file.")
+
         current = request.cookies.get('foodtruck_site_name')
+        if current is not None and current not in names:
+            current = None
         if current is None:
-            names = g.config.get('sites')
-            if not names or not isinstance(names, dict):
-                raise InvalidSiteError(
-                        "No sites are defined in the configuration file.")
             current = next(iter(names.keys()))
         s = FoodTruckSites(g.config, current)
         return s
 
+    def _get_current_site():
+        return g.sites.get()
+
     g.config = LazySomething(_get_config)
     g.sites = LazySomething(_get_sites)
+    g.site = LazySomething(_get_current_site)
 
 
 @app.after_request

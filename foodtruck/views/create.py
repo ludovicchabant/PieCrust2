@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 @app.route('/write/<source_name>', methods=['GET', 'POST'])
 @login_required
 def write_page(source_name):
-    site = g.sites.get().piecrust_app
+    site = g.site.piecrust_app
     source = site.getSource(source_name)
     if source is None:
         abort(400)
@@ -50,7 +50,7 @@ def write_page(source_name):
             dummy = _DummyPage(fac)
             route_metadata = create_route_metadata(dummy)
             uri = route.getUri(route_metadata)
-            uri_root = '/site/%s/' % g.sites.get().name
+            uri_root = '/site/%s/' % g.site.name
             uri = uri[len(uri_root):]
             logger.debug("Redirecting to: %s" % uri)
 

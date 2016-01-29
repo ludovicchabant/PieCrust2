@@ -4,7 +4,6 @@ import copy
 import logging
 from flask import request, g, url_for, render_template, Response
 from flask.ext.login import login_required
-from piecrust.configuration import merge_dicts
 from ..pubutil import PublishLogReader
 from ..views import with_menu_context
 from ..web import app
@@ -21,12 +20,10 @@ def publish():
         if not target:
             raise Exception("No target specified.")
 
-        site = g.sites.get()
-        site.publish(target)
+        g.site.publish(target)
 
-    site = g.sites.get()
-    pub_cfg = copy.deepcopy(g.config.get('publish', {}))
-    merge_dicts(pub_cfg, site.config.get('publish', {}))
+    site = g.site
+    pub_cfg = copy.deepcopy(site.piecrust_app.config.get('publish', {}))
     if not pub_cfg:
         data = {'error': "There are not publish targets defined in your "
                          "configuration file."}
@@ -52,7 +49,7 @@ def publish():
 @app.route('/publish-log')
 @login_required
 def stream_publish_log():
-    site = g.sites.get()
+    site = g.site
     pid_path = os.path.join(site.root_dir, '.ft_pub.pid')
     log_path = os.path.join(site.root_dir, '.ft_pub.log')
     rdr = PublishLogReader(pid_path, log_path)

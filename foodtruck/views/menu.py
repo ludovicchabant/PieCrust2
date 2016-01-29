@@ -9,7 +9,7 @@ def get_menu_context():
         'title': "Dashboard",
         'icon': 'speedometer'})
 
-    site = g.sites.get().piecrust_app
+    site = g.site.piecrust_app
     for s in site.sources:
         if s.is_theme_source:
             continue

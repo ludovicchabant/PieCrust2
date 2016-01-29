@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 @app.route('/edit/<path:slug>', methods=['GET', 'POST'])
 @login_required
 def edit_page(slug):
-    site = g.sites.get()
+    site = g.site
     site_app = site.piecrust_app
     rp = get_requested_page(site_app,
                             '/site/%s/%s' % (g.sites.current_site, slug))

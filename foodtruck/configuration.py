@@ -10,10 +10,10 @@ from piecrust.configuration import (
 logger = logging.getLogger(__name__)
 
 
-def get_foodtruck_config(dirname=None):
+def get_foodtruck_config(dirname=None, fallback_config=None):
     dirname = dirname or os.getcwd()
     cfg_path = os.path.join(dirname, 'foodtruck.yml')
-    return FoodTruckConfiguration(cfg_path)
+    return FoodTruckConfiguration(cfg_path, fallback_config)
 
 
 class FoodTruckConfigNotFoundError(Exception):
@@ -21,9 +21,10 @@ class FoodTruckConfigNotFoundError(Exception):
 
 
 class FoodTruckConfiguration(Configuration):
-    def __init__(self, cfg_path):
+    def __init__(self, cfg_path, fallback_config=None):
         super(FoodTruckConfiguration, self).__init__()
         self.cfg_path = cfg_path
+        self.fallback_config = fallback_config
 
     def _load(self):
         try:
@@ -34,7 +35,12 @@ class FoodTruckConfiguration(Configuration):
 
             self._values = self._validateAll(values)
         except OSError:
-            raise FoodTruckConfigNotFoundError()
+            if self.fallback_config is None:
+                raise FoodTruckConfigNotFoundError()
+
+            logger.debug("No FoodTruck configuration found, using fallback "
+                         "configuration.")
+            self._values = copy.deepcopy(self.fallback_config)
         except Exception as ex:
             raise ConfigurationError(
                     "Error loading configuration from: %s" %

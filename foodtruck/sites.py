@@ -6,7 +6,7 @@ import logging
 import threading
 import subprocess
 from piecrust.app import PieCrust
-from piecrust.configuration import merge_dicts, Configuration
+from piecrust.configuration import merge_dicts
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +24,6 @@ class Site(object):
     def __init__(self, name, root_dir, config):
         self.name = name
         self.root_dir = root_dir
-        self.config = Configuration(values=config.get('sites/%s' % name, {}))
         self._global_config = config
         self._piecrust_app = None
         self._scm = None
@@ -43,7 +42,7 @@ class Site(object):
     def scm(self):
         if self._scm is None:
             cfg = copy.deepcopy(self._global_config.get('scm', {}))
-            merge_dicts(cfg, self.config.get('scm', {}))
+            merge_dicts(cfg, self.piecrust_app.config.get('scm', {}))
 
             if os.path.isdir(os.path.join(self.root_dir, '.hg')):
                 from .scm.mercurial import MercurialSourceControl
@@ -66,7 +65,7 @@ class Site(object):
         return self._publish_thread
 
     def publish(self, target):
-        target_cfg = self.config.get('publish/%s' % target)
+        target_cfg = self.piecrust_app.config.get('publish/%s' % target)
         if not target_cfg:
             raise Exception("No such publish target: %s" % target)
 
@@ -126,7 +125,6 @@ class _PublishThread(threading.Thread):
 class FoodTruckSites():
     def __init__(self, config, current_site):
         self._sites = {}
-        self._site_dirs = {}
         self.config = config
         self.current_site = current_site
         if current_site is None:
@@ -134,19 +132,11 @@ class FoodTruckSites():
 
     def get_root_dir(self, name=None):
         name = name or self.current_site
-        s = self._site_dirs.get(name)
-        if s:
-            return s
-
-        scfg = self.config.get('sites/%s' % name)
-        if scfg is None:
-            raise InvalidSiteError("No such site: %s" % name)
-        root_dir = scfg.get('path')
+        root_dir = self.config.get('sites/%s' % name)
         if root_dir is None:
-            raise InvalidSiteError("Site '%s' has no path defined." % name)
+            raise InvalidSiteError("No such site: %s" % name)
         if not os.path.isdir(root_dir):
             raise InvalidSiteError("Site '%s' has an invalid path." % name)
-        self._site_dirs[name] = root_dir
         return root_dir
 
     def get(self, name=None):
@@ -159,4 +149,8 @@ class FoodTruckSites():
         s = Site(name, root_dir, self.config)
         self._sites[name] = s
         return s
+
+    def getall(self):
+        for name in self.config.get('sites'):
+            yield self.get(name)
 
