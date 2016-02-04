@@ -41,7 +41,7 @@ class AdministrationPanelCommand(ChefCommand):
     def _runFoodTruck(self, ctx):
         from foodtruck import settings
         settings.FOODTRUCK_CMDLINE_MODE = True
-        settings.FOODTRUCK_ROOT = os.getcwd()
+        settings.FOODTRUCK_ROOT = ctx.app.root_dir
         from foodtruck.main import run_foodtruck
         run_foodtruck(debug=ctx.args.debug)
 
