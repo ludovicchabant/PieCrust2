@@ -1,7 +1,8 @@
+import os
+import os.path
 import io
 import sys
 import time
-import os.path
 import logging
 import argparse
 import colorama
@@ -118,6 +119,10 @@ def _setup_main_parser_arguments(parser):
             '--no-color',
             help="Don't use colorized output.",
             action='store_true')
+    parser.add_argument(
+            '--pid-file',
+            dest='pid_file',
+            help="Write a PID file for the current process.")
 
 
 def _pre_parse_chef_args(argv):
@@ -165,6 +170,18 @@ def _pre_parse_chef_args(argv):
         root_logger.addHandler(file_handler)
         if res.log_debug:
             file_handler.setLevel(logging.DEBUG)
+
+    # PID file.
+    if res.pid_file:
+        try:
+            pid_file_dir = os.path.dirname(res.pid_file)
+            if pid_file_dir and not os.path.isdir(pid_file_dir):
+                os.makedirs(pid_file_dir)
+
+            with open(res.pid_file, 'w') as fp:
+                fp.write(str(os.getpid()))
+        except OSError as ex:
+            raise Exception("Can't write PID file: %s" % res.pid_file) from ex
 
     return res
 
