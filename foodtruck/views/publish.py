@@ -1,5 +1,3 @@
-import os
-import os.path
 import copy
 import logging
 from flask import request, g, url_for, render_template, Response
@@ -49,9 +47,8 @@ def publish():
 @app.route('/publish-log')
 @login_required
 def stream_publish_log():
-    site = g.site
-    pid_path = os.path.join(site.root_dir, '.ft_pub.pid')
-    log_path = os.path.join(site.root_dir, '.ft_pub.log')
+    pid_path = g.site.publish_pid_file
+    log_path = g.site.publish_log_file
     rdr = PublishLogReader(pid_path, log_path)
 
     response = Response(rdr.run(), mimetype='text/event-stream')

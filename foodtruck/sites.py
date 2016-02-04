@@ -1,7 +1,6 @@
 import os
 import os.path
 import copy
-import shlex
 import logging
 import threading
 import subprocess
@@ -27,7 +26,6 @@ class Site(object):
         self._global_config = config
         self._piecrust_app = None
         self._scm = None
-        self._publish_thread = None
         logger.debug("Creating site object for %s" % self.name)
 
     @property
@@ -56,70 +54,26 @@ class Site(object):
         return self._scm
 
     @property
-    def is_publish_running(self):
-        return (self._publish_thread is not None and
-                self._publish_thread.is_alive())
+    def publish_pid_file(self):
+        return os.path.join(self.piecrust_app.cache_dir, 'publish.pid')
 
     @property
-    def publish_thread(self):
-        return self._publish_thread
+    def publish_log_file(self):
+        return os.path.join(self.piecrust_app.cache_dir, 'publish.log')
 
     def publish(self, target):
-        target_cfg = self.piecrust_app.config.get('publish/%s' % target)
-        if not target_cfg:
-            raise Exception("No such publish target: %s" % target)
+        args = [
+                'chef',
+                '--pid-file', self.publish_pid_file,
+                'publish', target,
+                '--log-publisher', self.publish_log_file]
+        proc = subprocess.Popen(args, cwd=self.root_dir)
 
-        target_cmd = target_cfg.get('cmd')
-        if not target_cmd:
-            raise Exception("No command specified for publish target: %s" %
-                            target)
-        publish_args = shlex.split(target_cmd)
+        def _comm():
+            proc.communicate()
 
-        logger.debug(
-                "Executing publish target '%s': %s" % (target, publish_args))
-        proc = subprocess.Popen(publish_args, cwd=self.root_dir,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE)
-
-        pid_file_path = os.path.join(self.root_dir, '.ft_pub.pid')
-        with open(pid_file_path, 'w') as fp:
-            fp.write(str(proc.pid))
-
-        logger.debug("Running publishing monitor for PID %d" % proc.pid)
-        self._publish_thread = _PublishThread(
-                self.name, self.root_dir, proc, self._onPublishEnd)
-        self._publish_thread.start()
-
-    def _onPublishEnd(self):
-        os.unlink(os.path.join(self.root_dir, '.ft_pub.pid'))
-        self._publish_thread = None
-
-
-class _PublishThread(threading.Thread):
-    def __init__(self, sitename, siteroot, proc, callback):
-        super(_PublishThread, self).__init__(
-                name='%s_publish' % sitename, daemon=True)
-        self.sitename = sitename
-        self.siteroot = siteroot
-        self.proc = proc
-        self.callback = callback
-
-        log_file_path = os.path.join(self.siteroot, '.ft_pub.log')
-        self.log_fp = open(log_file_path, 'w', encoding='utf8')
-
-    def run(self):
-        for line in self.proc.stdout:
-            self.log_fp.write(line.decode('utf8'))
-        for line in self.proc.stderr:
-            self.log_fp.write(line.decode('utf8'))
-        self.proc.communicate()
-        if self.proc.returncode != 0:
-            self.log_fp.write("Error, publish process returned code %d" %
-                              self.proc.returncode)
-        self.log_fp.close()
-
-        logger.debug("Publish ended for %s." % self.sitename)
-        self.callback()
+        t = threading.Thread(target=_comm, daemon=True)
+        t.start()
 
 
 class FoodTruckSites():

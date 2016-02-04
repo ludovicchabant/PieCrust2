@@ -33,6 +33,9 @@ class PieCrustPlugin(object):
     def getSources(self):
         return []
 
+    def getPublishers(self):
+        return []
+
     def initialize(self, app):
         pass
 
@@ -82,6 +85,9 @@ class PluginLoader(object):
 
     def getSources(self):
         return self._getPluginComponents('getSources')
+
+    def getPublishers(self):
+        return self._getPluginComponents('getPublishers')
 
     def _ensureLoaded(self):
         if self._plugins is not None:

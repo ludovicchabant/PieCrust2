@@ -6,6 +6,7 @@ from piecrust.commands.builtin.info import (
         RootCommand, ShowConfigCommand,
         FindCommand, ShowSourcesCommand, ShowRoutesCommand, ShowPathsCommand)
 from piecrust.commands.builtin.plugins import PluginsCommand
+from piecrust.commands.builtin.publishing import PublishCommand
 from piecrust.commands.builtin.scaffolding import (
         PrepareCommand,
         DefaultPrepareTemplatesCommandExtension,
@@ -33,6 +34,7 @@ from piecrust.processing.requirejs import RequireJSProcessor
 from piecrust.processing.sass import SassProcessor
 from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.processing.util import ConcatProcessor
+from piecrust.publishing.shell import ShellCommandPublisher
 from piecrust.sources.default import DefaultPageSource
 from piecrust.sources.posts import (
         FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
@@ -64,7 +66,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 BakeCommand(),
                 ShowRecordCommand(),
                 ServeCommand(),
-                AdministrationPanelCommand()]
+                AdministrationPanelCommand(),
+                PublishCommand()]
 
     def getCommandExtensions(self):
         return [
@@ -116,4 +119,8 @@ class BuiltInPlugin(PieCrustPlugin):
                 PieCrust1Importer(),
                 JekyllImporter(),
                 WordpressXmlImporter()]
+
+    def getPublishers(self):
+        return [
+                ShellCommandPublisher]
 
