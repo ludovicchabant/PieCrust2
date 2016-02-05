@@ -11,7 +11,7 @@ var gulp = require('gulp'),
 
 // Stylesheets
 gulp.task('sass', function() {
-    return gulp.src('foodtruckui/assets/sass/**/*.scss')
+    return gulp.src('foodtruck/assets/sass/**/*.scss')
         //.pipe(sourcemaps.init())
         .pipe(sass({
             errLogToConsole: true,
@@ -25,7 +25,7 @@ gulp.task('sass', function() {
         .pipe(gulp.dest('foodtruck/static/css'));
 });
 gulp.task('sass:watch', function() {
-    return gulp.watch('foodtruckui/assets/sass/**/*.scss', ['sass']);
+    return gulp.watch('foodtruck/assets/sass/**/*.scss', ['sass']);
 });
 
 // Javascript
@@ -39,7 +39,7 @@ gulp.task('js', function() {
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/modal.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/tooltip.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/transition.js',
-            'foodtruckui/assets/js/**/*.js'
+            'foodtruck/assets/js/**/*.js'
             ])
         .pipe(sourcemaps.init())
         .pipe(concat('foodtruck.js'))
@@ -49,7 +49,7 @@ gulp.task('js', function() {
         .pipe(gulp.dest('foodtruck/static/js'));
 });
 gulp.task('js:watch', function() {
-    return gulp.watch('foodtruckui/assets/js/**/*.js', ['js']);
+    return gulp.watch('foodtruck/assets/js/**/*.js', ['js']);
 });
 
 // Fonts/images
@@ -64,7 +64,7 @@ gulp.task('fonts', function() {
 gulp.task('images', function() {
     return gulp.src([
             'bower_components/bootstrap-sass/assets/images/*',
-            'foodtruckui/assets/img/*'
+            'foodtruck/assets/img/*'
         ])
         .pipe(gulp.dest('foodtruck/static/img'));
 });
