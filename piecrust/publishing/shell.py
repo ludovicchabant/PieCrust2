@@ -60,6 +60,7 @@ class _PublishThread(threading.Thread):
             sys.stdout.flush()
             if self.log_fp:
                 self.log_fp.write(line_str)
+                self.log_fp.flush()
 
         self.proc.communicate()
         logger.debug("Publish monitor exiting.")
