@@ -5,35 +5,47 @@ $(document).ready(function() {
     $('#ft-commit-modal').on('shown.bs.modal', function () {
         $('#ft-commit-msg').focus();
     });
+
+    var publogEl = $('#ft-publog');
+    publogEl.mouseenter(function() {
+        publogEl.attr('data-autohide', 'false');
+    });
+    publogEl.on('hide', function() {
+        var containerEl = $('#ft-publog-container', publogEl);
+        containerEl.empty();
+    });
+
+    var closePublogBtn = $('button', publogEl);
+    closePublogBtn.on('click', function() {
+        publogEl.fadeOut(200);
+    });
 });
 
 var onPublishEvent = function(e) {
-    var msgEl = $('<div></div>');
 
+    var publogEl = $('#ft-publog');
+    var containerEl = $('#ft-publog-container', publogEl);
+
+    var msgEl = $('<div>' + e.data + '</div>');
     var removeMsgEl = function() {
         msgEl.remove();
-        var publogEl = $('#ft-publog');
-        if (publogEl.children().length == 0) {
-            publogEl.hide();
+        if (containerEl.children().length == 0) {
+            // Last message, hide the log window.
+            publogEl.fadeOut(200);
         }
     };
-
-    msgEl.addClass('alert-dismissible');
-    msgEl.attr('role', 'alert');
-    msgEl.append('<button type="button" class="close" data-dismiss="alert" aria-label="close">' +
-                 '<span aria-hidden="true">&times;</span></button>');
-    msgEl.append('<div>' + e.data + '</div>');
     var timeoutId = window.setTimeout(function() {
-        msgEl.fadeOut(400, removeMsgEl);
+        if (publogEl.attr('data-autohide') == 'true') {
+            msgEl.fadeOut(400, removeMsgEl);
+        }
     }, 4000);
-    msgEl.mouseenter(function() {
-        window.clearTimeout(timeoutId);
-    });
-    $('button', msgEl).click(removeMsgEl);
 
-    var logEl = $('#ft-publog');
-    logEl.append(msgEl);
-    logEl.show();
+    if (containerEl.children().length == 0) {
+        // First message, show the log window, reset the mouseover marker.
+        publogEl.attr('data-autohide', 'true');
+        publogEl.fadeIn(200);
+    }
+    containerEl.append(msgEl);
 };
 
 if (!!window.EventSource) {
@@ -44,4 +56,5 @@ if (!!window.EventSource) {
     };
     source.addEventListener('message', onPublishEvent);
 }
+
 

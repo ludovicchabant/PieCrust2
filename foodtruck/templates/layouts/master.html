@@ -21,7 +21,12 @@
                 {% block content %}{% endblock %}
             </section>
             {% block after_content %}{% endblock %}
-            <div id="ft-publog"></div>
+            <div id="ft-publog" class="ft-publog" role="alert" style="display: none;">
+                <button type="button" class="close" aria-label="close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <div id="ft-publog-container"></div>
+            </div>
             <footer>
                 <p>Prepared by <a href="http://bolt80.com">BOLT80</a>.</p>
                 <p>Much <span class="icon ion-heart"></span> to

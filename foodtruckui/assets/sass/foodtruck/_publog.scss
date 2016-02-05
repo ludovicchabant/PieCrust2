@@ -1,0 +1,26 @@
+
+#ft-publog {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    width: 42%;
+    min-width: 20em;
+    margin: 0.5em;
+    color: $ft-color-white;
+    background: $ft-color-blue;
+    border-radius: 0.5em;
+    box-shadow: 0 0 10px darken($ft-color-blue, 50%);
+
+    button {
+        padding: 0.2em 0.4em;
+    }
+}
+
+#ft-publog-container {
+    margin: 1em;
+
+    div {
+        margin: 0.1em;
+    }
+}
+
