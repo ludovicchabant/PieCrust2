@@ -4,14 +4,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def run_foodtruck(debug=False):
+def run_foodtruck(host=None, port=None, debug=False):
     if debug:
         import foodtruck.settings
         foodtruck.settings.DEBUG = debug
 
     from .web import app
     try:
-        app.run(debug=debug, threaded=True)
+        app.run(host=host, port=port, debug=debug, threaded=True)
     except SystemExit:
         # This is needed for Werkzeug's code reloader to be able to correctly
         # shutdown the child process in order to restart it (otherwise, SSE

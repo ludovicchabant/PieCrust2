@@ -31,6 +31,14 @@ class AdministrationPanelCommand(ChefCommand):
         p = subparsers.add_parser(
                 'run',
                 help="Runs the administrative panel website.")
+        p.add_argument(
+                '-p', '--port',
+                help="The port for the administrative panel website.",
+                default=8090)
+        p.add_argument(
+                '-a', '--address',
+                help="The host for the administrative panel website.",
+                default='localhost')
         p.set_defaults(sub_func=self._runFoodTruck)
 
     def checkedRun(self, ctx):
@@ -43,7 +51,10 @@ class AdministrationPanelCommand(ChefCommand):
         settings.FOODTRUCK_CMDLINE_MODE = True
         settings.FOODTRUCK_ROOT = ctx.app.root_dir
         from foodtruck.main import run_foodtruck
-        run_foodtruck(debug=ctx.args.debug)
+        run_foodtruck(
+                host=ctx.args.address,
+                port=ctx.args.port,
+                debug=ctx.args.debug)
 
     def _initFoodTruck(self, ctx):
         import getpass
