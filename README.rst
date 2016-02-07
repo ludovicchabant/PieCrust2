@@ -9,6 +9,20 @@ official website`_.
 .. _the official website: http://bolt80.com/piecrust/
 
 
+|pypi-version| |pypi-downloads| |build-status|
+
+.. |pypi-version| image:: https://img.shields.io/pypi/v/piecrust.svg
+   :target: https://pypi.python.org/pypi/piecrust
+   :alt: PyPI: the Python Package Index
+.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/piecrust.svg
+   :target: https://pypi.python.org/pypi/piecrust
+   :alt: PyPI: the Python Package Index
+.. |build-status| image:: https://img.shields.io/travis/ludovicchabant/PieCrust2/master.svg
+   :target: https://travis-ci.org/ludovicchabant/PieCrust2
+   :alt: Travis CI: continuous integration status
+
+
+
 Quickstart
 ==========
 
