@@ -1,5 +1,10 @@
 
 $(document).ready(function() {
+    $('.ft-nav-toggle').click(function() {
+        $('.ft-nav-container').toggleClass('ft-nav-enabled');
+        $('.ft-nav').toggleClass('ft-nav-enabled');
+    });
+
     $('.ft-nav-collapsed + ul').hide();
 
     $('#ft-commit-modal').on('shown.bs.modal', function () {

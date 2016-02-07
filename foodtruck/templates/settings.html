@@ -3,7 +3,6 @@
 {% extends 'layouts/default.html' %}
 
 {% block content %}
-<div class="container">
 {% for sec in sections %}
 <form action="{{url_settings}}" method="POST">
     <h2>{{sec.title}}</h2>
@@ -32,7 +31,6 @@
     <p>This will reload settings from the configuration file.</p>
     <button type="submit" name="_do_reload" class="btn btn-info">Reload Settings</button>
 </form>
-</div>
 {% endblock %}
 
 

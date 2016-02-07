@@ -1,61 +1,59 @@
 {% extends 'layouts/default.html' %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-md-4 col-md-offset-8">
-        {% if needs_switch %}
-            <form action="{{url_switch}}" method="POST">
-            {% for site in sites %}
-                {% if site.name != site_name %}
-                    <button type="submit" name="site_name" value="{{site.name}}" class="btn">
-                    <span class="icon ion-shuffle"></span>
-                    Switch to {{site.display_name}}</button>
-                {% endif %}
+<div class="row">
+    <div class="col-md-4 col-md-offset-8">
+    {% if needs_switch %}
+        <form action="{{url_switch}}" method="POST">
+        {% for site in sites %}
+            {% if site.name != site_name %}
+                <button type="submit" name="site_name" value="{{site.name}}" class="btn">
+                <span class="icon ion-shuffle"></span>
+                Switch to {{site.display_name}}</button>
+            {% endif %}
+        {% endfor %}
+        </form>
+    {% endif %}
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <h1>{{site_title}} <a href="{{url_preview}}"><span class="icon ion-arrow-right-c"></span></a></h1>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <h2><span class="icon ion-stats-bars"></span> Site Summary</h2>
+        {% for s in sources %}
+        <div class="ft-summary-source">
+            <a href="{{s.list_url}}">{{s.page_count}} {{s.name}}</a>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="col-md-6">
+        <h2><span class="icon ion-erlenmeyer-flask"></span> Work in Progress</h2>
+        {% if new_pages %}
+        <p>New pages</p>
+        <ul>
+            {% for p in new_pages %}
+            <li><a href="{{p.url}}">{{p.title}}</a><br/>
+                {%if p.text%}<pre>{{p.text}}</pre>{%endif%}</li>
             {% endfor %}
-            </form>
+        </ul>
         {% endif %}
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <h1>{{site_title}} <a href="{{url_preview}}"><span class="icon ion-arrow-right-c"></span></a></h1>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <h2><span class="icon ion-stats-bars"></span> Site Summary</h2>
-            {% for s in sources %}
-            <div class="ft-summary-source">
-                <a href="{{s.list_url}}">{{s.page_count}} {{s.name}}</a>
-            </div>
+        {% if edited_pages %}
+        <p>Edited pages</p>
+        <ul>
+            {% for p in edited_pages %}
+            <li><a href="{{p.url}}">{{p.title}}</a><br/>
+                {%if p.text%}<pre>{{p.text}}</pre>{%endif%}</li>
             {% endfor %}
-        </div>
-        <div class="col-md-6">
-            <h2><span class="icon ion-erlenmeyer-flask"></span> Work in Progress</h2>
-            {% if new_pages %}
-            <p>New pages</p>
-            <ul>
-                {% for p in new_pages %}
-                <li><a href="{{p.url}}">{{p.title}}</a><br/>
-                    {%if p.text%}<pre>{{p.text}}</pre>{%endif%}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            {% if edited_pages %}
-            <p>Edited pages</p>
-            <ul>
-                {% for p in edited_pages %}
-                <li><a href="{{p.url}}">{{p.title}}</a><br/>
-                    {%if p.text%}<pre>{{p.text}}</pre>{%endif%}</li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            {% if not new_pages and not edited_pages %}
-            <p>No work in progress.</p>
-            {% endif %}
+        </ul>
+        {% endif %}
+        {% if not new_pages and not edited_pages %}
+        <p>No work in progress.</p>
+        {% endif %}
 
-        </div>
     </div>
 </div>
 {% endblock %}

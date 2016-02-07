@@ -4,7 +4,6 @@
 
 {% block content %}
 <form action="{{url_postback}}" method="POST" class="ft-create-form">
-<div class="container">
     {% for field in fields %}
     <div class="row">
         <div class="col-md-10 col-md-offset-1">
@@ -29,7 +28,6 @@
             <button type="submit" name="do_save" class="btn btn-primary btn-lg pull-right">Create and Edit</button>
         </div>
     </div>
-</div>
 </form>
 {% endblock %}
 
