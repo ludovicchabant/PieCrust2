@@ -64,8 +64,14 @@ class MercurialSourceControl(SourceControl):
         exe = [self.hg, '-R', self.root_dir]
         exe.append(cmd)
         exe += args
+
+        env = dict(os.environ)
+        env['HGPLAIN'] = 'True'
+
         logger.debug("Running Mercurial: " + str(exe))
-        out = subprocess.check_output(exe)
+        proc = subprocess.Popen(exe, stdout=subprocess.PIPE, env=env)
+        out, _ = proc.communicate()
+
         encoded_out = _s(out)
         return encoded_out
 
