@@ -7,8 +7,10 @@ class RsyncPublisher(ShellCommandPublisherBase):
 
     def _getCommandArgs(self, ctx):
         if self.has_url_config:
+            orig = ctx.bake_out_dir
             dest = self.parsed_url.netloc + self.parsed_url.path
         else:
+            orig = self.getConfigValue('source', ctx.bake_our_dir)
             dest = self.getConfigValue('destination')
 
         rsync_options = None
@@ -18,6 +20,6 @@ class RsyncPublisher(ShellCommandPublisherBase):
             rsync_options = ['-avc', '--delete']
 
         args = ['rsync'] + rsync_options
-        args += [ctx.bake_out_dir, dest]
+        args += [orig, dest]
         return args
 
