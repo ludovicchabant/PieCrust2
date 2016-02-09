@@ -35,6 +35,7 @@ from piecrust.processing.sass import SassProcessor
 from piecrust.processing.sitemap import SitemapProcessor
 from piecrust.processing.util import ConcatProcessor
 from piecrust.publishing.shell import ShellCommandPublisher
+from piecrust.publishing.rsync import RsyncPublisher
 from piecrust.sources.default import DefaultPageSource
 from piecrust.sources.posts import (
         FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
@@ -122,5 +123,6 @@ class BuiltInPlugin(PieCrustPlugin):
 
     def getPublishers(self):
         return [
-                ShellCommandPublisher]
+                ShellCommandPublisher,
+                RsyncPublisher]
 
