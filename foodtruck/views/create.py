@@ -1,3 +1,4 @@
+import os
 import os.path
 import logging
 from flask import (
@@ -26,6 +27,8 @@ def write_page(source_name):
     if request.method == 'POST':
         if 'do_save' in request.form:
             metadata = {}
+            for f in source.getInteractiveFields():
+                metadata[f.name] = f.default_value
             for fk, fv in request.form.items():
                 if fk.startswith('meta-'):
                     metadata[fk[5:]] = fv
@@ -37,6 +40,7 @@ def write_page(source_name):
                 abort(500)
 
             logger.debug("Creating page: %s" % fac.path)
+            os.makedirs(os.path.dirname(fac.path), exist_ok=True)
             with open(fac.path, 'w', encoding='utf8') as fp:
                 fp.write('')
             flash("%s was created." % os.path.relpath(fac.path, site.root_dir))
