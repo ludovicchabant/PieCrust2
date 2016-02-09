@@ -1,6 +1,7 @@
 import logging
+import urllib.parse
 from piecrust.commands.base import ChefCommand
-from piecrust.publishing.publisher import Publisher
+from piecrust.publishing.publisher import Publisher, find_publisher_name
 
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,10 @@ class PublishCommand(ChefCommand):
                 metavar='LOG_FILE',
                 help="Log the publisher's output to a given file.")
         parser.add_argument(
+                '--preview',
+                action='store_true',
+                help="Only preview what the publisher would do.")
+        parser.add_argument(
                 'target',
                 nargs='?',
                 default='default',
@@ -37,13 +42,37 @@ class PublishCommand(ChefCommand):
                 return
 
             for name, cfg in pub_cfg.items():
-                desc = cfg.get('description')
-                if not desc:
-                    logger.info(name)
+                if isinstance(cfg, dict):
+                    pub_type = cfg.get('type')
+                    if pub_type:
+                        desc = cfg.get('description')
+                        bake_first = cfg.get('bake', True)
+                        msg = '%s (%s)' % (name, pub_type)
+                        if not bake_first:
+                            msg += ' (no local baking)'
+                        if desc:
+                            msg += ': ' + desc
+                        logger.info(msg)
+                    else:
+                        logger.error(
+                                "%s (unknown type '%s')" % (name, pub_type))
+                elif isinstance(cfg, str):
+                    comps = urllib.parse.urlparse(str(cfg))
+                    pub_name = find_publisher_name(ctx.app, comps.scheme)
+                    if pub_name:
+                        logger.info("%s (%s)" % (name, pub_name))
+                    else:
+                        logger.error(
+                                "%s (unknown scheme '%s')" %
+                                (name, comps.scheme))
                 else:
-                    logger.info("%s: %s" % (name, desc))
+                    logger.error(
+                            "%s (incorrect configuration)" % name)
             return
 
         pub = Publisher(ctx.app)
-        pub.run(ctx.args.target, log_file=ctx.args.log_publisher)
+        pub.run(
+                ctx.args.target,
+                preview=ctx.args.preview,
+                log_file=ctx.args.log_publisher)
 
