@@ -33,10 +33,12 @@ def publish():
     data['targets'] = []
     for tn in sorted(pub_cfg.keys()):
         tc = pub_cfg[tn]
+        desc = None
+        if isinstance(tc, dict):
+            desc = tc.get('description')
         data['targets'].append({
             'name': tn,
-            'description': tc.get('description'),
-            'cmd': tc.get('cmd')
+            'description': desc
             })
 
     with_menu_context(data)
