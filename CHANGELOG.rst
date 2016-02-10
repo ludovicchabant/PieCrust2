@@ -18,7 +18,37 @@ This is the changelog for PieCrust_.
 ----------------------
 
 * chef: Fix the ``--config-set`` option.
+* admin: Make the publish UI handle new kinds of target configurations.
+* admin: Fix crashes when creating a new page.
+* admin: Fix responsive layout.
+* admin: Use ``HGPLAIN`` for the Mercurial VCS provider.
+* publish: Add option to change the source for the ``rsync`` publisher.
+* publish: Change the ``shell`` config setting name for the command to run.
+* publish: Add the ``rsync`` publisher.
+* publish: Polish/refactor the publishing workflows.
+* admin: Make the sidebar togglable for smaller screens.
+* admin: Change the default admin server port to 8090, add ``--port`` option.
+* admin: Improve publish logs showing as alerts in the admin panel.
+* publish: Make the ``shell`` log update faster by flushing the pipe.
+* publish: Add publish command.
 * chef: Add ``--pid-file`` option.
+* admin: Use the app directory, not the cwd, in case of ``--root`` .
+* admin: Configuration changes.
+* admin: Fix "Publish started" message showing up multiple times.
+* admin: Show the install page if no secret key is available.
+* admin: Prompt the user for a commit message when committing a page.
+* admin: Fix creating pages.
+* admin: Better UI for publishing websites.
+* admin: Better error reporting, general clean-up.
+* admin: Fix constructor for Mercurial SCM.
+* admin: Set the ``DEBUG`` flag before the app runs so we can read it during setup.
+* admin: Ability to configure SCM stuff per site.
+* admin: Better production config for FoodTruck, provide proper first site.
+* admin: Make sure we have a valid default site to start with.
+* admin: Dashboard UI cleaning, re-use utility function for page summaries.
+* admin: Add summary of page in source listing.
+* admin: New ``admin`` command to manage FoodTruck-related things.
+* admin: Add "FoodTruck" admin panel from the side experiment project.
 * bake: Add new performance timers.
 * bake: Add support for a "known" page setting that excludes it from the bake.
 * bake: Add option to bake assets for FoodTruck. This is likely temporary.
@@ -50,6 +80,8 @@ This is the changelog for PieCrust_.
 * debug: Fix how the linker shows children/siblings/etc. in the debug window.
 * internal: Some fixes to the new app configuration.
 * internal: Refactor the app configuration class.
+* cli: More proper argument parsing for the main/root arguments.
+* cli: Add ``--no-color`` option.
 * internal: Rename ``raw_content`` to ``segments`` since it's what it is.
 * bug: Fix a crash when some errors occur during page rendering.
 * data: Fix a crash bug when no parent page is set on an iterator.
@@ -80,42 +112,6 @@ This is the changelog for PieCrust_.
 * docs: Add reference entry about the ``site/slugify_mode`` setting.
 * tests: Fix broken test.
 * tests: Print more information when a bake test fails to find an output file.
-
-1.3 Miscellaneous
-----------------------
-
-* admin: Make the publish UI handle new kinds of target configurations.
-* admin: Fix crashes when creating a new page.
-* admin: Fix responsive layout.
-* admin: Use ``HGPLAIN`` for the Mercurial VCS provider.
-* publish: Add option to change the source for the ``rsync`` publisher.
-* publish: Change the ``shell`` config setting name for the command to run.
-* publish: Add the ``rsync`` publisher.
-* publish: Polish/refactor the publishing workflows.
-* admin: Make the sidebar togglable for smaller screens.
-* admin: Change the default admin server port to 8090, add ``--port`` option.
-* admin: Improve publish logs showing as alerts in the admin panel.
-* publish: Make the ``shell`` log update faster by flushing the pipe.
-* publish: Add publish command.
-* admin: Use the app directory, not the cwd, in case of ``--root`` .
-* admin: Configuration changes.
-* admin: Fix "Publish started" message showing up multiple times.
-* admin: Show the install page if no secret key is available.
-* admin: Prompt the user for a commit message when committing a page.
-* admin: Fix creating pages.
-* admin: Better UI for publishing websites.
-* admin: Better error reporting, general clean-up.
-* admin: Fix constructor for Mercurial SCM.
-* admin: Set the ``DEBUG`` flag before the app runs so we can read it during setup.
-* admin: Ability to configure SCM stuff per site.
-* admin: Better production config for FoodTruck, provide proper first site.
-* admin: Make sure we have a valid default site to start with.
-* admin: Dashboard UI cleaning, re-use utility function for page summaries.
-* admin: Add summary of page in source listing.
-* admin: New ``admin`` command to manage FoodTruck-related things.
-* admin: Add "FoodTruck" admin panel from the side experiment project.
-* cli: More proper argument parsing for the main/root arguments.
-* cli: Add ``--no-color`` option.
 
 ==================================
 2. PieCrust 2.0.0b3 (2015-08-01)

@@ -18,11 +18,12 @@ re_clean_code_span = re.compile('([^\s])``([^\s]+)')
 category_commands = [
         'chef', 'bake', 'find', 'help', 'import', 'init', 'paths', 'plugin',
         'plugins', 'prepare', 'purge', 'root', 'routes', 'serve',
-        'showconfig', 'showrecord', 'sources', 'theme', 'themes']
+        'showconfig', 'showrecord', 'sources', 'theme', 'themes', 'admin',
+        'publish']
 category_core = [
         'internal', 'bug', 'templating', 'formatting', 'performance',
         'data', 'config', 'rendering', 'render', 'debug', 'reporting',
-        'linker', 'pagination', 'routing', 'caching']
+        'linker', 'pagination', 'routing', 'caching', 'cli']
 category_project = ['build', 'cm', 'docs', 'tests', 'setup']
 categories = [
         ('commands', category_commands),
