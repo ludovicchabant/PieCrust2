@@ -89,7 +89,9 @@ def _setup_main_parser_arguments(parser):
             help="The configuration variant to use for this command.")
     parser.add_argument(
             '--config-set',
-            nargs='*',
+            nargs=2,
+            metavar=('NAME', 'VALUE'),
+            action='append',
             dest='config_values',
             help="Sets a specific site configuration setting.")
     parser.add_argument(
@@ -208,8 +210,10 @@ def _run_chef(pre_args, argv):
     cache_key = 'default'
 
     # Handle custom configurations.
-    if pre_args.config_variant is not None and not root:
-        raise SiteNotFoundError("Can't apply any variant.")
+    if (pre_args.config_variant or pre_args.config_values) and not root:
+        raise SiteNotFoundError(
+                "Can't apply any configuration variant or value overrides, "
+                "there is no website here.")
     apply_variant_and_values(app, pre_args.config_variant,
                              pre_args.config_values)
 
