@@ -5,7 +5,7 @@ var gulp = require('gulp'),
     sass = require('gulp-sass'),
     sourcemaps = require('gulp-sourcemaps'),
     rename = require('gulp-rename'),
-    minify = require('gulp-minify-css'),
+    cssnano = require('gulp-cssnano'),
     concat = require('gulp-concat'),
     uglify = require('gulp-uglify');
 
@@ -19,9 +19,9 @@ gulp.task('sass', function() {
             includePaths: [
                 'bower_components/bootstrap-sass/assets/stylesheets',
                 'bower_components/Ionicons/scss']}))
+        .pipe(cssnano())
         //.pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
-        .pipe(minify())
         .pipe(gulp.dest('foodtruck/static/css'));
 });
 gulp.task('sass:watch', function() {
@@ -43,9 +43,9 @@ gulp.task('js', function() {
             ])
         .pipe(sourcemaps.init())
         .pipe(concat('foodtruck.js'))
+        //.pipe(uglify())
         .pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
-        //.pipe(uglify())
         .pipe(gulp.dest('foodtruck/static/js'));
 });
 gulp.task('js:watch', function() {
