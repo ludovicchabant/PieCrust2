@@ -11,6 +11,9 @@ def gendocs(tmp_dir=None, out_dir=None):
     print("Updating virtual environment")
     run("pip install -r requirements.txt --upgrade")
 
+    print("Update node modules")
+    run("npm install")
+
     print("Update Bower packages")
     run("bower update")
 
