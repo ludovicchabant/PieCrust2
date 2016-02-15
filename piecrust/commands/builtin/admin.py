@@ -95,7 +95,7 @@ SECRET_KEY = %(secret_key)s
             fp.write(flask_config)
 
     def _generatePassword(self, ctx):
-        import bcrypt
+        from foodtruck import bcryptfallback as bcrypt
         binpw = ctx.args.password.encode('utf8')
         hashpw = bcrypt.hashpw(binpw, bcrypt.gensalt()).decode('utf8')
         logger.info(hashpw)

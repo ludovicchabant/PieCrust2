@@ -153,29 +153,12 @@ if _missing_secret_key:
     login_manager.login_view = None
 
 
-try:
-    from flask.ext.bcrypt import Bcrypt
-except ImportError:
-    logging.warning("Bcrypt not available... falling back to SHA512.")
-    logging.warning("Run `pip install Flask-Bcrypt` for more secure "
-                    "password hashing.")
-
-    import hashlib
-
-    def generate_password_hash(password):
-        return hashlib.sha512(password.encode('utf8')).hexdigest()
-
-    def check_password_hash(reference, check):
-        check_hash = hashlib.sha512(check.encode('utf8')).hexdigest()
-        return check_hash == reference
-
-    class SHA512Fallback(object):
-        def __init__(self, app=None):
-            self.generate_password_hash = generate_password_hash
-            self.check_password_hash = check_password_hash
-
-    Bcrypt = SHA512Fallback
-
+from foodtruck.bcryptfallback import Bcrypt
+if (getattr(Bcrypt, 'is_fallback_bcrypt', None) is True and
+        not app.config['FOODTRUCK_CMDLINE_MODE']):
+    raise Exception(
+            "You're running FoodTruck outside of `chef`, and will need to "
+            "install Flask-Bcrypt to get more proper security.")
 app.bcrypt = Bcrypt(app)
 
 
@@ -185,6 +168,5 @@ import foodtruck.views.edit  # NOQA
 import foodtruck.views.menu  # NOQA
 import foodtruck.views.preview  # NOQA
 import foodtruck.views.publish  # NOQA
-import foodtruck.views.settings  # NOQA
 import foodtruck.views.sources  # NOQA
 

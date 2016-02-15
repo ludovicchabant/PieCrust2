@@ -1,9 +1,7 @@
-bcrypt==2.0.0
 cffi==1.5.0
 colorama==0.3.3
 compressinja==0.0.2
 Flask==0.10.1
-Flask-Bcrypt==0.7.1
 Flask-Login==0.3.2
 Jinja2==2.7.3
 Markdown==2.6.2
