@@ -195,21 +195,33 @@ def main():
             default=30)
 
     result = parser.parse_args()
+    generate(result.engine, result.out_dir,
+             post_count=result.post_count,
+             tag_count=result.tag_count)
 
-    print("Generating %d posts in %s..." % (
-            result.post_count, result.out_dir))
 
-    if not os.path.exists(result.out_dir):
-        os.makedirs(result.out_dir)
+def generate(engine, out_dir, post_count=100, tag_count=10):
+    print("Generating %d posts in %s..." % (post_count, out_dir))
 
-    gen = generators[result.engine](result.out_dir)
-    gen.all_tags = [generateWord(3, 12) for _ in range(result.tag_count)]
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
+    gen = generators[engine](out_dir)
+    gen.all_tags = [generateWord(3, 12) for _ in range(tag_count)]
     gen.initialize()
 
-    for i in range(result.post_count):
+    for i in range(post_count):
         gen.generatePost()
 
 
 if __name__ == '__main__':
     main()
+else:
+    from invoke import task
+
+    @task
+    def genbenchsite(engine, out_dir, post_count=100, tag_count=10):
+        generate(engine, out_dir,
+                 post_count=post_count,
+                 tag_count=tag_count)
 

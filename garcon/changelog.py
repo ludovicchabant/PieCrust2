@@ -33,19 +33,8 @@ categories = [
 category_names = list(map(lambda i: i[0], categories))
 
 
-def generate():
-    parser = argparse.ArgumentParser(description='Generate CHANGELOG file.')
-    parser.add_argument(
-            'out_file',
-            nargs='?',
-            default='CHANGELOG.rst',
-            help='The output file.')
-    parser.add_argument(
-            '--last',
-            help="The version for the last few untagged changes.")
-    args = parser.parse_args()
-
-    print("Generating %s" % args.out_file)
+def generate(out_file, last=None):
+    print("Generating %s" % out_file)
 
     if not os.path.exists('.hg'):
         raise Exception("You must run this script from the root of a "
@@ -58,7 +47,7 @@ def generate():
 
     templates = _get_templates()
 
-    with open(args.out_file, 'w') as fp:
+    with open(out_file, 'w') as fp:
         fp.write(templates['header'])
 
         skip = False
@@ -67,10 +56,10 @@ def generate():
         current_version_info = None
         current_changes = None
 
-        if args.last:
+        if last:
             current_version = 1
             cur_date = time.strftime('%Y-%m-%d')
-            current_version_info = args.last, cur_date
+            current_version_info = last, cur_date
             current_changes = {}
 
         for line in hglog.splitlines():
@@ -173,5 +162,22 @@ def _get_template(filename):
 
 
 if __name__ == '__main__':
-    generate()
+    parser = argparse.ArgumentParser(description='Generate CHANGELOG file.')
+    parser.add_argument(
+            'out_file',
+            nargs='?',
+            default='CHANGELOG.rst',
+            help='The output file.')
+    parser.add_argument(
+            '--last',
+            help="The version for the last few untagged changes.")
+    args = parser.parse_args()
+
+    generate(args.out_file, last=args.last)
+else:
+    from invoke import task
+
+    @task
+    def genchangelog(out_file='CHANGELOG.rst', last=None):
+        generate(out_file, last)
 
