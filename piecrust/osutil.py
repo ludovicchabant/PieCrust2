@@ -9,7 +9,11 @@ listdir = os.listdir
 glob = _system_glob.glob
 
 
-if sys.platform == 'darwin':
+def _wrap_fs_funcs():
+    global walk
+    global listdir
+    global glob
+
     def _walk(top, **kwargs):
         for dirpath, dirnames, filenames in os.walk(top, **kwargs):
             dirpath = _from_osx_fs(dirpath)
@@ -33,9 +37,11 @@ if sys.platform == 'darwin':
     def _to_osx_fs(s):
         return unicodedata.ucd_3_2_0.normalize('NFD', s)
 
-    global walk, listdir, glob
-
     walk = _walk
     listdir = _listdir
     glob = _glob
+
+
+if sys.platform == 'darwin':
+    _wrap_fs_funcs()
 
