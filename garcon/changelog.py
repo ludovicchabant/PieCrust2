@@ -47,7 +47,7 @@ def generate(out_file, last=None):
 
     templates = _get_templates()
 
-    with open(out_file, 'w') as fp:
+    with open(out_file, 'w', encoding='utf8', newline='') as fp:
         fp.write(templates['header'])
 
         skip = False
@@ -157,7 +157,7 @@ def _get_templates():
 
 
 def _get_template(filename):
-    with open(filename, 'r', encoding='utf8') as fp:
+    with open(filename, 'r', encoding='utf8', newline='') as fp:
         return fp.read()
 
 
