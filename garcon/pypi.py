@@ -7,6 +7,11 @@ def makerelease(version, notag=False, noupload=False):
         raise Exception("You must specify a version!")
 
     # FoodTruck assets.
+    print("Update node modules")
+    run("npm install")
+    print("Install Bower components")
+    run("bower install")
+    print("Generating FoodTruck assets")
     run("gulp")
 
     # CHANGELOG.rst
