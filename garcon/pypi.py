@@ -2,7 +2,7 @@ from invoke import task, run
 
 
 @task
-def makerelease(version, notag=False, noupload=False):
+def makerelease(version, local_only=False):
     if not version:
         raise Exception("You must specify a version!")
 
@@ -17,11 +17,13 @@ def makerelease(version, notag=False, noupload=False):
     # CHANGELOG.rst
     run("invoke changelog --last %s" % version)
 
-    # Tag in Mercurial, which will then be used for PyPi version.
-    if not notag:
+    if not local_only:
+        # Submit the CHANGELOG.
+        run('hg commit CHANGELOG.rst -m "cm: Regenerate the CHANGELOG."')
+
+        # Tag in Mercurial, which will then be used for PyPi version.
         run("hg tag %s" % version)
 
-    # PyPi upload.
-    if not noupload:
+        # PyPi upload.
         run("python setup.py sdist upload")
 
