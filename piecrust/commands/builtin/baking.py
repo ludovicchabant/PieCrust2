@@ -58,24 +58,8 @@ class BakeCommand(ChefCommand):
                 '--show-timers',
                 help="Show detailed timing information.",
                 action='store_true')
-        parser.add_argument(
-                '--foodtruck',
-                help="Run the asset pipeline for FoodTruck.",
-                action='store_true')
 
     def run(self, ctx):
-        if ctx.args.foodtruck:
-            if ctx.args.html_only:
-                raise Exception("`--foodtruck` and `--html-only` can't be "
-                                "both specified.")
-            if ctx.args.output:
-                raise Exception("`--foodtruck` and `--output` can't be "
-                                "both specified.")
-
-            ctx.args.assets_only = True
-            ctx.args.output = os.path.join(ctx.app.root_dir, CACHE_DIR,
-                                           'foodtruck', 'server')
-
         out_dir = (ctx.args.output or
                    os.path.join(ctx.app.root_dir, '_counter'))
 

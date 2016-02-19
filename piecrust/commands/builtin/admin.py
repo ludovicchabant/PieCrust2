@@ -1,5 +1,6 @@
 import os
 import logging
+from piecrust import CACHE_DIR
 from piecrust.commands.base import ChefCommand
 
 
@@ -47,6 +48,12 @@ class AdministrationPanelCommand(ChefCommand):
         return ctx.args.sub_func(ctx)
 
     def _runFoodTruck(self, ctx):
+        from piecrust.processing.pipeline import ProcessorPipeline
+        out_dir = os.path.join(
+                ctx.app.root_dir, CACHE_DIR, 'foodtruck', 'server')
+        proc = ProcessorPipeline(ctx.app, out_dir)
+        proc.run()
+
         from foodtruck import settings
         settings.FOODTRUCK_CMDLINE_MODE = True
         settings.FOODTRUCK_ROOT = ctx.app.root_dir
