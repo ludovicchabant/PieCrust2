@@ -1,4 +1,5 @@
 import os
+import os.path
 import logging
 from piecrust import CACHE_DIR
 from piecrust.commands.base import ChefCommand
@@ -40,6 +41,11 @@ class AdministrationPanelCommand(ChefCommand):
                 '-a', '--address',
                 help="The host for the administrative panel website.",
                 default='localhost')
+        p.add_argument(
+                '--no-assets',
+                help="Don't process and monitor the asset folder(s).",
+                dest='monitor_assets',
+                action='store_false')
         p.set_defaults(sub_func=self._runFoodTruck)
 
     def checkedRun(self, ctx):
@@ -48,11 +54,15 @@ class AdministrationPanelCommand(ChefCommand):
         return ctx.args.sub_func(ctx)
 
     def _runFoodTruck(self, ctx):
-        from piecrust.processing.pipeline import ProcessorPipeline
-        out_dir = os.path.join(
-                ctx.app.root_dir, CACHE_DIR, 'foodtruck', 'server')
-        proc = ProcessorPipeline(ctx.app, out_dir)
-        proc.run()
+        # See `_run_sse_check` in `piecrust.serving.wrappers` for an explanation
+        # of this check.
+        if (ctx.args.monitor_assets and (
+                not ctx.args.debug or
+                os.environ.get('WERKZEUG_RUN_MAIN') == 'true')):
+            from piecrust.serving.procloop import ProcessingLoop
+            out_dir = os.path.join(ctx.app.root_dir, CACHE_DIR, 'foodtruck', 'server')
+            proc_loop = ProcessingLoop(ctx.app.root_dir, out_dir, debug=ctx.args.debug)
+            proc_loop.start()
 
         from foodtruck import settings
         settings.FOODTRUCK_CMDLINE_MODE = True
