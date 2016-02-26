@@ -15,7 +15,7 @@
     "bootstrap": "~3.3.5",
     "bootstrap-sass": "~3.3.5",
     "font-awesome": "fontawesome#~4.5.0",
-    "Ionicons": "ionicons#~2.0.1"
+    "Ionicons": "ionicons#~2.0.1",
+    "jquery-timeago": "^1.5.2"
   }
 }
-

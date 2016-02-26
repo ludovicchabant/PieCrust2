@@ -1,5 +1,6 @@
 import os
 import os.path
+import time
 import logging
 from flask import Flask, g, request, render_template
 from .configuration import (
@@ -160,6 +161,18 @@ if (getattr(Bcrypt, 'is_fallback_bcrypt', None) is True and
             "You're running FoodTruck outside of `chef`, and will need to "
             "install Flask-Bcrypt to get more proper security.")
 app.bcrypt = Bcrypt(app)
+
+
+@app.template_filter('iso8601')
+def timestamp_to_iso8601(t):
+    t = time.localtime(t)
+    return time.strftime('%Y-%m-%dT%H:%M:%SZ', t)
+
+@app.template_filter('datetime')
+def timestamp_to_datetime(t, fmt=None):
+    fmt = fmt or '%x'
+    t = time.localtime(t)
+    return time.strftime(fmt, t)
 
 
 import foodtruck.views.create  # NOQA

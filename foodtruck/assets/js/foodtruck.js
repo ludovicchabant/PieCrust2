@@ -1,5 +1,7 @@
 
 $(document).ready(function() {
+    $("time.timeago").timeago();
+
     $('.ft-nav-toggle').click(function() {
         $('.ft-nav-container').toggleClass('ft-nav-enabled');
         $('.ft-nav').toggleClass('ft-nav-enabled');

@@ -39,6 +39,7 @@ gulp.task('js', function() {
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/modal.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/tooltip.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/transition.js',
+            'bower_components/jquery-timeago/jquery.timeago.js',
             'foodtruck/assets/js/**/*.js'
             ])
         .pipe(sourcemaps.init())

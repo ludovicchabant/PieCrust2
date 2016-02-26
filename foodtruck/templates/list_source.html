@@ -1,16 +1,30 @@
 {% extends 'layouts/default.html' %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-12">
+<table class="table">
+    <thead>
+        <tr>
+            <th>When</th>
+            <th>Title</th>
+            <th>Who</th>
+            <th>Category</th>
+            <th>Tags</th>
+        </tr>
+    </thead>
+    <tbody>
         {% for p in pages %}
-        <div>
-            <h3><a href="{{p.url}}">{{p.title}}</a></h3>
-            <p>{{p.text}}</p>
-        </div>
+        <tr>
+            <td><time class="timeago" datetime="{{p.timestamp|iso8601}}">{{p.timestamp|datetime}}</time></td>
+            <td><a href="{{p.url}}">{{p.title}}</a></td>
+            <td>{{p.author}}</td>
+            <td>{{p.category}}</td>
+            <td>{{p.tags|join(', ')}}</td>
+        </tr>
         {% endfor %}
-    </div>
+    </tbody>
+</table>
 
+<div class="row">
     {% if pagination.prev_page or pagination.next_page %}
     <div class="col-sm-6 col-sm-offset-3">
         <div class="ft-pagination">
