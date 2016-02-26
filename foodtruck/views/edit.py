@@ -33,7 +33,7 @@ def edit_page(slug):
         if 'do_preview' in request.form or 'do_save' in request.form or \
                 'do_save_and_commit' in request.form:
             logger.debug("Writing page: %s" % page.path)
-            with open(page.path, 'w', encoding='utf8') as fp:
+            with open(page.path, 'w', encoding='utf8', newline='') as fp:
                 fp.write(page_text)
             flash("%s was saved." % os.path.relpath(
                     page.path, site_app.root_dir))
@@ -66,7 +66,7 @@ def _edit_page_form(page):
     data = {}
     data['is_new_page'] = False
     data['url_cancel'] = url_for('list_source', source_name=page.source.name)
-    with open(page.path, 'r', encoding='utf8') as fp:
+    with open(page.path, 'r', encoding='utf8', newline='') as fp:
         data['page_text'] = fp.read()
     data['is_dos_nl'] = "1" if '\r\n' in data['page_text'] else "0"
 
