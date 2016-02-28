@@ -2,18 +2,10 @@ import os
 import logging
 import tempfile
 import subprocess
-from .base import SourceControl, RepoStatus
+from .base import SourceControl, RepoStatus, _s
 
 
 logger = logging.getLogger(__name__)
-
-
-def _s(strs):
-    """ Convert a byte array to string using UTF8 encoding. """
-    if strs is None:
-        return None
-    assert isinstance(strs, bytes)
-    return strs.decode('utf8')
 
 
 class MercurialSourceControl(SourceControl):
@@ -34,9 +26,6 @@ class MercurialSourceControl(SourceControl):
         return res
 
     def _doCommit(self, paths, message, author):
-        if not message:
-            raise ValueError("No commit message specified.")
-
         # Check if any of those paths needs to be added.
         st_out = self._run('status', *paths)
         add_paths = []

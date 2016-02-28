@@ -15,9 +15,19 @@ class SourceControl(object):
         raise NotImplementedError()
 
     def commit(self, paths, message, *, author=None):
+        if not message:
+            raise ValueError("No message specified for committing changes.")
         author = author or self.config.get('author')
         self._doCommit(paths, message, author)
 
     def _doCommit(self, paths, message, author):
         raise NotImplementedError()
+
+
+def _s(strs):
+    """ Convert a byte array to string using UTF8 encoding. """
+    if strs is None:
+        return None
+    assert isinstance(strs, bytes)
+    return strs.decode('utf8')
 
