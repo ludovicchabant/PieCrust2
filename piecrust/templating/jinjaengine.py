@@ -1,6 +1,7 @@
 import re
 import time
 import os.path
+import hashlib
 import logging
 import threading
 import email.utils
@@ -221,6 +222,7 @@ class PieCrustEnvironment(Environment):
                 'stripoutertag': strip_outer_tag,
                 'stripslash': strip_slash,
                 'titlecase': title_case,
+                'md5': make_md5,
                 'atomdate': get_xml_date,
                 'xmldate': get_xml_date,
                 'emaildate': get_email_date,
@@ -310,13 +312,21 @@ def title_case(value):
     return value.title()
 
 
+def make_md5(value):
+    return hashlib.md5(value.lower().encode('utf8')).hexdigest()
+
+
 def get_xml_date(value):
+    """ Formats timestamps like 1985-04-12T23:20:50.52Z
+    """
     if value == 'now':
         value = time.time()
     return strict_rfc3339.timestamp_to_rfc3339_localoffset(int(value))
 
 
 def get_email_date(value, localtime=False):
+    """ Formats timestamps like Fri, 09 Nov 2001 01:08:47 -0000
+    """
     if value == 'now':
         value = time.time()
     return email.utils.formatdate(value, localtime=localtime)
