@@ -40,11 +40,12 @@ class StaticResourcesMiddleware(object):
 class PieCrustDebugMiddleware(object):
     """ WSGI middleware that handles debugging of PieCrust stuff.
     """
-    def __init__(self, app, root_dir, debug=False,
+    def __init__(self, app, root_dir, debug=False, theme_site=False,
                  sub_cache_dir=None, run_sse_check=None):
         self.app = app
         self.root_dir = root_dir
         self.debug = debug
+        self.theme_site = theme_site
         self.sub_cache_dir = sub_cache_dir
         self.run_sse_check = run_sse_check
         self._proc_loop = None
@@ -63,6 +64,7 @@ class PieCrustDebugMiddleware(object):
             # time so we let the implementation tell us if this is OK.
             from piecrust.serving.procloop import ProcessingLoop
             self._proc_loop = ProcessingLoop(root_dir, self._out_dir,
+                                             theme_site=theme_site,
                                              sub_cache_dir=sub_cache_dir,
                                              debug=debug)
             self._proc_loop.start()

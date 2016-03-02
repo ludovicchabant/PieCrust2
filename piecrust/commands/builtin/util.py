@@ -4,7 +4,7 @@ import shutil
 import codecs
 import logging
 import yaml
-from piecrust.app import CONFIG_PATH
+from piecrust.app import CONFIG_PATH, THEME_CONFIG_PATH
 from piecrust.commands.base import ChefCommand
 
 
@@ -19,7 +19,8 @@ class InitCommand(ChefCommand):
         self.requires_website = False
 
     def setupParser(self, parser, app):
-        parser.add_argument('destination',
+        parser.add_argument(
+                'destination',
                 help="The destination directory in which to create the website.")
 
     def run(self, ctx):
@@ -31,6 +32,9 @@ class InitCommand(ChefCommand):
             os.makedirs(destination, 0o755)
 
         config_path = os.path.join(destination, CONFIG_PATH)
+        if ctx.args.theme:
+            config_path = os.path.join(destination, THEME_CONFIG_PATH)
+
         if not os.path.isdir(os.path.dirname(config_path)):
             os.makedirs(os.path.dirname(config_path), 0o755)
 

@@ -15,10 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class BakeWorkerContext(object):
-    def __init__(self, root_dir, sub_cache_dir, out_dir,
+    def __init__(self, root_dir, sub_cache_dir, out_dir, *,
                  previous_record_path=None,
                  config_variant=None, config_values=None,
-                 force=False, debug=False):
+                 force=False, debug=False, theme_site=False):
         self.root_dir = root_dir
         self.sub_cache_dir = sub_cache_dir
         self.out_dir = out_dir
@@ -27,6 +27,7 @@ class BakeWorkerContext(object):
         self.config_values = config_values
         self.force = force
         self.debug = debug
+        self.theme_site = theme_site
         self.app = None
         self.previous_record = None
         self.previous_record_index = None
@@ -39,7 +40,8 @@ class BakeWorker(IWorker):
 
     def initialize(self):
         # Create the app local to this worker.
-        app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug)
+        app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug,
+                       theme_site=self.ctx.theme_site)
         app._useSubCacheDir(self.ctx.sub_cache_dir)
         app.config.set('baker/is_baking', True)
         app.config.set('baker/worker_id', self.wid)

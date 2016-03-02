@@ -9,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 def run_werkzeug_server(root_dir, host, port,
-                        debug_piecrust=False, sub_cache_dir=None,
+                        debug_piecrust=False, theme_site=False,
+                        sub_cache_dir=None,
                         use_debugger=False, use_reloader=False):
     from werkzeug.serving import run_simple
 
@@ -25,6 +26,7 @@ def run_werkzeug_server(root_dir, host, port,
 
     app = _get_piecrust_server(root_dir,
                                debug=debug_piecrust,
+                               theme_site=theme_site,
                                sub_cache_dir=sub_cache_dir,
                                run_sse_check=_run_sse_check)
 
@@ -78,7 +80,8 @@ def run_werkzeug_server(root_dir, host, port,
 
 
 def run_gunicorn_server(root_dir,
-                        debug_piecrust=False, sub_cache_dir=None,
+                        debug_piecrust=False, theme_site=False,
+                        sub_cache_dir=None,
                         gunicorn_options=None):
     from gunicorn.app.base import BaseApplication
 
@@ -98,6 +101,7 @@ def run_gunicorn_server(root_dir,
 
     app = _get_piecrust_server(root_dir,
                                debug=debug_piecrust,
+                               theme_site=theme_site,
                                sub_cache_dir=sub_cache_dir)
 
     gunicorn_options = gunicorn_options or {}
@@ -105,14 +109,17 @@ def run_gunicorn_server(root_dir,
     app_wrapper.run()
 
 
-def _get_piecrust_server(root_dir, debug=False, sub_cache_dir=None,
-                         run_sse_check=None):
+def _get_piecrust_server(
+        root_dir, debug=False, theme_site=False,
+        sub_cache_dir=None, run_sse_check=None):
     from piecrust.serving.middlewares import (
             StaticResourcesMiddleware, PieCrustDebugMiddleware)
     from piecrust.serving.server import WsgiServer
-    app = WsgiServer(root_dir, debug=debug, sub_cache_dir=sub_cache_dir)
+    app = WsgiServer(root_dir, debug=debug, theme_site=theme_site,
+                     sub_cache_dir=sub_cache_dir)
     app = StaticResourcesMiddleware(app)
     app = PieCrustDebugMiddleware(app, root_dir,
+                                  theme_site=theme_site,
                                   sub_cache_dir=sub_cache_dir,
                                   run_sse_check=run_sse_check)
     return app

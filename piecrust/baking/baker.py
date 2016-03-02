@@ -551,7 +551,8 @@ class Baker(object):
                 previous_record_path=previous_record_path,
                 config_variant=self.applied_config_variant,
                 config_values=self.applied_config_values,
-                force=self.force, debug=self.app.debug)
+                force=self.force, debug=self.app.debug,
+                theme_site=self.app.theme_site)
         pool = WorkerPool(
                 worker_count=worker_count,
                 batch_size=batch_size,

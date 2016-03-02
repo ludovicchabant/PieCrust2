@@ -32,7 +32,7 @@ class ChefCommand(object):
 
     def checkedRun(self, ctx):
         if ctx.app.root_dir is None and self.requires_website:
-            raise SiteNotFoundError()
+            raise SiteNotFoundError(theme=ctx.app.theme_site)
         return self.run(ctx)
 
 

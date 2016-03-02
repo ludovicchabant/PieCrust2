@@ -46,6 +46,7 @@ class ServeCommand(ChefCommand):
             run_werkzeug_server(
                     root_dir, host, port,
                     debug_piecrust=debug,
+                    theme_site=ctx.args.theme,
                     sub_cache_dir=ctx.app.sub_cache_dir,
                     use_debugger=debug,
                     use_reloader=ctx.args.use_reloader)
@@ -62,6 +63,7 @@ class ServeCommand(ChefCommand):
             run_gunicorn_server(
                     root_dir,
                     debug_piecrust=debug,
+                    theme_site=ctx.args.theme,
                     sub_cache_dir=ctx.app.sub_cache_dir,
                     gunicorn_options=options)
 

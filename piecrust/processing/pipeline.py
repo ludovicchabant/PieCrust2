@@ -252,7 +252,8 @@ class ProcessorPipeline(object):
 
         ctx = ProcessingWorkerContext(
                 self.app.root_dir, self.out_dir, self.tmp_dir,
-                self.force, self.app.debug)
+                force=self.force, debug=self.app.debug,
+                theme_site=self.app.theme_site)
         ctx.enabled_processors = self.enabled_processors
         if self.additional_processors_factories is not None:
             ctx.additional_processors = [

@@ -40,7 +40,8 @@ class ColoredFormatter(logging.Formatter):
 
 
 class NullPieCrust:
-    def __init__(self):
+    def __init__(self, theme_site=False):
+        self.theme_site = theme_site
         self.root_dir = None
         self.debug = False
         self.templates_dirs = []
@@ -49,6 +50,9 @@ class NullPieCrust:
         self.config = PieCrustConfiguration()
         self.plugin_loader = PluginLoader(self)
         self.env = None
+
+    def useSubCache(self, cache_name, cache_key):
+        pass
 
 
 def main():
@@ -83,6 +87,10 @@ def _setup_main_parser_arguments(parser):
     parser.add_argument(
             '--root',
             help="The root directory of the website.")
+    parser.add_argument(
+            '--theme',
+            action='store_true',
+            help="Makes the current command apply to a theme website.")
     parser.add_argument(
             '--config',
             dest='config_variant',
@@ -196,15 +204,19 @@ def _run_chef(pre_args, argv):
         root = os.path.expanduser(pre_args.root)
     else:
         try:
-            root = find_app_root()
+            root = find_app_root(theme=pre_args.theme)
         except SiteNotFoundError:
             root = None
 
     if not root:
-        app = NullPieCrust()
+        app = NullPieCrust(
+                theme_site=pre_args.theme)
     else:
-        app = PieCrust(root, cache=(not pre_args.no_cache),
-                       debug=pre_args.debug)
+        app = PieCrust(
+                root,
+                theme_site=pre_args.theme,
+                cache=(not pre_args.no_cache),
+                debug=pre_args.debug)
 
     # Build a hash for a custom cache directory.
     cache_key = 'default'

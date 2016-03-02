@@ -54,12 +54,20 @@ class PieCrust(object):
         start_time = time.perf_counter()
 
         paths = []
-        if self.theme_dir:
-            paths.append(os.path.join(self.theme_dir, THEME_CONFIG_PATH))
-        paths.append(os.path.join(self.root_dir, CONFIG_PATH))
+        if not self.theme_site:
+            if self.theme_dir:
+                paths.append(os.path.join(self.theme_dir, THEME_CONFIG_PATH))
+            paths.append(os.path.join(self.root_dir, CONFIG_PATH))
+        else:
+            paths.append(os.path.join(self.root_dir, THEME_CONFIG_PATH))
+            preview_path = os.path.join(
+                    self.root_dir, 'configs', 'theme_preview.yml')
+            if os.path.isfile(preview_path):
+                paths.append(preview_path)
 
         config_cache = self.cache.getCache('app')
-        config = PieCrustConfiguration(paths, config_cache)
+        config = PieCrustConfiguration(paths, config_cache,
+                                       theme_config=self.theme_site)
         if self.theme_dir:
             # We'll need to flag all page sources as coming from
             # the theme.
@@ -107,6 +115,8 @@ class PieCrust(object):
 
     @cached_property
     def theme_dir(self):
+        if self.theme_site:
+            return None
         td = self._get_dir(THEME_DIR)
         if td is not None:
             return td

@@ -71,10 +71,12 @@ class MultipleNotFound(HTTPException):
 
 class Server(object):
     def __init__(self, root_dir,
-                 debug=False, sub_cache_dir=None, enable_debug_info=True,
+                 debug=False, theme_site=False,
+                 sub_cache_dir=None, enable_debug_info=True,
                  root_url='/', static_preview=True):
         self.root_dir = root_dir
         self.debug = debug
+        self.theme_site = theme_site
         self.sub_cache_dir = sub_cache_dir
         self.enable_debug_info = enable_debug_info
         self.root_url = root_url
@@ -110,6 +112,7 @@ class Server(object):
 
         # Create the app for this request.
         app = get_app_for_server(self.root_dir, debug=self.debug,
+                                 theme_site=self.theme_site,
                                  sub_cache_dir=self.sub_cache_dir,
                                  root_url=self.root_url)
         if (app.config.get('site/enable_debug_info') and
@@ -302,9 +305,9 @@ class Server(object):
         desc = []
         while exception is not None:
             if isinstance(exception, MultipleNotFound):
-                desc += [e.description for e in exception._nfes]
+                desc += [str(e) for e in exception._nfes]
             elif isinstance(exception, HTTPException):
-                desc.append(exception.description)
+                desc.append(exception.get_description())
             else:
                 desc.append(str(exception))
 

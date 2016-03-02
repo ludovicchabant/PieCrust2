@@ -2,18 +2,23 @@ import re
 import os
 import os.path
 import fnmatch
+from piecrust import CONFIG_PATH, THEME_CONFIG_PATH
 
 
 re_terminal_path = re.compile(r'^(\w\:)?[/\\]$')
 
 
 class SiteNotFoundError(Exception):
-    def __init__(self, root=None, msg=None):
+    def __init__(self, root=None, msg=None, theme=False):
         if not root:
             root = os.getcwd()
+
+        cfg_name = CONFIG_PATH
+        if theme:
+            cfg_name = THEME_CONFIG_PATH
+
         full_msg = ("No PieCrust website in '%s' "
-                    "('config.yml' not found!)" %
-                    root)
+                    "('%s' not found!)" % (root, cfg_name))
         if msg:
             full_msg += ": " + msg
         else:
@@ -21,14 +26,18 @@ class SiteNotFoundError(Exception):
         Exception.__init__(self, full_msg)
 
 
-def find_app_root(cwd=None):
+def find_app_root(cwd=None, theme=False):
     if cwd is None:
         cwd = os.getcwd()
 
-    while not os.path.isfile(os.path.join(cwd, 'config.yml')):
+    cfg_name = CONFIG_PATH
+    if theme:
+        cfg_name = THEME_CONFIG_PATH
+
+    while not os.path.isfile(os.path.join(cwd, cfg_name)):
         cwd = os.path.dirname(cwd)
         if not cwd or re_terminal_path.match(cwd):
-            raise SiteNotFoundError(cwd)
+            raise SiteNotFoundError(cwd, theme=theme)
     return cwd
 
 

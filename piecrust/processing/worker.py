@@ -23,13 +23,14 @@ re_ansicolors = re.compile('\033\\[\d+m')
 
 
 class ProcessingWorkerContext(object):
-    def __init__(self, root_dir, out_dir, tmp_dir,
-                 force=False, debug=False):
+    def __init__(self, root_dir, out_dir, tmp_dir, *,
+                 force=False, debug=False, theme_site=False):
         self.root_dir = root_dir
         self.out_dir = out_dir
         self.tmp_dir = tmp_dir
         self.force = force
         self.debug = debug
+        self.theme_site = theme_site
         self.is_profiling = False
         self.enabled_processors = None
         self.additional_processors = None
@@ -59,7 +60,8 @@ class ProcessingWorker(IWorker):
 
     def initialize(self):
         # Create the app local to this worker.
-        app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug)
+        app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug,
+                       theme_site=self.ctx.theme_site)
         app.env.registerTimer("PipelineWorker_%d_Total" % self.wid)
         app.env.registerTimer("PipelineWorkerInit")
         app.env.registerTimer("JobReceive")

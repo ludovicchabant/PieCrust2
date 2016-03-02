@@ -16,9 +16,9 @@ from piecrust.uriutil import split_sub_uri
 logger = logging.getLogger(__name__)
 
 
-def get_app_for_server(root_dir, debug=False, sub_cache_dir=None,
-                       root_url='/'):
-    app = PieCrust(root_dir=root_dir, debug=debug)
+def get_app_for_server(root_dir, debug=False, theme_site=False,
+                       sub_cache_dir=None, root_url='/'):
+    app = PieCrust(root_dir=root_dir, debug=debug, theme_site=theme_site)
     if sub_cache_dir:
         app._useSubCacheDir(sub_cache_dir)
     app.config.set('site/root', root_url)

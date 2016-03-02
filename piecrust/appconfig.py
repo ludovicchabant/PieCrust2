@@ -29,11 +29,17 @@ class VariantNotFoundError(Exception):
 
 
 class PieCrustConfiguration(Configuration):
-    def __init__(self, paths=None, cache=None, values=None, validate=True):
-        super(PieCrustConfiguration, self).__init__(values, validate)
+    def __init__(self, paths=None, cache=None, values=None, validate=True,
+                 theme_config=False):
+        super(PieCrustConfiguration, self).__init__()
         self.paths = paths
         self.cache = cache or NullCache()
         self.fixups = []
+        self.theme_config = theme_config
+        # Set the values after we set the rest, since our validation needs
+        # our attributes.
+        if values:
+            self.setAll(values, validate=validate)
 
     def applyVariant(self, variant_path, raise_if_not_found=True):
         variant = self.get(variant_path)
@@ -112,6 +118,10 @@ class PieCrustConfiguration(Configuration):
         # Add the loaded values to the default configuration.
         values = merge_dicts(copy.deepcopy(default_configuration), values)
 
+        # Set the theme site flag.
+        if self.theme_config:
+            values['site']['theme_site'] = True
+
         # Figure out if we need to generate the configuration for the
         # default content model.
         sitec = values.setdefault('site', {})
@@ -159,7 +169,8 @@ class PieCrustConfiguration(Configuration):
         is_only_blog = (len(blogsc) == 1)
         for blog_name in blogsc:
             blog_cfg = get_default_content_model_for_blog(
-                    blog_name, is_only_blog, values)
+                    blog_name, is_only_blog, values,
+                    theme_site=self.theme_config)
             values = merge_dicts(blog_cfg, values)
 
         dcm = get_default_content_model(values)
@@ -199,7 +210,8 @@ default_configuration = collections.OrderedDict({
             'cache_time': 28800,
             'enable_debug_info': True,
             'show_debug_info': False,
-            'use_default_content': True
+            'use_default_content': True,
+            'theme_site': False
             }),
         'baker': collections.OrderedDict({
             'no_bake_setting': 'draft',
@@ -256,7 +268,8 @@ def get_default_content_model(values):
             })
 
 
-def get_default_content_model_for_blog(blog_name, is_only_blog, values):
+def get_default_content_model_for_blog(
+        blog_name, is_only_blog, values, theme_site=False):
     posts_fs = values['site']['posts_fs']
     blog_cfg = values.get(blog_name, {})
 
@@ -290,6 +303,12 @@ def get_default_content_model_for_blog(blog_name, is_only_blog, values):
             'category_url',
             url_prefix + values['site']['category_url']).lstrip('/')
 
+    tags_taxonomy = 'pages:%s_tag.%%ext%%' % tax_page_prefix
+    category_taxonomy = 'pages:%s_category.%%ext%%' % tax_page_prefix
+    if not theme_site:
+        tags_taxonomy += ';theme_pages:_tag.%ext%'
+        category_taxonomy += ';theme_pages:_category.%ext%'
+
     return collections.OrderedDict({
             'site': collections.OrderedDict({
                 'sources': collections.OrderedDict({
@@ -304,12 +323,8 @@ def get_default_content_model_for_blog(blog_name, is_only_blog, values):
                         'date_format': date_format,
                         'default_layout': default_layout,
                         'taxonomy_pages': collections.OrderedDict({
-                            'tags': ('pages:%s_tag.%%ext%%;'
-                                     'theme_pages:_tag.%%ext%%' %
-                                     tax_page_prefix),
-                            'categories': ('pages:%s_category.%%ext%%;'
-                                           'theme_pages:_category.%%ext%%' %
-                                           tax_page_prefix)
+                            'tags': tags_taxonomy,
+                            'categories': category_taxonomy
                             })
                         })
                     }),
@@ -416,24 +431,27 @@ def _validate_site_sources(v, values, cache):
         raise ConfigurationError("The 'site/sources' setting must be a "
                                  "dictionary.")
 
-    # Add the theme page source if no sources were defined in the theme
-    # configuration itself.
-    has_any_theme_source = False
-    for sn, sc in v.items():
-        if sc.get('realm') == REALM_THEME:
-            has_any_theme_source = True
-            break
-    if not has_any_theme_source:
-        v['theme_pages'] = {
-                'theme_source': True,
-                'fs_endpoint': 'pages',
-                'data_endpoint': 'site/pages',
-                'item_name': 'page',
-                'realm': REALM_THEME}
-        values['site']['routes'].append({
-                'url': '/%path:slug%',
-                'source': 'theme_pages',
-                'func': 'pcurl(slug)'})
+    theme_site = values['site']['theme_site']
+    if not theme_site:
+        # Add the theme page source if no sources were defined in the theme
+        # configuration itself.
+        has_any_theme_source = False
+        for sn, sc in v.items():
+            if sc.get('realm') == REALM_THEME:
+                has_any_theme_source = True
+                break
+        if not has_any_theme_source:
+            v['theme_pages'] = {
+                    'theme_source': True,
+                    'fs_endpoint': 'pages',
+                    'ignore_missing_dir': True,
+                    'data_endpoint': 'site/pages',
+                    'item_name': 'page',
+                    'realm': REALM_THEME}
+            values['site']['routes'].append({
+                    'url': '/%path:slug%',
+                    'source': 'theme_pages',
+                    'func': 'pcurl(slug)'})
 
     # Sources have the `default` scanner by default, duh. Also, a bunch
     # of other default values for other configuration stuff.
