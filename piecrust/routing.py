@@ -330,9 +330,9 @@ class Route(object):
 
                 # We need to register this use of a taxonomy term.
                 if len(values) == 1:
-                    registered_values = values[0]
+                    registered_values = str(values[0])
                 else:
-                    registered_values = tuple(values)
+                    registered_values = tuple([str(v) for v in values])
                 eis = self.app.env.exec_info_stack
                 cpi = eis.current_page_info.render_ctx.current_pass_info
                 if cpi:
