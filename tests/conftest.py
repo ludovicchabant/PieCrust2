@@ -462,7 +462,12 @@ def _compare_str(left, right, ctx):
         else:
             break
 
+    skip_for = -1
     for i in range(min(len(left), len(right))):
+        if skip_for > 0:
+            skip_for -= 1
+            continue
+
         if i in left_time_indices:
             # This is where the time starts. Let's compare that the time
             # values are within a few seconds of each other (usually 0 or 1).
@@ -473,7 +478,7 @@ def _compare_str(left, right, ctx):
             print("Got time difference: %d" % difference)
             if abs(difference) <= 2:
                 print("(good enough, moving to end of timestamp)")
-                i += len(test_time_iso8601)
+                skip_for = len(test_time_iso8601) - 1
 
         if left[i] != right[i]:
             start = max(0, i - 15)
@@ -502,11 +507,13 @@ def _compare_str(left, right, ctx):
                     "Difference:",
                     l_str, (' ' * l_offset + '^'),
                     r_str, (' ' * r_offset + '^')]
+
     if len(left) > len(right):
         return ["Left is longer.",
                 "Left '%s': " % ctx.path, left,
                 "Right '%s': " % ctx.path, right,
                 "Extra items: %r" % left[len(right):]]
+
     if len(right) > len(left):
         return ["Right is longer.",
                 "Left '%s': " % ctx.path, left,
