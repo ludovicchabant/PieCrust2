@@ -2,7 +2,7 @@ import re
 import os.path
 import time
 import logging
-from piecrust.app import PieCrust
+from piecrust.app import PieCrust, apply_variant_and_values
 from piecrust.processing.base import PipelineContext
 from piecrust.processing.records import (
         FLAG_NONE, FLAG_PREPARED, FLAG_PROCESSED,
@@ -23,14 +23,12 @@ re_ansicolors = re.compile('\033\\[\d+m')
 
 
 class ProcessingWorkerContext(object):
-    def __init__(self, root_dir, out_dir, tmp_dir, *,
-                 force=False, debug=False, theme_site=False):
-        self.root_dir = root_dir
+    def __init__(self, appfactory, out_dir, tmp_dir, *,
+                 force=False):
+        self.appfactory = appfactory
         self.out_dir = out_dir
         self.tmp_dir = tmp_dir
         self.force = force
-        self.debug = debug
-        self.theme_site = theme_site
         self.is_profiling = False
         self.enabled_processors = None
         self.additional_processors = None
@@ -60,8 +58,7 @@ class ProcessingWorker(IWorker):
 
     def initialize(self):
         # Create the app local to this worker.
-        app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug,
-                       theme_site=self.ctx.theme_site)
+        app = self.ctx.appfactory.create()
         app.env.registerTimer("PipelineWorker_%d_Total" % self.wid)
         app.env.registerTimer("PipelineWorkerInit")
         app.env.registerTimer("JobReceive")

@@ -540,19 +540,27 @@ class Baker(object):
             logger.error("  " + e)
 
     def _createWorkerPool(self, previous_record_path):
+        from piecrust.app import PieCrustFactory
         from piecrust.workerpool import WorkerPool
         from piecrust.baking.worker import BakeWorkerContext, BakeWorker
+
+        appfactory = PieCrustFactory(
+                self.app.root_dir,
+                cache=self.app.cache.enabled,
+                cache_key=self.app.cache_key,
+                config_variant=self.applied_config_variant,
+                config_values=self.applied_config_values,
+                debug=self.app.debug,
+                theme_site=self.app.theme_site)
 
         worker_count = self.app.config.get('baker/workers')
         batch_size = self.app.config.get('baker/batch_size')
 
         ctx = BakeWorkerContext(
-                self.app.root_dir, self.app.cache.base_dir, self.out_dir,
-                previous_record_path=previous_record_path,
-                config_variant=self.applied_config_variant,
-                config_values=self.applied_config_values,
-                force=self.force, debug=self.app.debug,
-                theme_site=self.app.theme_site)
+                appfactory,
+                self.out_dir,
+                force=self.force,
+                previous_record_path=previous_record_path)
         pool = WorkerPool(
                 worker_count=worker_count,
                 batch_size=batch_size,

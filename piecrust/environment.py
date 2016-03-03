@@ -89,7 +89,9 @@ class Environment(object):
         self.was_cache_cleaned = False
         self.base_asset_url_format = '%uri%'
 
-        self._onSubCacheDirChanged(app)
+        for name, repo in self.fs_caches.items():
+            cache = app.cache.getCache(name)
+            repo.fs_cache = cache
 
     def registerTimer(self, category, *, raise_if_registered=True):
         if raise_if_registered and category in self._timers:
@@ -108,11 +110,6 @@ class Environment(object):
 
     def stepTimerSince(self, category, since):
         self.stepTimer(category, time.perf_counter() - since)
-
-    def _onSubCacheDirChanged(self, app):
-        for name, repo in self.fs_caches.items():
-            cache = app.cache.getCache(name)
-            repo.fs_cache = cache
 
 
 class StandardEnvironment(Environment):

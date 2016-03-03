@@ -15,19 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 class BakeWorkerContext(object):
-    def __init__(self, root_dir, sub_cache_dir, out_dir, *,
-                 previous_record_path=None,
-                 config_variant=None, config_values=None,
-                 force=False, debug=False, theme_site=False):
-        self.root_dir = root_dir
-        self.sub_cache_dir = sub_cache_dir
+    def __init__(self, appfactory, out_dir, *,
+                 force=False, previous_record_path=None):
+        self.appfactory = appfactory
         self.out_dir = out_dir
-        self.previous_record_path = previous_record_path
-        self.config_variant = config_variant
-        self.config_values = config_values
         self.force = force
-        self.debug = debug
-        self.theme_site = theme_site
+        self.previous_record_path = previous_record_path
         self.app = None
         self.previous_record = None
         self.previous_record_index = None
@@ -40,9 +33,7 @@ class BakeWorker(IWorker):
 
     def initialize(self):
         # Create the app local to this worker.
-        app = PieCrust(self.ctx.root_dir, debug=self.ctx.debug,
-                       theme_site=self.ctx.theme_site)
-        app._useSubCacheDir(self.ctx.sub_cache_dir)
+        app = self.ctx.appfactory.create()
         app.config.set('baker/is_baking', True)
         app.config.set('baker/worker_id', self.wid)
         app.env.base_asset_url_format = '%uri%'
@@ -50,8 +41,6 @@ class BakeWorker(IWorker):
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")
         app.env.registerTimer("JobReceive")
-        apply_variant_and_values(app, self.ctx.config_variant,
-                                 self.ctx.config_values)
         self.ctx.app = app
 
         # Load previous record
@@ -139,7 +128,7 @@ class LoadJobHandler(JobHandler):
         except Exception as ex:
             logger.debug("Got loading error. Sending it to master.")
             result['errors'] = _get_errors(ex)
-            if self.ctx.debug:
+            if self.ctx.app.debug:
                 logger.exception(ex)
         return result
 
@@ -223,7 +212,7 @@ class BakeJobHandler(JobHandler):
         except BakingError as ex:
             logger.debug("Got baking error. Sending it to master.")
             result['errors'] = _get_errors(ex)
-            if self.ctx.debug:
+            if self.ctx.app.debug:
                 logger.exception(ex)
 
         return result

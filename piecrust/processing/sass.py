@@ -129,7 +129,7 @@ class SassProcessor(SimpleFileProcessor):
 
         cache_dir = None
         if self.app.cache.enabled:
-            cache_dir = os.path.join(self.app.sub_cache_dir, 'sass')
+            cache_dir = os.path.join(self.app.cache_dir, 'sass')
         self._conf.setdefault('cache_dir', cache_dir)
 
     def _getMapPath(self, path):

@@ -14,7 +14,7 @@ from piecrust import (
 from piecrust.cache import NullCache
 from piecrust.configuration import (
         Configuration, ConfigurationError, ConfigurationLoader,
-        merge_dicts, visit_dict)
+        get_dict_value, set_dict_value, merge_dicts, visit_dict)
 from piecrust.sources.base import REALM_USER, REALM_THEME
 
 
@@ -22,55 +22,100 @@ logger = logging.getLogger(__name__)
 
 
 class VariantNotFoundError(Exception):
-    def __init__(self, variant_path, message=None):
+    def __init__(self, variant_name, message=None):
         super(VariantNotFoundError, self).__init__(
                 message or ("No such configuration variant: %s" %
-                            variant_path))
+                            variant_name))
+
+
+def _make_variant_fixup(variant_name, raise_if_not_found):
+    def _variant_fixup(index, config):
+        if index != -1:
+            return
+        try:
+            try:
+                v = get_dict_value(config, 'variants/%s' % variant_name)
+            except KeyError:
+                raise VariantNotFoundError(variant_name)
+            if not isinstance(v, dict):
+                raise VariantNotFoundError(
+                        variant_name,
+                        "Configuration variant '%s' is not an array. "
+                        "Check your configuration file." % variant_name)
+            merge_dicts(config, v)
+        except VariantNotFoundError:
+            if raise_if_not_found:
+                raise
+
+    return _variant_fixup
 
 
 class PieCrustConfiguration(Configuration):
     def __init__(self, paths=None, cache=None, values=None, validate=True,
                  theme_config=False):
         super(PieCrustConfiguration, self).__init__()
-        self.paths = paths
-        self.cache = cache or NullCache()
-        self.fixups = []
+        self._paths = paths
+        self._cache = cache or NullCache()
+        self._fixups = []
         self.theme_config = theme_config
         # Set the values after we set the rest, since our validation needs
         # our attributes.
         if values:
             self.setAll(values, validate=validate)
 
-    def applyVariant(self, variant_path, raise_if_not_found=True):
-        variant = self.get(variant_path)
-        if variant is None:
-            if raise_if_not_found:
-                raise VariantNotFoundError(variant_path)
-            return
-        if not isinstance(variant, dict):
-            raise VariantNotFoundError(
-                    variant_path,
-                    "Configuration variant '%s' is not an array. "
-                    "Check your configuration file." % variant_path)
-        self.merge(variant)
+    def addFixup(self, f):
+        self._ensureNotLoaded()
+        self._fixups.append(f)
+
+    def addPath(self, p, first=False):
+        self._ensureNotLoaded()
+        if not first:
+            self._paths.append(p)
+        else:
+            self._paths.insert(0, p)
+
+    def addVariant(self, variant_path, raise_if_not_found=True):
+        self._ensureNotLoaded()
+        if os.path.isfile(variant_path):
+            self.addPath(variant_path)
+        else:
+            name, _ = os.path.splitext(os.path.basename(variant_path))
+            fixup = _make_variant_fixup(name, raise_if_not_found)
+            self.addFixup(fixup)
+
+            logger.warning(
+                "Configuration variants should now be `.yml` files located "
+                "in the `configs/` directory of your website.")
+            logger.warning(
+                "Variants defined in the site configuration will be "
+                "deprecated in a future version of PieCrust.")
+
+    def addVariantValue(self, path, value):
+        def _fixup(index, config):
+            set_dict_value(config, path, value)
+        self.addFixup(_fixup)
+
+    def _ensureNotLoaded(self):
+        if self._values is not None:
+            raise Exception("The configurations has been loaded.")
 
     def _load(self):
-        if self.paths is None:
+        if self._paths is None:
             self._values = self._validateAll({})
             return
 
-        path_times = [os.path.getmtime(p) for p in self.paths]
+        path_times = [os.path.getmtime(p) for p in self._paths]
 
         cache_key_hash = hashlib.md5(
                 ("version=%s&cache=%d" % (
                     APP_VERSION, CACHE_VERSION)).encode('utf8'))
-        for p in self.paths:
+        for p in self._paths:
             cache_key_hash.update(("&path=%s" % p).encode('utf8'))
         cache_key = cache_key_hash.hexdigest()
 
-        if self.cache.isValid('config.json', path_times):
+        if self._cache.isValid('config.json', path_times):
             logger.debug("Loading configuration from cache...")
-            config_text = self.cache.read('config.json')
+            config_text = self._cache.read('config.json')
             self._values = json.loads(
                     config_text,
                     object_pairs_hook=collections.OrderedDict)
@@ -82,32 +127,32 @@ class PieCrustConfiguration(Configuration):
             logger.debug("Outdated cache key '%s' (expected '%s')." % (
                     actual_cache_key, cache_key))
 
-        logger.debug("Loading configuration from: %s" % self.paths)
+        logger.debug("Loading configuration from: %s" % self._paths)
         values = {}
         try:
-            for i, p in enumerate(self.paths):
+            for i, p in enumerate(self._paths):
                 with open(p, 'r', encoding='utf-8') as fp:
                     loaded_values = yaml.load(
                             fp.read(),
                             Loader=ConfigurationLoader)
                 if loaded_values is None:
                     loaded_values = {}
-                for fixup in self.fixups:
+                for fixup in self._fixups:
                     fixup(i, loaded_values)
                 merge_dicts(values, loaded_values)
 
-            for fixup in self.fixups:
-                fixup(len(self.paths), values)
+            for fixup in self._fixups:
+                fixup(-1, values)
 
             self._values = self._validateAll(values)
         except Exception as ex:
             raise Exception("Error loading configuration from: %s" %
-                            ', '.join(self.paths)) from ex
+                            ', '.join(self._paths)) from ex
 
         logger.debug("Caching configuration...")
         self._values['__cache_key'] = cache_key
         config_text = json.dumps(self._values)
-        self.cache.write('config.json', config_text)
+        self._cache.write('config.json', config_text)
 
         self._values['__cache_valid'] = False
 

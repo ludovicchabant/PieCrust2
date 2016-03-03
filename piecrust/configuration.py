@@ -28,28 +28,15 @@ class Configuration(collections.abc.MutableMapping):
 
     def __getitem__(self, key):
         self._ensureLoaded()
-        bits = key.split('/')
-        cur = self._values
-        for b in bits:
-            try:
-                cur = cur[b]
-            except KeyError:
-                raise KeyError("No such item: %s" % key)
-        return cur
+        try:
+            return get_dict_value(self._values, key)
+        except KeyError:
+            raise KeyError("No such item: %s" % key)
 
     def __setitem__(self, key, value):
         self._ensureLoaded()
         value = self._validateValue(key, value)
-        bits = key.split('/')
-        bitslen = len(bits)
-        cur = self._values
-        for i, b in enumerate(bits):
-            if i == bitslen - 1:
-                cur[b] = value
-            else:
-                if b not in cur:
-                    cur[b] = {}
-                cur = cur[b]
+        set_dict_value(self._values, key, value)
 
     def __delitem__(self, key):
         raise NotImplementedError()
@@ -127,6 +114,27 @@ class Configuration(collections.abc.MutableMapping):
 
     def _validateValue(self, key_path, value):
         return value
+
+
+def get_dict_value(d, key):
+    bits = key.split('/')
+    cur = d
+    for b in bits:
+        cur = cur[b]
+    return cur
+
+
+def set_dict_value(d, key, value):
+    bits = key.split('/')
+    bitslen = len(bits)
+    cur = d
+    for i, b in enumerate(bits):
+        if i == bitslen - 1:
+            cur[b] = value
+        else:
+            if b not in cur:
+                cur[b] = {}
+            cur = cur[b]
 
 
 def merge_dicts(source, merging, validator=None, *args):

@@ -42,12 +42,19 @@ class ServeCommand(ChefCommand):
         port = int(ctx.args.port)
         debug = ctx.args.debug or ctx.args.use_debugger
 
+        from piecrust.app import PieCrustFactory
+        appfactory = PieCrustFactory(
+                ctx.app.root_dir,
+                cache=ctx.app.cache.enabled,
+                cache_key=ctx.app.cache_key,
+                config_variant=ctx.config_variant,
+                config_values=ctx.config_values,
+                debug=ctx.app.debug,
+                theme_site=ctx.app.theme_site)
+
         if ctx.args.wsgi == 'werkzeug':
             run_werkzeug_server(
-                    root_dir, host, port,
-                    debug_piecrust=debug,
-                    theme_site=ctx.args.theme,
-                    sub_cache_dir=ctx.app.sub_cache_dir,
+                    appfactory, host, port,
                     use_debugger=debug,
                     use_reloader=ctx.args.use_reloader)
 
@@ -60,10 +67,5 @@ class ServeCommand(ChefCommand):
                 options['loglevel'] = 'debug'
             if ctx.args.use_reloader:
                 options['reload'] = True
-            run_gunicorn_server(
-                    root_dir,
-                    debug_piecrust=debug,
-                    theme_site=ctx.args.theme,
-                    sub_cache_dir=ctx.app.sub_cache_dir,
-                    gunicorn_options=options)
+            run_gunicorn_server(appfactory, gunicorn_options=options)
 

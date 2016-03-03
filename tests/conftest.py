@@ -322,9 +322,11 @@ class ServeTestItem(YamlTestItemBase):
 
         from werkzeug.test import Client
         from werkzeug.wrappers import BaseResponse
+        from piecrust.app import PieCrustFactory
         from piecrust.serving.server import Server
         with mock_fs_scope(fs):
-            server = Server(fs.path('/kitchen'))
+            appfactory = PieCrustFactory(fs.path('/kitchen'))
+            server = Server(appfactory)
             test_app = self._TestApp(server)
             client = Client(test_app, BaseResponse)
             resp = client.get(url)

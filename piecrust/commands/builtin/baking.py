@@ -109,7 +109,9 @@ class BakeCommand(ChefCommand):
     def _bakeAssets(self, ctx, out_dir):
         proc = ProcessorPipeline(
                 ctx.app, out_dir,
-                force=ctx.args.force)
+                force=ctx.args.force,
+                applied_config_variant=ctx.config_variant,
+                applied_config_values=ctx.config_values)
         record = proc.run()
         _merge_timers(record.timers, ctx.timers)
         return record.success

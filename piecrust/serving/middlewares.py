@@ -40,18 +40,14 @@ class StaticResourcesMiddleware(object):
 class PieCrustDebugMiddleware(object):
     """ WSGI middleware that handles debugging of PieCrust stuff.
     """
-    def __init__(self, app, root_dir, debug=False, theme_site=False,
-                 sub_cache_dir=None, run_sse_check=None):
+    def __init__(self, app, appfactory,
+                 run_sse_check=None):
         self.app = app
-        self.root_dir = root_dir
-        self.debug = debug
-        self.theme_site = theme_site
-        self.sub_cache_dir = sub_cache_dir
+        self.appfactory = appfactory
         self.run_sse_check = run_sse_check
         self._proc_loop = None
-        self._out_dir = os.path.join(root_dir, CACHE_DIR, 'server')
-        if sub_cache_dir:
-            self._out_dir = os.path.join(sub_cache_dir, 'server')
+        self._out_dir = os.path.join(
+                root_dir, CACHE_DIR, appfactory.cache_key, 'server')
         self._handlers = {
                 'debug_info': self._getDebugInfo,
                 'werkzeug_shutdown': self._shutdownWerkzeug,
@@ -63,10 +59,7 @@ class PieCrustDebugMiddleware(object):
             # to start the pipeline loop in the inner process most of the
             # time so we let the implementation tell us if this is OK.
             from piecrust.serving.procloop import ProcessingLoop
-            self._proc_loop = ProcessingLoop(root_dir, self._out_dir,
-                                             theme_site=theme_site,
-                                             sub_cache_dir=sub_cache_dir,
-                                             debug=debug)
+            self._proc_loop = ProcessingLoop(self.appfactory, self._out_dir)
             self._proc_loop.start()
 
     def __call__(self, environ, start_response):
@@ -82,8 +75,7 @@ class PieCrustDebugMiddleware(object):
         return self.app(environ, start_response)
 
     def _getDebugInfo(self, request, start_response):
-        app = get_app_for_server(self.root_dir, debug=self.debug,
-                                 sub_cache_dir=self.sub_cache_dir)
+        app = get_app_for_server(self.appfactory)
         if not app.config.get('site/enable_debug_info'):
             return Forbidden()
 

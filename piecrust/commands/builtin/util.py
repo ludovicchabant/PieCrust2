@@ -63,7 +63,7 @@ class PurgeCommand(ChefCommand):
         pass
 
     def run(self, ctx):
-        cache_dir = ctx.app.sub_cache_dir
+        cache_dir = ctx.app.cache_dir
         if cache_dir and os.path.isdir(cache_dir):
             logger.info("Purging cache: %s" % cache_dir)
             shutil.rmtree(cache_dir)

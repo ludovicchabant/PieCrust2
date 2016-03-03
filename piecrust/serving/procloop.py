@@ -75,15 +75,10 @@ class PipelineStatusServerSentEventProducer(object):
 
 
 class ProcessingLoop(threading.Thread):
-    def __init__(self, root_dir, out_dir, sub_cache_dir=None,
-                 theme_site=False, debug=False):
+    def __init__(self, appfactory):
         super(ProcessingLoop, self).__init__(
                 name='pipeline-reloader', daemon=True)
-        self.root_dir = root_dir
-        self.out_dir = out_dir
-        self.sub_cache_dir = sub_cache_dir
-        self.debug = debug
-        self.theme_site = theme_site
+        self.appfactory = appfactory
         self.last_status_id = 0
         self.interval = 1
         self.app = None
@@ -95,7 +90,7 @@ class ProcessingLoop(threading.Thread):
         self._last_config_mtime = 0
         self._obs = []
         self._obs_lock = threading.Lock()
-        if theme_site:
+        if appfactory.theme_site:
             self._config_path = os.path.join(root_dir, THEME_CONFIG_PATH)
         else:
             self._config_path = os.path.join(root_dir, CONFIG_PATH)
@@ -162,10 +157,7 @@ class ProcessingLoop(threading.Thread):
 
     def _initPipeline(self):
         # Create the app and pipeline.
-        self.app = PieCrust(root_dir=self.root_dir, debug=self.debug,
-                            theme_site=self.theme_site)
-        if self.sub_cache_dir:
-            self.app._useSubCacheDir(self.sub_cache_dir)
+        self.app = self.appfactory.create()
         self.pipeline = ProcessorPipeline(self.app, self.out_dir)
 
         # Get the list of assets directories.

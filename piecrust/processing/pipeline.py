@@ -27,13 +27,17 @@ class _ProcessingContext(object):
 
 
 class ProcessorPipeline(object):
-    def __init__(self, app, out_dir, force=False):
+    def __init__(self, app, out_dir, force=False,
+                 applied_config_variant=None,
+                 applied_config_values=None):
         assert app and out_dir
         self.app = app
         self.out_dir = out_dir
         self.force = force
+        self.applied_config_variant = applied_config_variant
+        self.applied_config_values = applied_config_values
 
-        tmp_dir = app.sub_cache_dir
+        tmp_dir = app.cache_dir
         if not tmp_dir:
             import tempfile
             tmp_dir = os.path.join(tempfile.gettempdir(), 'piecrust')
@@ -246,14 +250,24 @@ class ProcessorPipeline(object):
         ctx.jobs.append(job)
 
     def _createWorkerPool(self):
+        from piecrust.app import PieCrustFactory
         from piecrust.workerpool import WorkerPool
         from piecrust.processing.worker import (
                 ProcessingWorkerContext, ProcessingWorker)
 
-        ctx = ProcessingWorkerContext(
-                self.app.root_dir, self.out_dir, self.tmp_dir,
-                force=self.force, debug=self.app.debug,
+        appfactory = PieCrustFactory(
+                self.app.root_dir,
+                cache=self.app.cache.enabled,
+                cache_key=self.app.cache_key,
+                config_variant=self.applied_config_variant,
+                config_values=self.applied_config_values,
+                debug=self.app.debug,
                 theme_site=self.app.theme_site)
+
+        ctx = ProcessingWorkerContext(
+                appfactory,
+                self.out_dir, self.tmp_dir,
+                force=self.force)
         ctx.enabled_processors = self.enabled_processors
         if self.additional_processors_factories is not None:
             ctx.additional_processors = [

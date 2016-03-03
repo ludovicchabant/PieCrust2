@@ -12,6 +12,15 @@ out:
 ---
 config:
     what: not good
+config_variant: test
+in:
+    pages/_index.md: 'This is {{what}}.'
+    configs/test.yml: 'what: awesome'
+out:
+    index.html: 'This is awesome.'
+---
+config:
+    what: not good
 config_values:
     what: awesome
 in:

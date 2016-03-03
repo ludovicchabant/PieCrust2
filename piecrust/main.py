@@ -3,6 +3,7 @@ import os.path
 import io
 import sys
 import time
+import hashlib
 import logging
 import argparse
 import colorama
@@ -50,9 +51,6 @@ class NullPieCrust:
         self.config = PieCrustConfiguration()
         self.plugin_loader = PluginLoader(self)
         self.env = None
-
-    def useSubCache(self, cache_name, cache_key):
-        pass
 
 
 def main():
@@ -135,6 +133,15 @@ def _setup_main_parser_arguments(parser):
             help="Write a PID file for the current process.")
 
 
+""" Kinda hacky, but we want the `serve` command to use a different cache
+    so that PieCrust doesn't need to re-render all the pages when going
+    between `serve` and `bake` (or, worse, *not* re-render them all correctly
+    and end up serving or baking the wrong version).
+"""
+_command_caches = {
+        'serve': 'server'}
+
+
 def _pre_parse_chef_args(argv):
     # We need to parse some arguments before we can build the actual argument
     # parser, because it can affect which plugins will be loaded. Also, log-
@@ -142,7 +149,7 @@ def _pre_parse_chef_args(argv):
     # from the beginning.
     parser = argparse.ArgumentParser()
     _setup_main_parser_arguments(parser)
-    parser.add_argument('args', nargs=argparse.REMAINDER)
+    parser.add_argument('extra_args', nargs=argparse.REMAINDER)
     res, _ = parser.parse_known_args(argv)
 
     # Setup the logger.
@@ -196,6 +203,23 @@ def _pre_parse_chef_args(argv):
     return res
 
 
+def _build_cache_key(pre_args):
+    cache_key_str = 'default'
+    if pre_args.extra_args:
+        cmd_name = pre_args.extra_args[0]
+        if cmd_name in _command_caches:
+            cache_key_str = _command_caches[cmd_name]
+    if pre_args.config_variant is not None:
+        cache_key_str += ',variant=%s' % pre_args.config_variant
+    if pre_args.config_values:
+        for name, value in pre_args.config_values:
+            cache_key_str += ',%s=%s' % (name, value)
+
+    logger.debug("Using cache key: %s" % cache_key_str)
+    cache_key = hashlib.md5(cache_key_str.encode('utf8')).hexdigest()
+    return cache_key
+
+
 def _run_chef(pre_args, argv):
     # Setup the app.
     start_time = time.perf_counter()
@@ -208,33 +232,27 @@ def _run_chef(pre_args, argv):
         except SiteNotFoundError:
             root = None
 
-    if not root:
-        app = NullPieCrust(
-                theme_site=pre_args.theme)
-    else:
-        app = PieCrust(
-                root,
-                theme_site=pre_args.theme,
-                cache=(not pre_args.no_cache),
-                debug=pre_args.debug)
-
-    # Build a hash for a custom cache directory.
-    cache_key = 'default'
-
-    # Handle custom configurations.
+    # Can't apply custom configuration stuff if there's no website.
     if (pre_args.config_variant or pre_args.config_values) and not root:
         raise SiteNotFoundError(
                 "Can't apply any configuration variant or value overrides, "
                 "there is no website here.")
-    apply_variant_and_values(app, pre_args.config_variant,
-                             pre_args.config_values)
 
-    # Adjust the cache key.
-    if pre_args.config_variant is not None:
-        cache_key += ',variant=%s' % pre_args.config_variant
-    if pre_args.config_values:
-        for name, value in pre_args.config_values:
-            cache_key += ',%s=%s' % (name, value)
+    if root:
+        cache_key = None
+        if not pre_args.no_cache:
+            cache_key = _build_cache_key(pre_args)
+        app = PieCrust(
+                root,
+                theme_site=pre_args.theme,
+                cache=(not pre_args.no_cache),
+                cache_key=cache_key,
+                debug=pre_args.debug)
+        apply_variant_and_values(
+                app, pre_args.config_variant, pre_args.config_values)
+    else:
+        app = NullPieCrust(
+                theme_site=pre_args.theme)
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
@@ -269,10 +287,6 @@ def _run_chef(pre_args, argv):
     if not hasattr(result, 'func'):
         parser.print_help()
         return 0
-
-    # Use a customized cache for the command and current config.
-    if result.cache_name != 'default' or cache_key != 'default':
-        app.useSubCache(result.cache_name, cache_key)
 
     # Run the command!
     ctx = CommandContext(app, parser, result)

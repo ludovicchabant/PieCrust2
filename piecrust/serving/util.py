@@ -5,7 +5,7 @@ import logging
 import datetime
 from werkzeug.wrappers import Response
 from werkzeug.wsgi import wrap_file
-from piecrust.app import PieCrust
+from piecrust.app import PieCrust, apply_variant_and_values
 from piecrust.rendering import QualifiedPage
 from piecrust.routing import RouteNotFoundError
 from piecrust.sources.base import MODE_PARSING
@@ -16,11 +16,8 @@ from piecrust.uriutil import split_sub_uri
 logger = logging.getLogger(__name__)
 
 
-def get_app_for_server(root_dir, debug=False, theme_site=False,
-                       sub_cache_dir=None, root_url='/'):
-    app = PieCrust(root_dir=root_dir, debug=debug, theme_site=theme_site)
-    if sub_cache_dir:
-        app._useSubCacheDir(sub_cache_dir)
+def get_app_for_server(appfactory, root_url='/'):
+    app = appfactory.create()
     app.config.set('site/root', root_url)
     app.config.set('server/is_serving', True)
     return app

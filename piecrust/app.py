@@ -23,15 +23,15 @@ logger = logging.getLogger(__name__)
 
 class PieCrust(object):
     def __init__(self, root_dir, cache=True, debug=False, theme_site=False,
-                 env=None):
+                 env=None, cache_key=None):
         self.root_dir = root_dir
         self.debug = debug
         self.theme_site = theme_site
         self.plugin_loader = PluginLoader(self)
+        self.cache_key = cache_key or 'default'
 
         if cache:
-            cache_dir = os.path.join(self.cache_dir, 'default')
-            self.cache = ExtensibleCache(cache_dir)
+            self.cache = ExtensibleCache(self.cache_dir)
         else:
             self.cache = NullExtensibleCache()
 
@@ -82,7 +82,7 @@ class PieCrust(object):
                 if srcc is not None:
                     for sn, sc in srcc.items():
                         sc['realm'] = REALM_THEME
-            config.fixups.append(_fixupThemeSources)
+            config.addFixup(_fixupThemeSources)
 
         self.env.stepTimer('SiteConfigLoad', time.perf_counter() - start_time)
         return config
@@ -124,13 +124,7 @@ class PieCrust(object):
 
     @cached_property
     def cache_dir(self):
-        return os.path.join(self.root_dir, CACHE_DIR)
-
-    @property  # Not a cached property because its result can change.
-    def sub_cache_dir(self):
-        if self.cache.enabled:
-            return self.cache.base_dir
-        return None
+        return os.path.join(self.root_dir, CACHE_DIR, self.cache_key)
 
     @cached_property
     def sources(self):
@@ -197,18 +191,6 @@ class PieCrust(object):
                 return tax
         return None
 
-    def useSubCache(self, cache_name, cache_key):
-        cache_hash = hashlib.md5(cache_key.encode('utf8')).hexdigest()
-        cache_dir = os.path.join(self.cache_dir,
-                                 '%s_%s' % (cache_name, cache_hash))
-        self._useSubCacheDir(cache_dir)
-
-    def _useSubCacheDir(self, cache_dir):
-        assert cache_dir
-        logger.debug("Moving cache to: %s" % cache_dir)
-        self.cache = ExtensibleCache(cache_dir)
-        self.env._onSubCacheDirChanged(self)
-
     def _get_dir(self, default_rel_dir):
         abs_dir = os.path.join(self.root_dir, default_rel_dir)
         if os.path.isdir(abs_dir):
@@ -234,13 +216,42 @@ class PieCrust(object):
         return dirs
 
 
+
 def apply_variant_and_values(app, config_variant=None, config_values=None):
     if config_variant is not None:
-        logger.debug("Applying configuration variant '%s'." % config_variant)
-        app.config.applyVariant('variants/' + config_variant)
+        logger.debug("Adding configuration variant '%s'." % config_variant)
+        variant_path = os.path.join(
+                app.root_dir, 'configs', '%s.yml' % config_variant)
+        app.config.addVariant(variant_path)
 
     if config_values is not None:
         for name, value in config_values:
-            logger.debug("Setting configuration '%s' to: %s" % (name, value))
-            app.config.set(name, value)
+            logger.debug("Adding configuration override '%s': %s" % (name, value))
+            app.config.addVariantValue(name, value)
+
+
+class PieCrustFactory(object):
+    def __init__(
+            self, root_dir, *,
+            cache=True, cache_key=None,
+            config_variant=None, config_values=None,
+            debug=False, theme_site=False):
+        self.root_dir = root_dir
+        self.cache = cache
+        self.cache_key = cache_key
+        self.config_variant = config_variant
+        self.config_values = config_values
+        self.debug = debug
+        self.theme_site = theme_site
+
+    def create(self):
+        app = PieCrust(
+                self.root_dir,
+                cache=self.cache,
+                cache_key=self.cache_key,
+                debug=self.debug,
+                theme_site=self.theme_site)
+        apply_variant_and_values(
+                app, self.config_variant, self.config_values)
+        return app
 

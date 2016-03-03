@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class WsgiServer(object):
-    def __init__(self, root_dir, **kwargs):
-        self.server = Server(root_dir, **kwargs)
+    def __init__(self, appfactory, **kwargs):
+        self.server = Server(appfactory, **kwargs)
 
     def __call__(self, environ, start_response):
         return self.server._run_request(environ, start_response)
@@ -70,21 +70,20 @@ class MultipleNotFound(HTTPException):
 
 
 class Server(object):
-    def __init__(self, root_dir,
-                 debug=False, theme_site=False,
-                 sub_cache_dir=None, enable_debug_info=True,
-                 root_url='/', static_preview=True):
-        self.root_dir = root_dir
-        self.debug = debug
-        self.theme_site = theme_site
-        self.sub_cache_dir = sub_cache_dir
+    def __init__(self, appfactory,
+                 enable_debug_info=True,
+                 root_url='/',
+                 static_preview=True):
+        self.appfactory = appfactory
         self.enable_debug_info = enable_debug_info
         self.root_url = root_url
         self.static_preview = static_preview
         self._page_record = ServeRecord()
-        self._out_dir = os.path.join(root_dir, CACHE_DIR, 'server')
-        if sub_cache_dir:
-            self._out_dir = os.path.join(sub_cache_dir, 'server')
+        self._out_dir = os.path.join(
+                appfactory.root_dir,
+                CACHE_DIR,
+                (appfactory.cache_key or 'default'),
+                'server')
 
     def _run_request(self, environ, start_response):
         try:
@@ -111,9 +110,7 @@ class Server(object):
             return response
 
         # Create the app for this request.
-        app = get_app_for_server(self.root_dir, debug=self.debug,
-                                 theme_site=self.theme_site,
-                                 sub_cache_dir=self.sub_cache_dir,
+        app = get_app_for_server(self.appfactory,
                                  root_url=self.root_url)
         if (app.config.get('site/enable_debug_info') and
                 self.enable_debug_info and
