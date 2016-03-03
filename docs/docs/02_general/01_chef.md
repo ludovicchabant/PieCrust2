@@ -41,10 +41,28 @@ scenarios:
   run the command. This means you don't need to change the current working
   directory to that website, which can be necessary for scripting, for instance.
 
+* `--pid-file <file>` creates a PID file containing the PieCrust process ID for
+  the next command.
+
+
+### Configuration Changes
+
+Several global options relate to modifying the [website configuration][3]. This
+is useful if you want to override some of the configuration settings
+temporarily.
+
+> When you modify the configuration like this, PieCrust has to use a different
+> cache, because any change in the configuration can translate into any change
+> in the generated content. This means that you may notice some commands not
+> re-using cached outputs from previous commands.
+
 * `--config <name>` lets you specify a *configuration variant* to apply before
   running the command. A *configuration variant* is a fragment of website config
   that lets you override what's defined normally in `config.yml`. For more
   information, see the [website configuration][3] page.
+
+* `--config-set <name> <value>` lets you override _a specific configuration
+  setting_.
 
 [3]: {{docurl('general/website-config')}}
 
@@ -64,4 +82,6 @@ Several global options relate to logging:
   debug information (like `--debug`) but only to the log file, which reduces
   spam in the console.
 
+* `--no-color` suppresses colored output. This can be useful if you want to
+  parse PieCrust's output without having to deal with weird ANSI color codes.
 
