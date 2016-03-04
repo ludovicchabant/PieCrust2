@@ -1,0 +1,7 @@
+site:
+    root: /piecrust/v2/
+baker:
+    assets_dirs:
+        assets:
+            processors: all
+

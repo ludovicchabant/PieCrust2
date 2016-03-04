@@ -49,14 +49,3 @@ compass:
     enable: false
     options: --css-dir %out_dir%/css --generated-images-path %out_dir%/img
 
-# Config variants.
-variants:
-    # Enable compressors when baking the docs for publishing.
-    dist:
-        site:
-            root: /piecrust/v2/
-        baker:
-            assets_dirs:
-                assets:
-                    processors: all
-
