@@ -1,17 +1,62 @@
 import os
 import os.path
+import re
+import sys
 from invoke import task, run
 
 
-@task
-def gendocs(tmp_dir=None, out_dir=None, root_url=None):
-    if not tmp_dir:
-        tmp_dir = '_docs-counter'
+pyver_re = re.compile('^Python (?P<maj>\d)\.(?P<min>\d)\.(?P<pat>\d)$')
 
-    if not os.path.isdir('venv'):
+
+@task(help={
+    'tmp_dir': "The directory in which to bake the docs temporarily.",
+    'out_dir': "If the bake is successful, the directory in which to deploy "
+               "the files at the end.",
+    'root_url': "Set the docs site root URL to this if needed.",
+    'venv_dir': "The directory of the virtual environment to use to run "
+                "PieCrust."
+    })
+def gendocs(tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
+    base_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..'))
+    os.chdir(base_dir)
+
+    if not tmp_dir:
+        tmp_dir = os.path.join(base_dir, '_docs-counter')
+
+    if not venv_dir:
+        venv_dir = os.path.join(base_dir, 'venv')
+
+    if sys.prefix == venv_dir:
         raise Exception(
-                "You need a virtual environment in the PieCrust repo.")
-    pyexe = os.path.join('venv', 'bin', 'python')
+                "Don't run this script in the PieCrust virtual environment.")
+
+    if not os.path.isdir(venv_dir):
+        print("Creating virtual environment in: %s" % venv_dir)
+        run('virtualenv -p python3 "%s"' % venv_dir)
+
+    pyexe = os.path.join(venv_dir, 'bin', 'python')
+    pyver_out = run('%s --version' % pyexe, hide=True)
+    if pyver_out.failed or not pyver_out.stdout.startswith('Python 3.'):
+        raise Exception("Can't run Python3 from: %s" % pyexe)
+    print("Using: %s" % pyver_out.stdout.strip())
+
+    pipexe = os.path.join(venv_dir, 'bin', 'pip')
+    pipver_out = run('%s --version' % pipexe, hide=True)
+    if pipver_out.failed or '(python 3.' not in pipver_out.stdout:
+        raise Exception("Can't run pip3 from: %s" % pipexe)
+    print("Using: %s" % pipver_out.stdout.strip())
+
+    npmver_out = run('npm --version', hide=True)
+    print("Using: npm %s" % npmver_out.stdout.strip())
+
+    bowerver_out = run('bower --version', hide=True)
+    print("Using: bower %s" % bowerver_out.stdout.strip())
+
+    print("Updating virtual environment.")
+    run("%s install pip -U" % pipexe)
+    run("%s install -r requirements.txt" % pipexe)
+    run("%s install -r dev-requirements.txt" % pipexe)
 
     print("Update node modules")
     run("npm install")
