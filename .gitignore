@@ -1,8 +1,19 @@
 *.pyc
-venv/
+*.egg-info
+.cache
+__pycache__
+venv
+tags
+bower_components
+node_modules
 build/lib
-build/messages/_cache
-dist/
-piecrust.egg-info/
+util/messages/_cache
+util/messages/_counter
+dist
+docs/_cache
+docs/_counter
+foodtruck/static
+piecrust.egg-info
 piecrust/__version__.py
+.ropeproject
 
