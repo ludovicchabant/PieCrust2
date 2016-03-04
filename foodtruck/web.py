@@ -14,14 +14,14 @@ app = Flask(__name__)
 app.config.from_object('foodtruck.settings')
 app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
 
-admin_root = app.config['FOODTRUCK_ROOT'] or os.getcwd()
+admin_root = app.config.get('FOODTRUCK_ROOT', os.getcwd())
 config_path = os.path.join(admin_root, 'app.cfg')
 
 # If we're being run as the `chef admin run` command, from inside a PieCrust
 # website, do a few things differently.
 _procedural_config = None
 
-if (app.config['FOODTRUCK_CMDLINE_MODE'] and
+if (app.config.get('FOODTRUCK_CMDLINE_MODE', False) and
         os.path.isfile(os.path.join(admin_root, 'config.yml'))):
     app.secret_key = os.urandom(22)
     app.config['LOGIN_DISABLED'] = True
@@ -156,7 +156,7 @@ if _missing_secret_key:
 
 from foodtruck.bcryptfallback import Bcrypt
 if (getattr(Bcrypt, 'is_fallback_bcrypt', None) is True and
-        not app.config['FOODTRUCK_CMDLINE_MODE']):
+        not app.config.get('FOODTRUCK_CMDLINE_MODE', False)):
     raise Exception(
             "You're running FoodTruck outside of `chef`, and will need to "
             "install Flask-Bcrypt to get more proper security.")

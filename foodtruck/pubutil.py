@@ -22,7 +22,7 @@ def _shutdown_server_and_raise_sigint():
     raise KeyboardInterrupt()
 
 
-if app.config['FOODTRUCK_CMDLINE_MODE']:
+if app.config.get('FOODTRUCK_CMDLINE_MODE', False):
     # Make sure CTRL+C works correctly.
     signal.signal(signal.SIGINT,
                   lambda *args: _shutdown_server_and_raise_sigint())
