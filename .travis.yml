@@ -4,7 +4,9 @@ python:
   - "3.4"
   - "3.5"
 install:
-  - "pip install -r requirements.txt"
-  - "pip install -r dev-requirements.txt"
-script: py.test
+  - "python setup.py version -f 2.0"
+  - "python setup.py dist --formats=zip"
+  - "pip install dist/PieCrust-2.0.zip"
+script:
+  - "py.test"
 
