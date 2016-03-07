@@ -25,5 +25,6 @@ def makerelease(version, local_only=False):
         run("hg tag %s" % version)
 
         # PyPi upload.
+        run("python setup.py version")
         run("python setup.py sdist upload")
 
