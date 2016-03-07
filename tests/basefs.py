@@ -7,12 +7,6 @@ class TestFileSystemBase(object):
     def __init__(self):
         pass
 
-    def _initDefaultSpec(self):
-        self.withDir('counter')
-        self.withFile(
-                'kitchen/config.yml',
-                "site:\n  title: Mock Website\n")
-
     def path(self, p):
         raise NotImplementedError()
 
@@ -28,9 +22,10 @@ class TestFileSystemBase(object):
     def _createFile(self, path, contents):
         raise NotImplementedError()
 
-    def getApp(self, cache=True):
+    def getApp(self, *, cache=True, theme_site=False):
         root_dir = self.path('/kitchen')
-        return PieCrust(root_dir, cache=cache, debug=True)
+        return PieCrust(root_dir, cache=cache, debug=True,
+                        theme_site=theme_site)
 
     def withDir(self, path):
         path = self.path(path)
@@ -48,14 +43,16 @@ class TestFileSystemBase(object):
     def withAssetDir(self, path):
         return self.withDir('kitchen/' + path)
 
-    def withConfig(self, config):
+    def withConfig(self, config=None):
+        if config is None:
+            config = {}
         return self.withFile(
                 'kitchen/config.yml',
                 yaml.dump(config))
 
     def withThemeConfig(self, config):
         return self.withFile(
-                'kitchen/theme/theme_config.yml',
+                'kitchen/theme_config.yml',
                 yaml.dump(config))
 
     def withPage(self, url, config=None, contents=None):

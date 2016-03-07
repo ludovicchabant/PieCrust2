@@ -46,11 +46,9 @@ class _MockFsEntryWriter(object):
 
 
 class MemoryFileSystem(TestFileSystemBase):
-    def __init__(self, default_spec=True):
+    def __init__(self):
         self._root = 'root_%d' % random.randrange(1000)
         self._fs = {self._root: {}}
-        if default_spec:
-            self._initDefaultSpec()
 
     def path(self, p):
         p = p.replace('\\', '/')

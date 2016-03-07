@@ -127,7 +127,7 @@ def test_page_ref(page_ref, expected_source_name, expected_rel_path,
 
 
 def test_page_ref_with_missing_source():
-    fs = mock_fs()
+    fs = mock_fs().withConfig()
     with mock_fs_scope(fs):
         app = fs.getApp()
         r = PageRef(app, 'whatever:doesnt_exist.md')
@@ -136,7 +136,7 @@ def test_page_ref_with_missing_source():
 
 
 def test_page_ref_with_missing_file():
-    fs = mock_fs()
+    fs = mock_fs().withConfig()
     with mock_fs_scope(fs):
         app = fs.getApp()
         r = PageRef(app, 'pages:doesnt_exist.%ext%')

@@ -65,6 +65,7 @@ def test_serve_tag_page(tag, expected_indices):
         return c
 
     fs = (mock_fs()
+          .withConfig()
           .withPages(8, 'posts/2015-03-{idx1:02}_post{idx1:02}.md',
                      config_factory)
           .withPage('pages/_tag.md', {'layout': 'none', 'format': 'none'},
@@ -108,6 +109,7 @@ def test_serve_category_page(category, expected_indices):
         return c
 
     fs = (mock_fs()
+          .withConfig()
           .withPages(6, 'posts/2015-03-{idx1:02}_post{idx1:02}.md',
                      config_factory)
           .withPage('pages/_category.md', {'layout': 'none', 'format': 'none'},

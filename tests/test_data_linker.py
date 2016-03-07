@@ -37,6 +37,7 @@ from .mockutil import mock_fs, mock_fs_scope
     ])
 def test_linker_iteration(fs_fac, page_path, expected):
     fs = fs_fac()
+    fs.withConfig()
     with mock_fs_scope(fs):
         app = fs.getApp()
         app.config.set('site/pretty_urls', True)
@@ -83,6 +84,7 @@ def test_linker_iteration(fs_fac, page_path, expected):
         ])
 def test_recursive_linker_iteration(fs_fac, page_path, expected):
     fs = fs_fac()
+    fs.withConfig()
     with mock_fs_scope(fs):
         app = fs.getApp()
         app.config.set('site/pretty_urls', True)

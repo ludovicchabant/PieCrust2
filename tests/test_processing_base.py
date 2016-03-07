@@ -42,7 +42,9 @@ def _get_pipeline(fs, app=None):
 
 
 def test_empty():
-    fs = mock_fs()
+    fs = (mock_fs()
+            .withDir('counter')
+            .withConfig())
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
         pp.enabled_processors = ['copy']
@@ -55,6 +57,8 @@ def test_empty():
 
 def test_one_file():
     fs = (mock_fs()
+            .withDir('counter')
+            .withConfig()
             .withFile('kitchen/assets/something.html', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
@@ -68,6 +72,7 @@ def test_one_file():
 
 def test_one_level_dirtyness():
     fs = (mock_fs()
+            .withConfig()
             .withFile('kitchen/assets/blah.foo', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
@@ -93,6 +98,7 @@ def test_one_level_dirtyness():
 
 def test_two_levels_dirtyness():
     fs = (mock_fs()
+            .withConfig()
             .withFile('kitchen/assets/blah.foo', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
@@ -120,6 +126,7 @@ def test_two_levels_dirtyness():
 
 def test_removed():
     fs = (mock_fs()
+            .withConfig()
             .withFile('kitchen/assets/blah1.foo', 'A test file.')
             .withFile('kitchen/assets/blah2.foo', 'Ooops'))
     with mock_fs_scope(fs):
@@ -143,6 +150,7 @@ def test_removed():
 
 def test_record_version_change():
     fs = (mock_fs()
+            .withConfig()
             .withFile('kitchen/assets/blah.foo', 'A test file.'))
     with mock_fs_scope(fs):
         pp = _get_pipeline(fs)
@@ -177,6 +185,8 @@ def test_record_version_change():
         ])
 def test_ignore_pattern(patterns, expected):
     fs = (mock_fs()
+            .withDir('counter')
+            .withConfig()
             .withFile('kitchen/assets/something.html', 'A test file.')
             .withFile('kitchen/assets/_hidden.html', 'Shhh')
             .withFile('kitchen/assets/foo/_important.html', 'Important!'))
@@ -201,7 +211,7 @@ def test_ignore_pattern(patterns, expected):
         ('less sass', ['less', 'sass'])
     ])
 def test_filter_processor(names, expected):
-    fs = mock_fs()
+    fs = mock_fs().withConfig()
     with mock_fs_scope(fs):
         app = fs.getApp()
         processors = app.plugin_loader.getProcessors()

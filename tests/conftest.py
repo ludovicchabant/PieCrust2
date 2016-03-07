@@ -76,23 +76,35 @@ class YamlTestItemBase(pytest.Item):
         self.spec = spec
 
     @property
+    def is_theme_site(self):
+        return self.spec.get('theme_config') is not None
+
+    @property
     def mock_debug(self):
         return bool(self.config.getoption('--mock-debug'))
 
     def _prepareMockFs(self):
         fs = mock_fs()
 
-        # Website config.
+        # Suppress any formatting or layout so we can compare
+        # much simpler strings.
         config = {
                 'site': {
                     'default_format': 'none',
                     'default_page_layout': 'none',
                     'default_post_layout': 'none'}
                 }
-        test_config = self.spec.get('config')
-        if test_config is not None:
-            merge_dicts(config, test_config)
-        fs.withConfig(config)
+
+        # Website or theme config.
+        test_theme_config = self.spec.get('theme_config')
+        if test_theme_config is not None:
+            merge_dicts(config, test_theme_config)
+            fs.withThemeConfig(config)
+        else:
+            test_config = self.spec.get('config')
+            if test_config is not None:
+                merge_dicts(config, test_config)
+            fs.withConfig(config)
 
         # Input file-system.
         input_files = self.spec.get('in')
@@ -181,6 +193,9 @@ class ChefTestItem(YamlTestItemBase):
         argv = self.spec['args']
         if isinstance(argv, str):
             argv = argv.split(' ')
+        if self.is_theme_site:
+            argv.insert(0, '--theme')
+        argv = ['--root', fs.path('/kitchen')] + argv
 
         expected_code = self.spec.get('code', 0)
         expected_out = self.spec.get('out', None)
@@ -191,8 +206,7 @@ class ChefTestItem(YamlTestItemBase):
             logging.getLogger().addHandler(hdl)
             try:
                 from piecrust.main import _pre_parse_chef_args, _run_chef
-                pre_args = _pre_parse_chef_args([
-                        '--root', fs.path('/kitchen')])
+                pre_args = _pre_parse_chef_args(argv)
                 exit_code = _run_chef(pre_args, argv)
             finally:
                 logging.getLogger().removeHandler(hdl)
@@ -232,7 +246,7 @@ class BakeTestItem(YamlTestItemBase):
         from piecrust.baking.baker import Baker
         with mock_fs_scope(fs, keep=self.mock_debug):
             out_dir = fs.path('kitchen/_counter')
-            app = fs.getApp()
+            app = fs.getApp(theme_site=self.is_theme_site)
 
             variant = self.spec.get('config_variant')
             values = self.spec.get('config_values')
@@ -290,7 +304,7 @@ class PipelineTestItem(YamlTestItemBase):
         from piecrust.processing.pipeline import ProcessorPipeline
         with mock_fs_scope(fs, keep=self.mock_debug):
             out_dir = fs.path('kitchen/_counter')
-            app = fs.getApp()
+            app = fs.getApp(theme_site=self.is_theme_site)
             pipeline = ProcessorPipeline(app, out_dir)
 
             proc_names = self.spec.get('processors')
@@ -363,7 +377,9 @@ class ServeTestItem(YamlTestItemBase):
         from piecrust.app import PieCrustFactory
         from piecrust.serving.server import Server
         with mock_fs_scope(fs, keep=self.mock_debug):
-            appfactory = PieCrustFactory(fs.path('/kitchen'))
+            appfactory = PieCrustFactory(
+                    fs.path('/kitchen'),
+                    theme_site=self.is_theme_site)
             server = Server(appfactory)
             test_app = self._TestApp(server)
             client = Client(test_app, BaseResponse)

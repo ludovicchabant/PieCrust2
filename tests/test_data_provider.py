@@ -4,6 +4,7 @@ from .mockutil import mock_fs, mock_fs_scope
 
 def test_blog_provider():
     fs = (mock_fs()
+          .withConfig()
           .withPage('posts/2015-03-01_one.md',
                     {'title': 'One', 'category': 'Foo'})
           .withPage('posts/2015-03-02_two.md',

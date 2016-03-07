@@ -7,14 +7,12 @@ from .basefs import TestFileSystemBase
 
 
 class TempDirFileSystem(TestFileSystemBase):
-    def __init__(self, default_spec=True):
+    def __init__(self):
         self._root = os.path.join(
                 os.path.dirname(__file__),
                 '__tmpfs__',
                 '%d' % random.randrange(1000))
         self._done = False
-        if default_spec:
-            self._initDefaultSpec()
 
     def path(self, p):
         p = p.lstrip('/\\')

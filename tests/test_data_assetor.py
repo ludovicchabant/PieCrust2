@@ -50,7 +50,9 @@ def test_assets(fs_fac, site_root, expected):
 
 def test_missing_asset():
     with pytest.raises(KeyError):
-        fs = mock_fs().withPage('pages/foo/bar')
+        fs = (mock_fs()
+                .withConfig()
+                .withPage('pages/foo/bar'))
         with mock_fs_scope(fs):
             page = MagicMock()
             page.app = fs.getApp(cache=False)
@@ -62,6 +64,7 @@ def test_missing_asset():
 def test_multiple_assets_with_same_name():
     with pytest.raises(UnsupportedAssetsError):
         fs = (mock_fs()
+                .withConfig()
                 .withPage('pages/foo/bar')
                 .withPageAsset('pages/foo/bar', 'one.txt', 'one text')
                 .withPageAsset('pages/foo/bar', 'one.jpg', 'one picture'))

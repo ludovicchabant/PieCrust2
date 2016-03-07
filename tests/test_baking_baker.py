@@ -53,6 +53,7 @@ def test_get_output_path(uri, pretty, expected):
 
 def test_removed():
     fs = (mock_fs()
+            .withConfig()
             .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page')
             .withPage('pages/_index.md', {'layout': 'none', 'format': 'none'}, "something"))
     with mock_fs_scope(fs):
@@ -77,6 +78,7 @@ def test_removed():
 
 def test_record_version_change():
     fs = (mock_fs()
+            .withConfig()
             .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'}, 'a foo page'))
     with mock_fs_scope(fs):
         out_dir = fs.path('kitchen/_counter')
