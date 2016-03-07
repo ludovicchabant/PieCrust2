@@ -141,8 +141,10 @@ try:
     from piecrust.__version__ import APP_VERSION
     version = APP_VERSION
 except ImportError:
-    raise Exception("Can't get version from either a version file or "
-                    "from the repository.")
+    print(
+            "WARNING: Can't get version from version file. "
+            "Will use version `0.0`.")
+    version = '0.0'
 
 
 install_requires = read('requirements.txt').splitlines()
