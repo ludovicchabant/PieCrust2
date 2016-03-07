@@ -5,7 +5,7 @@ python:
   - "3.5"
 install:
   - "python setup.py version -f 2.0"
-  - "python setup.py dist --formats=zip"
+  - "python setup.py sdist --formats=zip"
   - "pip install dist/PieCrust-2.0.zip"
 script:
   - "py.test"
