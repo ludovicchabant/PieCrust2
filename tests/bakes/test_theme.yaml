@@ -1,0 +1,32 @@
+---
+config:
+    site:
+        title: "Some Test"
+        default_page_layout: 'none'
+    foo: bar
+in:
+    pages/foo.md: "This is: {{foo}}, with no template"
+    theme/theme_config.yml: "name: testtheme"
+    theme/pages/_index.md: "This is {{site.title}} by {{name}}, with theme template"
+    theme/templates/default.html: "THEME: {{content}}"
+out:
+    index.html: "THEME: This is Some Test by testtheme, with theme template"
+    foo.html: "This is: bar, with no template"
+---
+config:
+    site:
+        default_page_layout: 'custom'
+in:
+    pages/foo.md: "FOO"
+    pages/bar.md: "---\nlayout: blah\n---\nBAR"
+    templates/custom.html: "CUSTOM: {{content}}"
+    theme/theme_config.yml: "site: {sources: {theme_pages: {default_layout: blah}}}"
+    theme/pages/_index.md: "theme index"
+    theme/pages/about.md: "about"
+    theme/templates/blah.html: "THEME: {{content}}"
+out:
+    index.html: "THEME: theme index"
+    about.html: "THEME: about"
+    foo.html: "CUSTOM: FOO"
+    bar.html: "THEME: BAR"
+

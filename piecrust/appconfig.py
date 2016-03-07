@@ -170,11 +170,8 @@ class PieCrustConfiguration(Configuration):
         # Figure out if we need to generate the configuration for the
         # default content model.
         sitec = values.setdefault('site', {})
-        if (
-                ('sources' not in sitec and
-                 'routes' not in sitec and
-                 'taxonomies' not in sitec) or
-                sitec.get('use_default_content')):
+        gen_default_model = bool(sitec.get('use_default_content'))
+        if gen_default_model:
             logger.debug("Generating default content model...")
             values = self._generateDefaultContentModel(values)
 
@@ -269,7 +266,6 @@ default_configuration = collections.OrderedDict({
 default_content_model_base = collections.OrderedDict({
         'site': collections.OrderedDict({
             'posts_fs': DEFAULT_POSTS_FS,
-            'date_format': DEFAULT_DATE_FORMAT,
             'default_page_layout': 'default',
             'default_post_layout': 'post',
             'post_url': '%year%/%month%/%day%/%slug%',
@@ -324,6 +320,12 @@ def get_default_content_model_for_blog(
         fs_endpoint = 'posts'
         data_endpoint = 'blog'
         item_name = 'post'
+
+        if theme_site:
+            # If this is a theme site, show posts from a `sample` directory
+            # so it's clearer that those won't show up when the theme is
+            # actually applied to a normal site.
+            fs_endpoint = 'sample/posts'
     else:
         url_prefix = blog_name + '/'
         tax_page_prefix = blog_name + '/'
@@ -351,8 +353,12 @@ def get_default_content_model_for_blog(
     tags_taxonomy = 'pages:%s_tag.%%ext%%' % tax_page_prefix
     category_taxonomy = 'pages:%s_category.%%ext%%' % tax_page_prefix
     if not theme_site:
-        tags_taxonomy += ';theme_pages:_tag.%ext%'
-        category_taxonomy += ';theme_pages:_category.%ext%'
+        theme_tag_page = values['site'].get('theme_tag_page')
+        if theme_tag_page:
+            tags_taxonomy += ';' + theme_tag_page
+        theme_category_page = values['site'].get('theme_category_page')
+        if theme_category_page:
+            category_taxonomy += ';' + theme_category_page
 
     return collections.OrderedDict({
             'site': collections.OrderedDict({
@@ -475,28 +481,6 @@ def _validate_site_sources(v, values, cache):
     if not isinstance(v, dict):
         raise ConfigurationError("The 'site/sources' setting must be a "
                                  "dictionary.")
-
-    theme_site = values['site']['theme_site']
-    if not theme_site:
-        # Add the theme page source if no sources were defined in the theme
-        # configuration itself.
-        has_any_theme_source = False
-        for sn, sc in v.items():
-            if sc.get('realm') == REALM_THEME:
-                has_any_theme_source = True
-                break
-        if not has_any_theme_source:
-            v['theme_pages'] = {
-                    'theme_source': True,
-                    'fs_endpoint': 'pages',
-                    'ignore_missing_dir': True,
-                    'data_endpoint': 'site/pages',
-                    'item_name': 'page',
-                    'realm': REALM_THEME}
-            values['site']['routes'].append({
-                    'url': '/%path:slug%',
-                    'source': 'theme_pages',
-                    'func': 'pcurl(slug)'})
 
     # Sources have the `default` scanner by default, duh. Also, a bunch
     # of other default values for other configuration stuff.

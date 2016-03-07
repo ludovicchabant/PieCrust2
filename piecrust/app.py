@@ -12,7 +12,7 @@ from piecrust.appconfig import PieCrustConfiguration
 from piecrust.cache import ExtensibleCache, NullExtensibleCache
 from piecrust.plugins.base import PluginLoader
 from piecrust.environment import StandardEnvironment
-from piecrust.configuration import ConfigurationError
+from piecrust.configuration import ConfigurationError, merge_dicts
 from piecrust.routing import Route
 from piecrust.sources.base import REALM_THEME
 from piecrust.taxonomies import Taxonomy
@@ -66,23 +66,10 @@ class PieCrust(object):
                 paths.append(preview_path)
 
         config_cache = self.cache.getCache('app')
-        config = PieCrustConfiguration(paths, config_cache,
-                                       theme_config=self.theme_site)
-        if self.theme_dir:
-            # We'll need to flag all page sources as coming from
-            # the theme.
-            def _fixupThemeSources(index, config):
-                if index != 0:
-                    return
-                sitec = config.get('site')
-                if sitec is None:
-                    sitec = {}
-                    config['site'] = sitec
-                srcc = sitec.get('sources')
-                if srcc is not None:
-                    for sn, sc in srcc.items():
-                        sc['realm'] = REALM_THEME
-            config.addFixup(_fixupThemeSources)
+        config = PieCrustConfiguration(
+                paths, config_cache, theme_config=self.theme_site)
+        if not self.theme_site and self.theme_dir:
+            config.addFixup(_fixup_theme_config)
 
         self.env.stepTimer('SiteConfigLoad', time.perf_counter() - start_time)
         return config
@@ -215,6 +202,51 @@ class PieCrust(object):
 
         return dirs
 
+
+def _fixup_theme_config(index, config):
+    if index != 0:
+        # We only want to affect the theme config, which is first.
+        return
+
+    # See if we want to generate the default theme content model.
+    sitec = config.setdefault('site', {})
+    gen_default_model = sitec.setdefault('use_default_theme_content', True)
+    if gen_default_model:
+        # Create a default `theme_pages` source.
+        srcc = sitec.setdefault('sources', {})
+        if not isinstance(srcc, dict):
+            raise Exception("Theme configuration has invalid `site/sources`. "
+                            "Must be a dictionary.")
+        default_theme_sources = {
+                'theme_pages': {
+                    'type': 'default',
+                    'ignore_missing_dir': True,
+                    'fs_endpoint': 'pages',
+                    'data_endpoint': 'site.pages',
+                    'default_layout': 'default',
+                    'item_name': 'page'
+                    }
+                }
+        sitec['sources'] = merge_dicts(default_theme_sources, srcc)
+
+        sitec.setdefault('theme_tag_page', 'theme_pages:_tag.%ext%')
+        sitec.setdefault('theme_category_page', 'theme_pages:_category.%ext%')
+
+        # Create a default route for `theme_pages`.
+        rtc = sitec.setdefault('routes', [])
+        if not isinstance(rtc, list):
+            raise Exception("Theme configuration has invalid `site/routes`. "
+                            "Must be a list.")
+        rtc.append({
+                'url': '/%path:slug%',
+                'source': 'theme_pages',
+                'func': 'pcurl(slug)'})
+
+    # Make all sources belong to the "theme" realm.
+    srcc = sitec.get('sources')
+    if srcc and isinstance(srcc, dict):
+        for sn, sc in srcc.items():
+            sc['realm'] = REALM_THEME
 
 
 def apply_variant_and_values(app, config_variant=None, config_values=None):
