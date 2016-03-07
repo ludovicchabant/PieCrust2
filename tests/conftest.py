@@ -22,6 +22,10 @@ def pytest_addoption(parser):
             '--log-debug',
             action='store_true',
             help="Sets the PieCrust logger to output debug info to stdout.")
+    parser.addoption(
+            '--mock-debug',
+            action='store_true',
+            help="Prints contents of the mock file-system.")
 
 
 def pytest_configure(config):
@@ -44,6 +48,18 @@ def pytest_collect_file(parent, path):
             return ServeTestFile(path, parent)
 
 
+def repr_nested_failure(excinfo):
+    # PyTest sadly doesn't show nested exceptions so we have to do it
+    # ourselves... it's not pretty, but at least it's more useful.
+    if excinfo.value.__cause__:
+        import traceback
+        ex = excinfo.value
+        return '\n'.join(
+                traceback.format_exception(
+                    type(ex), ex, ex.__traceback__))
+    return ''
+
+
 class YamlTestFileBase(pytest.File):
     def collect(self):
         spec = yaml.load_all(self.fspath.open(encoding='utf8'))
@@ -58,6 +74,10 @@ class YamlTestItemBase(pytest.Item):
     def __init__(self, name, parent, spec):
         super(YamlTestItemBase, self).__init__(name, parent)
         self.spec = spec
+
+    @property
+    def mock_debug(self):
+        return bool(self.config.getoption('--mock-debug'))
 
     def _prepareMockFs(self):
         fs = mock_fs()
@@ -79,7 +99,21 @@ class YamlTestItemBase(pytest.Item):
         if input_files is not None:
             _add_mock_files(fs, '/kitchen', input_files)
 
+        if self.mock_debug:
+            res = '\nMock File-System:\n'
+            res += 'At: %s\n' % fs.path('')
+            res += '\n'.join(print_fs_tree(fs.path('')))
+            res += '\n'
+            print(res)
+
         return fs
+
+    def repr_failure(self, excinfo):
+        res = super(YamlTestItemBase, self).repr_failure(excinfo)
+        nested_res = repr_nested_failure(excinfo)
+        if nested_res:
+            res = str(res) + '\n' + nested_res
+        return res
 
 
 def check_expected_outputs(spec, fs, error_type):
@@ -151,7 +185,7 @@ class ChefTestItem(YamlTestItemBase):
         expected_code = self.spec.get('code', 0)
         expected_out = self.spec.get('out', None)
 
-        with mock_fs_scope(fs):
+        with mock_fs_scope(fs, keep=self.mock_debug):
             memstream = io.StringIO()
             hdl = logging.StreamHandler(stream=memstream)
             logging.getLogger().addHandler(hdl)
@@ -196,7 +230,7 @@ class BakeTestItem(YamlTestItemBase):
         fs = self._prepareMockFs()
 
         from piecrust.baking.baker import Baker
-        with mock_fs_scope(fs):
+        with mock_fs_scope(fs, keep=self.mock_debug):
             out_dir = fs.path('kitchen/_counter')
             app = fs.getApp()
 
@@ -229,9 +263,11 @@ class BakeTestItem(YamlTestItemBase):
                     'right is actual output'] +
                 excinfo.value.args[0]))
         elif isinstance(excinfo.value, BakeError):
-            return ('\n'.join(
+            res = ('\n'.join(
                 ['Errors occured during bake:'] +
                 excinfo.value.args[0]))
+            res += repr_nested_failure(excinfo)
+            return res
         return super(BakeTestItem, self).repr_failure(excinfo)
 
 
@@ -252,7 +288,7 @@ class PipelineTestItem(YamlTestItemBase):
         fs = self._prepareMockFs()
 
         from piecrust.processing.pipeline import ProcessorPipeline
-        with mock_fs_scope(fs):
+        with mock_fs_scope(fs, keep=self.mock_debug):
             out_dir = fs.path('kitchen/_counter')
             app = fs.getApp()
             pipeline = ProcessorPipeline(app, out_dir)
@@ -281,9 +317,11 @@ class PipelineTestItem(YamlTestItemBase):
                     'right is actual output'] +
                 excinfo.value.args[0]))
         elif isinstance(excinfo.value, PipelineError):
-            return ('\n'.join(
+            res = ('\n'.join(
                 ['Errors occured during processing:'] +
                 excinfo.value.args[0]))
+            res += repr_nested_failure(excinfo)
+            return res
         return super(PipelineTestItem, self).repr_failure(excinfo)
 
 
@@ -324,7 +362,7 @@ class ServeTestItem(YamlTestItemBase):
         from werkzeug.wrappers import BaseResponse
         from piecrust.app import PieCrustFactory
         from piecrust.serving.server import Server
-        with mock_fs_scope(fs):
+        with mock_fs_scope(fs, keep=self.mock_debug):
             appfactory = PieCrustFactory(fs.path('/kitchen'))
             server = Server(appfactory)
             test_app = self._TestApp(server)
@@ -349,14 +387,18 @@ class ServeTestItem(YamlTestItemBase):
     def repr_failure(self, excinfo):
         from piecrust.serving.server import MultipleNotFound
         if isinstance(excinfo.value, MultipleNotFound):
-            return '\n'.join(
+            res = '\n'.join(
                     ["HTTP error 404 returned:",
                      excinfo.value.description] +
                     [e.description for e in excinfo.value._nfes])
+            res += repr_nested_failure(excinfo)
+            return res
         elif isinstance(excinfo.value, HTTPException):
-            return '\n'.join(
+            res = '\n'.join(
                     ["HTTP error %s returned:" % excinfo.value.code,
                      excinfo.value.description])
+            res += repr_nested_failure(excinfo)
+            return res
         return super(ServeTestItem, self).repr_failure(excinfo)
 
 

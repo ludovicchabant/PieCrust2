@@ -68,9 +68,10 @@ class TempDirFileSystem(TestFileSystemBase):
 
 
 class TempDirScope(object):
-    def __init__(self, fs, open_patches=None):
+    def __init__(self, fs, open_patches=None, keep=False):
         self._fs = fs
         self._open = open
+        self._keep = keep
 
     @property
     def root(self):
@@ -80,5 +81,6 @@ class TempDirScope(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        shutil.rmtree(self.root)
+        if not self._keep:
+            shutil.rmtree(self.root)
 
