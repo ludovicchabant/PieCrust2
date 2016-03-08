@@ -90,7 +90,7 @@ class Server(object):
             response = self._try_run_request(environ)
             return response(environ, start_response)
         except Exception as ex:
-            if self.debug:
+            if self.appfactory.debug:
                 raise
             return self._handle_error(ex, environ, start_response)
 

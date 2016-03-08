@@ -47,7 +47,7 @@ class PieCrustDebugMiddleware(object):
         self.run_sse_check = run_sse_check
         self._proc_loop = None
         self._out_dir = os.path.join(
-                root_dir, CACHE_DIR, appfactory.cache_key, 'server')
+                appfactory.root_dir, CACHE_DIR, appfactory.cache_key, 'server')
         self._handlers = {
                 'debug_info': self._getDebugInfo,
                 'werkzeug_shutdown': self._shutdownWerkzeug,

@@ -75,10 +75,11 @@ class PipelineStatusServerSentEventProducer(object):
 
 
 class ProcessingLoop(threading.Thread):
-    def __init__(self, appfactory):
+    def __init__(self, appfactory, out_dir):
         super(ProcessingLoop, self).__init__(
                 name='pipeline-reloader', daemon=True)
         self.appfactory = appfactory
+        self.out_dir = out_dir
         self.last_status_id = 0
         self.interval = 1
         self.app = None
@@ -90,10 +91,9 @@ class ProcessingLoop(threading.Thread):
         self._last_config_mtime = 0
         self._obs = []
         self._obs_lock = threading.Lock()
-        if appfactory.theme_site:
-            self._config_path = os.path.join(root_dir, THEME_CONFIG_PATH)
-        else:
-            self._config_path = os.path.join(root_dir, CONFIG_PATH)
+        config_name = (
+                THEME_CONFIG_PATH if appfactory.theme_site else CONFIG_PATH)
+        self._config_path = os.path.join(appfactory.root_dir, config_name)
 
     def addObserver(self, obs):
         with self._obs_lock:
