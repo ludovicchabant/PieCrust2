@@ -1,4 +1,5 @@
 from piecrust.appconfig import PieCrustConfiguration
+from .mockutil import mock_fs, mock_fs_scope
 
 
 def test_config_default():
@@ -28,8 +29,28 @@ def test_config_site_add_source():
         }}
     config = PieCrustConfiguration(values=values)
     # The order of routes is important. Sources, not so much.
+    # `posts` shows up 3 times in routes (posts, tags, categories)
     assert list(map(lambda v: v['source'], config.get('site/routes'))) == [
             'notes', 'posts', 'posts', 'posts', 'pages']
-    assert list(config.get('site/sources').keys()) == [
-            'pages', 'posts', 'notes']
+    assert sorted(config.get('site/sources').keys()) == sorted([
+            'pages', 'posts', 'notes'])
+
+
+def test_config_site_add_source_with_theme():
+    config = {'site': {
+        'sources': {'notes': {}},
+        'routes': [{'url': '/notes/%path:slug%', 'source': 'notes'}]
+        }}
+    fs = mock_fs().withConfig(config)
+    with mock_fs_scope(fs):
+        app = fs.getApp()
+        # The order of routes is important. Sources, not so much.
+        # `posts` shows up 3 times in routes (posts, tags, categories)
+        assert (list(
+            map(
+                lambda v: v['source'],
+                app.config.get('site/routes'))) ==
+            ['notes', 'posts', 'posts', 'posts', 'pages', 'theme_pages'])
+        assert sorted(app.config.get('site/sources').keys()) == sorted([
+            'pages', 'posts', 'notes', 'theme_pages'])
 

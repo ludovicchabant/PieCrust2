@@ -10,7 +10,7 @@ in:
         {% endfor %}
 outfiles:
     allpages.html: |
-        /
         /allpages.html
         /bar.html
         /foo.html
+        /

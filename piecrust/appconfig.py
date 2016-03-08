@@ -28,88 +28,63 @@ class VariantNotFoundError(Exception):
                             variant_name))
 
 
-def _make_variant_fixup(variant_name, raise_if_not_found):
-    def _variant_fixup(index, config):
-        if index != -1:
-            return
-        try:
-            try:
-                v = get_dict_value(config, 'variants/%s' % variant_name)
-            except KeyError:
-                raise VariantNotFoundError(variant_name)
-            if not isinstance(v, dict):
-                raise VariantNotFoundError(
-                        variant_name,
-                        "Configuration variant '%s' is not an array. "
-                        "Check your configuration file." % variant_name)
-            merge_dicts(config, v)
-        except VariantNotFoundError:
-            if raise_if_not_found:
-                raise
-
-    return _variant_fixup
-
-
 class PieCrustConfiguration(Configuration):
-    def __init__(self, paths=None, cache=None, values=None, validate=True,
-                 theme_config=False):
+    def __init__(self, *, path=None, theme_path=None, values=None,
+                 cache=None, validate=True, theme_config=False):
         super(PieCrustConfiguration, self).__init__()
-        self._paths = paths
+        self._path = path
+        self._theme_path = theme_path
         self._cache = cache or NullCache()
-        self._fixups = []
+        self._custom_paths = []
+        self._post_fixups = []
         self.theme_config = theme_config
         # Set the values after we set the rest, since our validation needs
         # our attributes.
         if values:
             self.setAll(values, validate=validate)
 
-    def addFixup(self, f):
+    def addPath(self, p):
         self._ensureNotLoaded()
-        self._fixups.append(f)
-
-    def addPath(self, p, first=False):
-        self._ensureNotLoaded()
-        if not first:
-            self._paths.append(p)
-        else:
-            self._paths.insert(0, p)
+        self._custom_paths.append(p)
 
     def addVariant(self, variant_path, raise_if_not_found=True):
         self._ensureNotLoaded()
         if os.path.isfile(variant_path):
             self.addPath(variant_path)
-        else:
-            name, _ = os.path.splitext(os.path.basename(variant_path))
-            fixup = _make_variant_fixup(name, raise_if_not_found)
-            self.addFixup(fixup)
+        elif raise_if_not_found:
+            logger.error(
+                    "Configuration variants should now be `.yml` files "
+                    "located in the `configs/` directory of your website.")
+            raise VariantNotFoundError(variant_path)
 
-            logger.warning(
-                "Configuration variants should now be `.yml` files located "
-                "in the `configs/` directory of your website.")
-            logger.warning(
-                "Variants defined in the site configuration will be "
-                "deprecated in a future version of PieCrust.")
 
     def addVariantValue(self, path, value):
-        def _fixup(index, config):
+        def _fixup(config):
             set_dict_value(config, path, value)
-        self.addFixup(_fixup)
+        self._post_fixups.append(_fixup)
 
     def _ensureNotLoaded(self):
         if self._values is not None:
             raise Exception("The configurations has been loaded.")
 
     def _load(self):
-        if self._paths is None:
+        paths_and_fixups = []
+        if self._theme_path:
+            paths_and_fixups.append((self._theme_path, self._fixupThemeConfig))
+        if self._path:
+            paths_and_fixups.append((self._path, None))
+        paths_and_fixups += [(p, None) for p in self._custom_paths]
+
+        if not paths_and_fixups:
             self._values = self._validateAll({})
             return
 
-        path_times = [os.path.getmtime(p) for p in self._paths]
+        path_times = [os.path.getmtime(p[0]) for p in paths_and_fixups]
 
         cache_key_hash = hashlib.md5(
                 ("version=%s&cache=%d" % (
                     APP_VERSION, CACHE_VERSION)).encode('utf8'))
-        for p in self._paths:
+        for p, _ in paths_and_fixups:
             cache_key_hash.update(("&path=%s" % p).encode('utf8'))
         cache_key = cache_key_hash.hexdigest()
 
@@ -127,27 +102,29 @@ class PieCrustConfiguration(Configuration):
             logger.debug("Outdated cache key '%s' (expected '%s')." % (
                     actual_cache_key, cache_key))
 
-        logger.debug("Loading configuration from: %s" % self._paths)
+        logger.debug("Loading configuration from: %s" %
+                     ', '.join([p[0] for p in paths_and_fixups]))
         values = {}
         try:
-            for i, p in enumerate(self._paths):
+            for p, f in paths_and_fixups:
                 with open(p, 'r', encoding='utf-8') as fp:
                     loaded_values = yaml.load(
                             fp.read(),
                             Loader=ConfigurationLoader)
                 if loaded_values is None:
                     loaded_values = {}
-                for fixup in self._fixups:
-                    fixup(i, loaded_values)
+                if f:
+                    f(loaded_values)
                 merge_dicts(values, loaded_values)
 
-            for fixup in self._fixups:
-                fixup(-1, values)
+            for f in self._post_fixups:
+                f(values)
 
             self._values = self._validateAll(values)
         except Exception as ex:
-            raise Exception("Error loading configuration from: %s" %
-                            ', '.join(self._paths)) from ex
+            raise Exception(
+                    "Error loading configuration from: %s" %
+                    ', '.join([p[0] for p in paths_and_fixups])) from ex
 
         logger.debug("Caching configuration...")
         self._values['__cache_key'] = cache_key
@@ -160,22 +137,18 @@ class PieCrustConfiguration(Configuration):
         if values is None:
             values = {}
 
-        # Add the loaded values to the default configuration.
-        values = merge_dicts(copy.deepcopy(default_configuration), values)
+        # We 'prepend' newer values to default values, so we need to do
+        # things in the following order so that the final list is made of:
+        # (1) user values, (2) site values, (3) theme values.
+        # Still, we need to do a few theme-related things before generating
+        # the default site content model.
+        values = self._preValidateThemeConfig(values)
+        values = self._validateSiteConfig(values)
+        values = self._validateThemeConfig(values)
 
-        # Set the theme site flag.
-        if self.theme_config:
-            values['site']['theme_site'] = True
-
-        # Figure out if we need to generate the configuration for the
-        # default content model.
-        sitec = values.setdefault('site', {})
-        gen_default_model = bool(sitec.get('use_default_content'))
-        if gen_default_model:
-            logger.debug("Generating default content model...")
-            values = self._generateDefaultContentModel(values)
-
-        # Add a section for our cached information.
+        # Add a section for our cached information, and start visiting
+        # the configuration tree, calling validation functions as we
+        # find them.
         cachec = collections.OrderedDict()
         values['__cache'] = cachec
         cache_writer = _ConfigCacheWriter(cachec)
@@ -199,24 +172,74 @@ class PieCrustConfiguration(Configuration):
 
         return values
 
-    def _generateDefaultContentModel(self, values):
-        dcmcopy = copy.deepcopy(default_content_model_base)
-        values = merge_dicts(dcmcopy, values)
+    def _fixupThemeConfig(self, values):
+        # Make all sources belong to the "theme" realm.
+        sitec = values.get('site')
+        if sitec:
+            srcc = sitec.get('sources')
+            if srcc:
+                for sn, sc in srcc.items():
+                    sc['realm'] = REALM_THEME
 
-        blogsc = values['site'].get('blogs')
-        if blogsc is None:
-            blogsc = ['posts']
-            values['site']['blogs'] = blogsc
+    def _preValidateThemeConfig(self, values):
+        if not self._theme_path:
+            return values
 
-        is_only_blog = (len(blogsc) == 1)
-        for blog_name in blogsc:
-            blog_cfg = get_default_content_model_for_blog(
-                    blog_name, is_only_blog, values,
-                    theme_site=self.theme_config)
-            values = merge_dicts(blog_cfg, values)
+        sitec = values.setdefault('site', collections.OrderedDict())
+        gen_default_theme_model = bool(sitec.setdefault(
+                'use_default_theme_content', True))
+        if gen_default_theme_model:
+            pmcopy = copy.deepcopy(default_theme_content_pre_model)
+            values = merge_dicts(pmcopy, values)
+        return values
 
-        dcm = get_default_content_model(values)
-        values = merge_dicts(dcm, values)
+
+    def _validateThemeConfig(self, values):
+        if not self._theme_path:
+            return values
+
+        # Create the default theme content model if needed.
+        sitec = values.setdefault('site', collections.OrderedDict())
+        gen_default_theme_model = bool(sitec.setdefault(
+                'use_default_theme_content', True))
+        if gen_default_theme_model:
+            logger.debug("Generating default theme content model...")
+            dcmcopy = copy.deepcopy(default_theme_content_model_base)
+            values = merge_dicts(dcmcopy, values)
+        return values
+
+
+    def _validateSiteConfig(self, values):
+        # Add the loaded values to the default configuration.
+        dccopy = copy.deepcopy(default_configuration)
+        values = merge_dicts(dccopy, values)
+
+        # Set the theme site flag.
+        sitec = values['site']
+        if self.theme_config:
+            sitec['theme_site'] = True
+
+        # Create the default content model if needed.
+        gen_default_model = bool(sitec['use_default_content'])
+        if gen_default_model:
+            logger.debug("Generating default content model...")
+            dcmcopy = copy.deepcopy(default_content_model_base)
+            values = merge_dicts(dcmcopy, values)
+
+            blogsc = values['site'].get('blogs')
+            if blogsc is None:
+                blogsc = ['posts']
+                values['site']['blogs'] = blogsc
+
+            is_only_blog = (len(blogsc) == 1)
+            for blog_name in blogsc:
+                blog_cfg = get_default_content_model_for_blog(
+                        blog_name, is_only_blog, values,
+                        theme_site=self.theme_config)
+                values = merge_dicts(blog_cfg, values)
+
+            dcm = get_default_content_model(values)
+            values = merge_dicts(dcm, values)
 
         return values
 
@@ -272,6 +295,38 @@ default_content_model_base = collections.OrderedDict({
             'tag_url': 'tag/%tag%',
             'category_url': '%category%',
             'posts_per_page': 5
+            })
+        })
+
+
+default_theme_content_pre_model = collections.OrderedDict({
+        'site': collections.OrderedDict({
+            'theme_tag_page': 'theme_pages:_tag.%ext%',
+            'theme_category_page': 'theme_pages:_category.%ext%'
+            })
+        })
+
+
+default_theme_content_model_base = collections.OrderedDict({
+        'site': collections.OrderedDict({
+            'sources': collections.OrderedDict({
+                'theme_pages': {
+                    'type': 'default',
+                    'ignore_missing_dir': True,
+                    'fs_endpoint': 'pages',
+                    'data_endpoint': 'site.pages',
+                    'default_layout': 'default',
+                    'item_name': 'page',
+                    'realm': REALM_THEME
+                    }
+                }),
+            'routes': [
+                {
+                    'url': '/%path:slug%',
+                    'source': 'theme_pages',
+                    'func': 'pcurl(slug)'
+                    }
+                ]
             })
         })
 

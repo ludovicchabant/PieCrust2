@@ -53,23 +53,24 @@ class PieCrust(object):
         logger.debug("Creating site configuration...")
         start_time = time.perf_counter()
 
-        paths = []
         if not self.theme_site:
-            if self.theme_dir:
-                paths.append(os.path.join(self.theme_dir, THEME_CONFIG_PATH))
-            paths.append(os.path.join(self.root_dir, CONFIG_PATH))
+            path = os.path.join(self.root_dir, CONFIG_PATH)
         else:
-            paths.append(os.path.join(self.root_dir, THEME_CONFIG_PATH))
-            preview_path = os.path.join(
-                    self.root_dir, 'configs', 'theme_preview.yml')
-            if os.path.isfile(preview_path):
-                paths.append(preview_path)
+            path = os.path.join(self.root_dir, THEME_CONFIG_PATH)
+
+        theme_path = None
+        if not self.theme_site and self.theme_dir:
+            theme_path = os.path.join(self.theme_dir, THEME_CONFIG_PATH)
 
         config_cache = self.cache.getCache('app')
         config = PieCrustConfiguration(
-                paths, config_cache, theme_config=self.theme_site)
-        if not self.theme_site and self.theme_dir:
-            config.addFixup(_fixup_theme_config)
+                path=path, theme_path=theme_path,
+                cache=config_cache, theme_config=self.theme_site)
+
+        if self.theme_site:
+            variant_path = os.path.join(
+                    self.root_dir, 'configs', 'theme_preview.yml')
+            config.addVariant(variant_path, raise_if_not_found=False)
 
         self.env.stepTimer('SiteConfigLoad', time.perf_counter() - start_time)
         return config
@@ -201,52 +202,6 @@ class PieCrust(object):
             dirs.append(default_dir)
 
         return dirs
-
-
-def _fixup_theme_config(index, config):
-    if index != 0:
-        # We only want to affect the theme config, which is first.
-        return
-
-    # See if we want to generate the default theme content model.
-    sitec = config.setdefault('site', {})
-    gen_default_model = sitec.setdefault('use_default_theme_content', True)
-    if gen_default_model:
-        # Create a default `theme_pages` source.
-        srcc = sitec.setdefault('sources', {})
-        if not isinstance(srcc, dict):
-            raise Exception("Theme configuration has invalid `site/sources`. "
-                            "Must be a dictionary.")
-        default_theme_sources = {
-                'theme_pages': {
-                    'type': 'default',
-                    'ignore_missing_dir': True,
-                    'fs_endpoint': 'pages',
-                    'data_endpoint': 'site.pages',
-                    'default_layout': 'default',
-                    'item_name': 'page'
-                    }
-                }
-        sitec['sources'] = merge_dicts(default_theme_sources, srcc)
-
-        sitec.setdefault('theme_tag_page', 'theme_pages:_tag.%ext%')
-        sitec.setdefault('theme_category_page', 'theme_pages:_category.%ext%')
-
-        # Create a default route for `theme_pages`.
-        rtc = sitec.setdefault('routes', [])
-        if not isinstance(rtc, list):
-            raise Exception("Theme configuration has invalid `site/routes`. "
-                            "Must be a list.")
-        rtc.append({
-                'url': '/%path:slug%',
-                'source': 'theme_pages',
-                'func': 'pcurl(slug)'})
-
-    # Make all sources belong to the "theme" realm.
-    srcc = sitec.get('sources')
-    if srcc and isinstance(srcc, dict):
-        for sn, sc in srcc.items():
-            sc['realm'] = REALM_THEME
 
 
 def apply_variant_and_values(app, config_variant=None, config_values=None):
