@@ -23,6 +23,23 @@ def test_config_site_override_title():
     assert config.get('site/title') == 'Whatever'
 
 
+def test_config_override_default_model_settings():
+    config = {'site': {
+        'default_page_layout': 'foo',
+        'default_post_layout': 'bar',
+        'posts_per_page': 2}}
+    fs = mock_fs().withConfig(config)
+    with mock_fs_scope(fs):
+        app = fs.getApp()
+        assert app.config.get('site/default_page_layout') == 'foo'
+        assert app.config.get('site/default_post_layout') == 'bar'
+        assert app.config.get('site/sources')['pages']['default_layout'] == 'foo'
+        assert app.config.get('site/sources')['pages']['items_per_page'] == 5
+        assert app.config.get('site/sources')['theme_pages']['default_layout'] == 'default'
+        assert app.config.get('site/sources')['theme_pages']['items_per_page'] == 5
+        assert app.config.get('site/sources')['posts']['default_layout'] == 'bar'
+        assert app.config.get('site/sources')['posts']['items_per_page'] == 2
+
 def test_config_site_add_source():
     config = {'site': {
         'sources': {'notes': {}},
