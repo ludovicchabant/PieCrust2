@@ -15,6 +15,10 @@ def read(fname):
         return fp.read()
 
 
+def readlines(fname):
+    lines = [l.strip() for l in read(fname).strip().splitlines()]
+
+
 def runcmd(cmd):
     with subprocess.Popen(
             cmd, stdout=subprocess.PIPE,
@@ -147,8 +151,8 @@ except ImportError:
     version = '0.0'
 
 
-install_requires = read('requirements.txt').splitlines()
-tests_require = read('dev-requirements.txt').splitlines()
+install_requires = readlines('requirements.txt')
+tests_require = readlines('dev-requirements.txt')
 
 
 setup(
@@ -159,7 +163,7 @@ setup(
         author="Ludovic Chabant",
         author_email="ludovic@chabant.com",
         license="Apache License 2.0",
-        url="http://github.com/ludovicchabant/piecrust2",
+        url="http://bolt80.com/piecrust",
         keywords=' '.join([
             'python',
             'website',
@@ -169,7 +173,7 @@ setup(
             'gallery',
             'cms'
             ]),
-        packages=find_packages(),
+        packages=find_packages(exclude=['garcon', 'tests']),
         include_package_data=True,
         zip_safe=False,
         install_requires=install_requires,
@@ -179,7 +183,7 @@ setup(
             'version': GenerateVersionCommand
             },
         classifiers=[
-            'Development Status :: 3 - Alpha',
+            'Development Status :: 4 - Beta',
             'License :: OSI Approved :: Apache Software License',
             'Environment :: Console',
             'Intended Audience :: Developers',
@@ -189,7 +193,8 @@ setup(
             'Operating System :: POSIX :: Linux',
             'Operating System :: Microsoft :: Windows',
             'Programming Language :: Python',
-            'Programming Language :: Python :: 3'
+            'Programming Language :: Python :: 3',
+            'Topic :: Internet :: WWW/HTTP :: Site Management'
             ],
         entry_points={'console_scripts': [
             'chef = piecrust.main:main'
