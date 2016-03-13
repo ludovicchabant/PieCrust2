@@ -84,7 +84,7 @@ class PieCrustConfiguration(Configuration):
         paths = list(filter(lambda i: i is not None, paths))
 
         # Build the cache-key.
-        path_times = [os.path.getmtime(p[0]) for p in paths]
+        path_times = [os.path.getmtime(p) for p in paths]
         cache_key_hash = hashlib.md5(
                 ("version=%s&cache=%d" % (
                     APP_VERSION, CACHE_VERSION)).encode('utf8'))
