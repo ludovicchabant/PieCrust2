@@ -11,6 +11,7 @@ from piecrust.baking.records import (
         BakeRecord, BakeRecordEntry, SubPageBakeInfo)
 from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
+from piecrust.environment import ExecutionStats
 from piecrust.processing.pipeline import ProcessorPipeline
 from piecrust.processing.records import (
         ProcessorPipelineRecord,
@@ -55,8 +56,8 @@ class BakeCommand(ChefCommand):
                 help="Only bake the pages (don't run the asset pipeline).",
                 action='store_true')
         parser.add_argument(
-                '--show-timers',
-                help="Show detailed timing information.",
+                '--show-stats',
+                help="Show detailed information about the bake.",
                 action='store_true')
 
     def run(self, ctx):
@@ -64,7 +65,7 @@ class BakeCommand(ChefCommand):
                    os.path.join(ctx.app.root_dir, '_counter'))
 
         success = True
-        ctx.timers = {}
+        ctx.stats = {}
         start_time = time.perf_counter()
         try:
             # Bake the site sources.
@@ -75,11 +76,11 @@ class BakeCommand(ChefCommand):
             if not ctx.args.html_only:
                 success = success & self._bakeAssets(ctx, out_dir)
 
-            # Show merged timers.
-            if ctx.args.show_timers:
+            # Show merged stats.
+            if ctx.args.show_stats:
                 logger.info("-------------------")
                 logger.info("Timing information:")
-                _show_timers(ctx.timers)
+                _show_stats(ctx.stats)
 
             # All done.
             logger.info('-------------------------')
@@ -103,7 +104,7 @@ class BakeCommand(ChefCommand):
                 applied_config_variant=ctx.config_variant,
                 applied_config_values=ctx.config_values)
         record = baker.bake()
-        _merge_timers(record.timers, ctx.timers)
+        _merge_stats(record.stats, ctx.stats)
         return record.success
 
     def _bakeAssets(self, ctx, out_dir):
@@ -113,39 +114,48 @@ class BakeCommand(ChefCommand):
                 applied_config_variant=ctx.config_variant,
                 applied_config_values=ctx.config_values)
         record = proc.run()
-        _merge_timers(record.timers, ctx.timers)
+        _merge_stats(record.stats, ctx.stats)
         return record.success
 
 
-def _merge_timers(source, target):
+def _merge_stats(source, target):
     if source is None:
         return
 
     for name, val in source.items():
-        if isinstance(val, float):
-            if name not in target:
-                target[name] = 0
-            target[name] += val
-        elif isinstance(val, dict):
-            if name not in target:
-                target[name] = {}
-            _merge_timers(val, target[name])
+        if name not in target:
+            target[name] = ExecutionStats()
+        target[name].mergeStats(val)
 
 
-def _show_timers(timers, indent=''):
-    sub_timer_names = []
-    for name in sorted(timers.keys()):
-        if isinstance(timers[name], float):
-            val_str = '%8.1f s' % timers[name]
+def _show_stats(stats, full=False):
+    indent = '    '
+    for name in sorted(stats.keys()):
+        logger.info('%s:' % name)
+        s = stats[name]
+
+        logger.info('  Timers:')
+        for name, val in s.timers.items():
+            val_str = '%8.1f s' % val
             logger.info(
                     "%s[%s%s%s] %s" %
                     (indent, Fore.GREEN, val_str, Fore.RESET, name))
-        else:
-            sub_timer_names.append(name)
 
-    for name in sub_timer_names:
-        logger.info('%s:' % name)
-        _show_timers(timers[name], indent + '  ')
+        logger.info('  Counters:')
+        for name, val in s.counters.items():
+            val_str = '%8d  ' % val
+            logger.info(
+                    "%s[%s%s%s] %s" %
+                    (indent, Fore.GREEN, val_str, Fore.RESET, name))
+
+        logger.info('  Manifests:')
+        for name, val in s.manifests.items():
+            logger.info(
+                    "%s[%s%s%s] [%d entries]" %
+                    (indent, Fore.CYAN, name, Fore.RESET, len(val)))
+            if full:
+                for v in val:
+                    logger.info("%s  - %s" % (indent, v))
 
 
 class ShowRecordCommand(ChefCommand):
@@ -278,7 +288,7 @@ class ShowRecordCommand(ChefCommand):
                             PASS_FORMATTING: 'formatting pass',
                             PASS_RENDERING: 'rendering pass'}
                     for p, ri in sub.render_info.items():
-                        logging.info("     - %s" % pass_names[p])
+                        logging.info("     - %s" % p)
                         logging.info("       used sources:  %s" %
                                      _join(ri.used_source_names))
                         pgn_info = 'no'

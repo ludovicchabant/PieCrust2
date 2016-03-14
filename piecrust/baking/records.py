@@ -21,14 +21,13 @@ def _get_transition_key(path, taxonomy_info=None):
 
 
 class BakeRecord(Record):
-    RECORD_VERSION = 14
+    RECORD_VERSION = 16
 
     def __init__(self):
         super(BakeRecord, self).__init__()
         self.out_dir = None
         self.bake_time = None
         self.baked_count = {}
-        self.timers = None
         self.success = True
 
 

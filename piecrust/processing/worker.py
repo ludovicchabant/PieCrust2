@@ -144,9 +144,10 @@ class ProcessingWorker(IWorker):
 
         self.app.env.stepTimerSince("PipelineWorker_%d_Total" % self.wid,
                                     self.work_start_time)
+        data = self.app.env.getStats()
         return {
-                'type': 'timers',
-                'data': self.app.env._timers}
+                'type': 'stats',
+                'data': data}
 
 
 def get_filtered_processors(processors, authorized_names):

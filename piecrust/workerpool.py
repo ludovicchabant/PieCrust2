@@ -85,6 +85,7 @@ def _real_worker_func(params):
             try:
                 rep = (task_type, True, wid, (wid, w.getReport()))
             except Exception as e:
+                logger.debug("Error getting report: %s" % e)
                 if params.wrap_exception:
                     e = multiprocessing.ExceptionWithTraceback(
                             e, e.__traceback__)
@@ -265,6 +266,7 @@ class WorkerPool(object):
                     if pool._error_callback:
                         pool._error_callback(data)
                     else:
+                        logger.error("Got error data:")
                         logger.error(data)
             except Exception as ex:
                 logger.exception(ex)

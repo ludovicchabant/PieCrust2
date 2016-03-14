@@ -9,6 +9,7 @@ from piecrust.baking.worker import (
         JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE)
 from piecrust.chefutil import (
         format_timed_scope, format_timed)
+from piecrust.environment import ExecutionStats
 from piecrust.routing import create_route_metadata
 from piecrust.sources.base import (
         REALM_NAMES, REALM_USER, REALM_THEME)
@@ -103,20 +104,16 @@ class Baker(object):
         # Bake taxonomies.
         self._bakeTaxonomies(record, pool)
 
-        # All done with the workers. Close the pool and get timing reports.
+        # All done with the workers. Close the pool and get reports.
         reports = pool.close()
-        record.current.timers = {}
+        total_stats = ExecutionStats()
+        record.current.stats['_Total'] = total_stats
         for i in range(len(reports)):
-            timers = reports[i]
-            if timers is None:
-                continue
-
-            worker_name = 'BakeWorker_%d' % i
-            record.current.timers[worker_name] = {}
-            for name, val in timers['data'].items():
-                main_val = record.current.timers.setdefault(name, 0)
-                record.current.timers[name] = main_val + val
-                record.current.timers[worker_name][name] = val
+            worker_stats = reports[i]['data']
+            if worker_stats is not None:
+                worker_name = 'BakeWorker_%d' % i
+                record.current.stats[worker_name] = worker_stats
+                total_stats.mergeStats(worker_stats)
 
         # Delete files from the output.
         self._handleDeletetions(record)

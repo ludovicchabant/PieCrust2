@@ -41,6 +41,9 @@ class BakeWorker(IWorker):
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")
         app.env.registerTimer("JobReceive")
+        app.env.registerManifest("LoadJobs")
+        app.env.registerManifest("RenderJobs")
+        app.env.registerManifest("BakeJobs")
         self.ctx.app = app
 
         # Load previous record
@@ -71,9 +74,10 @@ class BakeWorker(IWorker):
     def getReport(self):
         self.ctx.app.env.stepTimerSince("BakeWorker_%d_Total" % self.wid,
                                         self.work_start_time)
+        data = self.ctx.app.env.getStats()
         return {
-                'type': 'timers',
-                'data': self.ctx.app.env._timers}
+                'type': 'stats',
+                'data': data}
 
 
 JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE = range(0, 3)
@@ -116,6 +120,7 @@ class LoadJobHandler(JobHandler):
         # Just make sure the page has been cached.
         fac = load_factory(self.app, job)
         logger.debug("Loading page: %s" % fac.ref_spec)
+        self.app.env.addManifestEntry('LoadJobs', fac.ref_spec)
         result = {
                 'source_name': fac.source.name,
                 'path': fac.path,
@@ -137,6 +142,7 @@ class RenderFirstSubJobHandler(JobHandler):
     def handleJob(self, job):
         # Render the segments for the first sub-page of this page.
         fac = load_factory(self.app, job)
+        self.app.env.addManifestEntry('RenderJobs', fac.ref_spec)
 
         # These things should be OK as they're checked upstream by the baker.
         route = self.app.getRoute(fac.source.name, fac.metadata,
@@ -177,6 +183,7 @@ class BakeJobHandler(JobHandler):
     def handleJob(self, job):
         # Actually bake the page and all its sub-pages to the output folder.
         fac = load_factory(self.app, job['factory_info'])
+        self.app.env.addManifestEntry('BakeJobs', fac.ref_spec)
 
         route_metadata = job['route_metadata']
         tax_info = job['taxonomy_info']

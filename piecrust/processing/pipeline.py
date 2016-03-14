@@ -6,6 +6,7 @@ import hashlib
 import logging
 import multiprocessing
 from piecrust.chefutil import format_timed, format_timed_scope
+from piecrust.environment import ExecutionStats
 from piecrust.processing.base import PipelineContext
 from piecrust.processing.records import (
         ProcessorPipelineRecordEntry, TransitionalProcessorPipelineRecord,
@@ -54,7 +55,6 @@ class ProcessorPipeline(object):
         ignores = baker_params.get('ignore', [])
         ignores += [
                 '_cache', '_counter',
-                'theme_info.yml',
                 '.DS_Store', 'Thumbs.db',
                 '.git*', '.hg*', '.svn']
         self.ignore_patterns = make_re(ignores)
@@ -148,18 +148,14 @@ class ProcessorPipeline(object):
 
         # Shutdown the workers and get timing information from them.
         reports = pool.close()
-        record.current.timers = {}
+        total_stats = ExecutionStats()
+        record.current.stats['_Total'] = total_stats
         for i in range(len(reports)):
-            timers = reports[i]
-            if timers is None:
-                continue
-
-            worker_name = 'PipelineWorker_%d' % i
-            record.current.timers[worker_name] = {}
-            for name, val in timers['data'].items():
-                main_val = record.current.timers.setdefault(name, 0)
-                record.current.timers[name] = main_val + val
-                record.current.timers[worker_name][name] = val
+            worker_stats = reports[i]['data']
+            if worker_stats is not None:
+                worker_name = 'PipelineWorker_%d' % i
+                record.current.stats[worker_name] = worker_stats
+                total_stats.mergeStats(worker_stats)
 
         # Invoke post-processors.
         pipeline_ctx.record = record.current

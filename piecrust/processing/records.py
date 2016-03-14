@@ -4,7 +4,7 @@ from piecrust.records import Record, TransitionalRecord
 
 
 class ProcessorPipelineRecord(Record):
-    RECORD_VERSION = 5
+    RECORD_VERSION = 6
 
     def __init__(self):
         super(ProcessorPipelineRecord, self).__init__()
@@ -12,7 +12,6 @@ class ProcessorPipelineRecord(Record):
         self.process_time = None
         self.processed_count = 0
         self.success = False
-        self.timers = None
 
 
 FLAG_NONE = 0

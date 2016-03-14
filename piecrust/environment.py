@@ -52,6 +52,60 @@ class ExecutionInfoStack(object):
         self._page_stack = []
 
 
+class ExecutionStats(object):
+    def __init__(self):
+        self.timers = {}
+        self.counters = {}
+        self.manifests = {}
+
+    def registerTimer(self, category, *, raise_if_registered=True):
+        if raise_if_registered and category in self.timers:
+            raise Exception("Timer '%s' has already been registered." %
+                            category)
+        self.timers[category] = 0
+
+    @contextlib.contextmanager
+    def timerScope(self, category):
+        start = time.perf_counter()
+        yield
+        self.timers[category] += time.perf_counter() - start
+
+    def stepTimer(self, category, value):
+        self.timers[category] += value
+
+    def stepTimerSince(self, category, since):
+        self.stepTimer(category, time.perf_counter() - since)
+
+    def registerCounter(self, category, *, raise_if_registered=True):
+        if raise_if_registered and category in self.counters:
+            raise Exception("Counter '%s' has already been registered." %
+                            category)
+        self.counters[category] = 0
+
+    def stepCounter(self, category, inc=1):
+        self.counters[category] += inc
+
+    def registerManifest(self, name, *, raise_if_registered=True):
+        if raise_if_registered and name in self.manifests:
+            raise Exception("Manifest '%s' has already been registered." %
+                            name)
+        self.manifests[name] = []
+
+    def addManifestEntry(self, name, entry):
+        self.manifests[name].append(entry)
+
+    def mergeStats(self, other):
+        for oc, ov in other.timers.items():
+            v = self.timers.setdefault(oc, 0)
+            self.timers[oc] = v + ov
+        for oc, ov in other.counters.items():
+            v = self.counters.setdefault(oc, 0)
+            self.counters[oc] = v + ov
+        for oc, ov in other.manifests.items():
+            v = self.manifests.setdefault(oc, [])
+            self.manifests[oc] = v + ov
+
+
 class Environment(object):
     def __init__(self):
         self.app = None
@@ -66,7 +120,7 @@ class Environment(object):
         self.fs_cache_only_for_main_page = False
         self.abort_source_use = False
         self._default_layout_extensions = None
-        self._timers = {}
+        self._stats = ExecutionStats()
 
     @property
     def default_layout_extensions(self):
@@ -94,22 +148,41 @@ class Environment(object):
             repo.fs_cache = cache
 
     def registerTimer(self, category, *, raise_if_registered=True):
-        if raise_if_registered and category in self._timers:
-            raise Exception("Timer '%s' has already been registered." %
-                            category)
-        self._timers[category] = 0
+        self._stats.registerTimer(
+                category, raise_if_registered=raise_if_registered)
 
-    @contextlib.contextmanager
     def timerScope(self, category):
-        start = time.perf_counter()
-        yield
-        self._timers[category] += time.perf_counter() - start
+        return self._stats.timerScope(category)
 
     def stepTimer(self, category, value):
-        self._timers[category] += value
+        self._stats.stepTimer(category, value)
 
     def stepTimerSince(self, category, since):
-        self.stepTimer(category, time.perf_counter() - since)
+        self._stats.stepTimerSince(category, since)
+
+    def registerCounter(self, category, *, raise_if_registered=True):
+        self._stats.registerCounter(
+                category, raise_if_registered=raise_if_registered)
+
+    def stepCounter(self, category, inc=1):
+        self._stats.stepCounter(category, inc)
+
+    def registerManifest(self, name, *, raise_if_registered=True):
+        self._stats.registerManifest(
+                name, raise_if_registered=raise_if_registered)
+
+    def addManifestEntry(self, name, entry):
+        self._stats.addManifestEntry(name, entry)
+
+    def getStats(self):
+        repos = [
+                ('RenderedSegmentsRepo', self.rendered_segments_repository),
+                ('PagesRepo', self.page_repository)]
+        for name, repo in repos:
+            self._stats.counters['%s_hit' % name] = repo._hits
+            self._stats.counters['%s_miss' % name] = repo._misses
+            self._stats.manifests['%s_missedKeys' % name] = list(repo._missed_keys)
+        return self._stats
 
 
 class StandardEnvironment(Environment):

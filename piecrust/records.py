@@ -15,6 +15,7 @@ class Record(object):
         self.entry_added = Event()
         self.app_version = APP_VERSION
         self.record_version = self.__class__.RECORD_VERSION
+        self.stats = {}
 
     def hasLatestVersion(self):
         return (self.app_version == APP_VERSION and

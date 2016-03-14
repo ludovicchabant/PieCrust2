@@ -162,6 +162,9 @@ class MemCache(object):
         self.fs_cache = None
         self._last_access_hit = None
         self._invalidated_fs_items = set()
+        self._missed_keys = []
+        self._misses = 0
+        self._hits = 0
 
     @property
     def last_access_hit(self):
@@ -185,32 +188,38 @@ class MemCache(object):
     def get(self, key, item_maker, fs_cache_time=None, save_to_fs=True):
         self._last_access_hit = True
         item = self.cache.get(key)
-        if item is None:
-            if (self.fs_cache is not None and
-                    fs_cache_time is not None):
-                # Try first from the file-system cache.
-                fs_key = _make_fs_cache_key(key)
-                if (fs_key not in self._invalidated_fs_items and
-                        self.fs_cache.isValid(fs_key, fs_cache_time)):
-                    logger.debug("'%s' found in file-system cache." %
-                                 key)
-                    item_raw = self.fs_cache.read(fs_key)
-                    item = json.loads(
-                            item_raw,
-                            object_pairs_hook=collections.OrderedDict)
-                    self.cache.put(key, item)
-                    return item
+        if item is not None:
+            self._hits += 1
+            return item
 
-            # Look into the mem-cache.
-            logger.debug("'%s' not found in cache, must build." % key)
-            item = item_maker()
-            self.cache.put(key, item)
-            self._last_access_hit = False
+        if (self.fs_cache is not None and
+                fs_cache_time is not None):
+            # Try first from the file-system cache.
+            fs_key = _make_fs_cache_key(key)
+            if (fs_key not in self._invalidated_fs_items and
+                    self.fs_cache.isValid(fs_key, fs_cache_time)):
+                logger.debug("'%s' found in file-system cache." %
+                             key)
+                item_raw = self.fs_cache.read(fs_key)
+                item = json.loads(
+                        item_raw,
+                        object_pairs_hook=collections.OrderedDict)
+                self.cache.put(key, item)
+                self._hits += 1
+                return item
 
-            # Save to the file-system if needed.
-            if self.fs_cache is not None and save_to_fs:
-                item_raw = json.dumps(item)
-                self.fs_cache.write(fs_key, item_raw)
+        # Look into the mem-cache.
+        logger.debug("'%s' not found in cache, must build." % key)
+        item = item_maker()
+        self.cache.put(key, item)
+        self._last_access_hit = False
+        self._misses += 1
+        self._missed_keys.append(key)
+
+        # Save to the file-system if needed.
+        if self.fs_cache is not None and save_to_fs:
+            item_raw = json.dumps(item)
+            self.fs_cache.write(fs_key, item_raw)
 
         return item
 
