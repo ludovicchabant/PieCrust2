@@ -8,6 +8,7 @@ tags
 bower_components
 node_modules
 build/lib
+build/bdist*
 util/messages/_cache
 util/messages/_counter
 dist
