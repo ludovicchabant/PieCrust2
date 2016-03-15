@@ -105,7 +105,7 @@ def _setup_main_parser_arguments(parser):
             help="Show debug information.", action='store_true')
     parser.add_argument(
             '--debug-only',
-            nargs='*',
+            action='append',
             help="Only show debug information for the given categories.")
     parser.add_argument(
             '--no-cache',
