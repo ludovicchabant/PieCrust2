@@ -128,28 +128,29 @@ def _merge_stats(source, target):
         target[name].mergeStats(val)
 
 
-def _show_stats(stats, full=False):
+def _show_stats(stats, *, full=False):
     indent = '    '
     for name in sorted(stats.keys()):
         logger.info('%s:' % name)
         s = stats[name]
 
         logger.info('  Timers:')
-        for name, val in s.timers.items():
-            val_str = '%8.1f s' % val
+        for name in sorted(s.timers.keys()):
+            val_str = '%8.1f s' % s.timers[name]
             logger.info(
                     "%s[%s%s%s] %s" %
                     (indent, Fore.GREEN, val_str, Fore.RESET, name))
 
         logger.info('  Counters:')
-        for name, val in s.counters.items():
-            val_str = '%8d  ' % val
+        for name in sorted(s.counters.keys()):
+            val_str = '%8d  ' % s.counters[name]
             logger.info(
                     "%s[%s%s%s] %s" %
                     (indent, Fore.GREEN, val_str, Fore.RESET, name))
 
         logger.info('  Manifests:')
-        for name, val in s.manifests.items():
+        for name in sorted(s.manifests.keys()):
+            val = s.manifests[name]
             logger.info(
                     "%s[%s%s%s] [%d entries]" %
                     (indent, Fore.CYAN, name, Fore.RESET, len(val)))
@@ -193,6 +194,10 @@ class ShowRecordCommand(ChefCommand):
                 '--assets-only',
                 action='store_true',
                 help="Only show records for assets (not from pages).")
+        parser.add_argument(
+                '--show-stats',
+                action='store_true',
+                help="Show stats from the record.")
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
@@ -208,10 +213,22 @@ class ShowRecordCommand(ChefCommand):
         if ctx.args.out:
             out_pattern = '*%s*' % ctx.args.out.strip('*')
 
+        bake_rec = None
         if not ctx.args.assets_only:
-            self._showBakeRecord(ctx, record_name, pattern, out_pattern)
+            bake_rec = self._showBakeRecord(
+                    ctx, record_name, pattern, out_pattern)
+        proc_rec = None
         if not ctx.args.html_only:
-            self._showProcessingRecord(ctx, record_name, pattern, out_pattern)
+            proc_rec = self._showProcessingRecord(
+                    ctx, record_name, pattern, out_pattern)
+
+        if ctx.args.show_stats:
+            stats = {}
+            if bake_rec:
+                _merge_stats(bake_rec.stats, stats)
+            if proc_rec:
+                _merge_stats(proc_rec.stats, stats)
+            _show_stats(stats, full=True)
 
     def _showBakeRecord(self, ctx, record_name, pattern, out_pattern):
         # Show the bake record.
@@ -288,7 +305,7 @@ class ShowRecordCommand(ChefCommand):
                             PASS_FORMATTING: 'formatting pass',
                             PASS_RENDERING: 'rendering pass'}
                     for p, ri in sub.render_info.items():
-                        logging.info("     - %s" % p)
+                        logging.info("     - %s" % pass_names[p])
                         logging.info("       used sources:  %s" %
                                      _join(ri.used_source_names))
                         pgn_info = 'no'
@@ -309,6 +326,8 @@ class ShowRecordCommand(ChefCommand):
 
                 if sub.errors:
                     logging.error("   errors: %s" % sub.errors)
+
+        return record
 
     def _showProcessingRecord(self, ctx, record_name, pattern, out_pattern):
         record_cache = ctx.app.cache.getCache('proc')
@@ -353,6 +372,8 @@ class ShowRecordCommand(ChefCommand):
 
             if entry.errors:
                 logger.error("   errors: %s" % entry.errors)
+
+        return record
 
 
 def _join(items, sep=', ', text_if_none='none'):
