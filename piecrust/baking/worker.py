@@ -71,10 +71,11 @@ class BakeWorker(IWorker):
         with self.ctx.app.env.timerScope(type(handler).__name__):
             return handler.handleJob(job['job'])
 
-    def getReport(self):
+    def getReport(self, pool_reports):
         self.ctx.app.env.stepTimerSince("BakeWorker_%d_Total" % self.wid,
                                         self.work_start_time)
         data = self.ctx.app.env.getStats()
+        data.timers.update(pool_reports)
         return {
                 'type': 'stats',
                 'data': data}

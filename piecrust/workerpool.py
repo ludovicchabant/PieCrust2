@@ -1,11 +1,13 @@
+import io
 import os
 import sys
+import time
 import zlib
+import pickle
 import logging
 import itertools
 import threading
 import multiprocessing
-from piecrust.fastpickle import pickle, unpickle
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +20,7 @@ class IWorker(object):
     def process(self, job):
         raise NotImplementedError()
 
-    def getReport(self):
+    def getReport(self, pool_reports):
         return None
 
 
@@ -72,18 +74,25 @@ def _real_worker_func(params):
     put = params.outqueue.put
 
     completed = 0
+    time_in_get = 0
+    time_in_put = 0
     while True:
+        get_start_time = time.perf_counter()
         try:
             task = get()
         except (EOFError, OSError):
             logger.debug("Worker %d encountered connection problem." % wid)
             break
+        time_in_get += (time.perf_counter() - get_start_time)
 
         task_type, task_data = task
         if task_type == TASK_END:
             logger.debug("Worker %d got end task, exiting." % wid)
+            wprep = {
+                    'WorkerTaskGet': time_in_get,
+                    'WorkerResultPut': time_in_put}
             try:
-                rep = (task_type, True, wid, (wid, w.getReport()))
+                rep = (task_type, True, wid, (wid, w.getReport(wprep)))
             except Exception as e:
                 logger.debug("Error getting report: %s" % e)
                 if params.wrap_exception:
@@ -104,7 +113,10 @@ def _real_worker_func(params):
                     e = multiprocessing.ExceptionWithTraceback(
                             e, e.__traceback__)
                 res = (TASK_JOB, False, wid, e)
+
+            put_start_time = time.perf_counter()
             put(res)
+            time_in_put += (time.perf_counter() - put_start_time)
 
             completed += 1
 
@@ -129,7 +141,7 @@ class WorkerPool(object):
                  wrap_exception=False):
         worker_count = worker_count or os.cpu_count() or 1
 
-        use_fastqueue = True
+        use_fastqueue = False
         if use_fastqueue:
             self._task_queue = FastQueue()
             self._result_queue = FastQueue()
@@ -324,36 +336,47 @@ class _ReportHandler(object):
 
 
 class FastQueue(object):
-    def __init__(self, compress=False):
+    def __init__(self):
         self._reader, self._writer = multiprocessing.Pipe(duplex=False)
         self._rlock = multiprocessing.Lock()
         self._wlock = multiprocessing.Lock()
-        self._compress = compress
+        self._rbuf = io.BytesIO()
+        self._rbuf.truncate(256)
+        self._wbuf = io.BytesIO()
+        self._wbuf.truncate(256)
 
     def __getstate__(self):
-        return (self._reader, self._writer, self._rlock, self._wlock,
-                self._compress)
+        return (self._reader, self._writer, self._rlock, self._wlock)
 
     def __setstate__(self, state):
-        (self._reader, self._writer, self._rlock, self._wlock,
-            self._compress) = state
+        (self._reader, self._writer, self._rlock, self._wlock) = state
 
     def get(self):
         with self._rlock:
-            raw = self._reader.recv_bytes()
-        if self._compress:
-            data = zlib.decompress(raw)
-        else:
-            data = raw
-        obj = unpickle(data)
-        return obj
+            try:
+                with self._rbuf.getbuffer() as b:
+                    self._reader.recv_bytes_into(b)
+            except multiprocessing.BufferTooShort as e:
+                self._rbuf.truncate(len(e.args[0]) * 2)
+                self._rbuf.seek(0)
+                self._rbuf.write(e.args[0])
+
+        self._rbuf.seek(0)
+        return self._unpickle(self._rbuf)
 
     def put(self, obj):
-        data = pickle(obj)
-        if self._compress:
-            raw = zlib.compress(data)
-        else:
-            raw = data
+        self._wbuf.seek(0)
+        self._pickle(obj, self._wbuf)
+        size = self._wbuf.tell()
+
+        self._wbuf.seek(0)
         with self._wlock:
-            self._writer.send_bytes(raw)
+            with self._wbuf.getbuffer() as b:
+                self._writer.send_bytes(b, 0, size)
+
+    def _pickle(self, obj, buf):
+        pickle.dump(obj, buf, pickle.HIGHEST_PROTOCOL)
+
+    def _unpickle(self, buf):
+        return pickle.load(buf)
 

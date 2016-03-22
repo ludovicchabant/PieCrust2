@@ -191,6 +191,7 @@ class Baker(object):
         start_time = time.perf_counter()
         try:
             record.current.baked_count[realm] = 0
+            record.current.total_baked_count[realm] = 0
 
             all_factories = []
             for source in srclist:
@@ -203,10 +204,12 @@ class Baker(object):
             self._bakeRealmPages(record, pool, realm, all_factories)
         finally:
             page_count = record.current.baked_count[realm]
+            total_page_count = record.current.total_baked_count[realm]
             logger.info(format_timed(
                     start_time,
-                    "baked %d %s pages." %
-                    (page_count, REALM_NAMES[realm].lower())))
+                    "baked %d %s pages (%d total)." %
+                    (page_count, REALM_NAMES[realm].lower(),
+                        total_page_count)))
 
     def _loadRealmPages(self, record, pool, factories):
         def _handler(res):
@@ -297,6 +300,7 @@ class Baker(object):
                 record.current.success = False
             if entry.subs and entry.was_any_sub_baked:
                 record.current.baked_count[realm] += 1
+                record.current.total_baked_count[realm] += len(entry.subs)
 
         logger.debug("Baking %d realm pages..." % len(factories))
         with format_timed_scope(logger,

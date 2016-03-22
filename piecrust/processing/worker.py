@@ -135,7 +135,7 @@ class ProcessingWorker(IWorker):
 
         return result
 
-    def getReport(self):
+    def getReport(self, pool_reports):
         # Invoke post-processors.
         pipeline_ctx = PipelineContext(self.wid, self.app, self.ctx.out_dir,
                                        self.ctx.tmp_dir, self.ctx.force)
@@ -145,6 +145,7 @@ class ProcessingWorker(IWorker):
         self.app.env.stepTimerSince("PipelineWorker_%d_Total" % self.wid,
                                     self.work_start_time)
         data = self.app.env.getStats()
+        data.timers.update(pool_reports)
         return {
                 'type': 'stats',
                 'data': data}
