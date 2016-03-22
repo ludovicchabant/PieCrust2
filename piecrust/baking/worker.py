@@ -168,7 +168,7 @@ class RenderFirstSubJobHandler(JobHandler):
         except Exception as ex:
             logger.debug("Got rendering error. Sending it to master.")
             result['errors'] = _get_errors(ex)
-            if self.ctx.debug:
+            if self.ctx.app.debug:
                 logger.exception(ex)
         finally:
             self.app.env.abort_source_use = False
