@@ -21,7 +21,7 @@ def _get_transition_key(path, taxonomy_info=None):
 
 
 class BakeRecord(Record):
-    RECORD_VERSION = 17
+    RECORD_VERSION = 18
 
     def __init__(self):
         super(BakeRecord, self).__init__()
@@ -45,7 +45,7 @@ class SubPageBakeInfo(object):
         self.out_path = out_path
         self.flags = self.FLAG_NONE
         self.errors = []
-        self.render_info = None
+        self.render_info = [None, None]  # Same length as RENDER_PASSES
 
     @property
     def was_clean(self):
@@ -60,14 +60,12 @@ class SubPageBakeInfo(object):
         return self.was_baked and len(self.errors) == 0
 
     def anyPass(self, func):
-        assert self.render_info is not None
-        for p, pinfo in self.render_info.items():
-            if func(pinfo):
+        for pinfo in self.render_info:
+            if pinfo and func(pinfo):
                 return True
         return False
 
     def copyRenderInfo(self):
-        assert self.render_info
         return copy.deepcopy(self.render_info)
 
 
@@ -142,16 +140,16 @@ class BakeRecordEntry(object):
     def getAllUsedSourceNames(self):
         res = set()
         for o in self.subs:
-            if o.render_info is not None:
-                for p, pinfo in o.render_info.items():
+            for pinfo in o.render_info:
+                if pinfo:
                     res |= pinfo.used_source_names
         return res
 
     def getAllUsedTaxonomyTerms(self):
         res = set()
         for o in self.subs:
-            if o.render_info is not None:
-                for p, pinfo in o.render_info.items():
+            for pinfo in o.render_info:
+                if pinfo:
                     res |= pinfo.used_taxonomy_terms
         return res
 

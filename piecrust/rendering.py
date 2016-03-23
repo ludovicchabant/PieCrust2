@@ -58,7 +58,7 @@ class RenderedPage(object):
         self.num = num
         self.data = None
         self.content = None
-        self.render_info = None
+        self.render_info = [None, None]
 
     @property
     def app(self):
@@ -68,9 +68,9 @@ class RenderedPage(object):
         return copy.deepcopy(self.render_info)
 
 
-PASS_NONE = 0
-PASS_FORMATTING = 1
-PASS_RENDERING = 2
+PASS_NONE = -1
+PASS_FORMATTING = 0
+PASS_RENDERING = 1
 
 
 RENDER_PASSES = [PASS_FORMATTING, PASS_RENDERING]
@@ -127,7 +127,7 @@ class PageRenderingContext(object):
         self.custom_data = None
         self._current_pass = PASS_NONE
 
-        self.render_passes = {}
+        self.render_passes = [None, None]  # Same length as RENDER_PASSES
 
     @property
     def app(self):
@@ -143,11 +143,13 @@ class PageRenderingContext(object):
 
     @property
     def current_pass_info(self):
-        return self.render_passes.get(self._current_pass)
+        if self._current_pass != PASS_NONE:
+            return self.render_passes[self._current_pass]
+        return None
 
     def setCurrentPass(self, rdr_pass):
         if rdr_pass != PASS_NONE:
-            self.render_passes.setdefault(rdr_pass, RenderPassInfo())
+            self.render_passes[rdr_pass] = RenderPassInfo()
         self._current_pass = rdr_pass
 
     def setPagination(self, paginator):
@@ -276,9 +278,8 @@ def render_page(ctx):
         rp = RenderedPage(page, ctx.uri, ctx.page_num)
         rp.data = page_data
         rp.content = layout_result['content']
-        rp.render_info = {
-                PASS_FORMATTING: RenderPassInfo._fromJson(
-                    render_result['pass_info'])}
+        rp.render_info[PASS_FORMATTING] = RenderPassInfo._fromJson(
+                    render_result['pass_info'])
         if layout_result['pass_info'] is not None:
             rp.render_info[PASS_RENDERING] = RenderPassInfo._fromJson(
                 layout_result['pass_info'])
@@ -372,7 +373,7 @@ def _do_render_page_segments(page, page_data):
                 content_abstract = seg_text[:offset]
                 formatted_segments['content.abstract'] = content_abstract
 
-    pass_info = cpi.render_ctx.render_passes.get(PASS_FORMATTING)
+    pass_info = cpi.render_ctx.render_passes[PASS_FORMATTING]
     res = {
             'segments': formatted_segments,
             'pass_info': pass_info._toJson()}
@@ -405,7 +406,7 @@ def _do_render_layout(layout_name, page, layout_data):
         msg += "Looked for: %s" % ', '.join(full_names)
         raise Exception(msg) from ex
 
-    pass_info = cpi.render_ctx.render_passes.get(PASS_RENDERING)
+    pass_info = cpi.render_ctx.render_passes[PASS_RENDERING]
     res = {'content': output, 'pass_info': pass_info._toJson()}
     return res
 

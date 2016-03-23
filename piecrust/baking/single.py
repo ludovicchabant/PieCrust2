@@ -225,14 +225,14 @@ def _compute_force_flags(prev_sub_entry, sub_entry, dirty_source_names):
 def _get_dirty_source_names_and_render_passes(sub_entry, dirty_source_names):
     dirty_for_this = set()
     invalidated_render_passes = set()
-    assert sub_entry.render_info is not None
-    for p, pinfo in sub_entry.render_info.items():
-        for src_name in pinfo.used_source_names:
-            is_dirty = (src_name in dirty_source_names)
-            if is_dirty:
-                invalidated_render_passes.add(p)
-                dirty_for_this.add(src_name)
-                break
+    for p, pinfo in enumerate(sub_entry.render_info):
+        if pinfo:
+            for src_name in pinfo.used_source_names:
+                is_dirty = (src_name in dirty_source_names)
+                if is_dirty:
+                    invalidated_render_passes.add(p)
+                    dirty_for_this.add(src_name)
+                    break
     return dirty_for_this, invalidated_render_passes
 
 

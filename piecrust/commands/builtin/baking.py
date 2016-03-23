@@ -234,8 +234,10 @@ class ShowRecordCommand(ChefCommand):
         # Show the bake record.
         record_cache = ctx.app.cache.getCache('baker')
         if not record_cache.has(record_name):
-            raise Exception("No record has been created for this output path. "
-                            "Did you bake there yet?")
+            logger.warning(
+                    "No page bake record has been created for this output "
+                    "path.")
+            return None
 
         record = BakeRecord.load(record_cache.getCachePath(record_name))
         logging.info("Bake record for: %s" % record.out_dir)
@@ -300,29 +302,30 @@ class ShowRecordCommand(ChefCommand):
                         sub.out_path, record.out_dir))
                 logging.info("     flags:  %s" % _join(sub_flags))
 
-                if sub.render_info:
-                    pass_names = {
-                            PASS_FORMATTING: 'formatting pass',
-                            PASS_RENDERING: 'rendering pass'}
-                    for p, ri in sub.render_info.items():
-                        logging.info("     - %s" % pass_names[p])
-                        logging.info("       used sources:  %s" %
-                                     _join(ri.used_source_names))
-                        pgn_info = 'no'
-                        if ri.used_pagination:
-                            pgn_info = 'yes'
-                        if ri.pagination_has_more:
-                            pgn_info += ', has more'
-                        logging.info("       used pagination: %s", pgn_info)
-                        logging.info("       used assets: %s",
-                                     'yes' if ri.used_assets else 'no')
-                        logging.info("       used terms: %s" %
-                                     _join(
-                                            ['%s=%s (%s)' % (tn, t, sn)
-                                             for sn, tn, t in
-                                             ri.used_taxonomy_terms]))
-                else:
-                    logging.info("     no render info")
+                pass_names = {
+                        PASS_FORMATTING: 'formatting pass',
+                        PASS_RENDERING: 'rendering pass'}
+                for p, ri in enumerate(sub.render_info):
+                    logging.info("     - %s" % pass_names[p])
+                    if not ri:
+                        logging.info("       no info")
+                        continue
+
+                    logging.info("       used sources:  %s" %
+                                 _join(ri.used_source_names))
+                    pgn_info = 'no'
+                    if ri.used_pagination:
+                        pgn_info = 'yes'
+                    if ri.pagination_has_more:
+                        pgn_info += ', has more'
+                    logging.info("       used pagination: %s", pgn_info)
+                    logging.info("       used assets: %s",
+                                 'yes' if ri.used_assets else 'no')
+                    logging.info("       used terms: %s" %
+                                 _join(
+                                        ['%s=%s (%s)' % (tn, t, sn)
+                                         for sn, tn, t in
+                                         ri.used_taxonomy_terms]))
 
                 if sub.errors:
                     logging.error("   errors: %s" % sub.errors)
@@ -332,8 +335,10 @@ class ShowRecordCommand(ChefCommand):
     def _showProcessingRecord(self, ctx, record_name, pattern, out_pattern):
         record_cache = ctx.app.cache.getCache('proc')
         if not record_cache.has(record_name):
-            raise Exception("No record has been created for this output path. "
-                            "Did you bake there yet?")
+            logger.warning(
+                    "No asset processing record has been created for this "
+                    "output path.")
+            return None
 
         # Show the pipeline record.
         record = ProcessorPipelineRecord.load(

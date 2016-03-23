@@ -218,7 +218,7 @@ class Server(object):
         if entry is None:
             entry = ServeRecordPageEntry(req_page.req_path, req_page.page_num)
             self._page_record.addEntry(entry)
-        for p, pinfo in render_ctx.render_passes.items():
+        for pinfo in render_ctx.render_passes:
             entry.used_source_names |= pinfo.used_source_names
 
         # Start doing stuff.
