@@ -17,6 +17,7 @@ from piecrust.commands.builtin.themes import (ThemesCommand)
 from piecrust.commands.builtin.util import (
         InitCommand, PurgeCommand, ImportCommand)
 from piecrust.data.provider import (IteratorDataProvider, BlogDataProvider)
+from piecrust.formatting.hoedownformatter import HoedownFormatter
 from piecrust.formatting.markdownformatter import MarkdownFormatter
 from piecrust.formatting.textileformatter import TextileFormatter
 from piecrust.formatting.smartypantsformatter import SmartyPantsFormatter
@@ -98,6 +99,7 @@ class BuiltInPlugin(PieCrustPlugin):
 
     def getFormatters(self):
         return [
+                HoedownFormatter(),
                 MarkdownFormatter(),
                 SmartyPantsFormatter(),
                 TextileFormatter()]
