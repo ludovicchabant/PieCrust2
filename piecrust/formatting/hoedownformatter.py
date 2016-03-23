@@ -1,5 +1,4 @@
 import logging
-import hoedown
 from piecrust.formatting.base import Formatter
 
 
@@ -22,6 +21,8 @@ class HoedownFormatter(Formatter):
     def _ensureInitialized(self):
         if self._formatter is not None:
             return
+
+        import hoedown
 
         # Don't show warnings once for each worker when baking, so only
         # show them for the first. If the variable is not set, we're not
