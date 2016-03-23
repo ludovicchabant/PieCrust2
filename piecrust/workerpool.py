@@ -4,14 +4,16 @@ import sys
 import time
 import zlib
 import queue
-import pickle
 import logging
 import itertools
 import threading
 import multiprocessing
+from piecrust import fastpickle
 
 
 logger = logging.getLogger(__name__)
+
+use_fastqueue = True
 
 
 class IWorker(object):
@@ -73,21 +75,29 @@ def _real_worker_func(params):
         params.outqueue.put(None)
         return
 
-    # Create threads to read/write the jobs and results from/to the
-    # main arbitrator process.
-    local_job_queue = queue.Queue()
-    reader_thread = threading.Thread(
-            target=_job_queue_reader,
-            args=(params.inqueue.get, local_job_queue),
-            name="JobQueueReaderThread")
-    reader_thread.start()
+    use_threads = False
+    if use_threads:
+        # Create threads to read/write the jobs and results from/to the
+        # main arbitrator process.
+        local_job_queue = queue.Queue()
+        reader_thread = threading.Thread(
+                target=_job_queue_reader,
+                args=(params.inqueue.get, local_job_queue),
+                name="JobQueueReaderThread")
+        reader_thread.start()
 
-    local_result_queue = queue.Queue()
-    writer_thread = threading.Thread(
-            target=_job_results_writer,
-            args=(local_result_queue, params.outqueue.put),
-            name="JobResultWriterThread")
-    writer_thread.start()
+        local_result_queue = queue.Queue()
+        writer_thread = threading.Thread(
+                target=_job_results_writer,
+                args=(local_result_queue, params.outqueue.put),
+                name="JobResultWriterThread")
+        writer_thread.start()
+
+        get = local_job_queue.get
+        put = local_result_queue.put_nowait
+    else:
+        get = params.inqueue.get
+        put = params.outqueue.put
 
     # Start pumping!
     completed = 0
@@ -95,8 +105,7 @@ def _real_worker_func(params):
     time_in_put = 0
     while True:
         get_start_time = time.perf_counter()
-        task = local_job_queue.get()
-        local_job_queue.task_done()
+        task = get()
         time_in_get += (time.perf_counter() - get_start_time)
 
         task_type, task_data = task
@@ -113,7 +122,7 @@ def _real_worker_func(params):
                     e = multiprocessing.ExceptionWithTraceback(
                             e, e.__traceback__)
                 rep = (task_type, False, wid, (wid, e))
-            local_result_queue.put_nowait(rep)
+            put(rep)
             break
 
         if task_type == TASK_JOB:
@@ -129,15 +138,16 @@ def _real_worker_func(params):
                 res = (TASK_JOB, False, wid, e)
 
             put_start_time = time.perf_counter()
-            local_result_queue.put_nowait(res)
+            put(res)
             time_in_put += (time.perf_counter() - put_start_time)
 
             completed += 1
 
-    logger.debug("Worker %d waiting for reader/writer threads." % wid)
-    local_result_queue.put_nowait(None)
-    reader_thread.join()
-    writer_thread.join()
+    if use_threads:
+        logger.debug("Worker %d waiting for reader/writer threads." % wid)
+        local_result_queue.put_nowait(None)
+        reader_thread.join()
+        writer_thread.join()
 
     logger.debug("Worker %d completed %d tasks." % (wid, completed))
 
@@ -147,7 +157,7 @@ def _job_queue_reader(getter, out_queue):
         try:
             task = getter()
         except (EOFError, OSError):
-            logger.debug("Worker %d encountered connection problem." % wid)
+            logger.debug("Worker encountered connection problem.")
             break
 
         out_queue.put_nowait(task)
@@ -189,7 +199,6 @@ class WorkerPool(object):
                  wrap_exception=False):
         worker_count = worker_count or os.cpu_count() or 1
 
-        use_fastqueue = False
         if use_fastqueue:
             self._task_queue = FastQueue()
             self._result_queue = FastQueue()
@@ -388,6 +397,9 @@ class FastQueue(object):
         self._reader, self._writer = multiprocessing.Pipe(duplex=False)
         self._rlock = multiprocessing.Lock()
         self._wlock = multiprocessing.Lock()
+        self._initBuffers()
+
+    def _initBuffers(self):
         self._rbuf = io.BytesIO()
         self._rbuf.truncate(256)
         self._wbuf = io.BytesIO()
@@ -398,19 +410,21 @@ class FastQueue(object):
 
     def __setstate__(self, state):
         (self._reader, self._writer, self._rlock, self._wlock) = state
+        self._initBuffers()
 
     def get(self):
         with self._rlock:
             try:
                 with self._rbuf.getbuffer() as b:
-                    self._reader.recv_bytes_into(b)
+                    bufsize = self._reader.recv_bytes_into(b)
             except multiprocessing.BufferTooShort as e:
-                self._rbuf.truncate(len(e.args[0]) * 2)
+                bufsize = len(e.args[0])
+                self._rbuf.truncate(bufsize * 2)
                 self._rbuf.seek(0)
                 self._rbuf.write(e.args[0])
 
         self._rbuf.seek(0)
-        return self._unpickle(self._rbuf)
+        return self._unpickle(self._rbuf, bufsize)
 
     def put(self, obj):
         self._wbuf.seek(0)
@@ -423,8 +437,8 @@ class FastQueue(object):
                 self._writer.send_bytes(b, 0, size)
 
     def _pickle(self, obj, buf):
-        pickle.dump(obj, buf, pickle.HIGHEST_PROTOCOL)
+        fastpickle.pickle_intob(obj, buf)
 
-    def _unpickle(self, buf):
-        return pickle.load(buf)
+    def _unpickle(self, buf, bufsize):
+        return fastpickle.unpickle_fromb(buf, bufsize)
 

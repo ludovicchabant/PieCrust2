@@ -1,5 +1,6 @@
 import sys
 import json
+import codecs
 import datetime
 import collections
 
@@ -10,10 +11,30 @@ def pickle(obj):
     return data.encode('utf8')
 
 
+def pickle_intob(obj, buf):
+    data = _pickle_object(obj)
+    buf = _WriteWrapper(buf)
+    json.dump(data, buf, indent=None, separators=(',', ':'))
+
+
 def unpickle(data):
-    data = data.decode('utf8')
+    data = json.loads(data.decode('utf8'))
+    return _unpickle_object(data)
+
+
+def unpickle_fromb(buf, bufsize):
+    with buf.getbuffer() as innerbuf:
+        data = codecs.decode(innerbuf[:bufsize], encoding='utf8')
     data = json.loads(data)
     return _unpickle_object(data)
+
+
+class _WriteWrapper(object):
+    def __init__(self, buf):
+        self._buf = buf
+
+    def write(self, data):
+        self._buf.write(data.encode('utf8'))
 
 
 _PICKLING = 0
