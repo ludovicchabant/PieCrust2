@@ -41,6 +41,7 @@ class BakeWorker(IWorker):
         app.env.registerTimer("BakeWorker_%d_Total" % self.wid)
         app.env.registerTimer("BakeWorkerInit")
         app.env.registerTimer("JobReceive")
+        app.env.registerCounter("SourceUseAbortions")
         app.env.registerManifest("LoadJobs")
         app.env.registerManifest("RenderJobs")
         app.env.registerManifest("BakeJobs")
@@ -165,6 +166,7 @@ class RenderFirstSubJobHandler(JobHandler):
             render_page_segments(ctx)
         except AbortedSourceUseError:
             logger.debug("Page %s was aborted." % fac.ref_spec)
+            self.app.env.stepCounter("SourceUseAbortions")
             result['aborted'] = True
         except Exception as ex:
             logger.debug("Got rendering error. Sending it to master.")
