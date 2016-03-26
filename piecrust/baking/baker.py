@@ -172,7 +172,7 @@ class Baker(object):
 
         if reason is not None:
             # We have to bake everything from scratch.
-            self.app.cache.clearCaches(except_names=['app'])
+            self.app.cache.clearCaches(except_names=['app', 'baker'])
             self.force = True
             record.incremental_count = 0
             record.clearPrevious()
