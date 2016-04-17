@@ -213,25 +213,25 @@ class ShowRecordCommand(ChefCommand):
         if ctx.args.out:
             out_pattern = '*%s*' % ctx.args.out.strip('*')
 
-        bake_rec = None
-        if not ctx.args.assets_only:
-            bake_rec = self._showBakeRecord(
-                    ctx, record_name, pattern, out_pattern)
-        proc_rec = None
-        if not ctx.args.html_only:
-            proc_rec = self._showProcessingRecord(
-                    ctx, record_name, pattern, out_pattern)
+        if not ctx.args.show_stats:
+            if not ctx.args.assets_only:
+                self._showBakeRecord(
+                        ctx, record_name, pattern, out_pattern)
+            if not ctx.args.html_only:
+                self._showProcessingRecord(
+                        ctx, record_name, pattern, out_pattern)
 
         if ctx.args.show_stats:
             stats = {}
+            bake_rec = self._getBakeRecord(ctx, record_name)
             if bake_rec:
                 _merge_stats(bake_rec.stats, stats)
+            proc_rec = self._getProcessingRecord(ctx, record_name)
             if proc_rec:
                 _merge_stats(proc_rec.stats, stats)
-            _show_stats(stats, full=True)
+            _show_stats(stats, full=False)
 
-    def _showBakeRecord(self, ctx, record_name, pattern, out_pattern):
-        # Show the bake record.
+    def _getBakeRecord(self, ctx, record_name):
         record_cache = ctx.app.cache.getCache('baker')
         if not record_cache.has(record_name):
             logger.warning(
@@ -240,6 +240,11 @@ class ShowRecordCommand(ChefCommand):
             return None
 
         record = BakeRecord.load(record_cache.getCachePath(record_name))
+        return record
+
+    def _showBakeRecord(self, ctx, record_name, pattern, out_pattern):
+        record = self._getBakeRecord(ctx, record_name)
+
         logging.info("Bake record for: %s" % record.out_dir)
         logging.info("From: %s" % record_name)
         logging.info("Last baked: %s" %
@@ -330,9 +335,7 @@ class ShowRecordCommand(ChefCommand):
                 if sub.errors:
                     logging.error("   errors: %s" % sub.errors)
 
-        return record
-
-    def _showProcessingRecord(self, ctx, record_name, pattern, out_pattern):
+    def _getProcessingRecord(self, ctx, record_name):
         record_cache = ctx.app.cache.getCache('proc')
         if not record_cache.has(record_name):
             logger.warning(
@@ -340,9 +343,15 @@ class ShowRecordCommand(ChefCommand):
                     "output path.")
             return None
 
-        # Show the pipeline record.
         record = ProcessorPipelineRecord.load(
                 record_cache.getCachePath(record_name))
+        return record
+
+    def _showProcessingRecord(self, ctx, record_name, pattern, out_pattern):
+        record = self._getProcessingRecord(ctx, record_name)
+        if record is None:
+            return
+
         logging.info("")
         logging.info("Processing record for: %s" % record.out_dir)
         logging.info("Last baked: %s" %
@@ -377,8 +386,6 @@ class ShowRecordCommand(ChefCommand):
 
             if entry.errors:
                 logger.error("   errors: %s" % entry.errors)
-
-        return record
 
 
 def _join(items, sep=', ', text_if_none='none'):
