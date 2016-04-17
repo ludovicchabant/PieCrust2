@@ -1,6 +1,5 @@
 import os.path
 import shutil
-import codecs
 import logging
 import urllib.parse
 from piecrust import ASSET_DIR_SUFFIX
