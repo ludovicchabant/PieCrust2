@@ -24,7 +24,7 @@ def unpickle(data):
 
 def unpickle_fromb(buf, bufsize):
     with buf.getbuffer() as innerbuf:
-        data = codecs.decode(innerbuf[:bufsize], encoding='utf8')
+        data = codecs.decode(innerbuf[:bufsize], 'utf8')
     data = json.loads(data)
     return _unpickle_object(data)
 
