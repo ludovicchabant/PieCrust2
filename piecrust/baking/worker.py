@@ -81,6 +81,10 @@ class BakeWorker(IWorker):
                 'type': 'stats',
                 'data': data}
 
+    def shutdown(self):
+        for jh in self.job_handlers.values():
+            jh.shutdown()
+
 
 JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE = range(0, 3)
 
@@ -95,6 +99,9 @@ class JobHandler(object):
 
     def handleJob(self, job):
         raise NotImplementedError()
+
+    def shutdown(self):
+        pass
 
 
 def _get_errors(ex):
@@ -182,6 +189,9 @@ class BakeJobHandler(JobHandler):
     def __init__(self, ctx):
         super(BakeJobHandler, self).__init__(ctx)
         self.page_baker = PageBaker(ctx.app, ctx.out_dir, ctx.force)
+
+    def shutdown(self):
+        self.page_baker.shutdown()
 
     def handleJob(self, job):
         # Actually bake the page and all its sub-pages to the output folder.

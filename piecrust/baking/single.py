@@ -1,6 +1,8 @@
 import os.path
+import queue
 import shutil
 import logging
+import threading
 import urllib.parse
 from piecrust import ASSET_DIR_SUFFIX
 from piecrust.baking.records import SubPageBakeInfo
@@ -17,6 +19,24 @@ class BakingError(Exception):
     pass
 
 
+def _text_writer(q):
+    while True:
+        item = q.get()
+        if item is not None:
+            out_path, txt = item
+            out_dir = os.path.dirname(out_path)
+            _ensure_dir_exists(out_dir)
+
+            with open(out_path, 'w', encoding='utf8') as fp:
+                fp.write(txt)
+
+            q.task_done()
+        else:
+            # Sentinel object, terminate the thread.
+            q.task_done()
+            break
+
+
 class PageBaker(object):
     def __init__(self, app, out_dir, force=False, copy_assets=True):
         self.app = app
@@ -25,6 +45,16 @@ class PageBaker(object):
         self.copy_assets = copy_assets
         self.site_root = app.config.get('site/root')
         self.pretty_urls = app.config.get('site/pretty_urls')
+        self._writer_queue = queue.Queue()
+        self._writer = threading.Thread(
+                name='PageSerializer',
+                target=_text_writer,
+                args=(self._writer_queue,))
+        self._writer.start()
+
+    def shutdown(self):
+        self._writer_queue.put_nowait(None)
+        self._writer.join()
 
     def getOutputPath(self, uri):
         uri_root, uri_path = split_uri(self.app, uri)
@@ -162,11 +192,7 @@ class PageBaker(object):
             rp = render_page(ctx)
 
         with self.app.env.timerScope("PageSerialize"):
-            out_dir = os.path.dirname(out_path)
-            _ensure_dir_exists(out_dir)
-
-            with open(out_path, 'w', encoding='utf8') as fp:
-                fp.write(rp.content)
+            self._writer_queue.put_nowait((out_path, rp.content))
 
         return rp
 

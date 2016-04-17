@@ -26,6 +26,9 @@ class IWorker(object):
     def getReport(self, pool_reports):
         return None
 
+    def shutdown(self):
+        pass
+
 
 TASK_JOB = 0
 TASK_BATCH = 1
@@ -148,6 +151,8 @@ def _real_worker_func(params):
         local_result_queue.put_nowait(None)
         reader_thread.join()
         writer_thread.join()
+
+    w.shutdown()
 
     logger.debug("Worker %d completed %d tasks." % (wid, completed))
 
