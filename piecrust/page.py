@@ -303,12 +303,30 @@ def _count_lines(s):
     return len(s.split('\n'))
 
 
+def _string_needs_parsing(txt, offset):
+    txtlen = len(txt)
+    index = txt.find('-', offset)
+    while index >= 0 and index < txtlen - 8:
+        if txt[index + 1] == '-' and txt[index + 2] == '-':
+            return True
+        index = txt.find('-', index + 1)
+    return False
+
+
 def parse_segments(raw, offset=0):
     # Get the number of lines in the header.
     header_lines = _count_lines(raw[:offset].rstrip())
     current_line = header_lines
 
-    # Start parsing.
+    # Figure out if we need any parsing.
+    do_parse = _string_needs_parsing(raw, offset)
+    if not do_parse:
+        seg = ContentSegment()
+        seg.parts = [
+                ContentSegmentPart(raw[offset:], None, offset, current_line)]
+        return {'content': seg}
+
+    # Start parsing segments and parts.
     matches = list(segment_pattern.finditer(raw, offset))
     num_matches = len(matches)
     if num_matches > 0:
