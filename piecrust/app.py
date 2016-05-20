@@ -103,11 +103,23 @@ class PieCrust(object):
 
     @cached_property
     def theme_dir(self):
+        # No theme if the curent site is already a theme.
         if self.theme_site:
             return None
+
+        # See if there's a theme we absolutely want.
         td = self._get_dir(THEME_DIR)
         if td is not None:
             return td
+
+        # Try to load a theme specified in the configuration.
+        from piecrust.themes.base import ThemeLoader
+        loader = ThemeLoader(self.root_dir)
+        theme_dir = loader.getThemeDir()
+        if theme_dir is not None:
+            return theme_dir
+
+        # Nothing... use the default theme.
         return os.path.join(RESOURCES_DIR, 'theme')
 
     @cached_property
