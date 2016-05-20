@@ -13,9 +13,9 @@ DEFAULT_FORMAT = 'markdown'
 DEFAULT_TEMPLATE_ENGINE = 'jinja2'
 DEFAULT_POSTS_FS = 'flat'
 DEFAULT_DATE_FORMAT = '%b %d, %Y'
-DEFAULT_THEME_SOURCE = 'http://bitbucket.org/ludovicchabant/'
+DEFAULT_THEME_SOURCE = 'https://bitbucket.org/ludovicchabant/'
 
-PIECRUST_URL = 'http://bolt80.com/piecrust/'
+PIECRUST_URL = 'https://bolt80.com/piecrust/'
 
 CACHE_VERSION = 23
 
