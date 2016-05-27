@@ -33,14 +33,12 @@ class LazyPageConfigData(collections.abc.Mapping):
         try:
             return self._getValue(name)
         except LazyPageConfigLoaderHasNoValue as ex:
-            logger.exception(ex)
             raise AttributeError("No such attribute: %s" % name) from ex
 
     def __getitem__(self, name):
         try:
             return self._getValue(name)
         except LazyPageConfigLoaderHasNoValue as ex:
-            logger.exception(ex)
             raise KeyError("No such key: %s" % name) from ex
 
     def __iter__(self):
@@ -102,7 +100,7 @@ class LazyPageConfigData(collections.abc.Mapping):
             # We always keep the wildcard loader in the loaders list.
             return self._values[name]
 
-        raise LazyPageConfigLoaderHasNoValue()
+        raise LazyPageConfigLoaderHasNoValue("No such value: %s" % name)
 
     def _setValue(self, name, value):
         self._values[name] = value
