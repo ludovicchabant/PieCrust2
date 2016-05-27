@@ -191,6 +191,9 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
 
 
 class BlogArchiveEntry(object):
+    debug_render = ['name', 'timestamp', 'posts']
+    debug_render_invoke = ['name', 'timestamp', 'posts']
+
     def __init__(self, page, name, timestamp):
         self.name = name
         self.timestamp = timestamp
@@ -215,6 +218,9 @@ class BlogArchiveEntry(object):
 
 
 class BlogTaxonomyEntry(object):
+    debug_render = ['name', 'post_count', 'posts']
+    debug_render_invoke = ['name', 'post_count', 'posts']
+
     def __init__(self, page, source, property_value):
         self._page = page
         self._source = source
