@@ -14,3 +14,60 @@ outfiles:
         /bar.html
         /foo.html
         /
+---
+in:
+    posts/2016-06-01_one.md: "One!"
+    posts/2016-06-02_two.md: "Two!"
+    posts/2016-06-03_three.md: "Three!"
+    pages/_index.md: |
+        {% for p in blog.posts -%}
+        {{p.url}}
+        {% endfor %}
+outfiles:
+    index.html: |
+        /2016/06/03/three.html
+        /2016/06/02/two.html
+        /2016/06/01/one.html
+---
+config:
+    blog:
+        subtitle: "Forcing a Merged Mapping"
+in:
+    posts/2016-06-01_one.md: "One!"
+    posts/2016-06-02_two.md: "Two!"
+    posts/2016-06-03_three.md: "Three!"
+    pages/_index.md: |
+        {{blog.subtitle}}
+        {% for p in blog.posts -%}
+        {{p.url}}
+        {% endfor %}
+outfiles:
+    index.html: |
+        Forcing a Merged Mapping
+        /2016/06/03/three.html
+        /2016/06/02/two.html
+        /2016/06/01/one.html
+---
+config:
+    site:
+        blogs: [aaa, xyz]
+in:
+    posts/aaa/2016-06-01_one.md: "One!"
+    posts/aaa/2016-06-02_two.md: "Two!"
+    posts/xyz/2016-06-01_one-other.md: "One Other!"
+    posts/xyz/2016-06-02_two-other.md: "Two Other!"
+    pages/_index.md: |
+        {% for p in aaa.posts -%}
+        {{p.url}}
+        {% endfor %}
+        {% for p in xyz.posts -%}
+        {{p.url}}
+        {% endfor %}
+outfiles:
+    index.html: |
+        /aaa/2016/06/02/two.html
+        /aaa/2016/06/01/one.html
+        
+        /xyz/2016/06/02/two-other.html
+        /xyz/2016/06/01/one-other.html
+
