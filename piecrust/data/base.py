@@ -19,10 +19,18 @@ class MergedMapping(collections.abc.Mapping):
         values = []
         for d in self._dicts:
             try:
-                val = d[name]
-            except KeyError:
+                val = getattr(d, name)
+                values.append(val)
                 continue
-            values.append(val)
+            except AttributeError:
+                pass
+
+            try:
+                val = d[name]
+                values.append(val)
+                continue
+            except KeyError:
+                pass
 
         if len(values) == 0:
             raise KeyError("No such item: %s" % self._subp(name))
