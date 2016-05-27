@@ -32,16 +32,19 @@ class RequestedPage(object):
 
 
 def find_routes(routes, uri):
+    """ Returns routes matching the given URL, but puts generator routes
+        at the end.
+    """
     res = []
-    tax_res = []
+    gen_res = []
     for route in routes:
         metadata = route.matchUri(uri)
         if metadata is not None:
-            if route.is_taxonomy_route:
-                tax_res.append((route, metadata))
-            else:
+            if route.is_source_route:
                 res.append((route, metadata))
-    return res + tax_res
+            else:
+                gen_res.append((route, metadata))
+    return res + gen_res
 
 
 def get_requested_page(app, req_path):
@@ -71,19 +74,19 @@ def get_requested_page(app, req_path):
 
 
 def _get_requested_page_for_route(app, route, route_metadata, req_path):
-    taxonomy = None
-    source = app.getSource(route.source_name)
-    if route.taxonomy_name is None:
+    if not route.is_generator_route:
+        source = app.getSource(route.source_name)
         factory = source.findPageFactory(route_metadata, MODE_PARSING)
         if factory is None:
-            raise PageNotFoundError("No path found for '%s' in source '%s'." %
-                                    (req_path, source.name))
+            raise PageNotFoundError(
+                    "No path found for '%s' in source '%s'." %
+                    (req_path, source.name))
     else:
-        taxonomy = app.getTaxonomy(route.taxonomy_name)
-
-        # This will raise `PageNotFoundError` naturally if not found.
-        tax_page_ref = taxonomy.getPageRef(source)
-        factory = tax_page_ref.getFactory()
+        factory = route.generator.getPageFactory(route_metadata)
+        if factory is None:
+            raise PageNotFoundError(
+                    "No path found for '%s' in generator '%s'." %
+                    (req_path, route.generator.name))
 
     # Build the page.
     page = factory.buildPage()

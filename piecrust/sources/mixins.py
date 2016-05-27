@@ -23,33 +23,31 @@ class SourceFactoryIterator(object):
         return self.source.getPages()
 
 
-class SourceFactoryWithoutTaxonomiesIterator(object):
+class SourceFactoryWithoutGeneratorsIterator(object):
     def __init__(self, source):
         self.source = source
-        self._taxonomy_pages = None
+        self._generator_pages = None
         # See comment above.
         self.it = None
 
     def __iter__(self):
-        self._cacheTaxonomyPages()
+        self._cacheGeneratorPages()
         for p in self.source.getPages():
-            if p.rel_path in self._taxonomy_pages:
+            if p.rel_path in self._generator_pages:
                 continue
             yield p
 
-    def _cacheTaxonomyPages(self):
-        if self._taxonomy_pages is not None:
+    def _cacheGeneratorPages(self):
+        if self._generator_pages is not None:
             return
 
         app = self.source.app
-        self._taxonomy_pages = set()
+        self._generator_pages = set()
         for src in app.sources:
-            for tax in app.taxonomies:
-                ref_spec = src.getTaxonomyPageRef(tax.name)
-                page_ref = PageRef(app, ref_spec)
-                for sn, rp in page_ref.possible_split_ref_specs:
+            for gen in app.generators:
+                for sn, rp in gen.page_ref.possible_split_ref_specs:
                     if sn == self.source.name:
-                        self._taxonomy_pages.add(rp)
+                        self._generator_pages.add(rp)
 
 
 class DateSortIterator(object):
@@ -82,9 +80,9 @@ class SimplePaginationSourceMixin(IPaginationSource):
         return self.config['items_per_page']
 
     def getSourceIterator(self):
-        if self.config.get('iteration_includes_taxonomies', False):
+        if self.config.get('iteration_includes_generator_pages', False):
             return SourceFactoryIterator(self)
-        return SourceFactoryWithoutTaxonomiesIterator(self)
+        return SourceFactoryWithoutGeneratorsIterator(self)
 
     def getSorterIterator(self, it):
         return DateSortIterator(it)

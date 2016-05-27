@@ -81,8 +81,8 @@ class ShowRoutesCommand(ChefCommand):
     def run(self, ctx):
         for route in ctx.app.routes:
             logger.info("%s:" % route.uri_pattern)
-            logger.info("    source: %s" % route.source_name)
-            logger.info("    taxonomy: %s" % (route.taxonomy_name or ''))
+            logger.info("    source: %s" % (route.source_name or ''))
+            logger.info("    generator: %s" % (route.generator_name or ''))
             logger.info("    regex: %s" % route.uri_re.pattern)
 
 

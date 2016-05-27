@@ -113,6 +113,7 @@ class Page(IRouteMetadataProvider):
                     # No idea what the date/time for this page is.
                     self._datetime = datetime.datetime.fromtimestamp(0)
             except Exception as ex:
+                logger.exception(ex)
                 raise Exception(
                         "Error computing time for page: %s" %
                         self.path) from ex
@@ -155,6 +156,7 @@ def _parse_config_date(page_date):
         try:
             parsed_d = dateutil.parser.parse(page_date)
         except Exception as ex:
+            logger.exception(ex)
             raise ConfigurationError("Invalid date: %s" % page_date) from ex
         return datetime.date(
                 year=parsed_d.year,
@@ -175,6 +177,7 @@ def _parse_config_time(page_time):
         try:
             parsed_t = dateutil.parser.parse(page_time)
         except Exception as ex:
+            logger.exception(ex)
             raise ConfigurationError("Invalid time: %s" % page_time) from ex
         return datetime.timedelta(
                 hours=parsed_t.hour,

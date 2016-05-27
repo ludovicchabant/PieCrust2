@@ -3,6 +3,7 @@ CACHE_DIR = '_cache'
 ASSETS_DIR = 'assets'
 TEMPLATES_DIR = 'templates'
 THEME_DIR = 'theme'
+THEMES_DIR = 'themes'
 
 CONFIG_PATH = 'config.yml'
 THEME_CONFIG_PATH = 'theme_config.yml'
@@ -17,7 +18,7 @@ DEFAULT_THEME_SOURCE = 'https://bitbucket.org/ludovicchabant/'
 
 PIECRUST_URL = 'https://bolt80.com/piecrust/'
 
-CACHE_VERSION = 23
+CACHE_VERSION = 24
 
 try:
     from piecrust.__version__ import APP_VERSION

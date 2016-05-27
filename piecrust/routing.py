@@ -3,7 +3,7 @@ import os.path
 import copy
 import logging
 import urllib.parse
-import unidecode
+from werkzeug.utils import cached_property
 
 
 logger = logging.getLogger(__name__)
@@ -11,13 +11,16 @@ logger = logging.getLogger(__name__)
 
 route_re = re.compile(r'%((?P<qual>path):)?(?P<name>\w+)%')
 route_esc_re = re.compile(r'\\%((?P<qual>path)\\:)?(?P<name>\w+)\\%')
-template_func_re = re.compile(r'^(?P<name>\w+)\((?P<first_arg>\w+)'
-                              r'(?P<other_args>.*)\)\s*$')
-template_func_arg_re = re.compile(r',\s*(?P<arg>\w+)')
+template_func_re = re.compile(r'^(?P<name>\w+)\((?P<args>.*)\)\s*$')
+template_func_arg_re = re.compile(r'(?P<arg>\+?\w+)')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
 class RouteNotFoundError(Exception):
+    pass
+
+
+class InvalidRouteError(Exception):
     pass
 
 
@@ -38,53 +41,23 @@ class IRouteMetadataProvider(object):
         raise NotImplementedError()
 
 
-SLUGIFY_ENCODE = 1
-SLUGIFY_TRANSLITERATE = 2
-SLUGIFY_LOWERCASE = 4
-SLUGIFY_DOT_TO_DASH = 8
-SLUGIFY_SPACE_TO_DASH = 16
-
-
-re_first_dot_to_dash = re.compile(r'^\.+')
-re_dot_to_dash = re.compile(r'\.+')
-re_space_to_dash = re.compile(r'\s+')
-
-
-def _parse_slugify_mode(value):
-    mapping = {
-            'encode': SLUGIFY_ENCODE,
-            'transliterate': SLUGIFY_TRANSLITERATE,
-            'lowercase': SLUGIFY_LOWERCASE,
-            'dot_to_dash': SLUGIFY_DOT_TO_DASH,
-            'space_to_dash': SLUGIFY_SPACE_TO_DASH}
-    mode = 0
-    for v in value.split(','):
-        f = mapping.get(v.strip())
-        if f is None:
-            if v == 'iconv':
-                raise Exception("'iconv' is not supported as a slugify mode "
-                                "in PieCrust2. Use 'transliterate'.")
-            raise Exception("Unknown slugify flag: %s" % v)
-        mode |= f
-    return mode
+ROUTE_TYPE_SOURCE = 0
+ROUTE_TYPE_GENERATOR = 1
 
 
 class Route(object):
     """ Information about a route for a PieCrust application.
         Each route defines the "shape" of an URL and how it maps to
-        sources and taxonomies.
+        sources and generators.
     """
     def __init__(self, app, cfg):
         self.app = app
 
-        self.source_name = cfg['source']
-        self.taxonomy_name = cfg.get('taxonomy')
-        self.taxonomy_term_sep = cfg.get('term_separator', '/')
-
-        sm = cfg.get('slugify_mode')
-        if not sm:
-            sm = app.config.get('site/slugify_mode', 'encode')
-        self.slugify_mode = _parse_slugify_mode(sm)
+        self.source_name = cfg.get('source')
+        self.generator_name = cfg.get('generator')
+        if not self.source_name and not self.generator_name:
+            raise InvalidRouteError(
+                    "Both `source` and `generator` are specified.")
 
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
@@ -127,23 +100,45 @@ class Route(object):
         self.template_func = None
         self.template_func_name = None
         self.template_func_args = []
+        self.template_func_vararg = None
         self._createTemplateFunc(cfg.get('func'))
 
     @property
-    def is_taxonomy_route(self):
-        return self.taxonomy_name is not None
+    def route_type(self):
+        if self.source_name:
+            return ROUTE_TYPE_SOURCE
+        elif self.generator_name:
+            return ROUTE_TYPE_GENERATOR
+        else:
+            raise InvalidRouteError()
 
     @property
+    def is_source_route(self):
+        return self.route_type == ROUTE_TYPE_SOURCE
+
+    @property
+    def is_generator_route(self):
+        return self.route_type == ROUTE_TYPE_GENERATOR
+
+    @cached_property
     def source(self):
+        if not self.is_source_route:
+            return InvalidRouteError("This is not a source route.")
         for src in self.app.sources:
             if src.name == self.source_name:
                 return src
-        raise Exception("Can't find source '%s' for route '%'." % (
+        raise Exception("Can't find source '%s' for route '%s'." % (
                 self.source_name, self.uri))
 
-    @property
-    def source_realm(self):
-        return self.source.realm
+    @cached_property
+    def generator(self):
+        if not self.is_generator_route:
+            return InvalidRouteError("This is not a generator route.")
+        for gen in self.app.generators:
+            if gen.name == self.generator_name:
+                return gen
+        raise Exception("Can't find generator '%s' for route '%s'." % (
+                self.generator_name, self.uri))
 
     def matchesMetadata(self, route_metadata):
         return self.required_route_metadata.issubset(route_metadata.keys())
@@ -234,38 +229,6 @@ class Route(object):
 
         return uri
 
-    def getTaxonomyTerms(self, route_metadata):
-        if not self.is_taxonomy_route:
-            raise Exception("This route isn't a taxonomy route.")
-
-        tax = self.app.getTaxonomy(self.taxonomy_name)
-        all_values = route_metadata.get(tax.term_name)
-        if all_values is None:
-            raise Exception("'%s' values couldn't be found in route metadata" %
-                            tax.term_name)
-
-        if self.taxonomy_term_sep in all_values:
-            return tuple(all_values.split(self.taxonomy_term_sep))
-        return all_values
-
-    def slugifyTaxonomyTerm(self, term):
-        if isinstance(term, tuple):
-            return self.taxonomy_term_sep.join(
-                    map(self._slugifyOne, term))
-        return self._slugifyOne(term)
-
-    def _slugifyOne(self, term):
-        if self.slugify_mode & SLUGIFY_TRANSLITERATE:
-            term = unidecode.unidecode(term)
-        if self.slugify_mode & SLUGIFY_LOWERCASE:
-            term = term.lower()
-        if self.slugify_mode & SLUGIFY_DOT_TO_DASH:
-            term = re_first_dot_to_dash.sub('', term)
-            term = re_dot_to_dash.sub('-', term)
-        if self.slugify_mode & SLUGIFY_SPACE_TO_DASH:
-            term = re_space_to_dash.sub('-', term)
-        return term
-
     def _uriFormatRepl(self, m):
         name = m.group('name')
         #TODO: fix this hard-coded shit
@@ -280,7 +243,7 @@ class Route(object):
     def _uriPatternRepl(self, m):
         name = m.group('name')
         qualifier = m.group('qual')
-        if qualifier == 'path' or self.taxonomy_name:
+        if qualifier == 'path':
             return r'(?P<%s>[^\?]*)' % name
         return r'(?P<%s>[^/\?]+)' % name
 
@@ -302,66 +265,54 @@ class Route(object):
                             (self.uri_pattern, func_def))
 
         self.template_func_name = m.group('name')
-        self.template_func_args.append(m.group('first_arg'))
-        arg_list = m.group('other_args')
+        self.template_func_args = []
+        arg_list = m.group('args')
         if arg_list:
-            self.template_func_args += template_func_arg_re.findall(arg_list)
+            self.template_func_args = template_func_arg_re.findall(arg_list)
+            for i in range(len(self.template_func_args) - 1):
+                if self.template_func_args[i][0] == '+':
+                    raise Exception("Only the last route parameter can be a "
+                                    "variable argument (prefixed with `+`)")
 
-        if self.taxonomy_name:
-            # This will be a taxonomy route function... this means we can
-            # have a variable number of parameters, but only one parameter
-            # definition, which is the value.
-            if len(self.template_func_args) != 1:
-                raise Exception("Route '%s' is a taxonomy route and must have "
-                                "only one argument, which is the term value." %
-                                self.uri_pattern)
+        if (self.template_func_args and
+                self.template_func_args[-1][0] == '+'):
+            self.template_func_vararg = self.template_func_args[-1][1:]
 
-            def template_func(*args):
-                if len(args) == 0:
-                    raise Exception(
-                            "Route function '%s' expected at least one "
-                            "argument." % func_def)
+        def template_func(*args):
+            is_variable = (self.template_func_vararg is not None)
+            if not is_variable and len(args) != len(self.template_func_args):
+                raise Exception(
+                        "Route function '%s' expected %d arguments, "
+                        "got %d." %
+                        (func_def, len(self.template_func_args),
+                            len(args)))
+            elif is_variable and len(args) < len(self.template_func_args):
+                raise Exception(
+                        "Route function '%s' expected at least %d arguments, "
+                        "got %d." %
+                        (func_def, len(self.template_func_args),
+                            len(args)))
 
-                # Term combinations can be passed as an array, or as multiple
-                # arguments.
-                values = args
-                if len(args) == 1 and isinstance(args[0], list):
-                    values = args[0]
+            metadata = {}
+            non_var_args = list(self.template_func_args)
+            if is_variable:
+                del non_var_args[-1]
 
-                # We need to register this use of a taxonomy term.
-                if len(values) == 1:
-                    registered_values = str(values[0])
-                else:
-                    registered_values = tuple([str(v) for v in values])
-                eis = self.app.env.exec_info_stack
-                cpi = eis.current_page_info.render_ctx.current_pass_info
-                if cpi:
-                    cpi.used_taxonomy_terms.add(
-                            (self.source_name, self.taxonomy_name,
-                                registered_values))
+            for arg_name, arg_val in zip(non_var_args, args):
+                #TODO: fix this hard-coded shit.
+                if arg_name in ['year', 'month', 'day']:
+                    arg_val = int(arg_val)
+                metadata[arg_name] = arg_val
 
-                str_values = self.slugifyTaxonomyTerm(registered_values)
-                term_name = self.template_func_args[0]
-                metadata = {term_name: str_values}
+            if is_variable:
+                metadata[self.template_func_vararg] = []
+                for i in range(len(non_var_args), len(args)):
+                    metadata[self.template_func_vararg].append(args[i])
 
-                return self.getUri(metadata)
+            if self.is_generator_route:
+                self.generator.onRouteFunctionUsed(self, metadata)
 
-        else:
-            # Normal route function.
-            def template_func(*args):
-                if len(args) != len(self.template_func_args):
-                    raise Exception(
-                            "Route function '%s' expected %d arguments, "
-                            "got %d." %
-                            (func_def, len(self.template_func_args),
-                                len(args)))
-                metadata = {}
-                for arg_name, arg_val in zip(self.template_func_args, args):
-                    #TODO: fix this hard-coded shit.
-                    if arg_name in ['year', 'month', 'day']:
-                        arg_val = int(arg_val)
-                    metadata[arg_name] = arg_val
-                return self.getUri(metadata)
+            return self.getUri(metadata)
 
         self.template_func = template_func
 

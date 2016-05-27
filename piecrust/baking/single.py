@@ -72,7 +72,7 @@ class PageBaker(object):
         return os.path.normpath(os.path.join(*bake_path))
 
     def bake(self, qualified_page, prev_entry, dirty_source_names,
-             tax_info=None):
+             generator_name=None):
         # Start baking the sub-pages.
         cur_sub = 1
         has_more_subs = True
@@ -140,8 +140,9 @@ class PageBaker(object):
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 rp = self._bakeSingle(qualified_page, cur_sub, out_path,
-                                      tax_info)
+                                      generator_name)
             except Exception as ex:
+                logger.exception(ex)
                 page_rel_path = os.path.relpath(qualified_page.path,
                                                 self.app.root_dir)
                 raise BakingError("%s: error baking '%s'." %
@@ -183,10 +184,11 @@ class PageBaker(object):
 
         return sub_entries
 
-    def _bakeSingle(self, qualified_page, num, out_path, tax_info=None):
-        ctx = PageRenderingContext(qualified_page, page_num=num)
-        if tax_info:
-            ctx.setTaxonomyFilter(tax_info.term)
+    def _bakeSingle(self, qp, num, out_path,
+                    generator_name=None):
+        ctx = PageRenderingContext(qp, page_num=num)
+        if qp.route.is_generator_route:
+            qp.route.generator.prepareRenderContext(ctx)
 
         with self.app.env.timerScope("PageRender"):
             rp = render_page(ctx)

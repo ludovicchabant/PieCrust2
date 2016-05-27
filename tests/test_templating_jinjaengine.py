@@ -28,7 +28,7 @@ def test_simple(contents, expected):
     with mock_fs_scope(fs, open_patches=open_patches):
         app = fs.getApp()
         page = get_simple_page(app, 'foo.md')
-        route = app.getRoute('pages', None)
+        route = app.getSourceRoute('pages', None)
         route_metadata = {'slug': 'foo'}
         output = render_simple_page(page, route, route_metadata)
         assert output == expected
@@ -46,7 +46,7 @@ def test_layout():
     with mock_fs_scope(fs, open_patches=open_patches):
         app = fs.getApp()
         page = get_simple_page(app, 'foo.md')
-        route = app.getRoute('pages', None)
+        route = app.getSourceRoute('pages', None)
         route_metadata = {'slug': 'foo'}
         output = render_simple_page(page, route, route_metadata)
         assert output == expected
@@ -63,7 +63,7 @@ def test_partial():
     with mock_fs_scope(fs, open_patches=open_patches):
         app = fs.getApp()
         page = get_simple_page(app, 'foo.md')
-        route = app.getRoute('pages', None)
+        route = app.getSourceRoute('pages', None)
         route_metadata = {'slug': 'foo'}
         output = render_simple_page(page, route, route_metadata)
         assert output == expected

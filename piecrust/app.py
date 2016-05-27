@@ -15,7 +15,6 @@ from piecrust.environment import StandardEnvironment
 from piecrust.configuration import ConfigurationError, merge_dicts
 from piecrust.routing import Route
 from piecrust.sources.base import REALM_THEME
-from piecrust.taxonomies import Taxonomy
 
 
 logger = logging.getLogger(__name__)
@@ -151,12 +150,20 @@ class PieCrust(object):
         return routes
 
     @cached_property
-    def taxonomies(self):
-        taxonomies = []
-        for tn, tc in self.config.get('site/taxonomies').items():
-            tax = Taxonomy(self, tn, tc)
-            taxonomies.append(tax)
-        return taxonomies
+    def generators(self):
+        defs = {}
+        for cls in self.plugin_loader.getPageGenerators():
+            defs[cls.GENERATOR_NAME] = cls
+
+        gens = []
+        for n, g in self.config.get('site/generators').items():
+            cls = defs.get(g['type'])
+            if cls is None:
+                raise ConfigurationError("No such page generator type: %s" %
+                                         g['type'])
+            gen = cls(self, n, g)
+            gens.append(gen)
+        return gens
 
     def getSource(self, source_name):
         for source in self.sources:
@@ -164,31 +171,28 @@ class PieCrust(object):
                 return source
         return None
 
-    def getRoutes(self, source_name, *, skip_taxonomies=False):
+    def getGenerator(self, generator_name):
+        for gen in self.generators:
+            if gen.name == generator_name:
+                return gen
+        return None
+
+    def getSourceRoutes(self, source_name):
         for route in self.routes:
             if route.source_name == source_name:
-                if not skip_taxonomies or route.taxonomy_name is None:
-                    yield route
+                yield route
 
-    def getRoute(self, source_name, route_metadata, *, skip_taxonomies=False):
-        for route in self.getRoutes(source_name,
-                                    skip_taxonomies=skip_taxonomies):
+    def getSourceRoute(self, source_name, route_metadata):
+        for route in self.getSourceRoutes(source_name):
             if (route_metadata is None or
                     route.matchesMetadata(route_metadata)):
                 return route
         return None
 
-    def getTaxonomyRoute(self, tax_name, source_name):
+    def getGeneratorRoute(self, generator_name):
         for route in self.routes:
-            if (route.taxonomy_name == tax_name and
-                    route.source_name == source_name):
+            if route.generator_name == generator_name:
                 return route
-        return None
-
-    def getTaxonomy(self, tax_name):
-        for tax in self.taxonomies:
-            if tax.name == tax_name:
-                return tax
         return None
 
     def _get_dir(self, default_rel_dir):

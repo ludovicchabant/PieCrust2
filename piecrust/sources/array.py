@@ -42,6 +42,3 @@ class ArraySource(PageSource, SimplePaginationSourceMixin):
         for p in self.inner_source:
             yield CachedPageFactory(p)
 
-    def getTaxonomyPageRef(self, tax_name):
-        return None
-

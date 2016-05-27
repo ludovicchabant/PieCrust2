@@ -21,6 +21,8 @@ from piecrust.formatting.hoedownformatter import HoedownFormatter
 from piecrust.formatting.markdownformatter import MarkdownFormatter
 from piecrust.formatting.textileformatter import TextileFormatter
 from piecrust.formatting.smartypantsformatter import SmartyPantsFormatter
+from piecrust.generation.blogarchives import BlogArchivesPageGenerator
+from piecrust.generation.taxonomy import TaxonomyPageGenerator
 from piecrust.importing.jekyll import JekyllImporter
 from piecrust.importing.piecrust import PieCrust1Importer
 from piecrust.importing.wordpress import WordpressXmlImporter
@@ -86,6 +88,11 @@ class BuiltInPlugin(PieCrustPlugin):
                 AutoConfigSource,
                 OrderedPageSource,
                 ProseSource]
+
+    def getPageGenerators(self):
+        return [
+                TaxonomyPageGenerator,
+                BlogArchivesPageGenerator]
 
     def getDataProviders(self):
         return [

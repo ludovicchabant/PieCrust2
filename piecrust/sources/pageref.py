@@ -32,6 +32,9 @@ class PageRef(object):
         self._first_valid_hit_index = self._INDEX_NEEDS_LOADING
         self._exts = list(app.config.get('site/auto_formats').keys())
 
+    def __str__(self):
+        return self._page_ref
+
     @property
     def exists(self):
         try:

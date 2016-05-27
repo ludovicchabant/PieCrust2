@@ -133,9 +133,3 @@ class PageSource(object):
 
         return self._provider_type(self, page, override)
 
-    def getTaxonomyPageRef(self, tax_name):
-        tax_pages = self.config.get('taxonomy_pages')
-        if tax_pages is None:
-            return None
-        return tax_pages.get(tax_name)
-

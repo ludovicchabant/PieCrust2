@@ -76,12 +76,13 @@ def test_serve_tag_page(tag, expected_indices):
     with mock_fs_scope(fs):
         app = fs.getApp()
         page = app.getSource('pages').getPage({'slug': '_tag', 'tag': tag})
-        route = app.getTaxonomyRoute('tags', 'posts')
-        route_metadata = {'slug': '_tag', 'tag': tag}
+        route = app.getGeneratorRoute('posts_tags')
+        assert route is not None
 
+        route_metadata = {'slug': '_tag', 'tag': tag}
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
-        ctx.setTaxonomyFilter(tag)
+        route.generator.prepareRenderContext(ctx)
         rp = render_page(ctx)
 
         expected = "Pages in %s\n" % tag
@@ -109,7 +110,13 @@ def test_serve_category_page(category, expected_indices):
         return c
 
     fs = (mock_fs()
-          .withConfig()
+          .withConfig({
+              'site': {
+                  'taxonomies': {
+                      'categories': {'term': 'category'}
+                      }
+                  }
+              })
           .withPages(6, 'posts/2015-03-{idx1:02}_post{idx1:02}.md',
                      config_factory)
           .withPage('pages/_category.md', {'layout': 'none', 'format': 'none'},
@@ -121,12 +128,13 @@ def test_serve_category_page(category, expected_indices):
         app = fs.getApp()
         page = app.getSource('pages').getPage({'slug': '_category',
                                                'category': category})
-        route = app.getTaxonomyRoute('categories', 'posts')
-        route_metadata = {'slug': '_category', 'category': category}
+        route = app.getGeneratorRoute('posts_categories')
+        assert route is not None
 
+        route_metadata = {'slug': '_category', 'category': category}
         qp = QualifiedPage(page, route, route_metadata)
         ctx = PageRenderingContext(qp)
-        ctx.setTaxonomyFilter(category)
+        route.generator.prepareRenderContext(ctx)
         rp = render_page(ctx)
 
         expected = "Pages in %s\n" % category

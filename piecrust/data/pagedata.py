@@ -1,5 +1,9 @@
 import time
+import logging
 import collections.abc
+
+
+logger = logging.getLogger(__name__)
 
 
 class LazyPageConfigLoaderHasNoValue(Exception):
@@ -29,12 +33,14 @@ class LazyPageConfigData(collections.abc.Mapping):
         try:
             return self._getValue(name)
         except LazyPageConfigLoaderHasNoValue as ex:
+            logger.exception(ex)
             raise AttributeError("No such attribute: %s" % name) from ex
 
     def __getitem__(self, name):
         try:
             return self._getValue(name)
         except LazyPageConfigLoaderHasNoValue as ex:
+            logger.exception(ex)
             raise KeyError("No such key: %s" % name) from ex
 
     def __iter__(self):
@@ -69,6 +75,7 @@ class LazyPageConfigData(collections.abc.Mapping):
             except LazyPageConfigLoaderHasNoValue:
                 raise
             except Exception as ex:
+                logger.exception(ex)
                 raise Exception(
                         "Error while loading attribute '%s' for: %s" %
                         (name, self._page.rel_path)) from ex
@@ -88,6 +95,7 @@ class LazyPageConfigData(collections.abc.Mapping):
             except LazyPageConfigLoaderHasNoValue:
                 raise
             except Exception as ex:
+                logger.exception(ex)
                 raise Exception(
                         "Error while loading attribute '%s' for: %s" %
                         (name, self._page.rel_path)) from ex
@@ -125,6 +133,7 @@ class LazyPageConfigData(collections.abc.Mapping):
         try:
             self._load()
         except Exception as ex:
+            logger.exception(ex)
             raise Exception(
                     "Error while loading data for: %s" %
                     self._page.rel_path) from ex

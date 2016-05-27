@@ -274,12 +274,8 @@ class ShowRecordCommand(ChefCommand):
             rel_path = os.path.relpath(entry.path, ctx.app.root_dir)
             logging.info("   path:      %s" % rel_path)
             logging.info("   source:    %s" % entry.source_name)
-            if entry.taxonomy_info:
-                ti = entry.taxonomy_info
-                logging.info("   taxonomy:  %s = %s (in %s)" %
-                             (ti.taxonomy_name, ti.term, ti.source_name))
-            else:
-                logging.info("   taxonomy:  <none>")
+            if entry.extra_key:
+                logging.info("   extra key: %s" % entry.extra_key)
             logging.info("   flags:     %s" % _join(flags))
             logging.info("   config:    %s" % entry.config)
 
@@ -326,11 +322,9 @@ class ShowRecordCommand(ChefCommand):
                     logging.info("       used pagination: %s", pgn_info)
                     logging.info("       used assets: %s",
                                  'yes' if ri.used_assets else 'no')
-                    logging.info("       used terms: %s" %
-                                 _join(
-                                        ['%s=%s (%s)' % (tn, t, sn)
-                                         for sn, tn, t in
-                                         ri.used_taxonomy_terms]))
+                    logging.info("       other info:")
+                    for k, v in ri._custom_info.items():
+                        logging.info("       - %s: %s" % (k, v))
 
                 if sub.errors:
                     logging.error("   errors: %s" % sub.errors)

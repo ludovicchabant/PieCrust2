@@ -3,13 +3,14 @@ import os.path
 import hashlib
 import logging
 from piecrust.baking.records import (
-        BakeRecordEntry, TransitionalBakeRecord, TaxonomyInfo)
+        BakeRecordEntry, TransitionalBakeRecord)
 from piecrust.baking.worker import (
         save_factory,
         JOB_LOAD, JOB_RENDER_FIRST, JOB_BAKE)
 from piecrust.chefutil import (
         format_timed_scope, format_timed)
 from piecrust.environment import ExecutionStats
+from piecrust.generation.base import PageGeneratorBakeContext
 from piecrust.routing import create_route_metadata
 from piecrust.sources.base import (
         REALM_NAMES, REALM_USER, REALM_THEME)
@@ -29,16 +30,13 @@ class Baker(object):
         self.applied_config_variant = applied_config_variant
         self.applied_config_values = applied_config_values
 
-        # Remember what taxonomy pages we should skip
-        # (we'll bake them repeatedly later with each taxonomy term)
-        self.taxonomy_pages = []
-        logger.debug("Gathering taxonomy page paths:")
-        for tax in self.app.taxonomies:
-            for src in self.app.sources:
-                tax_page_ref = tax.getPageRef(src)
-                for path in tax_page_ref.possible_paths:
-                    self.taxonomy_pages.append(path)
-                    logger.debug(" - %s" % path)
+        # Remember what generator pages we should skip.
+        self.generator_pages = []
+        logger.debug("Gathering generator page paths:")
+        for gen in self.app.generators:
+            for path in gen.page_ref.possible_paths:
+                self.generator_pages.append(path)
+                logger.debug(" - %s" % path)
 
         # Register some timers.
         self.app.env.registerTimer('LoadJob', raise_if_registered=False)
@@ -101,8 +99,8 @@ class Baker(object):
             if srclist is not None:
                 self._bakeRealm(record, pool, realm, srclist)
 
-        # Bake taxonomies.
-        self._bakeTaxonomies(record, pool)
+        # Call all the page generators.
+        self._bakePageGenerators(record, pool)
 
         # All done with the workers. Close the pool and get reports.
         reports = pool.close()
@@ -197,7 +195,7 @@ class Baker(object):
             for source in srclist:
                 factories = source.getPageFactories()
                 all_factories += [f for f in factories
-                                  if f.path not in self.taxonomy_pages]
+                                  if f.path not in self.generator_pages]
 
             self._loadRealmPages(record, pool, all_factories)
             self._renderRealmPages(record, pool, all_factories)
@@ -272,8 +270,7 @@ class Baker(object):
                     logger.error(record_entry.errors[-1])
                     continue
 
-                route = self.app.getRoute(fac.source.name, fac.metadata,
-                                          skip_taxonomies=True)
+                route = self.app.getSourceRoute(fac.source.name, fac.metadata)
                 if route is None:
                     record_entry.errors.append(
                             "Can't get route for page: %s" % fac.ref_spec)
@@ -281,9 +278,14 @@ class Baker(object):
                     continue
 
                 # All good, queue the job.
+                route_index = self.app.routes.index(route)
                 job = {
                         'type': JOB_RENDER_FIRST,
-                        'job': save_factory(fac)}
+                        'job': {
+                            'factory_info': save_factory(fac),
+                            'route_index': route_index
+                            }
+                        }
                 jobs.append(job)
 
             ar = pool.queueJobs(jobs, handler=_handler)
@@ -291,7 +293,7 @@ class Baker(object):
 
     def _bakeRealmPages(self, record, pool, realm, factories):
         def _handler(res):
-            entry = record.getCurrentEntry(res['path'], res['taxonomy_info'])
+            entry = record.getCurrentEntry(res['path'])
             entry.subs = res['sub_entries']
             if res['errors']:
                 entry.errors += res['errors']
@@ -317,158 +319,14 @@ class Baker(object):
             ar = pool.queueJobs(jobs, handler=_handler)
             ar.wait()
 
-    def _bakeTaxonomies(self, record, pool):
-        logger.debug("Baking taxonomy pages...")
-        with format_timed_scope(logger, 'built taxonomy buckets',
-                                level=logging.DEBUG, colored=False):
-            buckets = self._buildTaxonomyBuckets(record)
+    def _bakePageGenerators(self, record, pool):
+        for gen in self.app.generators:
+            ctx = PageGeneratorBakeContext(self.app, record, pool, gen)
+            gen.bake(ctx)
 
-        start_time = time.perf_counter()
-        page_count = self._bakeTaxonomyBuckets(record, pool, buckets)
-        logger.info(format_timed(start_time,
-                                 "baked %d taxonomy pages." % page_count))
-
-    def _buildTaxonomyBuckets(self, record):
-        # Let's see all the taxonomy terms for which we must bake a
-        # listing page... first, pre-populate our big map of used terms.
-        # For each source name, we have a list of taxonomies, and for each
-        # taxonomies, a list of terms, some being 'dirty', some used last
-        # time, etc.
-        buckets = {}
-        tax_names = [t.name for t in self.app.taxonomies]
-        source_names = [s.name for s in self.app.sources]
-        for sn in source_names:
-            source_taxonomies = {}
-            buckets[sn] = source_taxonomies
-            for tn in tax_names:
-                source_taxonomies[tn] = _TaxonomyTermsInfo()
-
-        # Now see which ones are 'dirty' based on our bake record.
-        logger.debug("Gathering dirty taxonomy terms")
-        for prev_entry, cur_entry in record.transitions.values():
-            # Re-bake all taxonomy pages that include new or changed
-            # pages.
-            if cur_entry and cur_entry.was_any_sub_baked:
-                entries = [cur_entry]
-                if prev_entry:
-                    entries.append(prev_entry)
-
-                for tax in self.app.taxonomies:
-                    changed_terms = set()
-                    for e in entries:
-                        terms = e.config.get(tax.setting_name)
-                        if terms:
-                            if not tax.is_multiple:
-                                terms = [terms]
-                            changed_terms |= set(terms)
-
-                    if len(changed_terms) > 0:
-                        tt_info = buckets[cur_entry.source_name][tax.name]
-                        tt_info.dirty_terms |= changed_terms
-
-            # Remember all terms used.
-            for tax in self.app.taxonomies:
-                if cur_entry and not cur_entry.was_overriden:
-                    cur_terms = cur_entry.config.get(tax.setting_name)
-                    if cur_terms:
-                        if not tax.is_multiple:
-                            cur_terms = [cur_terms]
-                        tt_info = buckets[cur_entry.source_name][tax.name]
-                        tt_info.all_terms |= set(cur_terms)
-
-        # Re-bake the combination pages for terms that are 'dirty'.
-        known_combinations = set()
-        logger.debug("Gathering dirty term combinations")
-        for prev_entry, cur_entry in record.transitions.values():
-            if not cur_entry:
-                continue
-            used_taxonomy_terms = cur_entry.getAllUsedTaxonomyTerms()
-            for sn, tn, terms in used_taxonomy_terms:
-                if isinstance(terms, tuple):
-                    known_combinations.add((sn, tn, terms))
-        for sn, tn, terms in known_combinations:
-            tt_info = buckets[sn][tn]
-            tt_info.all_terms.add(terms)
-            if not tt_info.dirty_terms.isdisjoint(set(terms)):
-                tt_info.dirty_terms.add(terms)
-
-        return buckets
-
-    def _bakeTaxonomyBuckets(self, record, pool, buckets):
-        def _handler(res):
-            entry = record.getCurrentEntry(res['path'], res['taxonomy_info'])
-            entry.subs = res['sub_entries']
-            if res['errors']:
-                entry.errors += res['errors']
-            if entry.has_any_error:
-                record.current.success = False
-
-        # Start baking those terms.
-        jobs = []
-        for source_name, source_taxonomies in buckets.items():
-            for tax_name, tt_info in source_taxonomies.items():
-                terms = tt_info.dirty_terms
-                if len(terms) == 0:
-                    continue
-
-                logger.debug(
-                        "Baking '%s' for source '%s': %s" %
-                        (tax_name, source_name, terms))
-                tax = self.app.getTaxonomy(tax_name)
-                source = self.app.getSource(source_name)
-                tax_page_ref = tax.getPageRef(source)
-                if not tax_page_ref.exists:
-                    logger.debug(
-                            "No taxonomy page found at '%s', skipping." %
-                            tax.page_ref)
-                    continue
-
-                logger.debug(
-                        "Using taxonomy page: %s:%s" %
-                        (tax_page_ref.source_name, tax_page_ref.rel_path))
-                fac = tax_page_ref.getFactory()
-
-                for term in terms:
-                    logger.debug(
-                            "Queuing: %s [%s=%s]" %
-                            (fac.ref_spec, tax_name, term))
-                    tax_info = TaxonomyInfo(tax_name, source_name, term)
-
-                    cur_entry = BakeRecordEntry(
-                            fac.source.name, fac.path, tax_info)
-                    record.addEntry(cur_entry)
-
-                    job = self._makeBakeJob(record, fac, tax_info)
-                    if job is not None:
-                        jobs.append(job)
-
-        ar = pool.queueJobs(jobs, handler=_handler)
-        ar.wait()
-
-        # Now we create bake entries for all the terms that were *not* dirty.
-        # This is because otherwise, on the next incremental bake, we wouldn't
-        # find any entry for those things, and figure that we need to delete
-        # their outputs.
-        for prev_entry, cur_entry in record.transitions.values():
-            # Only consider taxonomy-related entries that don't have any
-            # current version.
-            if (prev_entry and prev_entry.taxonomy_info and
-                    not cur_entry):
-                ti = prev_entry.taxonomy_info
-                tt_info = buckets[ti.source_name][ti.taxonomy_name]
-                if ti.term in tt_info.all_terms:
-                    logger.debug("Creating unbaked entry for taxonomy "
-                                 "term '%s:%s'." % (ti.taxonomy_name, ti.term))
-                    record.collapseEntry(prev_entry)
-                else:
-                    logger.debug("Taxonomy term '%s:%s' isn't used anymore." %
-                                 (ti.taxonomy_name, ti.term))
-
-        return len(jobs)
-
-    def _makeBakeJob(self, record, fac, tax_info=None):
+    def _makeBakeJob(self, record, fac):
         # Get the previous (if any) and current entry for this page.
-        pair = record.getPreviousAndCurrentEntries(fac.path, tax_info)
+        pair = record.getPreviousAndCurrentEntries(fac.path)
         assert pair is not None
         prev_entry, cur_entry = pair
         assert cur_entry is not None
@@ -482,16 +340,7 @@ class Baker(object):
         # Build the route metadata and find the appropriate route.
         page = fac.buildPage()
         route_metadata = create_route_metadata(page)
-        if tax_info is not None:
-            tax = self.app.getTaxonomy(tax_info.taxonomy_name)
-            route = self.app.getTaxonomyRoute(tax_info.taxonomy_name,
-                                              tax_info.source_name)
-
-            slugified_term = route.slugifyTaxonomyTerm(tax_info.term)
-            route_metadata[tax.term_name] = slugified_term
-        else:
-            route = self.app.getRoute(fac.source.name, route_metadata,
-                                      skip_taxonomies=True)
+        route = self.app.getSourceRoute(fac.source.name, route_metadata)
         assert route is not None
 
         # Figure out if this page is overriden by another previously
@@ -511,11 +360,14 @@ class Baker(object):
             cur_entry.flags |= BakeRecordEntry.FLAG_OVERRIDEN
             return None
 
+        route_index = self.app.routes.index(route)
         job = {
                 'type': JOB_BAKE,
                 'job': {
                         'factory_info': save_factory(fac),
-                        'taxonomy_info': tax_info,
+                        'generator_name': None,
+                        'generator_record_key': None,
+                        'route_index': route_index,
                         'route_metadata': route_metadata,
                         'dirty_source_names': record.dirty_source_names
                         }
@@ -568,16 +420,4 @@ class Baker(object):
                 worker_class=BakeWorker,
                 initargs=(ctx,))
         return pool
-
-
-class _TaxonomyTermsInfo(object):
-    def __init__(self):
-        self.dirty_terms = set()
-        self.all_terms = set()
-
-    def __str__(self):
-        return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
-
-    def __repr__(self):
-        return 'dirty:%s, all:%s' % (self.dirty_terms, self.all_terms)
 

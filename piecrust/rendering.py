@@ -79,26 +79,27 @@ RENDER_PASSES = [PASS_FORMATTING, PASS_RENDERING]
 class RenderPassInfo(object):
     def __init__(self):
         self.used_source_names = set()
-        self.used_taxonomy_terms = set()
         self.used_pagination = False
         self.pagination_has_more = False
         self.used_assets = False
+        self._custom_info = {}
 
-    def merge(self, other):
-        self.used_source_names |= other.used_source_names
-        self.used_taxonomy_terms |= other.used_taxonomy_terms
-        self.used_pagination = self.used_pagination or other.used_pagination
-        self.pagination_has_more = (self.pagination_has_more or
-                                    other.pagination_has_more)
-        self.used_assets = self.used_assets or other.used_assets
+    def setCustomInfo(self, key, info):
+        self._custom_info[key] = info
+
+    def getCustomInfo(self, key, default=None, create_if_missing=False):
+        if create_if_missing:
+            return self._custom_info.setdefault(key, default)
+        return self._custom_info.get(key, default)
+
 
     def _toJson(self):
         data = {
                 'used_source_names': list(self.used_source_names),
-                'used_taxonomy_terms': list(self.used_taxonomy_terms),
                 'used_pagination': self.used_pagination,
                 'pagination_has_more': self.pagination_has_more,
-                'used_assets': self.used_assets}
+                'used_assets': self.used_assets,
+                'custom_info': self._custom_info}
         return data
 
     @staticmethod
@@ -106,28 +107,25 @@ class RenderPassInfo(object):
         assert data is not None
         rpi = RenderPassInfo()
         rpi.used_source_names = set(data['used_source_names'])
-        for i in data['used_taxonomy_terms']:
-            terms = i[2]
-            if isinstance(terms, list):
-                terms = tuple(terms)
-            rpi.used_taxonomy_terms.add((i[0], i[1], terms))
         rpi.used_pagination = data['used_pagination']
         rpi.pagination_has_more = data['pagination_has_more']
         rpi.used_assets = data['used_assets']
+        rpi._custom_info = data['custom_info']
         return rpi
 
 
 class PageRenderingContext(object):
-    def __init__(self, qualified_page, page_num=1, force_render=False):
+    def __init__(self, qualified_page, page_num=1,
+                 force_render=False, is_from_request=False):
         self.page = qualified_page
         self.page_num = page_num
         self.force_render = force_render
+        self.is_from_request = is_from_request
         self.pagination_source = None
         self.pagination_filter = None
         self.custom_data = None
-        self._current_pass = PASS_NONE
-
         self.render_passes = [None, None]  # Same length as RENDER_PASSES
+        self._current_pass = PASS_NONE
 
     @property
     def app(self):
@@ -168,67 +166,9 @@ class PageRenderingContext(object):
             pass_info = self.current_pass_info
             pass_info.used_source_names.add(source.name)
 
-    def setTaxonomyFilter(self, term_value, *, needs_slugifier=False):
-        if not self.page.route.is_taxonomy_route:
-            raise Exception("The page for this context is not tied to a "
-                            "taxonomy route: %s" % self.uri)
-
-        slugifier = None
-        if needs_slugifier:
-            slugifier = self.page.route.slugifyTaxonomyTerm
-        taxonomy = self.app.getTaxonomy(self.page.route.taxonomy_name)
-
-        flt = PaginationFilter(value_accessor=page_value_accessor)
-        flt.addClause(HasTaxonomyTermsFilterClause(
-                taxonomy, term_value, slugifier))
-        self.pagination_filter = flt
-
-        is_combination = isinstance(term_value, tuple)
-        self.custom_data = {
-                taxonomy.term_name: term_value,
-                'is_multiple_%s' % taxonomy.term_name: is_combination}
-
     def _raiseIfNoCurrentPass(self):
         if self._current_pass == PASS_NONE:
             raise Exception("No rendering pass is currently active.")
-
-
-class HasTaxonomyTermsFilterClause(SettingFilterClause):
-    def __init__(self, taxonomy, value, slugifier):
-        super(HasTaxonomyTermsFilterClause, self).__init__(
-                taxonomy.setting_name, value)
-        self._taxonomy = taxonomy
-        self._slugifier = slugifier
-        self._is_combination = isinstance(self.value, tuple)
-
-    def pageMatches(self, fil, page):
-        if self._taxonomy.is_multiple:
-            # Multiple taxonomy, i.e. it supports multiple terms, like tags.
-            page_values = fil.value_accessor(page, self.name)
-            if page_values is None or not isinstance(page_values, list):
-                return False
-
-            if self._slugifier is not None:
-                page_set = set(map(self._slugifier, page_values))
-            else:
-                page_set = set(page_values)
-
-            if self._is_combination:
-                # Multiple taxonomy, and multiple terms to match. Check that
-                # the ones to match are all in the page's terms.
-                value_set = set(self.value)
-                return value_set.issubset(page_set)
-            else:
-                # Multiple taxonomy, one term to match.
-                return self.value in page_set
-
-        # Single taxonomy. Just compare the values.
-        page_value = fil.value_accessor(page, self.name)
-        if page_value is None:
-            return False
-        if self._slugifier is not None:
-            page_value = self._slugifier(page_value)
-        return page_value == self.value
 
 
 def render_page(ctx):
@@ -285,6 +225,7 @@ def render_page(ctx):
                 layout_result['pass_info'])
         return rp
     except Exception as ex:
+        logger.exception(ex)
         page_rel_path = os.path.relpath(ctx.page.path, ctx.app.root_dir)
         raise Exception("Error rendering page: %s" % page_rel_path) from ex
     finally:
@@ -402,6 +343,7 @@ def _do_render_layout(layout_name, page, layout_data):
     try:
         output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
+        logger.exception(ex)
         msg = "Can't find template for page: %s\n" % page.path
         msg += "Looked for: %s" % ', '.join(full_names)
         raise Exception(msg) from ex

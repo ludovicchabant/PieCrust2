@@ -1,6 +1,7 @@
 import time
 import collections.abc
 from piecrust.data.iterators import PageIterator
+from piecrust.generation.taxonomy import Taxonomy
 from piecrust.sources.array import ArraySource
 
 
@@ -72,27 +73,33 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
         self._taxonomies = {}
         self._ctx_set = False
 
+    @property
+    def posts(self):
+        return self._posts()
+
+    @property
+    def years(self):
+        return self._buildYearlyArchive()
+
+    @property
+    def months(self):
+        return self._buildMonthlyArchive()
+
     def __getitem__(self, name):
-        if name == 'posts':
-            return self._posts()
-        elif name == 'years':
-            return self._buildYearlyArchive()
-        elif name == 'months':
-            return self._buildMonthlyArchive()
-        elif self._source.app.getTaxonomy(name) is not None:
+        if self._source.app.config.get('site/taxonomies/' + name) is not None:
             return self._buildTaxonomy(name)
         raise KeyError("No such item: %s" % name)
 
     def __iter__(self):
         keys = ['posts', 'years', 'months']
-        keys += [t.name for t in self._source.app.taxonomies]
+        keys += list(self._source.app.config.get('site/taxonomies').keys())
         return iter(keys)
 
     def __len__(self):
-        return 3 + len(self._source.app.taxonomies)
+        return 3 + len(self._source.app.config.get('site/taxonomies'))
 
     def _debugRenderTaxonomies(self):
-        return [t.name for t in self._source.app.taxonomies]
+        return list(self._source.app.config.get('site/taxonomies').keys())
 
     def _posts(self):
         it = PageIterator(self._source, current_page=self._page)
@@ -152,19 +159,19 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
         if tax_name in self._taxonomies:
             return self._taxonomies[tax_name]
 
-        tax_info = self._page.app.getTaxonomy(tax_name)
-        setting_name = tax_info.setting_name
+        tax_cfg = self._page.app.config.get('site/taxonomies/' + tax_name)
+        tax = Taxonomy(tax_name, tax_cfg)
 
         posts_by_tax_value = {}
         for post in self._source.getPages():
-            tax_values = post.config.get(setting_name)
+            tax_values = post.config.get(tax.setting_name)
             if tax_values is None:
                 continue
             if not isinstance(tax_values, list):
                 tax_values = [tax_values]
             for val in tax_values:
-                posts_by_tax_value.setdefault(val, [])
-                posts_by_tax_value[val].append(post)
+                posts = posts_by_tax_value.setdefault(val, [])
+                posts.append(post)
 
         entries = []
         for value, ds in posts_by_tax_value.items():

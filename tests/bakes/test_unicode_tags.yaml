@@ -11,18 +11,18 @@ in:
       tags: [étrange, sévère]
       ---
     pages/_tag.md: |
-      Pages in {{pctagurl(tag)}}
+      Pages in {{pctagurl(tag)}} with {{tag}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
     pages/_index.md: ''
 outfiles:
     tag/étrange.html: |
-      Pages in /tag/%C3%A9trange.html
+      Pages in /tag/%C3%A9trange.html with étrange
       Post 02
       Post 01
     tag/sévère.html: |
-      Pages in /tag/s%C3%A9v%C3%A8re.html
+      Pages in /tag/s%C3%A9v%C3%A8re.html with sévère
       Post 02
 ---
 in:

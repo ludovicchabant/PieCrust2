@@ -53,7 +53,7 @@ class BakeWorker(IWorker):
                     self.ctx.previous_record_path)
             self.ctx.previous_record_index = {}
             for e in self.ctx.previous_record.entries:
-                key = _get_transition_key(e.path, e.taxonomy_info)
+                key = _get_transition_key(e.path, e.extra_key)
                 self.ctx.previous_record_index[key] = e
 
         # Create the job handlers.
@@ -150,13 +150,11 @@ class LoadJobHandler(JobHandler):
 class RenderFirstSubJobHandler(JobHandler):
     def handleJob(self, job):
         # Render the segments for the first sub-page of this page.
-        fac = load_factory(self.app, job)
+        fac = load_factory(self.app, job['factory_info'])
         self.app.env.addManifestEntry('RenderJobs', fac.ref_spec)
 
-        # These things should be OK as they're checked upstream by the baker.
-        route = self.app.getRoute(fac.source.name, fac.metadata,
-                                  skip_taxonomies=True)
-        assert route is not None
+        route_index = job['route_index']
+        route = self.app.routes[route_index]
 
         page = fac.buildPage()
         route_metadata = create_route_metadata(page)
@@ -198,35 +196,37 @@ class BakeJobHandler(JobHandler):
         fac = load_factory(self.app, job['factory_info'])
         self.app.env.addManifestEntry('BakeJobs', fac.ref_spec)
 
+        route_index = job['route_index']
         route_metadata = job['route_metadata']
-        tax_info = job['taxonomy_info']
-        if tax_info is not None:
-            route = self.app.getTaxonomyRoute(tax_info.taxonomy_name,
-                                              tax_info.source_name)
-        else:
-            route = self.app.getRoute(fac.source.name, route_metadata,
-                                      skip_taxonomies=True)
-        assert route is not None
+        route = self.app.routes[route_index]
+
+        gen_name = job['generator_name']
+        gen_key = job['generator_record_key']
+        dirty_source_names = job['dirty_source_names']
 
         page = fac.buildPage()
         qp = QualifiedPage(page, route, route_metadata)
 
         result = {
                 'path': fac.path,
-                'taxonomy_info': tax_info,
+                'generator_name': gen_name,
+                'generator_record_key': gen_key,
                 'sub_entries': None,
                 'errors': None}
-        dirty_source_names = job['dirty_source_names']
+
+        if job.get('needs_config', False):
+            result['config'] = page.config.getAll()
 
         previous_entry = None
         if self.ctx.previous_record_index is not None:
-            key = _get_transition_key(fac.path, tax_info)
+            key = _get_transition_key(fac.path, gen_key)
             previous_entry = self.ctx.previous_record_index.get(key)
 
         logger.debug("Baking page: %s" % fac.ref_spec)
+        logger.debug("With route metadata: %s" % route_metadata)
         try:
             sub_entries = self.page_baker.bake(
-                    qp, previous_entry, dirty_source_names, tax_info)
+                    qp, previous_entry, dirty_source_names, gen_name)
             result['sub_entries'] = sub_entries
 
         except BakingError as ex:

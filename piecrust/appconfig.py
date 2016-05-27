@@ -142,6 +142,7 @@ class PieCrustConfiguration(Configuration):
 
             self._values = self._validateAll(values)
         except Exception as ex:
+            logger.exception(ex)
             raise Exception(
                     "Error loading configuration from: %s" %
                     ', '.join(paths)) from ex
@@ -221,6 +222,7 @@ class PieCrustConfiguration(Configuration):
                 try:
                     val2 = callback(val, values, cache_writer)
                 except Exception as ex:
+                    logger.exception(ex)
                     raise Exception("Error raised in validator '%s'." %
                                     callback_name) from ex
                 if val2 is None:
@@ -288,7 +290,9 @@ default_theme_content_model_base = collections.OrderedDict({
                     }
                 ],
             'theme_tag_page': 'theme_pages:_tag.%ext%',
-            'theme_category_page': 'theme_pages:_category.%ext%'
+            'theme_category_page': 'theme_pages:_category.%ext%',
+            'theme_month_page': 'theme_pages:_month.%ext%',
+            'theme_year_page': 'theme_pages:_year.%ext%'
             })
         })
 
@@ -332,9 +336,10 @@ default_content_model_base = collections.OrderedDict({
             'posts_fs': DEFAULT_POSTS_FS,
             'default_page_layout': 'default',
             'default_post_layout': 'post',
-            'post_url': '%year%/%month%/%day%/%slug%',
-            'tag_url': 'tag/%tag%',
-            'category_url': '%category%',
+            'post_url': '/%year%/%month%/%day%/%slug%',
+            'year_url': '/%year%',
+            'tag_url': '/tag/%path:tag%',
+            'category_url': '/%category%',
             'posts_per_page': 5
             })
         })
@@ -362,25 +367,25 @@ def get_default_content_model(values, user_overrides):
                         'func': 'pcurl(slug)'
                         }
                     ],
-                'taxonomies': collections.OrderedDict({
-                    'tags': {
+                'taxonomies': collections.OrderedDict([
+                    ('tags', {
                         'multiple': True,
                         'term': 'tag'
-                        },
-                    'categories': {
+                        }),
+                    ('categories', {
                         'term': 'category'
-                        }
-                    })
+                        })
+                    ])
                 })
             })
 
 
 def get_default_content_model_for_blog(
         blog_name, is_only_blog, values, user_overrides, theme_site=False):
-    # Get the global values for various things we're interested in.
+    # Get the global (default) values for various things we're interested in.
     defs = {}
     names = ['posts_fs', 'posts_per_page', 'date_format',
-             'default_post_layout', 'post_url', 'tag_url', 'category_url']
+             'default_post_layout', 'post_url', 'year_url']
     for n in names:
         defs[n] = try_get_dict_value(
                 user_overrides, 'site/%s' % n,
@@ -389,7 +394,7 @@ def get_default_content_model_for_blog(
     # More stuff we need.
     if is_only_blog:
         url_prefix = ''
-        tax_page_prefix = ''
+        page_prefix = ''
         fs_endpoint = 'posts'
         data_endpoint = 'blog'
         item_name = 'post'
@@ -401,7 +406,7 @@ def get_default_content_model_for_blog(
             fs_endpoint = 'sample/posts'
     else:
         url_prefix = blog_name + '/'
-        tax_page_prefix = blog_name + '/'
+        page_prefix = blog_name + '/'
         fs_endpoint = 'posts/%s' % blog_name
         data_endpoint = blog_name
         item_name = '%s-post' % blog_name
@@ -414,28 +419,21 @@ def get_default_content_model_for_blog(
     blog_values = {}
     for n in names:
         blog_values[n] = blog_cfg.get(n, defs[n])
-        if n in ['post_url', 'tag_url', 'category_url']:
-            blog_values[n] = url_prefix + blog_values[n]
 
     posts_fs = blog_values['posts_fs']
     posts_per_page = blog_values['posts_per_page']
     date_format = blog_values['date_format']
     default_layout = blog_values['default_post_layout']
-    post_url = '/' + blog_values['post_url'].lstrip('/')
-    tag_url = '/' + blog_values['tag_url'].lstrip('/')
-    category_url = '/' + blog_values['category_url'].lstrip('/')
+    post_url = '/' + url_prefix + blog_values['post_url'].lstrip('/')
+    year_url = '/' + url_prefix + blog_values['year_url'].lstrip('/')
 
-    tags_taxonomy = 'pages:%s_tag.%%ext%%' % tax_page_prefix
-    category_taxonomy = 'pages:%s_category.%%ext%%' % tax_page_prefix
+    year_archive = 'pages:%s_year.%%ext%%' % page_prefix
     if not theme_site:
-        theme_tag_page = values['site'].get('theme_tag_page')
-        if theme_tag_page:
-            tags_taxonomy += ';' + theme_tag_page
-        theme_category_page = values['site'].get('theme_category_page')
-        if theme_category_page:
-            category_taxonomy += ';' + theme_category_page
+        theme_year_page = values['site'].get('theme_year_page')
+        if theme_year_page:
+            year_archive += ';' + theme_year_page
 
-    return collections.OrderedDict({
+    cfg = collections.OrderedDict({
             'site': collections.OrderedDict({
                 'sources': collections.OrderedDict({
                     blog_name: collections.OrderedDict({
@@ -447,11 +445,14 @@ def get_default_content_model_for_blog(
                         'data_type': 'blog',
                         'items_per_page': posts_per_page,
                         'date_format': date_format,
-                        'default_layout': default_layout,
-                        'taxonomy_pages': collections.OrderedDict({
-                            'tags': tags_taxonomy,
-                            'categories': category_taxonomy
-                            })
+                        'default_layout': default_layout
+                        })
+                    }),
+                'generators': collections.OrderedDict({
+                    ('%s_archives' % blog_name): collections.OrderedDict({
+                        'type': 'blog_archives',
+                        'source': blog_name,
+                        'page': year_archive
                         })
                     }),
                 'routes': [
@@ -461,20 +462,59 @@ def get_default_content_model_for_blog(
                         'func': 'pcposturl(year,month,day,slug)'
                         },
                     {
-                        'url': tag_url,
-                        'source': blog_name,
-                        'taxonomy': 'tags',
-                        'func': 'pctagurl(tag)'
-                        },
-                    {
-                        'url': category_url,
-                        'source': blog_name,
-                        'taxonomy': 'categories',
-                        'func': 'pccaturl(category)'
+                        'url': year_url,
+                        'generator': ('%s_archives' % blog_name),
+                        'func': 'pcyearurl(year)'
                         }
                     ]
                 })
             })
+
+    # Add a generator and a route for each taxonomy.
+    taxonomies_cfg = values.get('site', {}).get('taxonomies', {}).copy()
+    taxonomies_cfg.update(
+            user_overrides.get('site', {}).get('taxonomies', {}))
+    for tax_name, tax_cfg in taxonomies_cfg.items():
+        term = tax_cfg.get('term', tax_name)
+
+        # Generator.
+        page_ref = 'pages:%s_%s.%%ext%%' % (page_prefix, term)
+        if not theme_site:
+            theme_page_ref = values['site'].get('theme_%s_page' % term)
+            if theme_page_ref:
+                page_ref += ';' + theme_page_ref
+        tax_gen_name = '%s_%s' % (blog_name, tax_name)
+        tax_gen = collections.OrderedDict({
+            'type': 'taxonomy',
+            'source': blog_name,
+            'taxonomy': tax_name,
+            'page': page_ref
+            })
+        cfg['site']['generators'][tax_gen_name] = tax_gen
+
+        # Route.
+        tax_url_cfg_name = '%s_url' % term
+        tax_url = blog_cfg.get(tax_url_cfg_name,
+                               try_get_dict_value(
+                                   user_overrides,
+                                   'site/%s' % tax_url_cfg_name,
+                                   values['site'].get(
+                                       tax_url_cfg_name,
+                                       '%s/%%%s%%' % (term, term))))
+        tax_url = '/' + url_prefix + tax_url.lstrip('/')
+        term_arg = term
+        if tax_cfg.get('multiple') is True:
+            term_arg = '+' + term
+        tax_func = 'pc%surl(%s)' % (term, term_arg)
+        tax_route = collections.OrderedDict({
+            'url': tax_url,
+            'generator': tax_gen_name,
+            'taxonomy': tax_name,
+            'func': tax_func
+            })
+        cfg['site']['routes'].append(tax_route)
+
+    return cfg
 
 
 # Configuration value validators.
@@ -490,7 +530,11 @@ def _validate_site(v, values, cache):
     taxonomies = v.get('taxonomies')
     if taxonomies is None:
         v['taxonomies'] = {}
+    generators = v.get('generators')
+    if generators is None:
+        v['generators'] = {}
     return v
+
 
 # Make sure the site root starts and ends with a slash.
 def _validate_site_root(v, values, cache):
@@ -583,6 +627,14 @@ def _validate_site_sources(v, values, cache):
                     "Source '%s' is using a reserved endpoint name: %s" %
                     (sn, endpoint))
 
+        # Validate generators.
+        for gn, gc in sc.get('generators', {}).items():
+            if not isinstance(gc, dict):
+                raise ConfigurationError(
+                    "Generators for source '%s' should be defined in a "
+                    "dictionary." % sn)
+            gc['source'] = sn
+
     return v
 
 
@@ -605,23 +657,46 @@ def _validate_site_routes(v, values, cache):
                                      "have an 'url'.")
         if rc_url[0] != '/':
             raise ConfigurationError("Route URLs must start with '/'.")
-        if rc.get('source') is None:
-            raise ConfigurationError("Routes must specify a source.")
-        if rc['source'] not in list(values['site']['sources'].keys()):
+
+        r_source = rc.get('source')
+        r_generator = rc.get('generator')
+        if r_source is None and r_generator is None:
+            raise ConfigurationError("Routes must specify a source or "
+                                     "generator.")
+        if (r_source and
+                r_source not in list(values['site']['sources'].keys())):
             raise ConfigurationError("Route is referencing unknown "
-                                     "source: %s" % rc['source'])
-        rc.setdefault('taxonomy', None)
+                                     "source: %s" % r_source)
+        if (r_generator and
+                r_generator not in list(values['site']['generators'].keys())):
+            raise ConfigurationError("Route is referencing unknown "
+                                     "generator: %s" % r_generator)
+
+        rc.setdefault('generator', None)
         rc.setdefault('page_suffix', '/%num%')
 
     return v
 
 
 def _validate_site_taxonomies(v, values, cache):
+    if not isinstance(v, dict):
+        raise ConfigurationError(
+                "The 'site/taxonomies' setting must be a mapping.")
     for tn, tc in v.items():
         tc.setdefault('multiple', False)
         tc.setdefault('term', tn)
         tc.setdefault('page', '_%s.%%ext%%' % tc['term'])
+    return v
 
+
+def _validate_site_generators(v, values, cache):
+    if not isinstance(v, dict):
+        raise ConfigurationError(
+                "The 'site/generators' setting must be a mapping.")
+    for gn, gc in v.items():
+        if 'type' not in gc:
+            raise ConfigurationError(
+                    "Generator '%s' doesn't specify a type." % gn)
     return v
 
 

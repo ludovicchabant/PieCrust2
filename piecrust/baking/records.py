@@ -8,15 +8,10 @@ from piecrust.records import Record, TransitionalRecord
 logger = logging.getLogger(__name__)
 
 
-def _get_transition_key(path, taxonomy_info=None):
+def _get_transition_key(path, extra_key=None):
     key = path
-    if taxonomy_info:
-        key += '+%s:%s=' % (taxonomy_info.source_name,
-                            taxonomy_info.taxonomy_name)
-        if isinstance(taxonomy_info.term, tuple):
-            key += '/'.join(taxonomy_info.term)
-        else:
-            key += taxonomy_info.term
+    if extra_key:
+        key += '+%s' % extra_key
     return hashlib.md5(key.encode('utf8')).hexdigest()
 
 
@@ -69,28 +64,18 @@ class SubPageBakeInfo(object):
         return copy.deepcopy(self.render_info)
 
 
-class TaxonomyInfo(object):
-    def __init__(self, taxonomy_name, source_name, term):
-        self.taxonomy_name = taxonomy_name
-        self.source_name = source_name
-        self.term = term
-
-
 class BakeRecordEntry(object):
     """ An entry in the bake record.
-
-        The `taxonomy_info` attribute should be a tuple of the form:
-        (taxonomy name, term, source name)
     """
     FLAG_NONE = 0
     FLAG_NEW = 2**0
     FLAG_SOURCE_MODIFIED = 2**1
     FLAG_OVERRIDEN = 2**2
 
-    def __init__(self, source_name, path, taxonomy_info=None):
+    def __init__(self, source_name, path, extra_key=None):
         self.source_name = source_name
         self.path = path
-        self.taxonomy_info = taxonomy_info
+        self.extra_key = extra_key
         self.flags = self.FLAG_NONE
         self.config = None
         self.errors = []
@@ -145,14 +130,6 @@ class BakeRecordEntry(object):
                     res |= pinfo.used_source_names
         return res
 
-    def getAllUsedTaxonomyTerms(self):
-        res = set()
-        for o in self.subs:
-            for pinfo in o.render_info:
-                if pinfo:
-                    res |= pinfo.used_taxonomy_terms
-        return res
-
 
 class TransitionalBakeRecord(TransitionalRecord):
     def __init__(self, previous_path=None):
@@ -168,10 +145,10 @@ class TransitionalBakeRecord(TransitionalRecord):
         super(TransitionalBakeRecord, self).addEntry(entry)
 
     def getTransitionKey(self, entry):
-        return _get_transition_key(entry.path, entry.taxonomy_info)
+        return _get_transition_key(entry.path, entry.extra_key)
 
-    def getPreviousAndCurrentEntries(self, path, taxonomy_info=None):
-        key = _get_transition_key(path, taxonomy_info)
+    def getPreviousAndCurrentEntries(self, path, extra_key=None):
+        key = _get_transition_key(path, extra_key)
         pair = self.transitions.get(key)
         return pair
 
@@ -184,14 +161,14 @@ class TransitionalBakeRecord(TransitionalRecord):
                         return cur
         return None
 
-    def getPreviousEntry(self, path, taxonomy_info=None):
-        pair = self.getPreviousAndCurrentEntries(path, taxonomy_info)
+    def getPreviousEntry(self, path, extra_key=None):
+        pair = self.getPreviousAndCurrentEntries(path, extra_key)
         if pair is not None:
             return pair[0]
         return None
 
-    def getCurrentEntry(self, path, taxonomy_info=None):
-        pair = self.getPreviousAndCurrentEntries(path, taxonomy_info)
+    def getCurrentEntry(self, path, extra_key=None):
+        pair = self.getPreviousAndCurrentEntries(path, extra_key)
         if pair is not None:
             return pair[1]
         return None

@@ -33,6 +33,9 @@ class PieCrustPlugin(object):
     def getSources(self):
         return []
 
+    def getPageGenerators(self):
+        return []
+
     def getPublishers(self):
         return []
 
@@ -85,6 +88,9 @@ class PluginLoader(object):
 
     def getSources(self):
         return self._getPluginComponents('getSources')
+
+    def getPageGenerators(self):
+        return self._getPluginComponents('getPageGenerators')
 
     def getPublishers(self):
         return self._getPluginComponents('getPublishers')

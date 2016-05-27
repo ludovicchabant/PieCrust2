@@ -17,7 +17,7 @@ class PaginationData(LazyPageConfigData):
             # TODO: this is not quite correct, as we're missing parts of the
             #       route metadata if the current page is a taxonomy page.
             route_metadata = create_route_metadata(page)
-            self._route = page.app.getRoute(page.source.name, route_metadata)
+            self._route = page.app.getSourceRoute(page.source.name, route_metadata)
             self._route_metadata = route_metadata
             if self._route is None:
                 raise Exception("Can't get route for page: %s" % page.path)
@@ -66,9 +66,10 @@ class PaginationData(LazyPageConfigData):
                 ctx = PageRenderingContext(qp)
                 render_result = render_page_segments(ctx)
                 segs = render_result.segments
-            except Exception as e:
+            except Exception as ex:
+                logger.exception(ex)
                 raise Exception(
-                        "Error rendering segments for '%s'" % uri) from e
+                        "Error rendering segments for '%s'" % uri) from ex
         else:
             segs = {}
             for name in self._page.config.get('segments'):

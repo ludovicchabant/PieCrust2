@@ -49,12 +49,11 @@ def test_config_site_add_source():
     with mock_fs_scope(fs):
         app = fs.getApp()
         # The order of routes is important. Sources, not so much.
-        # `posts` shows up 3 times in routes (posts, tags, categories)
         assert (list(
             map(
-                lambda v: v['source'],
+                lambda v: v.get('generator') or v['source'],
                 app.config.get('site/routes'))) ==
-            ['notes', 'posts', 'posts', 'posts', 'pages', 'theme_pages'])
+            ['notes', 'posts', 'posts_archives', 'posts_tags', 'posts_categories', 'pages', 'theme_pages'])
         assert list(app.config.get('site/sources').keys()) == [
             'theme_pages', 'pages', 'posts', 'notes']
 
@@ -77,9 +76,9 @@ def test_config_site_add_source_in_both_site_and_theme():
         # `posts` shows up 3 times in routes (posts, tags, categories)
         assert (list(
             map(
-                lambda v: v['source'],
+                lambda v: v.get('generator') or v['source'],
                 app.config.get('site/routes'))) ==
-            ['notes', 'posts', 'posts', 'posts', 'pages', 'theme_notes', 'theme_pages'])
+            ['notes', 'posts', 'posts_archives', 'posts_tags', 'posts_categories', 'pages', 'theme_notes', 'theme_pages'])
         assert list(app.config.get('site/sources').keys()) == [
             'theme_pages', 'theme_notes', 'pages', 'posts', 'notes']
 
