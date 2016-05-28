@@ -84,6 +84,12 @@ class TaxonomyPageGenerator(PageGenerator):
         ctx.custom_data = {
                 self.taxonomy.term_name: tax_terms,
                 'is_multiple_%s' % self.taxonomy.term_name: is_combination}
+        if (self.taxonomy.is_multiple and
+                self.taxonomy.name != self.taxonomy.term_name):
+            mult_val = tax_terms
+            if not is_combination:
+                mult_val = (mult_val,)
+            ctx.custom_data[self.taxonomy.name] = mult_val
         logger.debug("Prepared render context with: %s" % ctx.custom_data)
 
     def _getTaxonomyTerms(self, route_metadata):
@@ -135,15 +141,16 @@ class TaxonomyPageGenerator(PageGenerator):
 
         start_time = time.perf_counter()
         page_count = self._bakeTaxonomyTerms(ctx, all_terms, dirty_terms)
-        logger.info(format_timed(start_time,
-                                 "baked %d taxonomy pages." % page_count))
+        logger.info(format_timed(
+            start_time,
+            "baked %d %s pages." % (page_count, self.taxonomy.term_name)))
 
     def _buildDirtyTaxonomyTerms(self, ctx):
         # Build the list of terms for our taxonomy, and figure out which ones
         # are 'dirty' for the current bake.
         logger.debug("Gathering dirty taxonomy terms")
         all_terms = set()
-        dirty_terms = set()
+        single_dirty_terms = set()
 
         # Re-bake all taxonomy terms that include new or changed pages.
         for prev_entry, cur_entry in ctx.getBakedPageRecords():
@@ -159,8 +166,7 @@ class TaxonomyPageGenerator(PageGenerator):
                         terms.append(entry_terms)
                     else:
                         terms += entry_terms
-            if terms:
-                dirty_terms.update([(t,) for t in terms])
+            single_dirty_terms.update(terms)
 
         # Remember all terms used.
         for _, cur_entry in ctx.getAllPageRecords():
@@ -173,6 +179,11 @@ class TaxonomyPageGenerator(PageGenerator):
                         all_terms |= set(cur_terms)
 
         # Re-bake the combination pages for terms that are 'dirty'.
+        # We make all terms into tuple, even those that are not actual
+        # combinations, so that we have less things to test further down the
+        # line.
+        dirty_terms = [(t,) for t in single_dirty_terms]
+        # Add the combinations to that list.
         if self.taxonomy.is_multiple:
             known_combinations = set()
             logger.debug("Gathering dirty term combinations")
@@ -184,8 +195,8 @@ class TaxonomyPageGenerator(PageGenerator):
                             known_combinations.add(terms)
 
             for terms in known_combinations:
-                if not dirty_terms.isdisjoint(set(terms)):
-                    dirty_terms.add(terms)
+                if not single_dirty_terms.isdisjoint(set(terms)):
+                    dirty_terms.append(terms)
 
         return all_terms, dirty_terms
 
@@ -254,7 +265,9 @@ def _get_all_entry_taxonomy_terms(entry):
     for o in entry.subs:
         for pinfo in o.render_info:
             if pinfo:
-                res |= set(pinfo.getCustomInfo('used_taxonomy_terms', []))
+                terms = pinfo.getCustomInfo('used_taxonomy_terms')
+                if terms:
+                    res |= set(terms)
     return res
 
 
