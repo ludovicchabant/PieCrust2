@@ -1,8 +1,12 @@
 import time
+import logging
 from piecrust.data.assetor import Assetor
 from piecrust.data.pagedata import LazyPageConfigData
 from piecrust.routing import create_route_metadata
 from piecrust.uriutil import split_uri
+
+
+logger = logging.getLogger(__name__)
 
 
 class PaginationData(LazyPageConfigData):
