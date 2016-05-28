@@ -11,6 +11,12 @@ def pickle(obj):
     return data.encode('utf8')
 
 
+def pickle_obj(obj):
+    if obj is not None:
+        return _pickle_object(obj)
+    return None
+
+
 def pickle_intob(obj, buf):
     data = _pickle_object(obj)
     buf = _WriteWrapper(buf)
@@ -20,6 +26,12 @@ def pickle_intob(obj, buf):
 def unpickle(data):
     data = json.loads(data.decode('utf8'))
     return _unpickle_object(data)
+
+
+def unpickle_obj(data):
+    if data is not None:
+        return _unpickle_object(data)
+    return None
 
 
 def unpickle_fromb(buf, bufsize):
@@ -70,7 +82,8 @@ def _ordered_dict_convert(obj, func, op):
     elif op == _UNPICKLING:
         res = collections.OrderedDict()
         for k, v in obj.items():
-            res[k] = func(v)
+            if k != '__type__':
+                res[k] = func(v)
         return res
 
 
@@ -230,13 +243,11 @@ def _unpickle_object(state):
     class_def = getattr(mod, class_name)
     obj = class_def.__new__(class_def)
 
-    del state['__class__']
-    del state['__module__']
     attr_names = list(state.keys())
     for name in attr_names:
-        state[name] = _unpickle_object(state[name])
-
-    obj.__dict__.update(state)
+        if name == '__class__' or name == '__module__':
+            continue
+        obj.__dict__[name] = _unpickle_object(state[name])
 
     return obj
 

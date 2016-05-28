@@ -1,6 +1,6 @@
 import datetime
 import pytest
-from piecrust.fastpickle import pickle, unpickle
+from piecrust.fastpickle import pickle, unpickle, pickle_obj, unpickle_obj
 
 
 class Foo(object):
@@ -50,4 +50,15 @@ def test_objects():
     assert len(o.bars) == 2
     for i in range(2):
         assert f.bars[i].value == o.bars[i].value
+
+
+def test_reentrance():
+    a = {'test_ints': 42, 'test_set': set([1, 2])}
+    data = pickle_obj(a)
+    b = unpickle_obj(data)
+    assert a == b
+    other_b = unpickle_obj(data)
+    assert a == other_b
+    c = unpickle_obj(data)
+    assert a == c
 
