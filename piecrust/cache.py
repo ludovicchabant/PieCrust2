@@ -201,9 +201,7 @@ class MemCache(object):
                 logger.debug("'%s' found in file-system cache." %
                              key)
                 item_raw = self.fs_cache.read(fs_key)
-                item = json.loads(
-                        item_raw,
-                        object_pairs_hook=collections.OrderedDict)
+                item = json.loads(item_raw)
                 self.cache.put(key, item)
                 self._hits += 1
                 return item

@@ -55,4 +55,38 @@ out:
         whatever.html: |
           Pages in whatever
           Post 02
+---
+in:
+    posts/2016-06-01_post01.md: |
+        ---
+        title: Post 01
+        tags: [foo, bar]
+        ---
+    posts/2016-06-02_post02.md: |
+        ---
+        title: Post 02
+        tags: [bar, foo]
+        ---
+    pages/_tag.md: |
+        Pages in {{tags|join(', ')}}
+        {% for p in pagination.posts -%}
+        {{p.title}}
+        {% endfor %}
+    pages/blah.md: |
+        Link to: {{pctagurl('foo', 'bar')}}
+outfiles:
+    blah.html: |
+        Link to: /tag/foo/bar.html
+    tag/foo.html: |
+        Pages in foo
+        Post 02
+        Post 01
+    tag/bar.html: |
+        Pages in bar
+        Post 02
+        Post 01
+    tag/foo/bar.html: |
+        Pages in foo, bar
+        Post 02
+        Post 01
 

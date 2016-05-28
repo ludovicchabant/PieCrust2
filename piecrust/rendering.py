@@ -7,6 +7,7 @@ from piecrust.data.builder import (
         DataBuildingContext, build_page_data, build_layout_data)
 from piecrust.data.filters import (
         PaginationFilter, SettingFilterClause, page_value_accessor)
+from piecrust.fastpickle import _pickle_object, _unpickle_object
 from piecrust.sources.base import PageSource
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
 
@@ -91,27 +92,6 @@ class RenderPassInfo(object):
         if create_if_missing:
             return self._custom_info.setdefault(key, default)
         return self._custom_info.get(key, default)
-
-
-    def _toJson(self):
-        data = {
-                'used_source_names': list(self.used_source_names),
-                'used_pagination': self.used_pagination,
-                'pagination_has_more': self.pagination_has_more,
-                'used_assets': self.used_assets,
-                'custom_info': self._custom_info}
-        return data
-
-    @staticmethod
-    def _fromJson(data):
-        assert data is not None
-        rpi = RenderPassInfo()
-        rpi.used_source_names = set(data['used_source_names'])
-        rpi.used_pagination = data['used_pagination']
-        rpi.pagination_has_more = data['pagination_has_more']
-        rpi.used_assets = data['used_assets']
-        rpi._custom_info = data['custom_info']
-        return rpi
 
 
 class PageRenderingContext(object):
@@ -218,11 +198,11 @@ def render_page(ctx):
         rp = RenderedPage(page, ctx.uri, ctx.page_num)
         rp.data = page_data
         rp.content = layout_result['content']
-        rp.render_info[PASS_FORMATTING] = RenderPassInfo._fromJson(
-                    render_result['pass_info'])
+        rp.render_info[PASS_FORMATTING] = _unpickle_object(
+                render_result['pass_info'])
         if layout_result['pass_info'] is not None:
-            rp.render_info[PASS_RENDERING] = RenderPassInfo._fromJson(
-                layout_result['pass_info'])
+            rp.render_info[PASS_RENDERING] = _unpickle_object(
+                    layout_result['pass_info'])
         return rp
     except Exception as ex:
         if ctx.app.debug:
@@ -260,7 +240,7 @@ def render_page_segments(ctx):
 
     rs = RenderedSegments(
             render_result['segments'],
-            RenderPassInfo._fromJson(render_result['pass_info']))
+            _unpickle_object(render_result['pass_info']))
     return rs
 
 
@@ -319,7 +299,7 @@ def _do_render_page_segments(page, page_data):
     pass_info = cpi.render_ctx.render_passes[PASS_FORMATTING]
     res = {
             'segments': formatted_segments,
-            'pass_info': pass_info._toJson()}
+            'pass_info': _pickle_object(pass_info)}
     return res
 
 
@@ -351,7 +331,7 @@ def _do_render_layout(layout_name, page, layout_data):
         raise Exception(msg) from ex
 
     pass_info = cpi.render_ctx.render_passes[PASS_RENDERING]
-    res = {'content': output, 'pass_info': pass_info._toJson()}
+    res = {'content': output, 'pass_info': _pickle_object(pass_info)}
     return res
 
 
