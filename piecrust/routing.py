@@ -9,8 +9,8 @@ from werkzeug.utils import cached_property
 logger = logging.getLogger(__name__)
 
 
-route_re = re.compile(r'%((?P<qual>path):)?(?P<name>\w+)%')
-route_esc_re = re.compile(r'\\%((?P<qual>path)\\:)?(?P<name>\w+)\\%')
+route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<name>\w+)%')
+route_esc_re = re.compile(r'\\%((?P<qual>[\w\d]+)\\:)?(?P<name>\w+)\\%')
 template_func_re = re.compile(r'^(?P<name>\w+)\((?P<args>.*)\)\s*$')
 template_func_arg_re = re.compile(r'(?P<arg>\+?\w+)')
 ugly_url_cleaner = re.compile(r'\.html$')
@@ -27,12 +27,6 @@ class InvalidRouteError(Exception):
 def create_route_metadata(page):
     route_metadata = copy.deepcopy(page.source_metadata)
     route_metadata.update(page.getRouteMetadata())
-
-    # TODO: fix this hard-coded shit
-    for key in ['year', 'month', 'day']:
-        if key in route_metadata and isinstance(route_metadata[key], str):
-            route_metadata[key] = int(route_metadata[key])
-
     return route_metadata
 
 
@@ -74,6 +68,13 @@ class Route(object):
         p = route_esc_re.sub(self._uriPatternRepl,
                              re.escape(self.uri_pattern)) + '$'
         self.uri_re = re.compile(p)
+
+        # Get the types of the route parameters.
+        self.param_types = {}
+        for m in route_re.finditer(self.uri_pattern):
+            qual = m.group('qual')
+            if qual:
+                self.param_types[str(m.group('name'))] = qual
 
         # If the URI pattern has a 'path'-type component, we'll need to match
         # the versions for which that component is empty. So for instance if
@@ -174,17 +175,18 @@ class Route(object):
             for k in missing_keys:
                 route_metadata[k] = ''
 
-        # TODO: fix this hard-coded shit
-        for key in ['year', 'month', 'day']:
-            if key in route_metadata and isinstance(route_metadata[key], str):
-                try:
-                    route_metadata[key] = int(route_metadata[key])
-                except ValueError:
-                    pass
+        for k in route_metadata:
+            route_metadata[k] = self._coerceRouteParameter(
+                    k, route_metadata[k])
 
         return route_metadata
 
     def getUri(self, route_metadata, *, sub_num=1):
+        route_metadata = dict(route_metadata)
+        for k in route_metadata:
+            route_metadata[k] = self._coerceRouteParameter(
+                    k, route_metadata[k])
+
         uri = self.uri_format % route_metadata
         suffix = None
         if sub_num > 1:
@@ -230,21 +232,23 @@ class Route(object):
         return uri
 
     def _uriFormatRepl(self, m):
+        qual = m.group('qual')
         name = m.group('name')
-        #TODO: fix this hard-coded shit
-        if name == 'year':
-            return '%(year)04d'
-        if name == 'month':
-            return '%(month)02d'
-        if name == 'day':
-            return '%(day)02d'
-        return '%(' + name + ')s'
+        if qual == 'int4':
+            return '%%(%s)04d' % name
+        elif qual == 'int2':
+            return '%%(%s)02d' % name
+        return '%%(%s)s' % name
 
     def _uriPatternRepl(self, m):
         name = m.group('name')
-        qualifier = m.group('qual')
-        if qualifier == 'path':
+        qual = m.group('qual')
+        if qual == 'path':
             return r'(?P<%s>[^\?]*)' % name
+        elif qual == 'int4':
+            return r'(?P<%s>\d{4})' % name
+        elif qual == 'int2':
+            return r'(?P<%s>\d{2})' % name
         return r'(?P<%s>[^/\?]+)' % name
 
     def _uriNoPathRepl(self, m):
@@ -253,6 +257,22 @@ class Route(object):
         if qualifier == 'path':
             return ''
         return r'(?P<%s>[^/\?]+)' % name
+
+    def _coerceRouteParameter(self, name, val):
+        param_type = self.param_types.get(name)
+        if param_type is None:
+            return val
+        if param_type in ['int', 'int2', 'int4']:
+            try:
+                return int(val)
+            except ValueError:
+                raise Exception(
+                        "Expected route parameter '%s' to be of type "
+                        "'%s', but was: %s" %
+                        (k, param_type, route_metadata[k]))
+        if param_type == 'path':
+            return val
+        raise Exception("Unknown route parameter type: %s" % param_type)
 
     def _createTemplateFunc(self, func_def):
         if func_def is None:
@@ -299,10 +319,8 @@ class Route(object):
                 del non_var_args[-1]
 
             for arg_name, arg_val in zip(non_var_args, args):
-                #TODO: fix this hard-coded shit.
-                if arg_name in ['year', 'month', 'day']:
-                    arg_val = int(arg_val)
-                metadata[arg_name] = arg_val
+                metadata[arg_name] = self._coerceRouteParameter(
+                        arg_name, arg_val)
 
             if is_variable:
                 metadata[self.template_func_vararg] = []

@@ -65,25 +65,16 @@ class TaxonomyPageGenerator(PageGenerator):
             sm = app.config.get('site/slugify_mode', 'encode')
         self.slugify_mode = _parse_slugify_mode(sm)
 
-    @property
-    def page_ref_path(self):
-        try:
-            return self.page_ref.path
-        except PageNotFoundError:
-            return None
-
-    def getPageFactory(self, route_metadata):
-        # This will raise `PageNotFoundError` naturally if not found.
-        return self.page_ref.getFactory()
-
     def prepareRenderContext(self, ctx):
+        self._setPaginationSource(ctx)
+
         tax_terms, is_combination = self._getTaxonomyTerms(
                 ctx.page.route_metadata)
         self._setTaxonomyFilter(ctx, tax_terms, is_combination)
 
-        ctx.custom_data = {
+        ctx.custom_data.update({
                 self.taxonomy.term_name: tax_terms,
-                'is_multiple_%s' % self.taxonomy.term_name: is_combination}
+                'is_multiple_%s' % self.taxonomy.term_name: is_combination})
         if (self.taxonomy.is_multiple and
                 self.taxonomy.name != self.taxonomy.term_name):
             mult_val = tax_terms
@@ -110,6 +101,9 @@ class TaxonomyPageGenerator(PageGenerator):
                 self.taxonomy, self.slugify_mode, term_value, is_combination))
         ctx.pagination_filter = flt
 
+    def _setPaginationSource(self, ctx):
+        ctx.pagination_source = self.source
+
     def onRouteFunctionUsed(self, route, route_metadata):
         # Get the values.
         values = route_metadata[self.taxonomy.term_name]
@@ -134,7 +128,13 @@ class TaxonomyPageGenerator(PageGenerator):
         logger.debug("Changed route metadata to: %s" % route_metadata)
 
     def bake(self, ctx):
-        logger.debug("Baking taxonomy pages...")
+        if not self.page_ref.exists:
+            logger.debug(
+                    "No page found at '%s', skipping taxonomy '%s'." %
+                    (self.page_ref, self.taxonomy.name))
+            return
+
+        logger.debug("Baking %s pages...", self.taxonomy.name)
         with format_timed_scope(logger, 'gathered taxonomy terms',
                                 level=logging.DEBUG, colored=False):
             all_terms, dirty_terms = self._buildDirtyTaxonomyTerms(ctx)
@@ -206,12 +206,6 @@ class TaxonomyPageGenerator(PageGenerator):
                 "Baking '%s' for source '%s': %s" %
                 (self.taxonomy.name, self.source_name, dirty_terms))
 
-        if not self.page_ref.exists:
-            logger.debug(
-                    "No taxonomy page found at '%s', skipping." %
-                    self.page_ref)
-            return 0
-
         route = self.app.getGeneratorRoute(self.name)
         if route is None:
             raise Exception("No routes have been defined for generator: %s" %
@@ -226,12 +220,12 @@ class TaxonomyPageGenerator(PageGenerator):
             if not self.taxonomy.is_multiple:
                 term = term[0]
             slugified_term = s.slugify(term)
+            extra_route_metadata = {self.taxonomy.term_name: slugified_term}
 
+            # Use the slugified term as the record extra key.
             logger.debug(
                     "Queuing: %s [%s=%s]" %
                     (fac.ref_spec, self.taxonomy.name, slugified_term))
-
-            extra_route_metadata = {self.taxonomy.term_name: slugified_term}
             ctx.queueBakeJob(fac, route, extra_route_metadata, slugified_term)
             job_count += 1
         ctx.runJobQueue()
@@ -243,7 +237,7 @@ class TaxonomyPageGenerator(PageGenerator):
         for prev_entry, cur_entry in ctx.getAllPageRecords():
             # Only consider taxonomy-related entries that don't have any
             # current version (i.e. they weren't baked just now).
-            if (prev_entry and not cur_entry):
+            if prev_entry and not cur_entry:
                 try:
                     t = ctx.getSeedFromRecordExtraKey(prev_entry.extra_key)
                 except InvalidRecordExtraKey:

@@ -129,6 +129,10 @@ class PageGenerator(object):
         raise Exception("Can't find source '%s' for generator '%s'." % (
             self.source_name, self.name))
 
+    def getPageFactory(self, route_metadata):
+        # This will raise `PageNotFoundError` naturally if not found.
+        return self.page_ref.getFactory()
+
     def bake(self, ctx):
         raise NotImplementedError()
 

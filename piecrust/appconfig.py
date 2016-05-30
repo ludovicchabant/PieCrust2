@@ -336,8 +336,8 @@ default_content_model_base = collections.OrderedDict({
             'posts_fs': DEFAULT_POSTS_FS,
             'default_page_layout': 'default',
             'default_post_layout': 'post',
-            'post_url': '/%year%/%month%/%day%/%slug%',
-            'year_url': '/%year%',
+            'post_url': '/%int4:year%/%int2:month%/%int2:day%/%slug%',
+            'year_url': '/archives/%int4:year%',
             'tag_url': '/tag/%path:tag%',
             'category_url': '/%category%',
             'posts_per_page': 5
@@ -459,12 +459,12 @@ def get_default_content_model_for_blog(
                     {
                         'url': post_url,
                         'source': blog_name,
-                        'func': 'pcposturl(year,month,day,slug)'
+                        'func': 'pcposturl(int:year,int:month,int:day,slug)'
                         },
                     {
                         'url': year_url,
                         'generator': ('%s_archives' % blog_name),
-                        'func': 'pcyearurl(year)'
+                        'func': 'pcyearurl(archive_year)'
                         }
                     ]
                 })

@@ -103,7 +103,7 @@ class PageRenderingContext(object):
         self.is_from_request = is_from_request
         self.pagination_source = None
         self.pagination_filter = None
-        self.custom_data = None
+        self.custom_data = {}
         self.render_passes = [None, None]  # Same length as RENDER_PASSES
         self._current_pass = PASS_NONE
 

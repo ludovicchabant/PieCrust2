@@ -24,14 +24,14 @@ def get_app_for_server(appfactory, root_url='/'):
 
 
 class RequestedPage(object):
-    def __init__(self, qualified_page):
-        self.qualified_page = qualified_page
+    def __init__(self):
+        self.qualified_page = None
         self.req_path = None
         self.page_num = 1
         self.not_found_errors = []
 
 
-def find_routes(routes, uri):
+def find_routes(routes, uri, is_sub_page=False):
     """ Returns routes matching the given URL, but puts generator routes
         at the end.
     """
@@ -41,35 +41,42 @@ def find_routes(routes, uri):
         metadata = route.matchUri(uri)
         if metadata is not None:
             if route.is_source_route:
-                res.append((route, metadata))
+                res.append((route, metadata, is_sub_page))
             else:
-                gen_res.append((route, metadata))
+                gen_res.append((route, metadata, is_sub_page))
     return res + gen_res
 
 
 def get_requested_page(app, req_path):
     # Try to find what matches the requested URL.
-    req_path, page_num = split_sub_uri(app, req_path)
-
     routes = find_routes(app.routes, req_path)
+
+    # It could also be a sub-page (i.e. the URL ends with a page number), so
+    # we try to also match the base URL (without the number).
+    req_path_no_num, page_num = split_sub_uri(app, req_path)
+    if page_num > 1:
+        routes += find_routes(app.routes, req_path_no_num, True)
+
     if len(routes) == 0:
         raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
-    qp = None
-    not_found_errors = []
-    for route, route_metadata in routes:
+    req_page = RequestedPage()
+    for route, route_metadata, is_sub_page in routes:
         try:
+            cur_req_path = req_path
+            if is_sub_page:
+                cur_req_path = req_path_no_num
+
             qp = _get_requested_page_for_route(
-                    app, route, route_metadata, req_path)
+                    app, route, route_metadata, cur_req_path)
             if qp is not None:
+                req_page.qualified_page = qp
+                req_page.req_path = cur_req_path
+                if is_sub_page:
+                    req_page.page_num = page_num
                 break
         except PageNotFoundError as nfe:
-            not_found_errors.append(nfe)
-
-    req_page = RequestedPage(qp)
-    req_page.req_path = req_path
-    req_page.page_num = page_num
-    req_page.not_found_errors = not_found_errors
+            req_page.not_found_errors.append(nfe)
     return req_page
 
 

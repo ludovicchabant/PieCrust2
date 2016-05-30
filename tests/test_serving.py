@@ -33,7 +33,7 @@ def test_find_routes(uri, route_specs, expected):
 
     assert len(matching) == len(expected)
     for i in range(len(matching)):
-        route, metadata = matching[i]
+        route, metadata, is_sub_page = matching[i]
         exp_source, exp_md = expected[i]
         assert route.source_name == exp_source
         assert metadata == exp_md

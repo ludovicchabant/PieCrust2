@@ -7,7 +7,6 @@ from piecrust.data.pagedata import PageData
 from piecrust.data.paginator import Paginator
 from piecrust.data.piecrustdata import PieCrustData
 from piecrust.data.providersdata import DataProvidersData
-from piecrust.uriutil import split_sub_uri
 
 
 logger = logging.getLogger(__name__)
@@ -32,8 +31,8 @@ class DataBuildingContext(object):
 def build_page_data(ctx):
     app = ctx.app
     page = ctx.page
-    first_uri, _ = split_sub_uri(app, ctx.uri)
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
+    first_uri = ctx.page.getUri(1)
 
     pc_data = PieCrustData()
     config_data = PageData(page, ctx)
