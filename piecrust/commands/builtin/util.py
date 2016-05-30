@@ -4,6 +4,7 @@ import shutil
 import codecs
 import logging
 import yaml
+from piecrust import CACHE_DIR
 from piecrust.app import CONFIG_PATH, THEME_CONFIG_PATH
 from piecrust.commands.base import ChefCommand
 
@@ -63,7 +64,7 @@ class PurgeCommand(ChefCommand):
         pass
 
     def run(self, ctx):
-        cache_dir = ctx.app.cache_dir
+        cache_dir = os.path.join(ctx.app.root_dir, CACHE_DIR)
         if cache_dir and os.path.isdir(cache_dir):
             logger.info("Purging cache: %s" % cache_dir)
             shutil.rmtree(cache_dir)
