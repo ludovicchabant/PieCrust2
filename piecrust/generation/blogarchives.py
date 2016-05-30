@@ -1,9 +1,104 @@
+import logging
+import datetime
+from piecrust.data.filters import PaginationFilter, IFilterClause
 from piecrust.generation.base import PageGenerator
+
+
+logger = logging.getLogger(__name__)
 
 
 class BlogArchivesPageGenerator(PageGenerator):
     GENERATOR_NAME = 'blog_archives'
 
-    def bake(self, ctx):
+    def __init__(self, app, name, config):
+        super(BlogArchivesPageGenerator, self).__init__(app, name, config)
+
+    def onRouteFunctionUsed(self, route, route_metadata):
         pass
+
+    def prepareRenderContext(self, ctx):
+        ctx.pagination_source = self.source
+
+        year = ctx.page.route_metadata.get('year')
+        if year is None:
+            raise Exception(
+                    "Can't find the archive year in the route metadata")
+        if type(year) is not int:
+            raise Exception(
+                    "The route for generator '%s' should specify an integer "
+                    "parameter for 'year'." % self.name)
+
+        flt = PaginationFilter()
+        flt.addClause(IsFromYearFilterClause(year))
+        ctx.pagination_filter = flt
+
+        ctx.custom_data['year'] = year
+
+    def bake(self, ctx):
+        if not self.page_ref.exists:
+            logger.debug(
+                    "No page found at '%s', skipping %s archives." %
+                    (self.page_ref, self.source_name))
+            return
+
+        logger.debug("Baking %s archives...", self.source_name)
+        with format_timed_scope(logger, 'gathered archive years',
+                                level=logging.DEBUG, colored=False):
+            all_years, dirty_years = self._buildDirtyYears(ctx)
+
+        with format_timed_scope(logger, "baked %d %s archives." %
+                                (len(dirty_years), self.source_name)):
+            self._bakeDirtyYears(ctx, all_years, dirty_years)
+
+    def _buildDirtyYears(self, ctx):
+        logger.debug("Gathering dirty post years.")
+        all_years = set()
+        dirty_years = set()
+        for _, cur_entry in ctx.getAllPageRecords():
+            if cur_entry.source_name == self.source_name:
+                dt = datetime.datetime.fromtimestamp(cur_entry.timestamp)
+                all_years.add(dt.year)
+                if cur_entry.was_any_sub_baked:
+                    dirty_years.add(dt.year)
+        return all_years, dirty_years
+
+    def _bakeDirtyYears(self, ctx, all_years, dirty_years):
+        route = self.app.getGeneratorRoute(self.name)
+        if route is None:
+            raise Exception(
+                    "No routes have been defined for generator: %s" %
+                    self.name)
+
+        logger.debug("Using archive page: %s" % self.page_ref)
+        fac = self.page_ref.getFactory()
+
+        for y in dirty_years:
+            extra_route_metadata = {'year': y}
+
+            logger.debug("Queuing: %s [%s]" % (fac.ref_spec, y))
+            ctx.queueBakeJob(fac, route, extra_route_metadata, str(y))
+        ctx.runJobQueue()
+
+        # Create bake entries for the years that were *not* dirty.
+        # Otherwise, when checking for deleted pages, we would not find any
+        # outputs and would delete those files.
+        for prev_entry, cur_entry in ctx.getAllPageRecords():
+            if prev_entry and not cur_entry:
+                try:
+                    y = ctx.getSeedFromRecordExtraKey(prev_entry.extra_key)
+                except InvalidRecordExtraKey:
+                    continue
+            if y in all_years:
+                logger.debug("Creating unbaked entry for %d archive." % y)
+                ctx.collapseRecord(prev_entry)
+            else:
+                logger.debug("No page references year %d anymore." % y)
+
+
+class IsFromYearFilterClause(IFilterClause):
+    def __init__(self, year):
+        self.year = year
+
+    def pageMatches(self, fil, page):
+        return (page.datetime.year == self.year)
 

@@ -1,0 +1,16 @@
+---
+url: /archives/2016.html
+in:
+    pages/_year.html: |
+        Posts in {{year}}
+        {% for post in pagination.posts -%}
+        {{post.url}}
+        {% endfor %}
+    posts/2015-12-01_post0.html: ''
+    posts/2016-01-01_post1.html: ''
+    posts/2016-01-02_post2.html: ''
+out: |
+    Posts in 2016
+    /2016/01/02/post2.html
+    /2016/01/01/post1.html
+
