@@ -134,11 +134,13 @@ class LoadJobHandler(JobHandler):
                 'source_name': fac.source.name,
                 'path': fac.path,
                 'config': None,
+                'timestamp': None,
                 'errors': None}
         try:
             page = fac.buildPage()
             page._load()
             result['config'] = page.config.getAll()
+            result['timestamp'] = page.datetime.timestamp()
         except Exception as ex:
             logger.debug("Got loading error. Sending it to master.")
             result['errors'] = _get_errors(ex)

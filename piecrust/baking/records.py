@@ -16,7 +16,7 @@ def _get_transition_key(path, extra_key=None):
 
 
 class BakeRecord(Record):
-    RECORD_VERSION = 18
+    RECORD_VERSION = 19
 
     def __init__(self):
         super(BakeRecord, self).__init__()
@@ -78,6 +78,7 @@ class BakeRecordEntry(object):
         self.extra_key = extra_key
         self.flags = self.FLAG_NONE
         self.config = None
+        self.timestamp = None
         self.errors = []
         self.subs = []
 

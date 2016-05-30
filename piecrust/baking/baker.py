@@ -217,6 +217,7 @@ class Baker(object):
             # than the last bake.
             record_entry = BakeRecordEntry(res['source_name'], res['path'])
             record_entry.config = res['config']
+            record_entry.timestamp = res['timestamp']
             if res['errors']:
                 record_entry.errors += res['errors']
                 record.current.success = False
