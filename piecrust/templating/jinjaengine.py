@@ -21,7 +21,7 @@ from piecrust.rendering import format_text
 from piecrust.routing import CompositeRouteFunction
 from piecrust.templating.base import (TemplateEngine, TemplateNotFoundError,
                                       TemplatingError)
-from piecrust.uriutil import multi_replace, split_sub_uri
+from piecrust.uriutil import multi_replace
 
 
 logger = logging.getLogger(__name__)
@@ -255,7 +255,6 @@ class PieCrustEnvironment(Environment):
         if cpi is None or cpi.page is None or cpi.render_ctx is None:
             raise Exception("Can't paginate when no page has been pushed "
                             "on the execution stack.")
-        first_uri, _ = split_sub_uri(self.app, cpi.render_ctx.uri)
         return Paginator(cpi.page, value,
                          page_num=cpi.render_ctx.page_num,
                          items_per_page=items_per_page)
