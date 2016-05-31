@@ -310,6 +310,10 @@ def _string_needs_parsing(txt, offset):
     txtlen = len(txt)
     index = txt.find('-', offset)
     while index >= 0 and index < txtlen - 8:
+        # Look for a potential `<--format-->`
+        if index > 0 and txt[index - 1] == '<' and txt[index + 1] == '-':
+            return True
+        # Look for a potential `---segment---`
         if txt[index + 1] == '-' and txt[index + 2] == '-':
             return True
         index = txt.find('-', index + 1)
