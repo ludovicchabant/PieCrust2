@@ -3,6 +3,7 @@ import os.path
 import time
 import logging
 from flask import Flask, g, request, render_template
+from werkzeug import SharedDataMiddleware
 from .configuration import (
         FoodTruckConfigNotFoundError, get_foodtruck_config)
 from .sites import FoodTruckSites, InvalidSiteError
@@ -30,6 +31,10 @@ if (app.config.get('FOODTRUCK_CMDLINE_MODE', False) and
                 'local': admin_root}
             }
 
+# Add a special route for the `.well-known` directory.
+app.wsgi_app = SharedDataMiddleware(
+        app.wsgi_app,
+        {'/.well-known': os.path.join(admin_root, '.well-known')})
 
 if os.path.isfile(config_path):
     app.config.from_pyfile(config_path)
