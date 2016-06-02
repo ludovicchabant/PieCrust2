@@ -48,6 +48,10 @@ def find_routes(routes, uri, is_sub_page=False):
 
 
 def get_requested_page(app, req_path):
+    # Remove the trailing slash to simplify how we parse URLs.
+    if req_path != '/':
+        req_path = req_path.rstrip('/')
+
     # Try to find what matches the requested URL.
     routes = find_routes(app.routes, req_path)
 
