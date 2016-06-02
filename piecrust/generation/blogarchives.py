@@ -3,7 +3,7 @@ import datetime
 from piecrust.chefutil import format_timed_scope
 from piecrust.data.filters import PaginationFilter, IFilterClause
 from piecrust.data.iterators import PageIterator
-from piecrust.generation.base import PageGenerator
+from piecrust.generation.base import PageGenerator, InvalidRecordExtraKey
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class BlogArchivesPageGenerator(PageGenerator):
         all_years = set()
         dirty_years = set()
         for _, cur_entry in ctx.getAllPageRecords():
-            if cur_entry.source_name == self.source_name:
+            if cur_entry and cur_entry.source_name == self.source_name:
                 dt = datetime.datetime.fromtimestamp(cur_entry.timestamp)
                 all_years.add(dt.year)
                 if cur_entry.was_any_sub_baked:
@@ -90,17 +90,20 @@ class BlogArchivesPageGenerator(PageGenerator):
         # Create bake entries for the years that were *not* dirty.
         # Otherwise, when checking for deleted pages, we would not find any
         # outputs and would delete those files.
+        all_str_years = [str(y) for y in all_years]
         for prev_entry, cur_entry in ctx.getAllPageRecords():
             if prev_entry and not cur_entry:
                 try:
                     y = ctx.getSeedFromRecordExtraKey(prev_entry.extra_key)
                 except InvalidRecordExtraKey:
                     continue
-                if y in all_years:
-                    logger.debug("Creating unbaked entry for %d archive." % y)
+                if y in all_str_years:
+                    logger.debug(
+                            "Creating unbaked entry for year %s archive." % y)
                     ctx.collapseRecord(prev_entry)
                 else:
-                    logger.debug("No page references year %d anymore." % y)
+                    logger.debug(
+                            "No page references year %s anymore." % y)
 
 
 class IsFromYearFilterClause(IFilterClause):

@@ -141,9 +141,11 @@ class TaxonomyPageGenerator(PageGenerator):
 
         start_time = time.perf_counter()
         page_count = self._bakeTaxonomyTerms(ctx, all_terms, dirty_terms)
-        logger.info(format_timed(
-            start_time,
-            "baked %d %s pages." % (page_count, self.taxonomy.term_name)))
+        if page_count > 0:
+            logger.info(format_timed(
+                start_time,
+                "baked %d %s pages for %s." % (
+                    page_count, self.taxonomy.term_name, self.source_name)))
 
     def _buildDirtyTaxonomyTerms(self, ctx):
         # Build the list of terms for our taxonomy, and figure out which ones
@@ -154,6 +156,9 @@ class TaxonomyPageGenerator(PageGenerator):
 
         # Re-bake all taxonomy terms that include new or changed pages.
         for prev_entry, cur_entry in ctx.getBakedPageRecords():
+            if cur_entry.source_name != self.source_name:
+                continue
+
             entries = [cur_entry]
             if prev_entry:
                 entries.append(prev_entry)
