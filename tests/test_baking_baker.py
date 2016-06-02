@@ -45,10 +45,13 @@ def test_get_output_path(uri, pretty, expected):
     for site_root in ['/', '/whatever/', '/~johndoe/']:
         app.config.set('site/root', urllib.parse.quote(site_root))
         baker = PageBaker(app, '/destination')
-        path = baker.getOutputPath(urllib.parse.quote(site_root) + uri)
-        expected = os.path.normpath(
-                os.path.join('/destination', expected))
-        assert expected == path
+        try:
+            path = baker.getOutputPath(urllib.parse.quote(site_root) + uri)
+            expected = os.path.normpath(
+                    os.path.join('/destination', expected))
+            assert expected == path
+        finally:
+            baker.shutdown()
 
 
 def test_removed():
