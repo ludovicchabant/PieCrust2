@@ -398,6 +398,7 @@ def get_default_content_model_for_blog(
         fs_endpoint = 'posts'
         data_endpoint = 'blog'
         item_name = 'post'
+        tpl_func_prefix = 'pc'
 
         if theme_site:
             # If this is a theme site, show posts from a `sample` directory
@@ -407,9 +408,14 @@ def get_default_content_model_for_blog(
     else:
         url_prefix = blog_name + '/'
         page_prefix = blog_name + '/'
-        fs_endpoint = 'posts/%s' % blog_name
         data_endpoint = blog_name
-        item_name = '%s-post' % blog_name
+        fs_endpoint = 'posts/%s' % blog_name
+        item_name = try_get_dict_value(user_overrides,
+                                       '%s/item_name' % blog_name,
+                                       '%spost' % blog_name)
+        tpl_func_prefix = try_get_dict_value(user_overrides,
+                                             '%s/func_prefix' % blog_name,
+                                             'pc%s' % blog_name)
 
     # Figure out the settings values for this blog, specifically.
     # The value could be set on the blog config itself, globally, or left at
@@ -459,12 +465,14 @@ def get_default_content_model_for_blog(
                     {
                         'url': post_url,
                         'source': blog_name,
-                        'func': 'pcposturl(int:year,int:month,int:day,slug)'
+                        'func': (
+                            '%sposturl(int:year,int:month,int:day,slug)' %
+                            tpl_func_prefix)
                         },
                     {
                         'url': year_url,
                         'generator': ('%s_archives' % blog_name),
-                        'func': 'pcyearurl(archive_year)'
+                        'func': ('%syearurl(year)' % tpl_func_prefix)
                         }
                     ]
                 })
@@ -505,7 +513,7 @@ def get_default_content_model_for_blog(
         term_arg = term
         if tax_cfg.get('multiple') is True:
             term_arg = '+' + term
-        tax_func = 'pc%surl(%s)' % (term, term_arg)
+        tax_func = '%s%surl(%s)' % (tpl_func_prefix, term, term_arg)
         tax_route = collections.OrderedDict({
             'url': tax_url,
             'generator': tax_gen_name,

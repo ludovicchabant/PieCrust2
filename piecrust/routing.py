@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<name>\w+)%')
 route_esc_re = re.compile(r'\\%((?P<qual>[\w\d]+)\\:)?(?P<name>\w+)\\%')
 template_func_re = re.compile(r'^(?P<name>\w+)\((?P<args>.*)\)\s*$')
-template_func_arg_re = re.compile(r'(?P<arg>\+?\w+)')
+template_func_arg_re = re.compile(r'((?P<qual>[\w\d]+):)?(?P<arg>\+?\w+)')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
@@ -288,7 +288,9 @@ class Route(object):
         self.template_func_args = []
         arg_list = m.group('args')
         if arg_list:
-            self.template_func_args = template_func_arg_re.findall(arg_list)
+            self.template_func_args = []
+            for m2 in template_func_arg_re.finditer(arg_list):
+                self.template_func_args.append(m2.group('arg'))
             for i in range(len(self.template_func_args) - 1):
                 if self.template_func_args[i][0] == '+':
                     raise Exception("Only the last route parameter can be a "
@@ -303,15 +305,15 @@ class Route(object):
             if not is_variable and len(args) != len(self.template_func_args):
                 raise Exception(
                         "Route function '%s' expected %d arguments, "
-                        "got %d." %
+                        "got %d: %s" %
                         (func_def, len(self.template_func_args),
-                            len(args)))
+                            len(args), args))
             elif is_variable and len(args) < len(self.template_func_args):
                 raise Exception(
                         "Route function '%s' expected at least %d arguments, "
-                        "got %d." %
+                        "got %d: %s" %
                         (func_def, len(self.template_func_args),
-                            len(args)))
+                            len(args), args))
 
             metadata = {}
             non_var_args = list(self.template_func_args)
