@@ -1,0 +1,43 @@
+---
+in:
+    pages/_year.html: |
+        Posts in {{year}}
+        {% for post in pagination.posts -%}
+        {{post.url}}
+        {% endfor %}
+    posts/2015-12-01_post0.html: ''
+    posts/2016-01-01_post1.html: ''
+    posts/2016-01-02_post2.html: ''
+    posts/2016-01-03_post3.html: ''
+    posts/2016-01-04_post4.html: ''
+    posts/2016-01-05_post5.html: ''
+    posts/2016-01-06_post6.html: ''
+    posts/2016-01-07_post7.html: ''
+outfiles:
+    archives/2016.html: |
+        Posts in 2016
+        /2016/01/07/post7.html
+        /2016/01/06/post6.html
+        /2016/01/05/post5.html
+        /2016/01/04/post4.html
+        /2016/01/03/post3.html
+    archives/2016/2.html: |
+        Posts in 2016
+        /2016/01/02/post2.html
+        /2016/01/01/post1.html
+---
+in:
+    pages/_year.html: |
+        Posts in {{year}}
+        {% for post in archives -%}
+        {{post.url}}
+        {% endfor %}
+    posts/2015-12-01_post0.html: ''
+    posts/2016-01-01_post1.html: ''
+    posts/2016-01-02_post2.html: ''
+outfiles:
+    archives/2016.html: |
+        Posts in 2016
+        /2016/01/01/post1.html
+        /2016/01/02/post2.html
+

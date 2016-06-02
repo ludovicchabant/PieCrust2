@@ -1,0 +1,24 @@
+---
+config:
+    site:
+        blogs: [one, two]
+in:
+    posts/one/2016-01-01_post1.html: ''
+    posts/two/2016-01-02_post2.html: ''
+    pages/foo-one.html: "Link: {{pcposturl(2016, 01, 01, 'post1', 'one')}}"
+    pages/foo-two.html: "Link: {{pcposturl(2016, 01, 02, 'post2', 'two')}}"
+outfiles:
+    foo-one.html: "Link: /one/2016/01/01/post1.html"
+    foo-two.html: "Link: /two/2016/01/02/post2.html"
+---
+config:
+    site:
+        blogs: [one, two]
+in:
+    posts/one/2016-01-01_post1.html: ''
+    posts/two/2016-01-02_post2.html: ''
+    pages/foo-one.html: "---\nblog: one\n---\nLink: {{pcposturl(2016, 01, 01, 'post1')}}"
+    pages/foo-two.html: "---\nblog: two\n---\nLink: {{pcposturl(2016, 01, 02, 'post2')}}"
+outfiles:
+    foo-one.html: "Link: /one/2016/01/01/post1.html"
+    foo-two.html: "Link: /two/2016/01/02/post2.html"
