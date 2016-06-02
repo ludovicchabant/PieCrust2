@@ -3,7 +3,6 @@ import time
 import os.path
 import hashlib
 import logging
-import threading
 import email.utils
 import strict_rfc3339
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -448,8 +447,6 @@ class PieCrustCacheExtension(Extension):
 
     def __init__(self, environment):
         super(PieCrustCacheExtension, self).__init__(environment)
-        self._lock = threading.RLock()
-
         environment.extend(
             piecrust_cache_prefix='',
             piecrust_cache={}
@@ -490,18 +487,17 @@ class PieCrustCacheExtension(Extension):
             rdr_pass.used_source_names.update(pair[1])
             return pair[0]
 
-        with self._lock:
-            pair = self.environment.piecrust_cache.get(key)
-            if pair is not None:
-                rdr_pass.used_source_names.update(pair[1])
-                return pair[0]
+        pair = self.environment.piecrust_cache.get(key)
+        if pair is not None:
+            rdr_pass.used_source_names.update(pair[1])
+            return pair[0]
 
-            prev_used = rdr_pass.used_source_names.copy()
-            rv = caller()
-            after_used = rdr_pass.used_source_names.copy()
-            used_delta = after_used.difference(prev_used)
-            self.environment.piecrust_cache[key] = (rv, used_delta)
-            return rv
+        prev_used = rdr_pass.used_source_names.copy()
+        rv = caller()
+        after_used = rdr_pass.used_source_names.copy()
+        used_delta = after_used.difference(prev_used)
+        self.environment.piecrust_cache[key] = (rv, used_delta)
+        return rv
 
 
 class PieCrustSpacelessExtension(HtmlCompressor):

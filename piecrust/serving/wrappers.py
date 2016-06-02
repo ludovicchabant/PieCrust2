@@ -1,7 +1,6 @@
 import os
 import signal
 import logging
-import threading
 import urllib.request
 
 
