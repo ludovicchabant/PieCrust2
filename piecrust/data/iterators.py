@@ -109,13 +109,27 @@ class PaginationFilterIterator(object):
                 yield page
 
 
+class GenericSortIterator(object):
+    def __init__(self, it, sorter):
+        self.it = it
+        self.sorter = sorter
+        self._sorted_it = None
+
+    def __iter__(self):
+        if self._sorted_it is None:
+            self._sorted_it = self.sorter(self.it)
+        return iter(self._sorted_it)
+
+
 class PageIterator(object):
     debug_render = []
     debug_render_doc_dynamic = ['_debugRenderDoc']
     debug_render_not_empty = True
 
-    def __init__(self, source, current_page=None, pagination_filter=None,
-            offset=0, limit=-1, locked=False):
+    def __init__(self, source, *,
+                 current_page=None,
+                 pagination_filter=None, sorter=None,
+                 offset=0, limit=-1, locked=False):
         self._source = source
         self._current_page = current_page
         self._locked = False
@@ -150,6 +164,10 @@ class PageIterator(object):
         if pagination_filter is not None:
             self._simpleNonSortedWrap(PaginationFilterIterator,
                                       pagination_filter)
+
+        if sorter is not None:
+            self._simpleNonSortedWrap(GenericSortIterator, sorter)
+            self._has_sorter = True
 
         if offset > 0 or limit > 0:
             self.slice(offset, limit)

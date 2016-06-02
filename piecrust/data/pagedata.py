@@ -157,10 +157,14 @@ class PageData(LazyPageConfigData):
 
     def _load(self):
         page = self._page
+        dt = page.datetime
         for k, v in page.source_metadata.items():
             self._setValue(k, v)
         self._setValue('url', self._ctx.uri)
-        self._setValue('timestamp', time.mktime(page.datetime.timetuple()))
+        self._setValue('timestamp', time.mktime(dt.timetuple()))
+        self._setValue('datetime', {
+            'year': dt.year, 'month': dt.month, 'day': dt.day,
+            'hour': dt.hour, 'minute': dt.minute, 'second': dt.second})
         date_format = page.app.config.get('site/date_format')
         if date_format:
             self._setValue('date', page.datetime.strftime(date_format))

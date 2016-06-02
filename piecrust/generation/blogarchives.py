@@ -1,6 +1,8 @@
 import logging
 import datetime
+from piecrust.chefutil import format_timed_scope
 from piecrust.data.filters import PaginationFilter, IFilterClause
+from piecrust.data.iterators import PageIterator
 from piecrust.generation.base import PageGenerator
 
 
@@ -33,6 +35,12 @@ class BlogArchivesPageGenerator(PageGenerator):
         ctx.pagination_filter = flt
 
         ctx.custom_data['year'] = year
+
+        flt2 = PaginationFilter()
+        flt2.addClause(IsFromYearFilterClause(year))
+        it = PageIterator(self.source, pagination_filter=flt2,
+                          sorter=_date_sorter)
+        ctx.custom_data['archives'] = it
 
     def bake(self, ctx):
         if not self.page_ref.exists:
@@ -88,11 +96,11 @@ class BlogArchivesPageGenerator(PageGenerator):
                     y = ctx.getSeedFromRecordExtraKey(prev_entry.extra_key)
                 except InvalidRecordExtraKey:
                     continue
-            if y in all_years:
-                logger.debug("Creating unbaked entry for %d archive." % y)
-                ctx.collapseRecord(prev_entry)
-            else:
-                logger.debug("No page references year %d anymore." % y)
+                if y in all_years:
+                    logger.debug("Creating unbaked entry for %d archive." % y)
+                    ctx.collapseRecord(prev_entry)
+                else:
+                    logger.debug("No page references year %d anymore." % y)
 
 
 class IsFromYearFilterClause(IFilterClause):
@@ -101,4 +109,8 @@ class IsFromYearFilterClause(IFilterClause):
 
     def pageMatches(self, fil, page):
         return (page.datetime.year == self.year)
+
+
+def _date_sorter(it):
+    return sorted(it, key=lambda x: x.datetime)
 

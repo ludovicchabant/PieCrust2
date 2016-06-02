@@ -72,7 +72,8 @@ def test_filter():
     page = mock.MagicMock(spec=Page)
     page.config = PageConfiguration()
     page.config.set('threes', {'is_foo': 3})
-    it = PageIterator([TestItem(v) for v in [3, 2, 3, 1, 4, 3]], page)
+    it = PageIterator([TestItem(v) for v in [3, 2, 3, 1, 4, 3]],
+                      current_page=page)
     it.filter('threes')
     assert it.total_count == 3
     assert len(it) == 3

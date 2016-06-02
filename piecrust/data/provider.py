@@ -248,5 +248,5 @@ class BlogTaxonomyEntry(object):
         if self._iterator is not None:
             return
 
-        self._iterator = PageIterator(self._source, self._page)
+        self._iterator = PageIterator(self._source, current_page=self._page)
 

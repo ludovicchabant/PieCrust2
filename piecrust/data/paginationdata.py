@@ -29,6 +29,7 @@ class PaginationData(LazyPageConfigData):
 
     def _load(self):
         page = self._page
+        dt = page.datetime
         page_url = self._get_uri()
         _, slug = split_uri(page.app, page_url)
         self._setValue('url', page_url)
@@ -36,6 +37,9 @@ class PaginationData(LazyPageConfigData):
         self._setValue(
                 'timestamp',
                 time.mktime(page.datetime.timetuple()))
+        self._setValue('datetime', {
+            'year': dt.year, 'month': dt.month, 'day': dt.day,
+            'hour': dt.hour, 'minute': dt.minute, 'second': dt.second})
         date_format = page.app.config.get('site/date_format')
         if date_format:
             self._setValue('date', page.datetime.strftime(date_format))
