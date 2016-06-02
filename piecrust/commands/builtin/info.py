@@ -84,6 +84,9 @@ class ShowRoutesCommand(ChefCommand):
             logger.info("    source: %s" % (route.source_name or ''))
             logger.info("    generator: %s" % (route.generator_name or ''))
             logger.info("    regex: %s" % route.uri_re.pattern)
+            logger.info("    function: %s(%s)" % (
+                route.template_func_name,
+                ', '.join(route.template_func_args)))
 
 
 class ShowPathsCommand(ChefCommand):
