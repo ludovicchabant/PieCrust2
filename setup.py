@@ -16,7 +16,7 @@ def read(fname):
 
 
 def readlines(fname):
-    lines = [l.strip() for l in read(fname).strip().splitlines()]
+    return [l.strip() for l in read(fname).strip().splitlines()]
 
 
 def runcmd(cmd):
