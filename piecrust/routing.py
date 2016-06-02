@@ -361,7 +361,7 @@ class CompositeRouteFunction(object):
             f_args = args[:-1]
             for r, f in self._funcs:
                 if r.source_name == args[-1]:
-                    return f(f_args, **kwargs)
+                    return f(*f_args, **kwargs)
             raise Exception("No such source: %s" % args[-1])
 
         raise Exception("Incorrect number of arguments for route function. "
