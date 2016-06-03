@@ -3,6 +3,8 @@ title: Support
 header_class: support
 ---
 
+Want to know what's new with PieCrust? Check out the [CHANGELOG][ch].
+
 If you have a problem with PieCrust, there are a few ways to solve it:
 
 * Check the [documentation][doc] one more time! You never know, the solution may be in
@@ -17,6 +19,7 @@ If you have a problem with PieCrust, there are a few ways to solve it:
 
 
 [doc]: {{docurl('')}}
+[ch]: {{pcurl('support/changelog')}}
 [bbsrc]: https://bitbucket.org/ludovicchabant/piecrust2
 [bbbug]: https://bitbucket.org/ludovicchabant/piecrust2/issues?status=new&status=open
 [ghsrc]: https://github.com/ludovicchabant/PieCrust2
