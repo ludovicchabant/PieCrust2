@@ -14,12 +14,15 @@ def makerelease(version, local_only=False):
     print("Generating FoodTruck assets")
     run("gulp")
 
-    # CHANGELOG.rst
+    # CHANGELOG.rst and documentation changelog page.
     run("invoke changelog --last %s" % version)
+    run("invoke changelog --last %s -o docs/pages/support/changelog.md" %
+            version)
 
     if not local_only:
         # Submit the CHANGELOG.
-        run('hg commit CHANGELOG.rst -m "cm: Regenerate the CHANGELOG."')
+        run('hg commit CHANGELOG.rst docs/pages/support/changelog.md '
+            '-m "cm: Regenerate the CHANGELOG."')
 
         # Tag in Mercurial, which will then be used for PyPi version.
         run("hg tag %s" % version)
@@ -27,4 +30,8 @@ def makerelease(version, local_only=False):
         # PyPi upload.
         run("python setup.py version")
         run("python setup.py sdist upload")
+    else:
+        print("Would submit changelog files...")
+        print("Would tag repo with %s..." % version)
+        print("Would upload to PyPi...")
 
