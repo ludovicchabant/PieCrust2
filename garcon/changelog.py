@@ -45,7 +45,8 @@ def generate(out_file, last=None):
         '--template', hg_log_template])
     hglog = hglog.decode('utf8')
 
-    templates = _get_templates()
+    _, out_ext = os.path.splitext(out_file)
+    templates = _get_templates(out_ext)
 
     with open(out_file, 'w', encoding='utf8', newline='') as fp:
         fp.write(templates['header'])
@@ -129,6 +130,7 @@ def _write_version_changes(templates, version, version_info, changes, fp):
             continue
 
         tokens = {
+                'num': str(version),
                 'sub_num': str(i),
                 'category': cat_name.title()}
         tpl = _multi_replace(templates['category_title'], tokens)
@@ -146,13 +148,14 @@ def _multi_replace(s, tokens):
     return s
 
 
-def _get_templates():
+def _get_templates(extension):
     tpl_dir = os.path.join(os.path.dirname(__file__), 'changelog')
     tpls = {}
     for name in os.listdir(tpl_dir):
-        tpl = _get_template(os.path.join(tpl_dir, name))
-        name_no_ext, _ = os.path.splitext(name)
-        tpls[name_no_ext] = tpl
+        if name.endswith(extension):
+            tpl = _get_template(os.path.join(tpl_dir, name))
+            name_no_ext, _ = os.path.splitext(name)
+            tpls[name_no_ext] = tpl
     return tpls
 
 

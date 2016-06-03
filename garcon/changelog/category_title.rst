@@ -1,4 +1,4 @@
 
-1.%sub_num% %category%
+%num%.%sub_num% %category%
 ----------------------
 
