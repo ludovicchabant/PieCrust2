@@ -1,5 +1,5 @@
 ---
-title: "Appendix 4: Templating Data Reference"
+title: "Appendix 6: Templating Data Reference"
 short_title: Templating Data Reference
 ---
 

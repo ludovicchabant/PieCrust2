@@ -23,13 +23,12 @@ Each route must define the following settings:
   tied to this route. See the [list of available sources][refsrc] to see what
   kind of routing information they expose.
 
-* `source`: This defines the source that this route is defined for. Only pages
-  coming from that source will have their bake output generated from this route.
+* `source` or `generator`: This defines the source or generator that this route
+  is defined for. Only pages originating from the source or generator of that
+  name will have their bake output generated from this route. You can't define
+  both `source` and `generator` -- it needs to be one or the other.
 
 Optional settings include:
-
-* `taxonomy`: If this route is meant to match a taxonomy index page, you have to
-  define which taxonomy that is.
 
 * `page_suffix`: Pages that create _sub-pages_ (_e.g._ when using pagination)
   will append this suffix to the route. By default, this is `/%num%`. You _must_

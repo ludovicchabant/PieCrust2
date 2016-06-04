@@ -33,7 +33,8 @@ common settings. All settings are optional except for `type`.
 * `data_endpoint`: Most sources will also want to expose all their pages to a
   template data endpoint, so you can easily iterate on them -- for example to
   show an archive or a site map. By default, this endpoint is the same as the
-  source's name, but it can be customized with the `data_endpoint` setting.
+  source's name, but it can be customized with the `data_endpoint` setting. For
+  more information on data providers, see [the reference page][refdata].
 
 * `data_type`: The data that's exposed through the `data_endpoint` is an
   `iterator` by default, which means it's a simple flat list of pages. There are
@@ -44,5 +45,6 @@ common settings. All settings are optional except for `type`.
 For an example of sources configuration, see the [default content model][def].
 
 [refsrc]: {{docurl('reference/sources')}}
+[refdata]: {{docurl('reference/data-providers')}}
 [def]: {{docurl('content-model/default-model')}}
 
