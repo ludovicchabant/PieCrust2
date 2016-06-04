@@ -131,6 +131,15 @@ def try_get_dict_value(d, key, default=None):
         return default
 
 
+def try_get_dict_values(*args, default=None):
+    for d, key in args:
+        try:
+            return get_dict_value(d, key)
+        except KeyError:
+            continue
+    return default
+
+
 def set_dict_value(d, key, value):
     bits = key.split('/')
     bitslen = len(bits)

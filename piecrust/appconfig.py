@@ -14,7 +14,8 @@ from piecrust import (
 from piecrust.cache import NullCache
 from piecrust.configuration import (
         Configuration, ConfigurationError, ConfigurationLoader,
-        try_get_dict_value, set_dict_value, merge_dicts, visit_dict)
+        try_get_dict_value, try_get_dict_values,
+        set_dict_value, merge_dicts, visit_dict)
 from piecrust.sources.base import REALM_USER, REALM_THEME
 
 
@@ -373,7 +374,8 @@ def get_default_content_model(values, user_overrides):
                         'term': 'tag'
                         }),
                     ('categories', {
-                        'term': 'category'
+                        'term': 'category',
+                        'func_name': 'pccaturl'
                         })
                     ])
                 })
@@ -502,18 +504,20 @@ def get_default_content_model_for_blog(
 
         # Route.
         tax_url_cfg_name = '%s_url' % term
-        tax_url = blog_cfg.get(tax_url_cfg_name,
-                               try_get_dict_value(
-                                   user_overrides,
-                                   'site/%s' % tax_url_cfg_name,
-                                   values['site'].get(
-                                       tax_url_cfg_name,
-                                       '%s/%%%s%%' % (term, term))))
+        tax_url = try_get_dict_values(
+                (blog_cfg, tax_url_cfg_name),
+                (user_overrides, 'site/%s' % tax_url_cfg_name),
+                (values, 'site/%s' % tax_url_cfg_name),
+                default=('%s/%%%s%%' % (term, term)))
         tax_url = '/' + url_prefix + tax_url.lstrip('/')
         term_arg = term
         if tax_cfg.get('multiple') is True:
             term_arg = '+' + term
-        tax_func = '%s%surl(%s)' % (tpl_func_prefix, term, term_arg)
+        tax_func_name = try_get_dict_values(
+                (user_overrides, 'site/taxonomies/%s/func_name' % tax_name),
+                (values, 'site/taxonomies/%s/func_name' % tax_name),
+                default=('%s%surl' % (tpl_func_prefix, term)))
+        tax_func = '%s(%s)' % (tax_func_name, term_arg)
         tax_route = collections.OrderedDict({
             'url': tax_url,
             'generator': tax_gen_name,

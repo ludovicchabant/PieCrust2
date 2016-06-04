@@ -23,6 +23,7 @@ in:
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
+    pages/link.md: 'Link: {{pccaturl("bar")}}'
     pages/_index.md: ''
 out:
     index.html: ''
@@ -34,6 +35,7 @@ out:
                 post02.html: ''
             '03':
                 post03.html: ''
+    link.html: 'Link: /cat/bar.html'
     cat:
         foo.html: |
           Pages in foo
