@@ -35,9 +35,11 @@ class ThemeLoader(object):
         dirs = []
         themes_dirs = site_config.get('themes_dirs', [])
         if isinstance(themes_dirs, str):
-            dirs.append(os.path.join(self.root_dir, themes_dirs))
+            dirs.append(os.path.join(self.root_dir,
+                                     os.path.expanduser(themes_dirs)))
         else:
-            dirs += [os.path.join(self.root_dir, p) for p in themes_dirs]
+            dirs += [os.path.join(self.root_dir, os.path.expanduser(p))
+                     for p in themes_dirs]
 
         # Add the default `themes` directory.
         default_themes_dir = os.path.join(self.root_dir, THEMES_DIR)
@@ -51,6 +53,6 @@ class ThemeLoader(object):
                 return theme_dir
 
         raise ThemeNotFoundError(
-                "Can't find theme '%s'. Looked in: %s",
+                "Can't find theme '%s'. Looked in: %s" %
                 (theme, ', '.join(dirs)))
 
