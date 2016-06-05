@@ -204,6 +204,9 @@ class BlogArchiveEntry(object):
     def __str__(self):
         return self.name
 
+    def __int__(self):
+        return int(self.name)
+
     @property
     def posts(self):
         self._load()
