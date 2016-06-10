@@ -6,11 +6,14 @@ layout: simple
 # Changelog
 
 
-## 1. PieCrust 2.0.0b6 (2016-06-02)
+## 1. PieCrust 2.0.0rc1 (2016-06-09)
 
 
 ### 1.0 Commands
 
+* init: Use a better config template when creating websites.
+* themes: Simplify ``themes`` command.
+* themes: Expand ``~`` paths, fix error message.
 * bake: Fix some crashes with new blog archive/taxonomy for incremental bakes.
 * admin: Add support for ``.well-known`` folder.
 * admin: Fix crash when previewing a website.
@@ -44,6 +47,8 @@ layout: simple
 
 ### 1.1 Core
 
+* data: Make the blog provider give usable data to the year archive routes.
+* templating: Make the 'categories' taxonomy use a 'pccaturl' function again.
 * internal: Remove threading stuff we don't need anymore.
 * routing: Correctly call the underlying route template function from a merged one.
 * routing: Fix problems with route functions.
@@ -78,6 +83,11 @@ layout: simple
 
 ### 1.2 Project
 
+* docs: Write about generators and data providers, update all related topics.
+* cm: Add generation of online changelog to the release task.
+* docs: Add changelog page.
+* cm: Add generation of Mardown changelog suitable for the online documentation.
+* tests: the ``PageBaker`` now needs to be shutdown.
 * cm: Fix ``setup.py`` script.
 * docs: Use HTTPS version of Google Fonts.
 * tests: Add some tests for blog archives and multi-blog features.

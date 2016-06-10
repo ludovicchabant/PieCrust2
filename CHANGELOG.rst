@@ -10,24 +10,142 @@ This is the changelog for PieCrust_.
 
 
 ==================================
-1. PieCrust 2.0.0b5 (2016-02-16)
+1. PieCrust 2.0.0rc1 (2016-06-09)
 ==================================
 
 
 1.0 Commands
 ----------------------
 
-* admin: Remove settings view.
-* admin: Don't require ``bcrypt`` for running FoodTruck with ``chef`` .
+* init: Use a better config template when creating websites.
+* themes: Simplify ``themes`` command.
+* themes: Expand ``~`` paths, fix error message.
+* bake: Fix some crashes with new blog archive/taxonomy for incremental bakes.
+* admin: Add support for ``.well-known`` folder.
+* admin: Fix crash when previewing a website.
+* serve: Fix some problems with trailing slashes.
+* routes: Show the route template function.
+* purge: Delete the whole cache directory, not just the current sub-cache.
+* bake: Add blog archives generator.
+* bake: Add the timestamp of the page to each record entry.
+* bake: Fix some bugs with taxonomy combinations.
+* bake: Replace hard-coded taxonomy support with "generator" system.
+* themes: Add support for loading from a library of themes.
+* bake: Don't clean the ``baker`` cache on a force bake.
+* bake: Some more optimizations.
+* showrecord: Don't print the record when you just want the stats.
+* bake: Re-enable faster serialization between processes.
+* bake: Add stat about aborted jobs
+* bake: Use threads to read/write from/to the main arbitrator process.
+* bake: Show more stats.
+* bake: Use standard pickle and queue for now to fix some small issues.
+* bake: Fix a crash when a rendering error occurs.
+* chef: Fix ``--debug-only`` argument.
+* bake: Change ``show-timers`` to ``show-stats`` , add stats.
+* serve: Fix some crashes introduced by recent refactor.
+* admin: Fix crash when running FoodTruck as a standalone web app.
+* themes: Add support for a ``--theme`` argument to ``chef`` .
+* admin: Add support for Git source-control.
+* admin: Fix OS-specific new line problems when editing pages.
+* admin: Show a more classic blog post listing in FoodTruck.
+* admin: run an asset processing loop in the background.
+* admin: Run the asset pipeline before showing the admin panel.
 
 1.1 Core
 ----------------------
 
-* internal: Remove SyntaxWarning from MacOS wrappers.
+* data: Make the blog provider give usable data to the year archive routes.
+* templating: Make the 'categories' taxonomy use a 'pccaturl' function again.
+* internal: Remove threading stuff we don't need anymore.
+* routing: Correctly call the underlying route template function from a merged one.
+* routing: Fix problems with route functions.
+* templating: Make blog archives generator expose more templating data.
+* bug: Also look for format changes when determining if a page needs parsing.
+* internal: Update the cache version to force re-gen the configuration settings.
+* routing: Cleanup URL routing and improve page matching.
+* internal: Remove unused code.
+* rendering: Use ``fastpickle`` serialization before JSON.
+* internal: Prevent crash because of missing logger.
+* internal: Fix some bugs with the ``fastpickle`` module.
+* debug: Pass the exceptions untouched when debugging.
+* debug: Show more stuff pertaining to data providers in the debug window.
+* data: Support both objects and dictionaries in ``MergedMapping`` .
+* internal: Remove exception logging that shouldn't happen. Better message.
+* internal: Remove unused piece of code.
+* templating: Use HTTPS URLs for a couple things.
+* internal: Don't run regexes for the 99% case of pages with no segments.
+* internal: Fix compatibility with older Python 3.x.
+* internal: Remove unused import.
+* render: Change how we store render passes info.
+* formatting: Don't import ``hoedown`` until we need it.
+* formatting: Add a ``hoedown`` formatter.
+* internal: Fix incorrect check for cache times.
+* internal: More work/fixes on how default/theme/user configs are merged.
+* internal: Bump cache version.
+* internal: Refactor config loading some more.
+* internal: Improve how theme configuration is validated and merged.
+* internal: Get rid of the whole "sub cache" business.
+* internal: Fix a bug with registering taxonomy terms that are not strings.
+* internal: Move some basic FoodTruck SCM code to the base.
 
 1.2 Project
 ----------------------
 
+* docs: Write about generators and data providers, update all related topics.
+* cm: Add generation of online changelog to the release task.
+* docs: Add changelog page.
+* cm: Add generation of Mardown changelog suitable for the online documentation.
+* tests: the ``PageBaker`` now needs to be shutdown.
+* cm: Fix ``setup.py`` script.
+* docs: Use HTTPS version of Google Fonts.
+* tests: Add some tests for blog archives and multi-blog features.
+* tests: Add more tests for merged mappings.
+* cm: Ignore bdist output directory.
+* cm: Fix a packaging bug, update package metadata.
+* tests: Add another app config test.
+* cm: It's fun to send typos to Travis-CI.
+* cm: Don't raise an exception when no version file exists.
+* cm: Make Travis-CI test packaging.
+* cm: Don't always generation the version when running ``setuptools`` .
+* tests: Add ability to run tests with a theme site.
+* tests: Improve failure reporting.
+* cm: Add AppVeyor support.
+* cm: Also test Python 3.5 with Travis.
+* cm: Improve documentation generation script.
+* cm: Ignore ``py.test`` cache.
+* docs: Use new config variants format.
+* tests: Fix logic for making time-based tests not fail randomly.
+* docs: Add information on more global ``chef`` options.
+
+1.3 Miscellaneous
+----------------------
+
+* Merge changes.
+* Merge changes.
+* jinja: Add ``md5`` filter.
+* Fix 404 broken link
+
+==================================
+2. PieCrust 2.0.0b5 (2016-02-16)
+==================================
+
+
+2.0 Commands
+----------------------
+
+* admin: Remove settings view.
+* admin: Don't require ``bcrypt`` for running FoodTruck with ``chef`` .
+
+2.1 Core
+----------------------
+
+* internal: Remove SyntaxWarning from MacOS wrappers.
+
+2.2 Project
+----------------------
+
+* cm: Regenerate the CHANGELOG.
+* cm: Tweaks to the release script.
 * cm: Fix CHANGELOG newlines on Windows.
 * cm: Update npm modules and bower packages before making a release.
 * cm: Fixes and tweaks to the documentation generation task.
@@ -41,11 +159,11 @@ This is the changelog for PieCrust_.
 * cm: Regenerate the CHANGELOG.
 
 ==================================
-2. PieCrust 2.0.0b4 (2016-02-09)
+3. PieCrust 2.0.0b4 (2016-02-09)
 ==================================
 
 
-1.0 Commands
+3.0 Commands
 ----------------------
 
 * chef: Fix the ``--config-set`` option.
@@ -103,7 +221,7 @@ This is the changelog for PieCrust_.
 * bake: Add a flag to know which record entries got collapsed from last run.
 * bake: Set the flags, don't combine.
 
-1.1 Core
+3.1 Core
 ----------------------
 
 * debug: Fix debug window CSS.
@@ -119,7 +237,7 @@ This is the changelog for PieCrust_.
 * bug: Correctly handle root URLs with special characters.
 * debug: Fix a crash when rendering debug info for some pages.
 
-1.2 Project
+3.2 Project
 ----------------------
 
 * docs: Make FoodTruck screenshots the proper size.
@@ -145,24 +263,24 @@ This is the changelog for PieCrust_.
 * tests: Print more information when a bake test fails to find an output file.
 
 ==================================
-3. PieCrust 2.0.0b3 (2015-08-01)
+4. PieCrust 2.0.0b3 (2015-08-01)
 ==================================
 
 
-1.0 Commands
+4.0 Commands
 ----------------------
 
 * import: Correctly convert unicode characters in site configuration.
 * import: Fix the PieCrust 1 importer.
 * import: Add some debug logging.
 
-1.1 Core
+4.1 Core
 ----------------------
 
 * internal: Fix a severe bug with the file-system wrappers on OSX.
 * templating: Make more date functions accept 'now' as an input.
 
-1.2 Project
+4.2 Project
 ----------------------
 
 * cm: Update changelog.
@@ -172,26 +290,26 @@ This is the changelog for PieCrust_.
 * cm: Ignore Rope cache.
 
 ==================================
-4. PieCrust 2.0.0b2 (2015-07-29)
+5. PieCrust 2.0.0b2 (2015-07-29)
 ==================================
 
 
-1.0 Commands
+5.0 Commands
 ----------------------
 
 * prepare: More help about scaffolding.
 
-1.1 Core
+5.1 Core
 ----------------------
 
 * bug: Fix crash running ``chef help scaffolding`` outside of a website.
 
 ==================================
-5. PieCrust 2.0.0b1 (2015-07-29)
+6. PieCrust 2.0.0b1 (2015-07-29)
 ==================================
 
 
-1.0 Commands
+6.0 Commands
 ----------------------
 
 * prepare: Fix the RSS template.
@@ -212,7 +330,7 @@ This is the changelog for PieCrust_.
 * bake: Set the worker ID in the configuration. It's useful.
 * themes: Fix crash when invoking command with no sub-command.
 
-1.1 Core
+6.1 Core
 ----------------------
 
 * templating: Add ``now`` global to Jinja, improve date error message.
@@ -230,7 +348,7 @@ This is the changelog for PieCrust_.
 * templating: Make Jinja support arbitrary extension, show warning for old stuff.
 * internal: Correctly split sub URIs. Add unit tests.
 
-1.2 Project
+6.2 Project
 ----------------------
 
 * tests: Help the Yaml loader figure out the encoding on Windows.
@@ -255,7 +373,7 @@ This is the changelog for PieCrust_.
 * cm: Fix benchmark website generation on Windows.
 * cm: Ignore ``.egg-info`` stuff.
 
-1.3 Miscellaneous
+6.3 Miscellaneous
 ----------------------
 
 * bake/serve: Improve support for unicode, add slugification options.
@@ -266,27 +384,27 @@ This is the changelog for PieCrust_.
 * jinja: Support ``.j2`` file extensions.
 
 ==================================
-6. PieCrust 2.0.0a13 (2015-07-14)
+7. PieCrust 2.0.0a13 (2015-07-14)
 ==================================
 
 
-1.0 Commands
+7.0 Commands
 ----------------------
 
 * bake: Fix a bug with copying assets when ``pretty_urls`` are disabled.
 
-1.1 Core
+7.1 Core
 ----------------------
 
 * bug: Fix copying of page assets during the bake.
 * bug: Correctly setup the environment/app for bake workers.
 
 ==================================
-7. PieCrust 2.0.0a12 (2015-07-14)
+8. PieCrust 2.0.0a12 (2015-07-14)
 ==================================
 
 
-1.0 Commands
+8.0 Commands
 ----------------------
 
 * bake: Pass the config variants and values from the CLI to the baker.
@@ -307,7 +425,7 @@ This is the changelog for PieCrust_.
 * bake: Make pipeline processing multi-process.
 * bake: Enable multiprocess baking.
 
-1.1 Core
+8.1 Core
 ----------------------
 
 * bug: Fix CLI crash caused by configuration variants.
@@ -349,7 +467,7 @@ This is the changelog for PieCrust_.
 * debug: Log error when an exception gets raised during debug info building.
 * linker: Add ability to return the parent and ancestors of a page.
 
-1.2 Project
+8.2 Project
 ----------------------
 
 * cm: Fix wrong directory for utilities.
@@ -361,25 +479,25 @@ This is the changelog for PieCrust_.
 * tests: Add pipeline processing tests.
 * docs: Add the ``--pre`` flag to ``pip install`` while PieCrust is in beta.
 
-1.3 Miscellaneous
+8.3 Miscellaneous
 ----------------------
 
 * Fixed 'bootom' to 'bottom'
 * markdown: Cache the formatter once.
 
 ==================================
-8. PieCrust 2.0.0a11 (2015-05-18)
+9. PieCrust 2.0.0a11 (2015-05-18)
 ==================================
 
 
-1.0 Commands
+9.0 Commands
 ----------------------
 
 * bake: Return all errors from a bake record entry when asked for it.
 * serve: Fix bug where ``?!debug`` doesn't get appending correctly.
 * serve: Remove development assert.
 
-1.1 Core
+9.1 Core
 ----------------------
 
 * linker: Fix linker returning the wrong value for ``is_dir`` in some situations.
@@ -387,7 +505,7 @@ This is the changelog for PieCrust_.
 * pagination: Fix regression bug with previous/next posts.
 * data: Fix regression bug with accessing page metadata that doesn't exist.
 
-1.2 Project
+9.2 Project
 ----------------------
 
 * tests: More accurate marker position for diff'ing strings.
@@ -396,27 +514,27 @@ This is the changelog for PieCrust_.
 * tests: Also mock ``open`` in Jinja to be able to use templates in bake tests.
 * tests: Add support for testing the Chef server.
 
-1.3 Miscellaneous
+9.3 Miscellaneous
 ----------------------
 
 * jinja: Look for ``html`` extension first instead of last.
 
 ==================================
-9. PieCrust 2.0.0a10 (2015-05-15)
+10. PieCrust 2.0.0a10 (2015-05-15)
 ==================================
 
 
-1.2 Project
+10.2 Project
 ----------------------
 
 * setup: Add ``requirements.txt`` to ``MANIFEST.in`` so it can be used by the setup.
 
 ==================================
-10. PieCrust 2.0.0a9 (2015-05-11)
+11. PieCrust 2.0.0a9 (2015-05-11)
 ==================================
 
 
-1.0 Commands
+11.0 Commands
 ----------------------
 
 * serve: Add a generic WSGI app factory.
@@ -425,14 +543,14 @@ This is the changelog for PieCrust_.
 * serve: Add ability to suppress the debug info window programmatically.
 * serve: Split the server code in a couple modules inside a ``serving`` package.
 
-1.1 Core
+11.1 Core
 ----------------------
 
 * internal: Make it possible to pass ``argv`` to the main Chef function.
 * data: Fix problems with using non-existing metadata on a linked page.
 * routing: Fix bugs with matching URLs with correct route but missing metadata.
 
-1.2 Project
+11.2 Project
 ----------------------
 
 * tests: Add a Chef test for the ``find`` command.
@@ -443,11 +561,11 @@ This is the changelog for PieCrust_.
 * setup: Keep the requirements in sync between ``setuptools`` and ``pip`` .
 
 ==================================
-11. PieCrust 2.0.0a8 (2015-05-03)
+12. PieCrust 2.0.0a8 (2015-05-03)
 ==================================
 
 
-1.0 Commands
+12.0 Commands
 ----------------------
 
 * theme: Fix link to PieCrust documentation.
@@ -457,7 +575,7 @@ This is the changelog for PieCrust_.
 * sources: Fix how the ``autoconfig`` source iterates over its structure.
 * bake: Fix crash when handling bake errors.
 
-1.1 Core
+12.1 Core
 ----------------------
 
 * caching: Use separate caches for config variants and other contexts.
@@ -465,23 +583,23 @@ This is the changelog for PieCrust_.
 * config: Add method to deep-copy a config and validate its contents.
 * internal: Return the first route for a source if no metadata match is needed.
 
-1.2 Project
+12.2 Project
 ----------------------
 
 * tests: Changes to output report and hack for comparing outputs.
 
-1.3 Miscellaneous
+12.3 Miscellaneous
 ----------------------
 
 * Update development ``requirements.txt`` , add code coverage tools.
 * Update ``requirements.txt`` .
 
 ==================================
-12. PieCrust 2.0.0a7 (2015-04-20)
+13. PieCrust 2.0.0a7 (2015-04-20)
 ==================================
 
 
-1.0 Commands
+13.0 Commands
 ----------------------
 
 * import: Use the proper baker setting in the Jekyll importer.
@@ -495,7 +613,7 @@ This is the changelog for PieCrust_.
 * showrecord: Add ability to filter on the output path.
 * serve: Fix crash on URI parsing.
 
-1.1 Core
+13.1 Core
 ----------------------
 
 * data: Also expose XML date formatting as ``xmldate`` in Jinja.
@@ -507,7 +625,7 @@ This is the changelog for PieCrust_.
 * internal: Use hashes for cache paths.
 * internal: Try handling URLs in a consistent way.
 
-1.2 Project
+13.2 Project
 ----------------------
 
 * docs: Add documentation for importing content from other engines.
@@ -522,17 +640,17 @@ This is the changelog for PieCrust_.
 * tests: Fix test.
 * tests: Raise an exception instead of crashing rudely.
 
-1.3 Miscellaneous
+13.3 Miscellaneous
 ----------------------
 
 * cleancss: Fix stupid bug.
 
 ==================================
-13. PieCrust 2.0.0a6 (2015-03-30)
+14. PieCrust 2.0.0a6 (2015-03-30)
 ==================================
 
 
-1.0 Commands
+14.0 Commands
 ----------------------
 
 * import: Wordpress importer puts drafts in a ``draft`` folder. Ignore other statuses.
@@ -581,7 +699,7 @@ This is the changelog for PieCrust_.
 * prepare: Add user-defined scaffolding templates.
 * sources: Pass any current mode to ``_populateMetadata`` when finding pages.
 
-1.1 Core
+14.1 Core
 ----------------------
 
 * data: Better error message for old date formats, add ``emaildate`` filter.
@@ -618,7 +736,7 @@ This is the changelog for PieCrust_.
 * render: Don't always use a ``.html`` extension for layouts.
 * render: When a template engine can't be found, show the correct name in the error.
 
-1.2 Project
+14.2 Project
 ----------------------
 
 * docs: Quick support info page.
@@ -660,7 +778,7 @@ This is the changelog for PieCrust_.
 * tests: Patch ``os.path.exists`` and improve patching for ``open`` .
 * tests: Add help functions to get and render a simple page.
 
-1.3 Miscellaneous
+14.3 Miscellaneous
 ----------------------
 
 * bake/serve: Fix how taxonomy index pages are setup and rendered.
@@ -695,11 +813,11 @@ This is the changelog for PieCrust_.
 * processing: Add more information to the pipeline record.
 
 ==================================
-14. PieCrust 2.0.0a5 (2015-01-03)
+15. PieCrust 2.0.0a5 (2015-01-03)
 ==================================
 
 
-1.0 Commands
+15.0 Commands
 ----------------------
 
 * routes: When matching URIs, return metadata directly instead of the match object.
@@ -716,12 +834,12 @@ This is the changelog for PieCrust_.
 * sources: Add ``chef sources`` command to list page sources.
 * paths: properly format lists of paths.
 
-1.1 Core
+15.1 Core
 ----------------------
 
 * linker: Actually implement the ``Linker`` class, and use it in the page data.
 
-1.2 Project
+15.2 Project
 ----------------------
 
 * setup: Make version generation compatible with PEP440.
@@ -729,7 +847,7 @@ This is the changelog for PieCrust_.
 * tests: Add unit tests for routing classes.
 * tests: Fix serving test.
 
-1.3 Miscellaneous
+15.3 Miscellaneous
 ----------------------
 
 * cosmetic: pep8 compliance.
