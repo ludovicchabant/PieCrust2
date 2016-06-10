@@ -4,7 +4,7 @@ import shutil
 import codecs
 import logging
 import yaml
-from piecrust import CACHE_DIR
+from piecrust import CACHE_DIR, RESOURCES_DIR
 from piecrust.app import CONFIG_PATH, THEME_CONFIG_PATH
 from piecrust.commands.base import ChefCommand
 
@@ -39,18 +39,13 @@ class InitCommand(ChefCommand):
         if not os.path.isdir(os.path.dirname(config_path)):
             os.makedirs(os.path.dirname(config_path), 0o755)
 
-        config_text = yaml.dump({
-                'site': {
-                    'title': "My New Website",
-                    'description': "A website recently generated with PieCrust",
-                    'pretty_urls': True
-                    },
-                'smartypants': {
-                    'enable': True
-                    }
-                },
-                default_flow_style=False)
-        with codecs.open(config_path, 'w', 'utf-8') as fp:
+        tpl_path = os.path.join(RESOURCES_DIR, 'webinit', CONFIG_PATH)
+        if ctx.args.theme:
+            tpl_path = os.path.join(RESOURCES_DIR, 'webinit', THEME_CONFIG_PATH)
+        with open(tpl_path, 'r', encoding='utf-8') as fp:
+            config_text = fp.read()
+
+        with open(config_path, 'w', encoding='utf-8') as fp:
             fp.write(config_text)
 
 

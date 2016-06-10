@@ -1,0 +1,9 @@
+
+theme:
+   name: MyNewTheme
+   url: https://example.org
+   description: A PieCrust theme.
+
+site:
+   pretty_urls: true
+
