@@ -548,12 +548,18 @@ def _validate_site(v, values, cache):
     return v
 
 
-# Make sure the site root starts and ends with a slash.
+# Make sure the site root ends with a slash.
 def _validate_site_root(v, values, cache):
-    if not v.startswith('/'):
-        raise ConfigurationError("The `site/root` setting must start "
-                                 "with a slash.")
-    root_url = urllib.parse.quote(v.rstrip('/') + '/')
+    url_bits = urllib.parse.urlparse(v)
+    if url_bits.params or url_bits.query or url_bits.fragment:
+        raise ConfigurationError("Root URL is invalid: %s" % v)
+
+    path = url_bits.path.rstrip('/') + '/'
+    if '%' not in path:
+        path = urllib.parse.quote(path)
+
+    root_url = urllib.parse.urlunparse((
+        url_bits.scheme, url_bits.netloc, path, '', '', ''))
     return root_url
 
 
