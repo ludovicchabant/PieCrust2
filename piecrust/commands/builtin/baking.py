@@ -15,8 +15,8 @@ from piecrust.environment import ExecutionStats
 from piecrust.processing.pipeline import ProcessorPipeline
 from piecrust.processing.records import (
         ProcessorPipelineRecord,
-        FLAG_PREPARED, FLAG_PROCESSED,
-        FLAG_BYPASSED_STRUCTURED_PROCESSING)
+        FLAG_PREPARED, FLAG_PROCESSED, FLAG_BYPASSED_STRUCTURED_PROCESSING,
+        FLAG_COLLAPSED_FROM_LAST_RUN)
 from piecrust.rendering import (
         PASS_FORMATTING, PASS_RENDERING)
 
@@ -244,6 +244,8 @@ class ShowRecordCommand(ChefCommand):
 
     def _showBakeRecord(self, ctx, record_name, pattern, out_pattern):
         record = self._getBakeRecord(ctx, record_name)
+        if record is None:
+            return
 
         logging.info("Bake record for: %s" % record.out_dir)
         logging.info("From: %s" % record_name)
@@ -258,7 +260,7 @@ class ShowRecordCommand(ChefCommand):
             if pattern and not fnmatch.fnmatch(entry.path, pattern):
                 continue
             if out_pattern and not (
-                    any([o for o in entry.out_paths
+                    any([o for o in entry.all_out_paths
                          if fnmatch.fnmatch(o, out_pattern)])):
                 continue
 
@@ -369,7 +371,8 @@ class ShowRecordCommand(ChefCommand):
                     {
                         FLAG_PREPARED: 'prepared',
                         FLAG_PROCESSED: 'processed',
-                        FLAG_BYPASSED_STRUCTURED_PROCESSING: 'external'})
+                        FLAG_BYPASSED_STRUCTURED_PROCESSING: 'external',
+                        FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run'})
 
             logger.info(" - ")
             logger.info("   path:      %s" % rel_path)
