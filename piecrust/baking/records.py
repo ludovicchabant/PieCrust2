@@ -16,7 +16,7 @@ def _get_transition_key(path, extra_key=None):
 
 
 class BakeRecord(Record):
-    RECORD_VERSION = 19
+    RECORD_VERSION = 20
 
     def __init__(self):
         super(BakeRecord, self).__init__()
@@ -24,6 +24,7 @@ class BakeRecord(Record):
         self.bake_time = None
         self.baked_count = {}
         self.total_baked_count = {}
+        self.deleted = []
         self.success = True
 
 
@@ -105,6 +106,11 @@ class BakeRecordEntry(object):
     def all_assets(self):
         for sub in self.subs:
             yield from sub.assets
+
+    @property
+    def all_out_paths(self):
+        for sub in self.subs:
+            yield sub.out_path
 
     @property
     def has_any_error(self):

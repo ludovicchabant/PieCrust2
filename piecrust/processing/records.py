@@ -4,13 +4,14 @@ from piecrust.records import Record, TransitionalRecord
 
 
 class ProcessorPipelineRecord(Record):
-    RECORD_VERSION = 6
+    RECORD_VERSION = 7
 
     def __init__(self):
         super(ProcessorPipelineRecord, self).__init__()
         self.out_dir = None
         self.process_time = None
         self.processed_count = 0
+        self.deleted = []
         self.success = False
 
 
@@ -79,7 +80,9 @@ class TransitionalProcessorPipelineRecord(TransitionalRecord):
             if prev and cur and not cur.was_processed:
                 # This asset wasn't processed, so the information from
                 # last time is still valid.
-                cur.flags = prev.flags | FLAG_COLLAPSED_FROM_LAST_RUN
+                cur.flags = (prev.flags
+                        & ~FLAG_PROCESSED
+                        | FLAG_COLLAPSED_FROM_LAST_RUN)
                 cur.rel_outputs = list(prev.rel_outputs)
                 cur.errors = list(prev.errors)
 

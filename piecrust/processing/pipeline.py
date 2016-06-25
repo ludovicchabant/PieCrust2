@@ -166,6 +166,7 @@ class ProcessorPipeline(object):
         if delete:
             for path, reason in record.getDeletions():
                 logger.debug("Removing '%s': %s" % (path, reason))
+                record.current.deleted.append(path)
                 try:
                     os.remove(path)
                 except FileNotFoundError:

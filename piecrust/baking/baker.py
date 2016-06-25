@@ -379,6 +379,7 @@ class Baker(object):
         logger.debug("Handling deletions...")
         for path, reason in record.getDeletions():
             logger.debug("Removing '%s': %s" % (path, reason))
+            record.current.deleted.append(path)
             try:
                 os.remove(path)
                 logger.info('[delete] %s' % path)
