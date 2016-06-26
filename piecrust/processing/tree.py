@@ -247,7 +247,12 @@ class ProcessingTreeRunner(object):
             else:
                 node.setState(STATE_CLEAN, False)
 
-        state = "dirty" if node.state == STATE_DIRTY else "clean"
+        if node.state == STATE_DIRTY:
+            state = "dirty"
+        elif node.state == STATE_CLEAN:
+            state = "clean"
+        else:
+            state = "unknown"
         logger.debug(format_timed(start_time,
                                   "Computed node dirtyness: %s" % state,
                                   indent_level=node.level, colored=False))
