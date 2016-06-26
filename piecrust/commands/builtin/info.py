@@ -25,8 +25,7 @@ class ShowConfigCommand(ChefCommand):
     def __init__(self):
         super(ShowConfigCommand, self).__init__()
         self.name = 'showconfig'
-        self.description = ("Prints part of, or the entirety of, "
-                            "the website's configuration.")
+        self.description = ("Shows the website's configuration.")
 
     def setupParser(self, parser, app):
         parser.add_argument(
