@@ -55,3 +55,35 @@ a given destination.
 * `options` (`-avc --delete`): The options to pass to the `rsync` executable. By
   default, those will run `rsync` in "mirroring" mode.
 
+The `rsync` provider support the simple URL syntax:
+
+```
+publish:
+    foobar: rsync://username:password@hostname/some/path
+```
+
+
+## SFTP
+
+This publisher will connect to an FTP server over SSH, and upload the output of
+the bake to a given directory.
+
+> PieCrust is using [Paramiko] for all the SFTP connection plumbing.
+
+* `type`: `sftp`
+* `host`: The host to connect to (including a custom port, if any).
+* `path`: The path to upload to (optional -- if not specified, the target path
+  is the remote user's home directory).
+* `username`: Username to connect with (optional -- if specified, a password
+  will be prompted before uploading, if not, an SSH agent will be used to find
+  a key).
+
+The `sftp` provider supports the simple URL syntax:
+
+```
+publish:
+    foobar: sftp://username@hostname/some/path
+```
+
+[paramiko]: http://docs.paramiko.org/
+
