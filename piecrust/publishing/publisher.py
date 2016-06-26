@@ -21,35 +21,21 @@ class Publisher(object):
     def __init__(self, app):
         self.app = app
 
-    def run(self, target, preview=False, log_file=None):
+    def run(self, target,
+            force=False, preview=False, extra_args=None, log_file=None,
+            applied_config_variant=None, applied_config_values=None):
         start_time = time.perf_counter()
 
-        # Get the configuration for this target.
-        target_cfg = self.app.config.get('publish/%s' % target)
-        if not target_cfg:
+        # Get publisher for this target.
+        pub = self.app.getPublisher(target)
+        if pub is None:
             raise InvalidPublishTargetError(
                     "No such publish target: %s" % target)
 
-        target_type = None
+        # Will we need to bake first?
         bake_first = True
-        parsed_url = None
-        if isinstance(target_cfg, dict):
-            target_type = target_cfg.get('type')
-            if not target_type:
-                raise InvalidPublishTargetError(
-                        "Publish target '%s' doesn't specify a type." % target)
-            bake_first = target_cfg.get('bake', True)
-        elif isinstance(target_cfg, str):
-            comps = urllib.parse.urlparse(target_cfg)
-            if not comps.scheme:
-                raise InvalidPublishTargetError(
-                        "Publish target '%s' has an invalid target URL." %
-                        target)
-            parsed_url = comps
-            target_type = find_publisher_name(self.app, comps.scheme)
-            if target_type is None:
-                raise InvalidPublishTargetError(
-                        "No such publish target scheme: %s" % comps.scheme)
+        if not pub.has_url_config:
+            bake_first = pub.getConfigValue('bake', True)
 
         # Setup logging stuff.
         hdlr = None
@@ -64,20 +50,30 @@ class Publisher(object):
             logger.info("Previewing deployment to %s" % target)
 
         # Bake first is necessary.
-        bake_out_dir = None
+        rec1 = None
+        rec2 = None
+        was_baked = False
+        bake_out_dir = os.path.join(self.app.root_dir, '_pub', target)
         if bake_first:
-            bake_out_dir = os.path.join(self.app.cache_dir, 'pub', target)
             if not preview:
                 bake_start_time = time.perf_counter()
                 logger.debug("Baking first to: %s" % bake_out_dir)
 
                 from piecrust.baking.baker import Baker
-                baker = Baker(self.app, bake_out_dir)
+                baker = Baker(
+                        self.app, bake_out_dir,
+                        applied_config_variant=applied_config_variant,
+                        applied_config_values=applied_config_values)
                 rec1 = baker.bake()
 
                 from piecrust.processing.pipeline import ProcessorPipeline
-                proc = ProcessorPipeline(self.app, bake_out_dir)
+                proc = ProcessorPipeline(
+                        self.app, bake_out_dir,
+                        applied_config_variant=applied_config_variant,
+                        applied_config_values=applied_config_values)
                 rec2 = proc.run()
+
+                was_baked = True
 
                 if not rec1.success or not rec2.success:
                     raise Exception(
@@ -85,18 +81,6 @@ class Publisher(object):
                 logger.info(format_timed(bake_start_time, "Baked website."))
             else:
                 logger.info("Would bake to: %s" % bake_out_dir)
-
-        # Create the appropriate publisher.
-        pub = None
-        for pub_cls in self.app.plugin_loader.getPublishers():
-            if pub_cls.PUBLISHER_NAME == target_type:
-                pub = pub_cls(self.app, target)
-                break
-        if pub is None:
-            raise InvalidPublishTargetError(
-                    "Publish target '%s' has invalid type: %s" %
-                    (target, target_type))
-        pub.parsed_url = parsed_url
 
         # Publish!
         logger.debug(
@@ -106,9 +90,13 @@ class Publisher(object):
 
         ctx = PublishingContext()
         ctx.bake_out_dir = bake_out_dir
+        ctx.bake_record = rec1
+        ctx.processing_record = rec2
+        ctx.was_baked = was_baked
         ctx.preview = preview
+        ctx.args = extra_args
         try:
-            success = pub.run(ctx)
+            pub.run(ctx)
         except Exception as ex:
             raise PublishingError(
                     "Error publishing to target: %s" % target) from ex
@@ -117,25 +105,23 @@ class Publisher(object):
                 root_logger.removeHandler(hdlr)
                 hdlr.close()
 
-        if not success:
-            raise PublishingError(
-                    "Unknown error publishing to target: %s" % target)
         logger.info(format_timed(
             pub_start_time, "Ran publisher %s" % pub.PUBLISHER_NAME))
 
         logger.info(format_timed(start_time, 'Deployed to %s' % target))
 
 
-def find_publisher_class(app, scheme):
+def find_publisher_class(app, name, is_scheme=False):
+    attr_name = 'PUBLISHER_SCHEME' if is_scheme else 'PUBLISHER_NAME'
     for pub_cls in app.plugin_loader.getPublishers():
-        pub_sch = getattr(pub_cls, 'PUBLISHER_SCHEME', None)
-        if ('bake+%s' % pub_sch) == scheme:
+        pub_sch = getattr(pub_cls, attr_name, None)
+        if pub_sch == name:
             return pub_cls
     return None
 
 
 def find_publisher_name(app, scheme):
-    pub_cls = find_publisher_class(app, scheme)
+    pub_cls = find_publisher_class(app, scheme, True)
     if pub_cls:
         return pub_cls.PUBLISHER_NAME
     return None

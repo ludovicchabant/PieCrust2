@@ -1,46 +1,68 @@
 import os.path
 import shlex
+import urllib.parse
 import logging
 import threading
 import subprocess
+from piecrust.configuration import try_get_dict_value
 
 
 logger = logging.getLogger(__name__)
 
 
+FILE_MODIFIED = 1
+FILE_DELETED = 2
+
+
+class PublisherConfigurationError(Exception):
+    pass
+
+
 class PublishingContext(object):
     def __init__(self):
         self.bake_out_dir = None
+        self.bake_record = None
+        self.processing_record = None
+        self.was_baked = False
         self.preview = False
+        self.args = None
 
 
 class Publisher(object):
-    def __init__(self, app, target):
+    PUBLISHER_NAME = 'undefined'
+    PUBLISHER_SCHEME = None
+
+    def __init__(self, app, target, config):
         self.app = app
         self.target = target
-        self.parsed_url = None
+        self.config = config
+        self.has_url_config = isinstance(config, urllib.parse.ParseResult)
         self.log_file_path = None
 
-    @property
-    def has_url_config(self):
-        return self.parsed_url is not None
+    def setupPublishParser(self, parser, app):
+        return
 
-    @property
-    def url_config(self):
-        if self.parsed_url is not None:
-            return self.getConfig()
-        raise Exception("This publisher has a full configuration.")
-
-    def getConfig(self):
-        return self.app.config.get('publish/%s' % self.target)
-
-    def getConfigValue(self, name):
+    def getConfigValue(self, name, default_value=None):
         if self.has_url_config:
             raise Exception("This publisher only has a URL configuration.")
-        return self.app.config.get('publish/%s/%s' % (self.target, name))
+        return try_get_dict_value(self.config, name, default_value)
 
     def run(self, ctx):
         raise NotImplementedError()
+
+    def getBakedFiles(self, ctx):
+        for e in ctx.bake_record.entries:
+            for sub in e.subs:
+                if sub.was_baked:
+                    yield sub.out_path
+        for e in ctx.processing_record.entries:
+            if e.was_processed:
+                yield from [os.path.join(ctx.processing_record.out_dir, p)
+                        for p in e.rel_outputs]
+
+    def getDeletedFiles(self, ctx):
+        yield from ctx.bake_record.deleted
+        yield from ctx.processing_record.deleted
 
 
 class ShellCommandPublisherBase(Publisher):

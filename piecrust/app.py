@@ -2,6 +2,7 @@ import time
 import os.path
 import hashlib
 import logging
+import urllib.parse
 from werkzeug.utils import cached_property
 from piecrust import (
         RESOURCES_DIR,
@@ -10,9 +11,9 @@ from piecrust import (
         CONFIG_PATH, THEME_CONFIG_PATH)
 from piecrust.appconfig import PieCrustConfiguration
 from piecrust.cache import ExtensibleCache, NullExtensibleCache
-from piecrust.plugins.base import PluginLoader
-from piecrust.environment import StandardEnvironment
 from piecrust.configuration import ConfigurationError, merge_dicts
+from piecrust.environment import StandardEnvironment
+from piecrust.plugins.base import PluginLoader
 from piecrust.routing import Route
 from piecrust.sources.base import REALM_THEME
 
@@ -165,6 +166,36 @@ class PieCrust(object):
             gens.append(gen)
         return gens
 
+    @cached_property
+    def publishers(self):
+        defs_by_name = {}
+        defs_by_scheme = {}
+        for cls in self.plugin_loader.getPublishers():
+            defs_by_name[cls.PUBLISHER_NAME] = cls
+            if cls.PUBLISHER_SCHEME:
+                defs_by_scheme[cls.PUBLISHER_SCHEME] = cls
+
+        tgts = []
+        publish_config = self.config.get('publish')
+        if publish_config is None:
+            return tgts
+        for n, t in publish_config.items():
+            pub_type = None
+            is_scheme = False
+            if isinstance(t, dict):
+                pub_type = t.get('type')
+            elif isinstance(t, str):
+                comps = urllib.parse.urlparse(t)
+                pub_type = comps.scheme
+                is_scheme = True
+            cls = (defs_by_scheme.get(pub_type) if is_scheme
+                    else defs_by_name.get(pub_type))
+            if cls is None:
+                raise ConfigurationError("No such publisher: %s" % pub_type)
+            tgt = cls(self, n, t)
+            tgts.append(tgt)
+        return tgts
+
     def getSource(self, source_name):
         for source in self.sources:
             if source.name == source_name:
@@ -193,6 +224,12 @@ class PieCrust(object):
         for route in self.routes:
             if route.generator_name == generator_name:
                 return route
+        return None
+
+    def getPublisher(self, target_name):
+        for pub in self.publishers:
+            if pub.target == target_name:
+                return pub
         return None
 
     def _get_dir(self, default_rel_dir):
