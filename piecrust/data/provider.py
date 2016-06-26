@@ -86,8 +86,16 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
         return self._buildMonthlyArchive()
 
     def __getitem__(self, name):
+        if name == 'posts':
+            return self._posts()
+        elif name == 'years':
+            return self._buildYearlyArchive()
+        elif name == 'months':
+            return self._buildMonthlyArchive()
+
         if self._source.app.config.get('site/taxonomies/' + name) is not None:
             return self._buildTaxonomy(name)
+
         raise KeyError("No such item: %s" % name)
 
     def __iter__(self):
