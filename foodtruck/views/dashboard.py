@@ -37,17 +37,18 @@ def index():
         if fe:
             fs_endpoints[fe] = source
 
-    st = site.scm.getStatus()
     data['new_pages'] = []
-    for p in st.new_files:
-        pd = _getWipData(p, site, fs_endpoints)
-        if pd:
-            data['new_pages'].append(pd)
     data['edited_pages'] = []
-    for p in st.edited_files:
-        pd = _getWipData(p, site, fs_endpoints)
-        if pd:
-            data['edited_pages'].append(pd)
+    if site.scm:
+        st = site.scm.getStatus()
+        for p in st.new_files:
+            pd = _getWipData(p, site, fs_endpoints)
+            if pd:
+                data['new_pages'].append(pd)
+        for p in st.edited_files:
+            pd = _getWipData(p, site, fs_endpoints)
+            if pd:
+                data['edited_pages'].append(pd)
 
     data['site_name'] = site.name
     data['site_title'] = site.piecrust_app.config.get('site/title', site.name)

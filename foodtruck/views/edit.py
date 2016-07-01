@@ -43,7 +43,8 @@ def edit_page(slug):
             if not message:
                 message = "Edit %s" % os.path.relpath(
                     page.path, site_app.root_dir)
-            site.scm.commit([page.path], message)
+            if site.scm:
+                site.scm.commit([page.path], message)
 
         if 'do_preview' in request.form:
             return _preview_page(page)
