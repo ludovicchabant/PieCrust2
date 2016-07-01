@@ -10,7 +10,7 @@ class RsyncPublisher(ShellCommandPublisherBase):
             orig = ctx.bake_out_dir
             dest = self.config.netloc + self.config.path
         else:
-            orig = self.getConfigValue('source', ctx.bake_our_dir)
+            orig = self.getConfigValue('source', ctx.bake_out_dir)
             dest = self.getConfigValue('destination')
 
         rsync_options = None
