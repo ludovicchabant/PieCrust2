@@ -49,8 +49,12 @@ class AdministrationPanelCommand(ChefCommand):
         p.set_defaults(sub_func=self._runFoodTruck)
 
     def checkedRun(self, ctx):
+        if ctx.app.root_dir is None:
+            raise SiteNotFoundError(theme=ctx.app.theme_site)
+
         if not hasattr(ctx.args, 'sub_func'):
-            return self._runFoodTruck(ctx)
+            ctx.parser.parse_args(['admin', '--help'])
+            return
         return ctx.args.sub_func(ctx)
 
     def _runFoodTruck(self, ctx):
@@ -59,9 +63,18 @@ class AdministrationPanelCommand(ChefCommand):
         if (ctx.args.monitor_assets and (
                 not ctx.args.debug or
                 os.environ.get('WERKZEUG_RUN_MAIN') == 'true')):
+            from piecrust.app import PieCrustFactory
             from piecrust.serving.procloop import ProcessingLoop
+            appfactory = PieCrustFactory(
+                    ctx.app.root_dir,
+                    cache=ctx.app.cache.enabled,
+                    cache_key=ctx.app.cache_key,
+                    config_variant=ctx.config_variant,
+                    config_values=ctx.config_values,
+                    debug=ctx.app.debug,
+                    theme_site=ctx.app.theme_site)
             out_dir = os.path.join(ctx.app.root_dir, CACHE_DIR, 'foodtruck', 'server')
-            proc_loop = ProcessingLoop(ctx.app.root_dir, out_dir, debug=ctx.args.debug)
+            proc_loop = ProcessingLoop(appfactory, out_dir)
             proc_loop.start()
 
         from foodtruck import settings
