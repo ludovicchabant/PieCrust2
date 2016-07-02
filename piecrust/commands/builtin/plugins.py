@@ -30,6 +30,9 @@ class PluginsCommand(ChefCommand):
         p.set_defaults(sub_func=self._listPlugins)
 
     def checkedRun(self, ctx):
+        if ctx.app.root_dir is None:
+            raise SiteNotFoundError(theme=ctx.app.theme_site)
+
         if not hasattr(ctx.args, 'sub_func'):
             ctx.parser.parse_args(['plugins', '--help'])
             return
