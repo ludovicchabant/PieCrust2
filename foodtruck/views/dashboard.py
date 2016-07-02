@@ -39,16 +39,21 @@ def index():
 
     data['new_pages'] = []
     data['edited_pages'] = []
+    data['misc_files'] = []
     if site.scm:
         st = site.scm.getStatus()
         for p in st.new_files:
             pd = _getWipData(p, site, fs_endpoints)
             if pd:
                 data['new_pages'].append(pd)
+            else:
+                data['misc_files'].append(p)
         for p in st.edited_files:
             pd = _getWipData(p, site, fs_endpoints)
             if pd:
                 data['edited_pages'].append(pd)
+            else:
+                data['misc_files'].append(p)
 
     data['site_name'] = site.name
     data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
@@ -70,6 +75,11 @@ def index():
 
 
 def _getWipData(path, site, fs_endpoints):
+    auto_formats = site.piecrust_app.config.get('site/auto_formats', ['html'])
+    pathname, pathext = os.path.splitext(path)
+    if pathext not in auto_formats:
+        return None
+
     source = None
     for endpoint, s in fs_endpoints.items():
         if path.startswith(endpoint):
@@ -79,8 +89,7 @@ def _getWipData(path, site, fs_endpoints):
         return None
 
     fac = source.buildPageFactory(os.path.join(site.root_dir, path))
-    route = site.piecrust_app.getRoute(
-            source.name, fac.metadata, skip_taxonomies=True)
+    route = site.piecrust_app.getSourceRoute(source.name, fac.metadata)
     if not route:
         return None
 

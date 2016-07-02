@@ -45,8 +45,7 @@ def write_page(source_name):
                 fp.write('')
             flash("%s was created." % os.path.relpath(fac.path, site.root_dir))
 
-            route = site.getRoute(source.name, fac.metadata,
-                                  skip_taxonomies=True)
+            route = site.getSourceRoute(source.name, fac.metadata)
             if route is None:
                 logger.error("Can't find route for page: %s" % fac.path)
                 abort(500)

@@ -33,7 +33,7 @@
     <div class="col-md-6">
         <h2><span class="icon ion-erlenmeyer-flask"></span> Work in Progress</h2>
         {% if new_pages %}
-        <p>New pages</p>
+        <p>New pages:</p>
         <ul>
             {% for p in new_pages %}
             <li><a href="{{p.url}}">{{p.title}}</a><br/>
@@ -42,7 +42,7 @@
         </ul>
         {% endif %}
         {% if edited_pages %}
-        <p>Edited pages</p>
+        <p>Edited pages:</p>
         <ul>
             {% for p in edited_pages %}
             <li><a href="{{p.url}}">{{p.title}}</a><br/>
@@ -52,6 +52,16 @@
         {% endif %}
         {% if not new_pages and not edited_pages %}
         <p>No work in progress.</p>
+        {% endif %}
+        {% if misc_files %}
+        <div class="ft-dash-misc">
+        <p>Miscellaneous new/edited files:</p>
+        <ul>
+            {% for p in misc_files %}
+            <li>{{p}}</li>
+            {% endfor %}
+        </ul>
+        </div>
         {% endif %}
 
     </div>
