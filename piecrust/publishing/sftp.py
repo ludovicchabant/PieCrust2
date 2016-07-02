@@ -51,8 +51,13 @@ class SftpPublisher(Publisher):
             pkey_path = self.getConfigValue('key')
 
         password = None
-        if username:
+        if username and not ctx.preview:
             password = getpass.getpass("Password for '%s': " % username)
+
+        if ctx.preview:
+            logger.info("Would connect to %s:%s..." % (hostname, port))
+            self._previewUpload(ctx, path)
+            return
 
         logger.debug("Connecting to %s:%s..." % (hostname, port))
         lfk = (not username and not pkey_path)
@@ -74,6 +79,12 @@ class SftpPublisher(Publisher):
                 client.close()
         finally:
             sshc.close()
+
+    def _previewUpload(self, ctx, dest_dir):
+        if not ctx.args.force:
+            logger.info("Would upload new/changed files...")
+        else:
+            logger.info("Would upload entire website...")
 
     def _upload(self, session, client, ctx, dest_dir):
         if dest_dir:
