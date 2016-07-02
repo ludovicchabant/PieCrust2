@@ -1,0 +1,25 @@
+---
+config:
+    publish:
+        test_shell:
+            type: shell
+            command: this_command_doesnt_exist
+args: publish --preview test_shell
+---
+config:
+    publish:
+        test_rsync:
+            type: rsync
+            destination: some_place_that_doesnt_exist
+args: publish --preview test_rsync
+---
+config:
+    publish:
+        test_sftp:
+            type: sftp
+            host: some_host_that_doesnt_exist
+            path: ~/some/path
+            username: fake
+            password: fake
+args: publish --preview test_sftp
+
