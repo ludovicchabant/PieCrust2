@@ -1,3 +1,9 @@
 ---
 args: showconfig
+---
+config:
+    site:
+        root: /something
+args: showconfig site/root
+out: /something
 
