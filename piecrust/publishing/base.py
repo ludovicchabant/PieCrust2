@@ -66,8 +66,8 @@ class Publisher(object):
 
 
 class ShellCommandPublisherBase(Publisher):
-    def __init__(self, app, target):
-        super(ShellCommandPublisherBase, self).__init__(app, target)
+    def __init__(self, app, target, config):
+        super(ShellCommandPublisherBase, self).__init__(app, target, config)
         self.expand_user_args = True
 
     def run(self, ctx):
