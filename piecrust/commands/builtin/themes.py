@@ -53,7 +53,8 @@ class ThemesCommand(ChefCommand):
             raise SiteNotFoundError(theme=ctx.app.theme_site)
 
         if not hasattr(ctx.args, 'sub_func'):
-            ctx.args = ctx.parser.parse_args(['themes', 'info'])
+            ctx.parser.parse_args(['themes', '--help'])
+            return
         ctx.args.sub_func(ctx)
 
     def _info(self, ctx):
