@@ -114,6 +114,24 @@ class PrepareCommand(ExtendableChefCommand):
         with open(path, 'w') as f:
             f.write(tpl_text)
 
+        editor = ctx.app.config.get('prepare/editor')
+        editor_type = ctx.app.config.get('prepare/editor_type', 'exe')
+        if editor:
+            import shlex
+            shell = False
+            args = '%s "%s"' % (editor, path)
+            if '%path%' in editor:
+                args = editor.replace('%path%', path)
+
+            if editor_type.lower() == 'shell':
+                shell = True
+            else:
+                args = shlex.split(args)
+
+            import subprocess
+            logger.info("Running: %s" % args)
+            subprocess.Popen(args, shell=shell)
+
 
 class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
     """ Provides the default scaffolding templates to the `prepare`

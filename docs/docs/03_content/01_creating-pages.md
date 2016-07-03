@@ -7,8 +7,16 @@ place with the correct name. This mostly depends on the [page sources][src]
 you're using, but we can go over how it works for the sources involved in the
 [default content model][dcm].
 
-We will also go over the `chef prepare` command, which semi-automates the
-process of creating pages.
+We will also mention the `chef prepare` command, which semi-automates the
+process of creating pages by letting you type a lot less than what would be
+otherwise needed to create the correctly named text file in the correct folder.
+Generally speaking, you should be able to run `chef prepare -h` and figure it
+out on your own.
+
+> In addition to creating the text file, you can make PieCrust open your
+> favorite text editor too, with the `prepare/editor` site configuration
+> setting. For more information, see the [site configuration
+> reference][confref].
 
 
 ## Overview
@@ -75,4 +83,5 @@ respectively.
 [src]: {{docurl('content-model/sources')}}
 [dcm]: {{docurl('content-model/default-model')}}
 [srcref]: {{docurl('reference/sources')}}
+[confref]: {{docurl('reference/website-configuration')}}
 

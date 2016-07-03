@@ -122,6 +122,25 @@ given between parenthesis:
 [cm]: {{docurl('content-model')}}
 
 
+## Preparation
+
+The following settings are under the `prepare` section, and are used by the
+`chef/prepare` command.
+
+* `editor`: The path to an editor executable to run after creating a page with
+  the `chef prepare` command. By default, PieCrust will pass the path of the new
+  page as an argument to the executable. If you want more control over the
+  generated command line, use the `%path%` token in the value -- it will be
+  replaced with the path of the new page and nothing else will be passed.
+
+* `editor_type` (`exe`): The type of executable specified in the
+  `prepare/editor` setting. Values can be:
+  
+      * `exe`: the command is run as an executable. This is the default.
+      * `shell`: the command is run through the shell, in case you need
+        environment variable expansion and other shell features.
+
+
 ## Baker
 
 The following settings are under the `baker` section, and are used by the `chef
@@ -137,8 +156,8 @@ bake` command:
   asset pipeline. Patterns are either glob-like (_i.e._ using wildcards) or
   regex-like (when the pattern starts and ends with a slash).
 
-  Some patterns will always be added to the list: `_cache`, `_counter`,
-  `theme_info.yml`, `.DS_Store`, `Thumbs.db`, `.git*`, `.hg*`, and `.svn`.
+    Some patterns will always be added to the list: `_cache`, `_counter`,
+    `theme_info.yml`, `.DS_Store`, `Thumbs.db`, `.git*`, `.hg*`, and `.svn`.
 
 * `is_baking` (`false`): This setting is read-only, and will be set to true
   while baking the website (_i.e._ while the `chef bake` command is running).
