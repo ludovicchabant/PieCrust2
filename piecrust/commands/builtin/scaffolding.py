@@ -56,8 +56,18 @@ class PrepareCommand(ExtendableChefCommand):
                                 "generated text and header. Run `chef help "
                                 "scaffolding` for more information.")
             p.set_defaults(source=src)
+            p.set_defaults(sub_func=self._doRun)
 
-    def run(self, ctx):
+    def checkedRun(self, ctx):
+        if ctx.app.root_dir is None:
+            raise SiteNotFoundError(theme=ctx.app.theme_site)
+
+        if not hasattr(ctx.args, 'sub_func'):
+            ctx.parser.parse_args(['prepare', '--help'])
+            return
+        ctx.args.sub_func(ctx)
+
+    def _doRun(self, ctx):
         if not hasattr(ctx.args, 'source'):
             raise Exception("No source specified. "
                             "Please run `chef prepare -h` for usage.")
