@@ -1,13 +1,13 @@
 from flask import g, abort, render_template, url_for
 from flask.ext.login import login_required
 from piecrust.data.paginator import Paginator
+from ..blueprint import foodtruck_bp
 from ..textutil import text_preview, html_to_text
 from ..views import with_menu_context
-from ..web import app
 
 
-@app.route('/list/<source_name>/', defaults={'page_num': 1})
-@app.route('/list/<source_name>/<int:page_num>')
+@foodtruck_bp.route('/list/<source_name>/', defaults={'page_num': 1})
+@foodtruck_bp.route('/list/<source_name>/<int:page_num>')
 @login_required
 def list_source(source_name, page_num):
     site = g.site.piecrust_app
@@ -29,26 +29,26 @@ def list_source(source_name, page_num):
                 'tags': p.get('tags', []),
                 'category': p.get('category'),
                 'source': source_name,
-                'url': url_for('edit_page', slug=p['slug'])
+                'url': url_for('.edit_page', slug=p['slug'])
                 }
         data['pages'].append(page_data)
 
     prev_page_url = None
     if pgn.prev_page_number:
         prev_page_url = url_for(
-                'list_source', source_name=source_name,
+                '.list_source', source_name=source_name,
                 page_num=pgn.prev_page_number)
     next_page_url = None
     if pgn.next_page_number:
         next_page_url = url_for(
-                'list_source', source_name=source_name,
+                '.list_source', source_name=source_name,
                 page_num=pgn.next_page_number)
 
     page_urls = []
     for i in pgn.all_page_numbers(7):
         url = None
         if i != page_num:
-            url = url_for('list_source', source_name=source_name, page_num=i)
+            url = url_for('.list_source', source_name=source_name, page_num=i)
         page_urls.append({'num': i, 'url': url})
 
     data['pagination'] = {

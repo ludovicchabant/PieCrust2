@@ -7,14 +7,14 @@ from flask.ext.login import login_required
 from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.sources.base import MODE_CREATING
 from piecrust.routing import create_route_metadata
+from ..blueprint import foodtruck_bp
 from ..views import with_menu_context
-from ..web import app
 
 
 logger = logging.getLogger(__name__)
 
 
-@app.route('/write/<source_name>', methods=['GET', 'POST'])
+@foodtruck_bp.route('/write/<source_name>', methods=['GET', 'POST'])
 @login_required
 def write_page(source_name):
     site = g.site.piecrust_app
@@ -57,7 +57,7 @@ def write_page(source_name):
             uri = uri[len(uri_root):]
             logger.debug("Redirecting to: %s" % uri)
 
-            return redirect(url_for('edit_page', slug=uri))
+            return redirect(url_for('.edit_page', slug=uri))
 
         abort(400)
 
@@ -76,7 +76,7 @@ def _write_page_form(source):
     data = {}
     data['is_new_page'] = True
     data['source_name'] = source.name
-    data['url_postback'] = url_for('write_page', source_name=source.name)
+    data['url_postback'] = url_for('.write_page', source_name=source.name)
     data['fields'] = []
     for f in source.getInteractiveFields():
         data['fields'].append({

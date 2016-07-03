@@ -20,8 +20,8 @@ def get_menu_context():
         elif 'blog' in s.name:
             source_icon = 'filing'
 
-        url_write = url_for('write_page', source_name=s.name)
-        url_listall = url_for('list_source', source_name=s.name)
+        url_write = url_for('.write_page', source_name=s.name)
+        url_listall = url_for('.list_source', source_name=s.name)
 
         ctx = {
                 'url': url_listall,
@@ -35,12 +35,12 @@ def get_menu_context():
         entries.append(ctx)
 
     entries.append({
-        'url': url_for('publish'),
+        'url': url_for('.publish'),
         'title': "Publish",
         'icon': 'upload'})
 
     # entries.append({
-    #     'url': url_for('settings'),
+    #     'url': url_for('.settings'),
     #     'title': "Settings",
     #     'icon': 'gear-b'})
 
@@ -62,7 +62,7 @@ def get_menu_context():
 
     data = {'entries': entries,
             'user': current_user,
-            'url_logout': url_for('logout')}
+            'url_logout': url_for('.logout')}
     return data
 
 

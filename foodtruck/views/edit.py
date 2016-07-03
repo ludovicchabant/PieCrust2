@@ -6,15 +6,15 @@ from flask.ext.login import login_required
 from piecrust.rendering import (
         PageRenderingContext, render_page)
 from piecrust.serving.util import get_requested_page
+from ..blueprint import foodtruck_bp
 from ..views import with_menu_context
-from ..web import app
 
 
 logger = logging.getLogger(__name__)
 
 
-@app.route('/edit/', defaults={'slug': ''}, methods=['GET', 'POST'])
-@app.route('/edit/<path:slug>', methods=['GET', 'POST'])
+@foodtruck_bp.route('/edit/', defaults={'slug': ''}, methods=['GET', 'POST'])
+@foodtruck_bp.route('/edit/<path:slug>', methods=['GET', 'POST'])
 @login_required
 def edit_page(slug):
     site = g.site
@@ -66,7 +66,7 @@ def _preview_page(page):
 def _edit_page_form(page):
     data = {}
     data['is_new_page'] = False
-    data['url_cancel'] = url_for('list_source', source_name=page.source.name)
+    data['url_cancel'] = url_for('.list_source', source_name=page.source.name)
     with open(page.path, 'r', encoding='utf8', newline='') as fp:
         data['page_text'] = fp.read()
     data['is_dos_nl'] = "1" if '\r\n' in data['page_text'] else "0"

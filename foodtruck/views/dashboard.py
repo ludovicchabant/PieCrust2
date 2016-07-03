@@ -2,21 +2,21 @@ import os
 import os.path
 import logging
 from flask import (
-        g, request,
+        current_app, g, request,
         render_template, url_for, redirect)
 from flask.ext.login import login_user, logout_user, login_required
 from piecrust.configuration import parse_config_header
 from piecrust.rendering import QualifiedPage
 from piecrust.uriutil import split_uri
 from ..textutil import text_preview
+from ..blueprint import foodtruck_bp, load_user, after_this_request
 from ..views import with_menu_context
-from ..web import app, load_user, after_this_request
 
 
 logger = logging.getLogger(__name__)
 
 
-@app.route('/')
+@foodtruck_bp.route('/')
 @login_required
 def index():
     data = {}
@@ -29,7 +29,7 @@ def index():
         facs = source.getPageFactories()
         src_data = {
                 'name': source.name,
-                'list_url': url_for('list_source', source_name=source.name),
+                'list_url': url_for('.list_source', source_name=source.name),
                 'page_count': len(facs)}
         data['sources'].append(src_data)
 
@@ -57,18 +57,18 @@ def index():
 
     data['site_name'] = site.name
     data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
-    data['url_publish'] = url_for('publish')
-    data['url_preview'] = url_for('preview_site_root', sitename=site.name)
+    data['url_publish'] = url_for('.publish')
+    data['url_preview'] = url_for('.preview_site_root', sitename=site.name)
 
     data['sites'] = []
     for s in g.sites.getall():
         data['sites'].append({
             'name': s.name,
             'display_name': s.piecrust_app.config.get('site/title'),
-            'url': url_for('index', site_name=s.name)
+            'url': url_for('.index', site_name=s.name)
             })
     data['needs_switch'] = len(g.config.get('sites')) > 1
-    data['url_switch'] = url_for('switch_site')
+    data['url_switch'] = url_for('.switch_site')
 
     with_menu_context(data)
     return render_template('dashboard.html', **data)
@@ -105,26 +105,26 @@ def _getWipData(path, site, fs_endpoints):
     return {
             'title': qp.config.get('title'),
             'slug': slug,
-            'url': url_for('edit_page', slug=slug),
+            'url': url_for('.edit_page', slug=slug),
             'text': extract
             }
 
 
 @login_required
-@app.route('/switch_site', methods=['POST'])
+@foodtruck_bp.route('/switch_site', methods=['POST'])
 def switch_site():
     site_name = request.form.get('site_name')
     if not site_name:
-        return redirect(url_for('index'))
+        return redirect(url_for('.index'))
 
     @after_this_request
     def _save_site(resp):
         resp.set_cookie('foodtruck_site_name', site_name)
 
-    return redirect(url_for('index'))
+    return redirect(url_for('.index'))
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@foodtruck_bp.route('/login', methods=['GET', 'POST'])
 def login():
     data = {}
 
@@ -134,10 +134,10 @@ def login():
         remember = request.form.get('remember')
 
         user = load_user(username)
-        if user is not None and app.bcrypt:
-            if app.bcrypt.check_password_hash(user.password, password):
+        if user is not None and current_app.bcrypt:
+            if current_app.bcrypt.check_password_hash(user.password, password):
                 login_user(user, remember=bool(remember))
-                return redirect(url_for('index'))
+                return redirect(url_for('.index'))
         data['message'] = (
                 "User '%s' doesn't exist or password is incorrect." %
                 username)
@@ -145,9 +145,9 @@ def login():
     return render_template('login.html', **data)
 
 
-@app.route('/logout')
+@foodtruck_bp.route('/logout')
 @login_required
 def logout():
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('.index'))
 

@@ -9,8 +9,9 @@ def run_foodtruck(host=None, port=None, debug=False):
         import foodtruck.settings
         foodtruck.settings.DEBUG = debug
 
-    from .web import app
+    from .web import create_foodtruck_app
     try:
+        app = create_foodtruck_app()
         app.run(host=host, port=port, debug=debug, threaded=True)
     except SystemExit:
         # This is needed for Werkzeug's code reloader to be able to correctly

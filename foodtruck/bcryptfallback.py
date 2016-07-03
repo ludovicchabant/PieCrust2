@@ -37,6 +37,9 @@ except ImportError:
             self.generate_password_hash = generate_password_hash
             self.check_password_hash = check_password_hash
 
+        def init_app(self, app):
+            pass
+
     Bcrypt = SHA512Fallback
 
 

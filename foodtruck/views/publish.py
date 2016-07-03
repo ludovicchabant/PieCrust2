@@ -2,15 +2,15 @@ import copy
 import logging
 from flask import request, g, url_for, render_template, Response
 from flask.ext.login import login_required
+from ..blueprint import foodtruck_bp
 from ..pubutil import PublishLogReader
 from ..views import with_menu_context
-from ..web import app
 
 
 logger = logging.getLogger(__name__)
 
 
-@app.route('/publish', methods=['GET', 'POST'])
+@foodtruck_bp.route('/publish', methods=['GET', 'POST'])
 @login_required
 def publish():
     if request.method == 'POST':
@@ -28,7 +28,7 @@ def publish():
         return render_template('error.html', **data)
 
     data = {}
-    data['url_run'] = url_for('publish')
+    data['url_run'] = url_for('.publish')
     data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
     data['targets'] = []
     for tn in sorted(pub_cfg.keys()):
@@ -46,7 +46,7 @@ def publish():
     return render_template('publish.html', **data)
 
 
-@app.route('/publish-log')
+@foodtruck_bp.route('/publish-log')
 @login_required
 def stream_publish_log():
     pid_path = g.site.publish_pid_file

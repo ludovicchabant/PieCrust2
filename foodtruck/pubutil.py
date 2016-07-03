@@ -4,7 +4,7 @@ import time
 import errno
 import signal
 import logging
-from .web import app
+from .blueprint import foodtruck_bp
 
 
 logger = logging.getLogger(__name__)
@@ -12,20 +12,29 @@ logger = logging.getLogger(__name__)
 server_shutdown = False
 
 
-def _shutdown_server_and_raise_sigint():
-    if not app.debug or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+def _shutdown_server_and_raise_sigint(is_app_debug):
+    if (not is_app_debug or
+            os.environ.get('WERKZEUG_RUN_MAIN') == 'true'):
         # This is needed when hitting CTRL+C to shutdown the Werkzeug server,
         # otherwise SSE generators will keep it alive.
         logger.debug("Shutting down SSE generators...")
+        logger.flush()
         global server_shutdown
         server_shutdown = True
     raise KeyboardInterrupt()
 
 
-if app.config.get('FOODTRUCK_CMDLINE_MODE', False):
-    # Make sure CTRL+C works correctly.
-    signal.signal(signal.SIGINT,
-                  lambda *args: _shutdown_server_and_raise_sigint())
+def record_pipeline(state):
+    if state.app.config.get('FOODTRUCK_CMDLINE_MODE', False):
+        # Make sure CTRL+C works correctly.
+        logger.debug("Adding SIGINT callback for pipeline thread.")
+        signal.signal(
+                signal.SIGINT,
+                lambda *args: _shutdown_server_and_raise_sigint(
+                    state.app.debug))
+
+
+foodtruck_bp.record(record_pipeline)
 
 
 def _read_pid_file(pid_file):
