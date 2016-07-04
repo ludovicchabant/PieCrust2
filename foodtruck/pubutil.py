@@ -18,7 +18,8 @@ def _shutdown_server_and_raise_sigint(is_app_debug):
         # This is needed when hitting CTRL+C to shutdown the Werkzeug server,
         # otherwise SSE generators will keep it alive.
         logger.debug("Shutting down SSE generators...")
-        logger.flush()
+        for h in logger.handlers:
+            h.flush()
         global server_shutdown
         server_shutdown = True
     raise KeyboardInterrupt()
