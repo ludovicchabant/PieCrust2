@@ -16,9 +16,7 @@ class GitSourceControl(SourceControl):
     def getStatus(self):
         res = RepoStatus()
         st_out = self._run('status', '-s')
-        print(st_out)
         for line in st_out.split('\n'):
-            print(line)
             if not line:
                 continue
             if line.startswith('?? '):
@@ -31,8 +29,7 @@ class GitSourceControl(SourceControl):
                 else:
                     res.new_files.append(path)
             elif line.startswith(' M '):
-                res.edited_files.append(path[3:])
-        print(res.__dict__)
+                res.edited_files.append(line[3:])
         return res
 
     def _doCommit(self, paths, message, author):
