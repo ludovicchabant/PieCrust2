@@ -1,0 +1,9 @@
+---
+admin: true
+url: /
+in:
+    pages/one.html: ''
+    posts/2016-01-01_post1.html: ''
+out_contains: |
+    1 pages
+

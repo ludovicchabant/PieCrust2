@@ -3,6 +3,8 @@ import logging
 from flask import Flask
 from werkzeug import SharedDataMiddleware
 from .blueprint import foodtruck_bp, login_manager, bcrypt_ext
+from .configuration import FoodTruckConfigNotFoundError
+from .sites import InvalidSiteError
 
 
 logger = logging.getLogger(__name__)
@@ -13,7 +15,7 @@ def create_foodtruck_app(extra_settings=None):
     app.config.from_object('foodtruck.settings')
     app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
     if extra_settings:
-        app.config.from_object(extra_settings)
+        app.config.update(extra_settings)
 
     admin_root = app.config.setdefault('FOODTRUCK_ROOT', os.getcwd())
     config_path = os.path.join(admin_root, 'app.cfg')

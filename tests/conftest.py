@@ -371,17 +371,27 @@ class ServeTestItem(YamlTestItemBase):
         expected_headers = self.spec.get('headers')
         expected_output = self.spec.get('out')
         expected_contains = self.spec.get('out_contains')
+        is_admin_test = self.spec.get('admin') is True
 
         from werkzeug.test import Client
         from werkzeug.wrappers import BaseResponse
-        from piecrust.app import PieCrustFactory
-        from piecrust.serving.server import Server
         with mock_fs_scope(fs, keep=self.mock_debug):
-            appfactory = PieCrustFactory(
-                    fs.path('/kitchen'),
-                    theme_site=self.is_theme_site)
-            server = Server(appfactory)
-            test_app = self._TestApp(server)
+            if is_admin_test:
+                from foodtruck.web import create_foodtruck_app
+                s = {
+                        'FOODTRUCK_CMDLINE_MODE': True,
+                        'FOODTRUCK_ROOT': fs.path('/kitchen')
+                        }
+                test_app = create_foodtruck_app(s)
+            else:
+                from piecrust.app import PieCrustFactory
+                from piecrust.serving.server import Server
+                appfactory = PieCrustFactory(
+                        fs.path('/kitchen'),
+                        theme_site=self.is_theme_site)
+                server = Server(appfactory)
+                test_app = self._TestApp(server)
+
             client = Client(test_app, BaseResponse)
             resp = client.get(url)
             assert expected_status == resp.status_code
