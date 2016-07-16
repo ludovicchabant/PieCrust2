@@ -192,8 +192,7 @@ setup(
             'Operating System :: MacOS :: MacOS X',
             'Operating System :: POSIX :: Linux',
             'Operating System :: Microsoft :: Windows',
-            'Programming Language :: Python',
-            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3 :: Only',
             'Topic :: Internet :: WWW/HTTP :: Site Management'
             ],
         entry_points={'console_scripts': [
