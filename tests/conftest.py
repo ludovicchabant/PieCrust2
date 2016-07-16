@@ -377,7 +377,7 @@ class ServeTestItem(YamlTestItemBase):
         from werkzeug.wrappers import BaseResponse
         with mock_fs_scope(fs, keep=self.mock_debug):
             if is_admin_test:
-                from foodtruck.web import create_foodtruck_app
+                from piecrust.admin.web import create_foodtruck_app
                 s = {
                         'FOODTRUCK_CMDLINE_MODE': True,
                         'FOODTRUCK_ROOT': fs.path('/kitchen')

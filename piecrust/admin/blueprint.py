@@ -45,7 +45,7 @@ def record_login_manager(state):
 
 
 # Setup Bcrypt.
-from foodtruck.bcryptfallback import Bcrypt
+from .bcryptfallback import Bcrypt
 bcrypt_ext = Bcrypt()
 
 
@@ -141,12 +141,12 @@ def timestamp_to_datetime(t, fmt=None):
     return time.strftime(fmt, t)
 
 
-import foodtruck.views.create  # NOQA
-import foodtruck.views.dashboard  # NOQA
-import foodtruck.views.edit  # NOQA
-import foodtruck.views.menu  # NOQA
-import foodtruck.views.preview  # NOQA
-import foodtruck.views.publish  # NOQA
-import foodtruck.views.sources  # NOQA
+import piecrust.admin.views.create  # NOQA
+import piecrust.admin.views.dashboard  # NOQA
+import piecrust.admin.views.edit  # NOQA
+import piecrust.admin.views.menu  # NOQA
+import piecrust.admin.views.preview  # NOQA
+import piecrust.admin.views.publish  # NOQA
+import piecrust.admin.views.sources  # NOQA
 
 

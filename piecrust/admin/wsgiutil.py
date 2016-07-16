@@ -15,9 +15,10 @@ def get_wsgi_app(admin_root=None, log_file=None,
         logging.getLogger().addHandler(handler)
 
     logger.debug("Creating WSGI application.")
+    es = {}
     if admin_root:
-        import foodtruck.settings
-        foodtruck.settings.FOODTRUCK_ROOT = admin_root
-    from foodtruck.web import app
+        es['FOODTRUCK_ROOT'] = admin_root
+    from .web import create_foodtruck_app
+    app = create_foodtruck_app(es)
     return app
 

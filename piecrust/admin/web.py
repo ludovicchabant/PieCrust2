@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def create_foodtruck_app(extra_settings=None):
     app = Flask(__name__)
-    app.config.from_object('foodtruck.settings')
+    app.config.from_object('piecrust.admin.settings')
     app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
     if extra_settings:
         app.config.update(extra_settings)

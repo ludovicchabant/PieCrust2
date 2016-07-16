@@ -77,18 +77,19 @@ class AdministrationPanelCommand(ChefCommand):
             proc_loop = ProcessingLoop(appfactory, out_dir)
             proc_loop.start()
 
-        from foodtruck import settings
-        settings.FOODTRUCK_CMDLINE_MODE = True
-        settings.FOODTRUCK_ROOT = ctx.app.root_dir
-        from foodtruck.main import run_foodtruck
+        es = {
+                'FOODTRUCK_CMDLINE_MODE': True,
+                'FOODTRUCK_ROOT': ctx.app.root_dir}
+        from piecrust.admin.main import run_foodtruck
         run_foodtruck(
                 host=ctx.args.address,
                 port=ctx.args.port,
-                debug=ctx.args.debug)
+                debug=ctx.args.debug,
+                extra_settings=es)
 
     def _initFoodTruck(self, ctx):
         import getpass
-        import bcrypt
+        from piecrust.admin import bcryptfallback as bcrypt
 
         secret_key = os.urandom(22)
         admin_username = input("Admin username (admin): ") or 'admin'
@@ -125,7 +126,7 @@ SECRET_KEY = %(secret_key)s
             fp.write(flask_config)
 
     def _generatePassword(self, ctx):
-        from foodtruck import bcryptfallback as bcrypt
+        from piecrust.admin import bcryptfallback as bcrypt
         binpw = ctx.args.password.encode('utf8')
         hashpw = bcrypt.hashpw(binpw, bcrypt.gensalt()).decode('utf8')
         logger.info(hashpw)
