@@ -215,6 +215,9 @@ class ChefTestItem(YamlTestItemBase):
 
             if expected_out is not None:
                 actual_out = memstream.getvalue()
+                if not self.spec.get('no_strip'):
+                    actual_out = actual_out.rstrip(' \n')
+                    expected_out = expected_out.rstrip(' \n')
                 if self.spec.get('replace_out_path_sep'):
                     expected_out = expected_out.replace('/', os.sep)
                 assert expected_out == actual_out
