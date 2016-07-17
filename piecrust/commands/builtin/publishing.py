@@ -26,6 +26,10 @@ class PublishCommand(ChefCommand):
                 action='store_true',
                 help="Only preview what the publisher would do.")
 
+        # Don't setup anything for a null app.
+        if app.root_dir is None:
+            return
+
         subparsers = parser.add_subparsers()
         for pub in app.publishers:
             p = subparsers.add_parser(
