@@ -224,16 +224,17 @@ def render_page_segments(ctx):
         save_to_fs = True
         if ctx.app.env.fs_cache_only_for_main_page and not eis.is_main_page:
             save_to_fs = False
-        if repo and not ctx.force_render:
-            render_result = repo.get(
-                ctx.uri,
-                lambda: _do_render_page_segments_from_ctx(ctx),
-                fs_cache_time=ctx.page.path_mtime,
-                save_to_fs=save_to_fs)
-        else:
-            render_result = _do_render_page_segments_from_ctx(ctx)
-            if repo:
-                repo.put(ctx.uri, render_result, save_to_fs)
+        with ctx.app.env.timerScope("PageRenderSegments"):
+            if repo and not ctx.force_render:
+                render_result = repo.get(
+                    ctx.uri,
+                    lambda: _do_render_page_segments_from_ctx(ctx),
+                    fs_cache_time=ctx.page.path_mtime,
+                    save_to_fs=save_to_fs)
+            else:
+                render_result = _do_render_page_segments_from_ctx(ctx)
+                if repo:
+                    repo.put(ctx.uri, render_result, save_to_fs)
     finally:
         ctx.setCurrentPass(PASS_NONE)
         eis.popPage()
