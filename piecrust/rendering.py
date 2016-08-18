@@ -324,7 +324,8 @@ def _do_render_layout(layout_name, page, layout_data):
     engine = get_template_engine(page.app, engine_name)
 
     try:
-        output = engine.renderFile(full_names, layout_data)
+        with page.app.env.timerScope(engine.__class__.__name__):
+            output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
         logger.exception(ex)
         msg = "Can't find template for page: %s\n" % page.path
