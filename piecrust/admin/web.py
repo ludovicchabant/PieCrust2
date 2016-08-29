@@ -2,7 +2,7 @@ import os.path
 import logging
 from flask import Flask
 from werkzeug import SharedDataMiddleware
-from .blueprint import foodtruck_bp, login_manager, bcrypt_ext
+from .blueprint import foodtruck_bp
 from .configuration import FoodTruckConfigNotFoundError
 from .sites import InvalidSiteError
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_foodtruck_app(extra_settings=None):
-    app = Flask(__name__)
+    app = Flask(__name__.split('.')[0])
     app.config.from_object('piecrust.admin.settings')
     app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
     if extra_settings:
@@ -62,8 +62,6 @@ def create_foodtruck_app(extra_settings=None):
         _missing_secret_key = True
 
     # Register extensions and blueprints.
-    login_manager.init_app(app)
-    bcrypt_ext.init_app(app)
     app.register_blueprint(foodtruck_bp)
 
     logger.debug("Created FoodTruck app with admin root: %s" % admin_root)

@@ -38,7 +38,7 @@ except ImportError:
             self.check_password_hash = check_password_hash
 
         def init_app(self, app):
-            pass
+            app.bcrypt = self
 
     Bcrypt = SHA512Fallback
 

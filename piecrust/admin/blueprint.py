@@ -30,7 +30,7 @@ def load_user(user_id):
 
 
 login_manager = LoginManager()
-login_manager.login_view = 'login'
+login_manager.login_view = 'FoodTruck.login'
 login_manager.user_loader(load_user)
 
 
@@ -42,6 +42,8 @@ def record_login_manager(state):
         logger.debug("No secret key found, disabling website login.")
         login_manager.unauthorized_handler(_handler)
         login_manager.login_view = None
+
+    login_manager.init_app(state.app)
 
 
 # Setup Bcrypt.
@@ -55,6 +57,9 @@ def record_bcrypt(state):
         raise Exception(
                 "You're running FoodTruck outside of `chef`, and will need to "
                 "install Flask-Bcrypt to get more proper security.")
+
+    bcrypt_ext.init_app(state.app)
+    state.app.bcrypt = bcrypt_ext
 
 
 # Create the FoodTruck blueprint.
