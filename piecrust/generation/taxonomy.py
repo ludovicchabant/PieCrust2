@@ -8,7 +8,6 @@ from piecrust.data.filters import (
         PaginationFilter, SettingFilterClause,
         page_value_accessor)
 from piecrust.generation.base import PageGenerator, InvalidRecordExtraKey
-from piecrust.sources.pageref import PageRef, PageNotFoundError
 
 
 logger = logging.getLogger(__name__)

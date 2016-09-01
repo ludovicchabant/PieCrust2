@@ -1,9 +1,13 @@
+import logging
 from werkzeug.utils import cached_property
 from piecrust.baking.records import BakeRecordEntry
 from piecrust.baking.worker import save_factory, JOB_BAKE
 from piecrust.configuration import ConfigurationError
 from piecrust.routing import create_route_metadata
 from piecrust.sources.pageref import PageRef
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidRecordExtraKey(Exception):
@@ -61,13 +65,13 @@ class PageGeneratorBakeContext(object):
         if override_entry is not None:
             override_source = self.app.getSource(
                     override_entry.source_name)
-            if override_source.realm == fac.source.realm:
-                cur_entry.errors.append(
+            if override_source.realm == page_fac.source.realm:
+                entry.errors.append(
                         "Page '%s' maps to URL '%s' but is overriden "
                         "by page '%s'." %
-                        (fac.ref_spec, uri, override_entry.path))
-                logger.error(cur_entry.errors[-1])
-            cur_entry.flags |= BakeRecordEntry.FLAG_OVERRIDEN
+                        (page_fac.ref_spec, uri, override_entry.path))
+                logger.error(entry.errors[-1])
+            entry.flags |= BakeRecordEntry.FLAG_OVERRIDEN
             return
 
         route_index = self._app.routes.index(route)
