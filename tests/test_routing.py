@@ -26,28 +26,28 @@ def test_matches_metadata(config, metadata, expected):
 
 
 @pytest.mark.parametrize(
-        'site_root, route_pattern, expected_required_metadata',
+        'site_root, route_pattern, expected_func_parameters',
         [
-            ('/', '/%foo%', set(['foo'])),
-            ('/', '/%path:foo%', set(['foo'])),
-            ('/', '/%foo%/%bar%', set(['foo', 'bar'])),
-            ('/', '/%foo%/%path:bar%', set(['foo', 'bar'])),
-            ('/something', '/%foo%', set(['foo'])),
-            ('/something', '/%path:foo%', set(['foo'])),
-            ('/something', '/%foo%/%bar%', set(['foo', 'bar'])),
-            ('/something', '/%foo%/%path:bar%', set(['foo', 'bar'])),
-            ('/~johndoe', '/%foo%', set(['foo'])),
-            ('/~johndoe', '/%path:foo%', set(['foo'])),
-            ('/~johndoe', '/%foo%/%bar%', set(['foo', 'bar'])),
-            ('/~johndoe', '/%foo%/%path:bar%', set(['foo', 'bar']))
+            ('/', '/%foo%', ['foo']),
+            ('/', '/%path:foo%', ['foo']),
+            ('/', '/%foo%/%bar%', ['foo', 'bar']),
+            ('/', '/%foo%/%path:bar%', ['foo', 'bar']),
+            ('/something', '/%foo%', ['foo']),
+            ('/something', '/%path:foo%', ['foo']),
+            ('/something', '/%foo%/%bar%', ['foo', 'bar']),
+            ('/something', '/%foo%/%path:bar%', ['foo', 'bar']),
+            ('/~johndoe', '/%foo%', ['foo']),
+            ('/~johndoe', '/%path:foo%', ['foo']),
+            ('/~johndoe', '/%foo%/%bar%', ['foo', 'bar']),
+            ('/~johndoe', '/%foo%/%path:bar%', ['foo', 'bar'])
             ])
 def test_required_metadata(site_root, route_pattern,
-                           expected_required_metadata):
+                           expected_func_parameters):
     app = get_mock_app()
     app.config.set('site/root', site_root.rstrip('/') + '/')
     config = {'url': route_pattern, 'source': 'blah'}
     route = Route(app, config)
-    assert route.required_route_metadata == expected_required_metadata
+    assert route.func_parameters == expected_func_parameters
 
 
 @pytest.mark.parametrize(

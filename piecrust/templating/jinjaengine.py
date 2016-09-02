@@ -236,7 +236,7 @@ class PieCrustEnvironment(Environment):
 
         # Add route functions.
         for route in app.routes:
-            name = route.template_func_name
+            name = route.func_name
             func = self.globals.get(name)
             if func is None:
                 func = CompositeRouteFunction()

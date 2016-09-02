@@ -9,10 +9,8 @@ from werkzeug.utils import cached_property
 logger = logging.getLogger(__name__)
 
 
-route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<name>\w+)%')
-route_esc_re = re.compile(r'\\%((?P<qual>[\w\d]+)\\:)?(?P<name>\w+)\\%')
-template_func_re = re.compile(r'^(?P<name>\w+)\((?P<args>.*)\)\s*$')
-template_func_arg_re = re.compile(r'((?P<qual>[\w\d]+):)?(?P<arg>\+?\w+)')
+route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<var>\+)?(?P<name>\w+)%')
+route_esc_re = re.compile(r'\\%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)\\%')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
@@ -94,15 +92,24 @@ class Route(object):
         else:
             self.uri_re_no_path = None
 
-        self.required_route_metadata = set()
+        # Determine the parameters for the route function.
+        self.func_name = self._validateFuncName(cfg.get('func'))
+        self.func_parameters = []
+        self.func_has_variadic_parameter = False
+        variadic_param_idx = -1
         for m in route_re.finditer(self.uri_pattern):
-            self.required_route_metadata.add(m.group('name'))
+            name = m.group('name')
+            if m.group('var'):
+                self.func_has_variadic_parameter = True
+                variadic_param_idx = len(self.func_parameters)
 
-        self.template_func = None
-        self.template_func_name = None
-        self.template_func_args = []
-        self.template_func_vararg = None
-        self._createTemplateFunc(cfg.get('func'))
+            self.func_parameters.append(name)
+
+        if (variadic_param_idx >= 0 and
+                variadic_param_idx != len(self.func_parameters) - 1):
+            raise Exception(
+                "Only the last route URL parameter can be variadic. "
+                "Got: %s" % self.uri_pattern)
 
     @property
     def route_type(self):
@@ -142,7 +149,7 @@ class Route(object):
                 self.generator_name, self.uri))
 
     def matchesMetadata(self, route_metadata):
-        return self.required_route_metadata.issubset(route_metadata.keys())
+        return set(self.func_parameters).issubset(route_metadata.keys())
 
     def matchUri(self, uri, strict=False):
         if not uri.startswith(self.uri_root):
@@ -171,7 +178,7 @@ class Route(object):
             # say, a route's pattern is `/foo/%slug%`, and we're matching an
             # URL like `/foo`.
             matched_keys = set(route_metadata.keys())
-            missing_keys = self.required_route_metadata - matched_keys
+            missing_keys = set(self.func_parameters) - matched_keys
             for k in missing_keys:
                 route_metadata[k] = ''
 
@@ -231,6 +238,35 @@ class Route(object):
 
         return uri
 
+    def execTemplateFunc(self, *args):
+        fixed_param_count = len(self.func_parameters)
+        if self.func_has_variadic_parameter:
+            fixed_param_count -= 1
+
+        if len(args) < fixed_param_count:
+            raise Exception(
+                    "Route function '%s' expected %d arguments, "
+                    "got %d: %s" %
+                    (self.func_name, fixed_param_count, len(args), args))
+
+        if self.func_has_variadic_parameter:
+            coerced_args = list(args[:fixed_param_count])
+            if len(args) > fixed_param_count:
+                var_arg = tuple(args[fixed_param_count:])
+                coerced_args.append(var_arg)
+        else:
+            coerced_args = args
+
+        metadata = {}
+        for arg_name, arg_val in zip(self.func_parameters, coerced_args):
+            metadata[arg_name] = self._coerceRouteParameter(
+                    arg_name, arg_val)
+
+        if self.is_generator_route:
+            self.generator.onRouteFunctionUsed(self, metadata)
+
+        return self.getUri(metadata)
+
     def _uriFormatRepl(self, m):
         qual = m.group('qual')
         name = m.group('name')
@@ -243,7 +279,7 @@ class Route(object):
     def _uriPatternRepl(self, m):
         name = m.group('name')
         qual = m.group('qual')
-        if qual == 'path':
+        if qual == 'path' or m.group('var'):
             return r'(?P<%s>[^\?]*)' % name
         elif qual == 'int4':
             return r'(?P<%s>\d{4})' % name
@@ -269,99 +305,47 @@ class Route(object):
                 raise Exception(
                         "Expected route parameter '%s' to be of type "
                         "'%s', but was: %s" %
-                        (k, param_type, route_metadata[k]))
+                        (name, param_type, val))
         if param_type == 'path':
             return val
         raise Exception("Unknown route parameter type: %s" % param_type)
 
-    def _createTemplateFunc(self, func_def):
-        if func_def is None:
-            return
-
-        m = template_func_re.match(func_def)
-        if m is None:
-            raise Exception("Template function definition for route '%s' "
-                            "has invalid syntax: %s" %
-                            (self.uri_pattern, func_def))
-
-        self.template_func_name = m.group('name')
-        self.template_func_args = []
-        arg_list = m.group('args')
-        if arg_list:
-            self.template_func_args = []
-            for m2 in template_func_arg_re.finditer(arg_list):
-                self.template_func_args.append(m2.group('arg'))
-            for i in range(len(self.template_func_args) - 1):
-                if self.template_func_args[i][0] == '+':
-                    raise Exception("Only the last route parameter can be a "
-                                    "variable argument (prefixed with `+`)")
-
-        if (self.template_func_args and
-                self.template_func_args[-1][0] == '+'):
-            self.template_func_vararg = self.template_func_args[-1][1:]
-
-        def template_func(*args):
-            is_variable = (self.template_func_vararg is not None)
-            if not is_variable and len(args) != len(self.template_func_args):
-                raise Exception(
-                        "Route function '%s' expected %d arguments, "
-                        "got %d: %s" %
-                        (func_def, len(self.template_func_args),
-                            len(args), args))
-            elif is_variable and len(args) < len(self.template_func_args):
-                raise Exception(
-                        "Route function '%s' expected at least %d arguments, "
-                        "got %d: %s" %
-                        (func_def, len(self.template_func_args),
-                            len(args), args))
-
-            metadata = {}
-            non_var_args = list(self.template_func_args)
-            if is_variable:
-                del non_var_args[-1]
-
-            for arg_name, arg_val in zip(non_var_args, args):
-                metadata[arg_name] = self._coerceRouteParameter(
-                        arg_name, arg_val)
-
-            if is_variable:
-                metadata[self.template_func_vararg] = []
-                for i in range(len(non_var_args), len(args)):
-                    metadata[self.template_func_vararg].append(args[i])
-
-            if self.is_generator_route:
-                self.generator.onRouteFunctionUsed(self, metadata)
-
-            return self.getUri(metadata)
-
-        self.template_func = template_func
+    def _validateFuncName(self, name):
+        if not name:
+            return None
+        i = name.find('(')
+        if i >= 0:
+            name = name[:i]
+            logger.warning(
+                "Route function names shouldn't contain the list of arguments "
+                "anymore -- just specify '%s'." % name)
+        return name
 
 
 class CompositeRouteFunction(object):
     def __init__(self):
-        self._funcs = []
+        self._routes = []
         self._arg_names = None
 
     def addFunc(self, route):
         if self._arg_names is None:
-            self._arg_names = sorted(route.template_func_args)
+            self._arg_names = list(route.func_parameters)
 
-        if sorted(route.template_func_args) != self._arg_names:
+        if route.func_parameters != self._arg_names:
             raise Exception("Cannot merge route function with arguments '%s' "
                             "with route function with arguments '%s'." %
-                            (route.template_func_args, self._arg_names))
-        self._funcs.append((route, route.template_func))
+                            (route.func_parameters, self._arg_names))
+        self._routes.append(route)
 
     def __call__(self, *args, **kwargs):
-        if len(self._funcs) == 1 or len(args) == len(self._arg_names):
-            f = self._funcs[0][1]
-            return f(*args, **kwargs)
+        if len(self._routes) == 1 or len(args) == len(self._arg_names):
+            return self._routes[0].execTemplateFunc(*args, **kwargs)
 
         if len(args) == len(self._arg_names) + 1:
             f_args = args[:-1]
-            for r, f in self._funcs:
+            for r in self._routes:
                 if r.source_name == args[-1]:
-                    return f(*f_args, **kwargs)
+                    return r.execTemplateFunc(*f_args, **kwargs)
             raise Exception("No such source: %s" % args[-1])
 
         raise Exception("Incorrect number of arguments for route function. "

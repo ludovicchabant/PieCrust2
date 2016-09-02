@@ -287,7 +287,7 @@ default_theme_content_model_base = collections.OrderedDict({
                 {
                     'url': '/%path:slug%',
                     'source': 'theme_pages',
-                    'func': 'pcurl(slug)'
+                    'func': 'pcurl'
                     }
                 ],
             'theme_tag_page': 'theme_pages:_tag.%ext%',
@@ -339,7 +339,7 @@ default_content_model_base = collections.OrderedDict({
             'default_post_layout': 'post',
             'post_url': '/%int4:year%/%int2:month%/%int2:day%/%slug%',
             'year_url': '/archives/%int4:year%',
-            'tag_url': '/tag/%path:tag%',
+            'tag_url': '/tag/%+tag%',
             'category_url': '/%category%',
             'posts_per_page': 5
             })
@@ -365,7 +365,7 @@ def get_default_content_model(values, user_overrides):
                     {
                         'url': '/%path:slug%',
                         'source': 'pages',
-                        'func': 'pcurl(slug)'
+                        'func': 'pcurl'
                         }
                     ],
                 'taxonomies': collections.OrderedDict([
@@ -467,14 +467,12 @@ def get_default_content_model_for_blog(
                     {
                         'url': post_url,
                         'source': blog_name,
-                        'func': (
-                            '%sposturl(int:year,int:month,int:day,slug)' %
-                            tpl_func_prefix)
+                        'func': ('%sposturl' % tpl_func_prefix)
                         },
                     {
                         'url': year_url,
                         'generator': ('%s_archives' % blog_name),
-                        'func': ('%syearurl(year)' % tpl_func_prefix)
+                        'func': ('%syearurl' % tpl_func_prefix)
                         }
                     ]
                 })
@@ -510,19 +508,15 @@ def get_default_content_model_for_blog(
                 (values, 'site/%s' % tax_url_cfg_name),
                 default=('%s/%%%s%%' % (term, term)))
         tax_url = '/' + url_prefix + tax_url.lstrip('/')
-        term_arg = term
-        if tax_cfg.get('multiple') is True:
-            term_arg = '+' + term
         tax_func_name = try_get_dict_values(
                 (user_overrides, 'site/taxonomies/%s/func_name' % tax_name),
                 (values, 'site/taxonomies/%s/func_name' % tax_name),
                 default=('%s%surl' % (tpl_func_prefix, term)))
-        tax_func = '%s(%s)' % (tax_func_name, term_arg)
         tax_route = collections.OrderedDict({
             'url': tax_url,
             'generator': tax_gen_name,
             'taxonomy': tax_name,
-            'func': tax_func
+            'func': tax_func_name
             })
         cfg['site']['routes'].append(tax_route)
 
