@@ -418,8 +418,8 @@ class ServeTestItem(YamlTestItemBase):
         if isinstance(excinfo.value, MultipleNotFound):
             res = '\n'.join(
                     ["HTTP error 404 returned:",
-                     excinfo.value.description] +
-                    [e.description for e in excinfo.value._nfes])
+                     str(excinfo.value)] +
+                    [str(e) for e in excinfo.value._nfes])
             res += repr_nested_failure(excinfo)
             return res
         elif isinstance(excinfo.value, HTTPException):
