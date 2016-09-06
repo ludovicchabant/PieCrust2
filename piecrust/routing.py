@@ -67,13 +67,6 @@ class Route(object):
                              re.escape(self.uri_pattern)) + '$'
         self.uri_re = re.compile(p)
 
-        # Get the types of the route parameters.
-        self.param_types = {}
-        for m in route_re.finditer(self.uri_pattern):
-            qual = m.group('qual')
-            if qual:
-                self.param_types[str(m.group('name'))] = qual
-
         # If the URI pattern has a 'path'-type component, we'll need to match
         # the versions for which that component is empty. So for instance if
         # we have `/foo/%path:bar%`, we may need to match `/foo` (note the
@@ -96,14 +89,21 @@ class Route(object):
         self.func_name = self._validateFuncName(cfg.get('func'))
         self.func_parameters = []
         self.func_has_variadic_parameter = False
+        self.param_types = {}
         variadic_param_idx = -1
         for m in route_re.finditer(self.uri_pattern):
             name = m.group('name')
+            self.func_parameters.append(name)
+
+            qual = m.group('qual')
+            if not qual:
+                qual = self._getBackwardCompatibleParamType(name)
+            if qual:
+                self.param_types[name] = qual
+
             if m.group('var'):
                 self.func_has_variadic_parameter = True
                 variadic_param_idx = len(self.func_parameters)
-
-            self.func_parameters.append(name)
 
         if (variadic_param_idx >= 0 and
                 variadic_param_idx != len(self.func_parameters) - 1):
@@ -270,21 +270,41 @@ class Route(object):
     def _uriFormatRepl(self, m):
         qual = m.group('qual')
         name = m.group('name')
+
+        # Backwards compatibility... this will print a warning later.
+        if qual is None:
+            if name == 'year':
+                qual = 'int4'
+            elif name in ['month', 'day']:
+                qual = 'int2'
+
         if qual == 'int4':
             return '%%(%s)04d' % name
         elif qual == 'int2':
             return '%%(%s)02d' % name
+        elif qual and qual != 'path':
+            raise Exception("Unknown route parameter type: %s" % qual)
         return '%%(%s)s' % name
 
     def _uriPatternRepl(self, m):
         name = m.group('name')
         qual = m.group('qual')
+
+        # Backwards compatibility... this will print a warning later.
+        if qual is None:
+            if name == 'year':
+                qual = 'int4'
+            elif name in ['month', 'day']:
+                qual = 'int2'
+
         if qual == 'path' or m.group('var'):
             return r'(?P<%s>[^\?]*)' % name
         elif qual == 'int4':
             return r'(?P<%s>\d{4})' % name
         elif qual == 'int2':
             return r'(?P<%s>\d{2})' % name
+        elif qual and qual != 'path':
+            raise Exception("Unknown route parameter type: %s" % qual)
         return r'(?P<%s>[^/\?]+)' % name
 
     def _uriNoPathRepl(self, m):
@@ -303,12 +323,32 @@ class Route(object):
                 return int(val)
             except ValueError:
                 raise Exception(
-                        "Expected route parameter '%s' to be of type "
-                        "'%s', but was: %s" %
-                        (name, param_type, val))
+                    "Expected route parameter '%s' to be of type "
+                    "'%s', but was: %s" %
+                    (name, param_type, val))
         if param_type == 'path':
             return val
         raise Exception("Unknown route parameter type: %s" % param_type)
+
+    def _getBackwardCompatibleParamType(self, name):
+        # Print a warning only if we're not in a worker process.
+        print_warning = not self.app.config.has('baker/worker_id')
+
+        if name in ['year']:
+            if print_warning:
+                logger.warning(
+                    "Route parameter '%%%s%%' has no type qualifier. "
+                    "You probably meant '%%int4:%s%%' so we'll use that." %
+                    (name, name))
+            return 'int4'
+        if name in ['month', 'day']:
+            if print_warning:
+                logger.warning(
+                    "Route parameter '%%%s%%' has no type qualifier. "
+                    "You probably meant '%%int2:%s%%' so we'll use that." %
+                    (name, name))
+            return 'int2'
+        return None
 
     def _validateFuncName(self, name):
         if not name:
