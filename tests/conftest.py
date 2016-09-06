@@ -546,7 +546,7 @@ def _compare_str(left, right, ctx):
             # values are within a few seconds of each other (usually 0 or 1).
             right_time_str = right[i:i + len(test_time_iso8601)]
             right_time = time.strptime(right_time_str, '%Y-%m-%dT%H:%M:%SZ')
-            left_time = time.gmtime(ctx.time)
+            left_time = time.localtime(ctx.time)
             difference = time.mktime(left_time) - time.mktime(right_time)
             print("Got time difference: %d" % difference)
             if abs(difference) <= 2:
