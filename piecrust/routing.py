@@ -103,7 +103,7 @@ class Route(object):
 
             if m.group('var'):
                 self.func_has_variadic_parameter = True
-                variadic_param_idx = len(self.func_parameters)
+                variadic_param_idx = len(self.func_parameters) - 1
 
         if (variadic_param_idx >= 0 and
                 variadic_param_idx != len(self.func_parameters) - 1):
