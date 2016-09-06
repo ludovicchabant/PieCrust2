@@ -33,7 +33,6 @@ class Taxonomy(object):
         self.is_multiple = bool(config.get('multiple', False))
         self.separator = config.get('separator', '/')
         self.page_ref = config.get('page')
-        self._source_page_refs = {}
 
     @property
     def setting_name(self):
@@ -43,6 +42,10 @@ class Taxonomy(object):
 
 
 class TaxonomyPageGenerator(PageGenerator):
+    """ A page generator that handles taxonomies, _i.e._ lists of keywords
+        that pages are labelled with, and for which we need to generate
+        listing pages.
+    """
     GENERATOR_NAME = 'taxonomy'
 
     def __init__(self, app, name, config):
@@ -63,68 +66,95 @@ class TaxonomyPageGenerator(PageGenerator):
         if not sm:
             sm = app.config.get('site/slugify_mode', 'encode')
         self.slugify_mode = _parse_slugify_mode(sm)
+        self.slugifier = _Slugifier(self.taxonomy, self.slugify_mode)
+
+    def slugify(self, term):
+        return self.slugifier.slugify(term)
+
+    def slugifyMultiple(self, terms):
+        return self.slugifier.slugifyMultiple(terms)
 
     def prepareRenderContext(self, ctx):
-        self._setPaginationSource(ctx)
+        # Set the pagination source as the source we're generating for.
+        ctx.pagination_source = self.source
 
+        # Get the taxonomy terms from the route metadata... this can come from
+        # the browser's URL (while serving) or from the baking (see `bake`
+        # method below). In both cases, we expect to have the *slugified*
+        # version of the term, because we're going to set a filter that also
+        # slugifies the terms found on each page.
+        #
+        # This is because:
+        #  * while serving, we get everything from the request URL, so we only
+        #    have the slugified version.
+        #  * if 2 slightly different terms "collide" into the same slugified
+        #    term, we'll get a merge of the 2 on the listing page, which is
+        #    what the user expects.
+        #
         tax_terms, is_combination = self._getTaxonomyTerms(
                 ctx.page.route_metadata)
         self._setTaxonomyFilter(ctx, tax_terms, is_combination)
 
+        # Add some custom data for rendering.
         ctx.custom_data.update({
                 self.taxonomy.term_name: tax_terms,
                 'is_multiple_%s' % self.taxonomy.term_name: is_combination})
+        # Add some "plural" version of the term... so for instance, if this
+        # is the "tags" taxonomy, "tag" will have one term most of the time,
+        # except when it's a combination. Here, we add "tags" as something that
+        # is always a tuple, even when it's not a combination.
         if (self.taxonomy.is_multiple and
                 self.taxonomy.name != self.taxonomy.term_name):
             mult_val = tax_terms
             if not is_combination:
                 mult_val = (mult_val,)
             ctx.custom_data[self.taxonomy.name] = mult_val
-        logger.debug("Prepared render context with: %s" % ctx.custom_data)
 
     def _getTaxonomyTerms(self, route_metadata):
+        # Get the individual slugified terms from the route metadata.
         all_values = route_metadata.get(self.taxonomy.term_name)
         if all_values is None:
             raise Exception("'%s' values couldn't be found in route metadata" %
                             self.taxonomy.term_name)
 
+        # If it's a "multiple" taxonomy, we need to potentially split the
+        # route value into the individual terms (_e.g._ when listing all pages
+        # that have 2 given tags, we need to get each of those 2 tags).
         if self.taxonomy.is_multiple:
             sep = self.taxonomy.separator
             if sep in all_values:
                 return tuple(all_values.split(sep)), True
+        # Not a "multiple" taxonomy, so there's only the one value.
         return all_values, False
 
     def _setTaxonomyFilter(self, ctx, term_value, is_combination):
+        # Set up the filter that will check the pages' terms.
         flt = PaginationFilter(value_accessor=page_value_accessor)
         flt.addClause(HasTaxonomyTermsFilterClause(
                 self.taxonomy, self.slugify_mode, term_value, is_combination))
         ctx.pagination_filter = flt
 
-    def _setPaginationSource(self, ctx):
-        ctx.pagination_source = self.source
-
     def onRouteFunctionUsed(self, route, route_metadata):
-        # Get the values.
+        # Get the values, and slugify them appropriately.
         values = route_metadata[self.taxonomy.term_name]
         if self.taxonomy.is_multiple:
-            #TODO: here we assume the route has been properly configured.
-            values = tuple([str(v) for v in values])
+            # TODO: here we assume the route has been properly configured.
+            slugified_values = self.slugifyMultiple((str(v) for v in values))
+            route_val = self.taxonomy.separator.join(slugified_values)
         else:
-            values = (str(values),)
+            slugified_values = self.slugify(str(values))
+            route_val = slugified_values
 
         # We need to register this use of a taxonomy term.
         eis = self.app.env.exec_info_stack
         cpi = eis.current_page_info.render_ctx.current_pass_info
         if cpi:
             utt = cpi.getCustomInfo('used_taxonomy_terms', [], True)
-            utt.append(values)
+            utt.append(slugified_values)
 
-        # We need to slugify the terms before they get transformed
-        # into URL-bits.
-        s = _Slugifier(self.taxonomy, self.slugify_mode)
-        str_values = s.slugify(values)
-        route_metadata[self.taxonomy.term_name] = str_values
-        logger.debug("Changed route metadata to: %s" % route_metadata)
+        # Put the slugified values in the route metadata so they're used to
+        # generate the URL.
+        route_metadata[self.taxonomy.term_name] = route_val
 
     def bake(self, ctx):
         if not self.page_ref.exists:
@@ -134,81 +164,26 @@ class TaxonomyPageGenerator(PageGenerator):
             return
 
         logger.debug("Baking %s pages...", self.taxonomy.name)
+        analyzer = _TaxonomyTermsAnalyzer(self.source_name, self.taxonomy,
+                                          self.slugify_mode)
         with format_timed_scope(logger, 'gathered taxonomy terms',
                                 level=logging.DEBUG, colored=False):
-            all_terms, dirty_terms = self._buildDirtyTaxonomyTerms(ctx)
+            analyzer.analyze(ctx)
 
         start_time = time.perf_counter()
-        page_count = self._bakeTaxonomyTerms(ctx, all_terms, dirty_terms)
+        page_count = self._bakeTaxonomyTerms(ctx, analyzer)
         if page_count > 0:
             logger.info(format_timed(
                 start_time,
                 "baked %d %s pages for %s." % (
                     page_count, self.taxonomy.term_name, self.source_name)))
 
-    def _buildDirtyTaxonomyTerms(self, ctx):
-        # Build the list of terms for our taxonomy, and figure out which ones
-        # are 'dirty' for the current bake.
-        logger.debug("Gathering dirty taxonomy terms")
-        all_terms = set()
-        single_dirty_terms = set()
-
-        # Re-bake all taxonomy terms that include new or changed pages.
-        for prev_entry, cur_entry in ctx.getBakedPageRecords():
-            if cur_entry.source_name != self.source_name:
-                continue
-
-            entries = [cur_entry]
-            if prev_entry:
-                entries.append(prev_entry)
-
-            terms = []
-            for e in entries:
-                entry_terms = e.config.get(self.taxonomy.setting_name)
-                if entry_terms:
-                    if not self.taxonomy.is_multiple:
-                        terms.append(entry_terms)
-                    else:
-                        terms += entry_terms
-            single_dirty_terms.update(terms)
-
-        # Remember all terms used.
-        for _, cur_entry in ctx.getAllPageRecords():
-            if cur_entry and not cur_entry.was_overriden:
-                cur_terms = cur_entry.config.get(self.taxonomy.setting_name)
-                if cur_terms:
-                    if not self.taxonomy.is_multiple:
-                        all_terms.add(cur_terms)
-                    else:
-                        all_terms |= set(cur_terms)
-
-        # Re-bake the combination pages for terms that are 'dirty'.
-        # We make all terms into tuple, even those that are not actual
-        # combinations, so that we have less things to test further down the
-        # line.
-        dirty_terms = [(t,) for t in single_dirty_terms]
-        # Add the combinations to that list.
-        if self.taxonomy.is_multiple:
-            known_combinations = set()
-            logger.debug("Gathering dirty term combinations")
-            for _, cur_entry in ctx.getAllPageRecords():
-                if cur_entry:
-                    used_terms = _get_all_entry_taxonomy_terms(cur_entry)
-                    for terms in used_terms:
-                        if len(terms) > 1:
-                            known_combinations.add(terms)
-
-            for terms in known_combinations:
-                if not single_dirty_terms.isdisjoint(set(terms)):
-                    dirty_terms.append(terms)
-
-        return all_terms, dirty_terms
-
-    def _bakeTaxonomyTerms(self, ctx, all_terms, dirty_terms):
+    def _bakeTaxonomyTerms(self, ctx, analyzer):
         # Start baking those terms.
         logger.debug(
-                "Baking '%s' for source '%s': %s" %
-                (self.taxonomy.name, self.source_name, dirty_terms))
+                "Baking '%s' for source '%s': %d terms" %
+                (self.taxonomy.name, self.source_name,
+                 len(analyzer.dirty_slugified_terms)))
 
         route = self.app.getGeneratorRoute(self.name)
         if route is None:
@@ -219,17 +194,14 @@ class TaxonomyPageGenerator(PageGenerator):
         fac = self.page_ref.getFactory()
 
         job_count = 0
-        s = _Slugifier(self.taxonomy, self.slugify_mode)
-        for term in dirty_terms:
-            if not self.taxonomy.is_multiple:
-                term = term[0]
-            slugified_term = s.slugify(term)
-            extra_route_metadata = {self.taxonomy.term_name: slugified_term}
+        for slugified_term in analyzer.dirty_slugified_terms:
+            extra_route_metadata = {
+                self.taxonomy.term_name: slugified_term}
 
-            # Use the slugified term as the record extra key.
+            # Use the slugified term as the record's extra key seed.
             logger.debug(
-                    "Queuing: %s [%s=%s]" %
-                    (fac.ref_spec, self.taxonomy.name, slugified_term))
+                "Queuing: %s [%s=%s]" %
+                (fac.ref_spec, self.taxonomy.name, slugified_term))
             ctx.queueBakeJob(fac, route, extra_route_metadata, slugified_term)
             job_count += 1
         ctx.runJobQueue()
@@ -247,7 +219,7 @@ class TaxonomyPageGenerator(PageGenerator):
                 except InvalidRecordExtraKey:
                     continue
 
-                if t in all_terms:
+                if analyzer.isKnownSlugifiedTerm(t):
                     logger.debug("Creating unbaked entry for %s term: %s" %
                                  (self.name, t))
                     ctx.collapseRecord(prev_entry)
@@ -256,17 +228,6 @@ class TaxonomyPageGenerator(PageGenerator):
                                  (self.name, t))
 
         return job_count
-
-
-def _get_all_entry_taxonomy_terms(entry):
-    res = set()
-    for o in entry.subs:
-        for pinfo in o.render_info:
-            if pinfo:
-                terms = pinfo.getCustomInfo('used_taxonomy_terms')
-                if terms:
-                    res |= set(terms)
-    return res
 
 
 class HasTaxonomyTermsFilterClause(SettingFilterClause):
@@ -302,18 +263,130 @@ class HasTaxonomyTermsFilterClause(SettingFilterClause):
             return page_value == self.value
 
 
+class _TaxonomyTermsAnalyzer(object):
+    def __init__(self, source_name, taxonomy, slugify_mode):
+        self.source_name = source_name
+        self.taxonomy = taxonomy
+        self.slugifier = _Slugifier(taxonomy, slugify_mode)
+        self._all_terms = {}
+        self._single_dirty_slugified_terms = set()
+        self._all_dirty_slugified_terms = None
+
+    @property
+    def dirty_slugified_terms(self):
+        """ Returns the slugified terms that have been 'dirtied' during
+            this bake.
+        """
+        return self._all_dirty_slugified_terms
+
+    def isKnownSlugifiedTerm(self, term):
+        """ Returns whether the given slugified term has been seen during
+            this bake.
+        """
+        return term in self._all_terms
+
+    def analyze(self, ctx):
+        # Build the list of terms for our taxonomy, and figure out which ones
+        # are 'dirty' for the current bake.
+        #
+        # Remember all terms used.
+        for _, cur_entry in ctx.getAllPageRecords():
+            if cur_entry and not cur_entry.was_overriden:
+                cur_terms = cur_entry.config.get(self.taxonomy.setting_name)
+                if cur_terms:
+                    if not self.taxonomy.is_multiple:
+                        self._addTerm(cur_entry.path, cur_terms)
+                    else:
+                        self._addTerms(cur_entry.path, cur_terms)
+
+        # Re-bake all taxonomy terms that include new or changed pages, by
+        # marking them as 'dirty'.
+        for prev_entry, cur_entry in ctx.getBakedPageRecords():
+            if cur_entry.source_name != self.source_name:
+                continue
+
+            entries = [cur_entry]
+            if prev_entry:
+                entries.append(prev_entry)
+
+            for e in entries:
+                entry_terms = e.config.get(self.taxonomy.setting_name)
+                if entry_terms:
+                    if not self.taxonomy.is_multiple:
+                        self._single_dirty_slugified_terms.add(
+                            self.slugifier.slugify(entry_terms))
+                    else:
+                        self._single_dirty_slugified_terms.update(
+                            (self.slugifier.slugify(t)
+                             for t in entry_terms))
+
+        self._all_dirty_slugified_terms = list(
+            self._single_dirty_slugified_terms)
+        logger.debug("Gathered %d dirty taxonomy terms",
+                     len(self._all_dirty_slugified_terms))
+
+        # Re-bake the combination pages for terms that are 'dirty'.
+        # We make all terms into tuple, even those that are not actual
+        # combinations, so that we have less things to test further down the
+        # line.
+        #
+        # Add the combinations to that list. We get those combinations from
+        # wherever combinations were used, so they're coming from the
+        # `onRouteFunctionUsed` method.
+        if self.taxonomy.is_multiple:
+            known_combinations = set()
+            for _, cur_entry in ctx.getAllPageRecords():
+                if cur_entry:
+                    used_terms = _get_all_entry_taxonomy_terms(cur_entry)
+                    for terms in used_terms:
+                        if len(terms) > 1:
+                            known_combinations.add(terms)
+
+            dcc = 0
+            for terms in known_combinations:
+                if not self._single_dirty_slugified_terms.isdisjoint(
+                        set(terms)):
+                    self._all_dirty_slugified_terms.append(
+                        self.taxonomy.separator.join(terms))
+                    dcc += 1
+            logger.debug("Gathered %d term combinations, with %d dirty." %
+                         (len(known_combinations), dcc))
+
+    def _addTerms(self, entry_path, terms):
+        for t in terms:
+            self._addTerm(entry_path, t)
+
+    def _addTerm(self, entry_path, term):
+        st = self.slugifier.slugify(term)
+        orig_terms = self._all_terms.setdefault(st, [])
+        if orig_terms and orig_terms[0] != term:
+            logger.warning(
+                "Term '%s' in '%s' is slugified to '%s' which conflicts with "
+                "previously existing '%s'. The two will be merged." %
+                (term, entry_path, st, orig_terms[0]))
+        orig_terms.append(term)
+
+
+def _get_all_entry_taxonomy_terms(entry):
+    res = set()
+    for o in entry.subs:
+        for pinfo in o.render_info:
+            if pinfo:
+                terms = pinfo.getCustomInfo('used_taxonomy_terms')
+                if terms:
+                    res |= set(terms)
+    return res
+
+
 class _Slugifier(object):
     def __init__(self, taxonomy, mode):
         self.taxonomy = taxonomy
         self.mode = mode
 
-    def slugify(self, term):
-        if isinstance(term, tuple):
-            return self.taxonomy.separator.join(
-                    map(self._slugifyOne, term))
-        return self._slugifyOne(term)
+    def slugifyMultiple(self, terms):
+        return tuple(map(self.slugify, terms))
 
-    def _slugifyOne(self, term):
+    def slugify(self, term):
         if self.mode & SLUGIFY_TRANSLITERATE:
             term = unidecode.unidecode(term)
         if self.mode & SLUGIFY_LOWERCASE:

@@ -89,4 +89,29 @@ outfiles:
         Pages in foo, bar
         Post 02
         Post 01
+---
+config:
+    site:
+        slugify_mode: space_to_dash
+in:
+    posts/2016-09-01_post01.md: |
+        ---
+        title: Post 01
+        tags: [foo bar]
+        ---
+    posts/2016-09-02_post2.md: |
+        ---
+        title: Post 02
+        tags: ['foo-bar']
+        ---
+    pages/_tag.md: |
+        Pages in {{pctagurl(tag)}}
+        {% for p in pagination.posts -%}
+        {{p.title}}
+        {% endfor %}
+outfiles:
+    tag/foo-bar.html: |
+        Pages in /tag/foo-bar.html
+        Post 02
+        Post 01
 
