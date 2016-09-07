@@ -11,7 +11,6 @@ from werkzeug.utils import cached_property
 from piecrust.configuration import (
         Configuration, ConfigurationError,
         parse_config_header)
-from piecrust.routing import IRouteMetadataProvider
 
 
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ FLAG_NONE = 0
 FLAG_RAW_CACHE_VALID = 2**0
 
 
-class Page(IRouteMetadataProvider):
+class Page(object):
     def __init__(self, source, source_metadata, rel_path):
         self.source = source
         self.source_metadata = source_metadata
@@ -139,13 +138,6 @@ class Page(IRouteMetadataProvider):
         self._segments = content
         if was_cache_valid:
             self._flags |= FLAG_RAW_CACHE_VALID
-
-    def getRouteMetadata(self):
-        page_dt = self.datetime
-        return {
-            'year': page_dt.year,
-            'month': page_dt.month,
-            'day': page_dt.day}
 
 
 def _parse_config_date(page_date):

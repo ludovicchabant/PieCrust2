@@ -106,6 +106,9 @@ class PageSource(object):
             self._factories = list(self.buildPageFactories())
         return self._factories
 
+    def getSupportedRouteParameters(self):
+        raise NotImplementedError()
+
     def buildPageFactories(self):
         raise NotImplementedError()
 

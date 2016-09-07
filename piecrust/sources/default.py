@@ -1,6 +1,7 @@
 import os.path
 import logging
 from piecrust import osutil
+from piecrust.routing import RouteParameter
 from piecrust.sources.base import (
         PageFactory, PageSource, InvalidFileSystemEndpointError,
         MODE_CREATING)
@@ -35,6 +36,10 @@ class DefaultPageSource(PageSource,
         self.supported_extensions = list(
                 app.config.get('site/auto_formats').keys())
         self.default_auto_format = app.config.get('site/default_auto_format')
+
+    def getSupportedRouteParameters(self):
+        return [
+            RouteParameter('slug', RouteParameter.TYPE_PATH)]
 
     def buildPageFactories(self):
         logger.debug("Scanning for pages in: %s" % self.fs_endpoint_path)

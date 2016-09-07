@@ -1,24 +1,48 @@
 import urllib.parse
+import mock
 import pytest
-from piecrust.routing import Route
+from piecrust.routing import Route, RouteParameter
+from piecrust.sources.base import PageSource
 from .mockutil import get_mock_app
 
 
+def _getMockSource(name, params):
+    route_params = []
+    for p in params:
+        if isinstance(p, tuple):
+            if p[1] == 'path':
+                t = RouteParameter.TYPE_PATH
+            elif p[1] == 'int2':
+                t = RouteParameter.TYPE_INT2
+            elif p[2] == 'int4':
+                t = RouteParameter.TYPE_INT4
+            route_params.append(RouteParameter(p[0], t))
+        else:
+            route_params.append(RouteParameter(p, RouteParameter.TYPE_STRING))
+
+    src = mock.MagicMock(spec=PageSource)
+    src.name = name
+    src.getSupportedRouteParameters = lambda: route_params
+    return src
+
+
 @pytest.mark.parametrize(
-        'config, metadata, expected',
+        'config, metadata, params, expected',
         [
             ({'url': '/%foo%'},
-                {'foo': 'bar'}, True),
+                {'foo': 'bar'}, ['foo'], True),
             ({'url': '/%foo%'},
-                {'zoo': 'zar', 'foo': 'bar'}, True),
+                {'zoo': 'zar', 'foo': 'bar'}, ['foo'], True),
             ({'url': '/%foo%'},
-                {'zoo': 'zar'}, False),
+                {'zoo': 'zar'}, ['foo'], False),
             ({'url': '/%foo%/%zoo%'},
-                {'zoo': 'zar'}, False)
+                {'zoo': 'zar'}, ['foo', 'zoo'], False)
             ])
-def test_matches_metadata(config, metadata, expected):
+def test_matches_metadata(config, metadata, params, expected):
     app = get_mock_app()
     app.config.set('site/root', '/')
+    app.sources = [_getMockSource('blah', params)]
+
     config.setdefault('source', 'blah')
     route = Route(app, config)
     m = route.matchesMetadata(metadata)
@@ -26,103 +50,128 @@ def test_matches_metadata(config, metadata, expected):
 
 
 @pytest.mark.parametrize(
-        'site_root, route_pattern, expected_func_parameters',
+        'site_root, route_pattern, params, expected_func_parameters',
         [
-            ('/', '/%foo%', ['foo']),
-            ('/', '/%path:foo%', ['foo']),
-            ('/', '/%foo%/%bar%', ['foo', 'bar']),
-            ('/', '/%foo%/%path:bar%', ['foo', 'bar']),
-            ('/something', '/%foo%', ['foo']),
-            ('/something', '/%path:foo%', ['foo']),
-            ('/something', '/%foo%/%bar%', ['foo', 'bar']),
-            ('/something', '/%foo%/%path:bar%', ['foo', 'bar']),
-            ('/~johndoe', '/%foo%', ['foo']),
-            ('/~johndoe', '/%path:foo%', ['foo']),
-            ('/~johndoe', '/%foo%/%bar%', ['foo', 'bar']),
-            ('/~johndoe', '/%foo%/%path:bar%', ['foo', 'bar'])
+            ('/', '/%foo%', ['foo'], ['foo']),
+            ('/', '/%foo%', [('foo', 'path')], ['foo']),
+            ('/', '/%foo%/%bar%', ['foo', 'bar'], ['foo', 'bar']),
+            ('/', '/%foo%/%bar%', ['foo', ('bar', 'path')], ['foo', 'bar']),
+            ('/something', '/%foo%', ['foo'], ['foo']),
+            ('/something', '/%foo%', [('foo', 'path')], ['foo']),
+            ('/something', '/%foo%/%bar%', ['foo', 'bar'], ['foo', 'bar']),
+            ('/something', '/%foo%/%bar%', ['foo', ('bar', 'path')], ['foo', 'bar']),
+            ('/~johndoe', '/%foo%', ['foo'], ['foo']),
+            ('/~johndoe', '/%foo%', [('foo', 'path')], ['foo']),
+            ('/~johndoe', '/%foo%/%bar%', ['foo', 'bar'], ['foo', 'bar']),
+            ('/~johndoe', '/%foo%/%bar%', ['foo', ('bar', 'path')], ['foo', 'bar'])
             ])
-def test_required_metadata(site_root, route_pattern,
+def test_required_metadata(site_root, route_pattern, params,
                            expected_func_parameters):
     app = get_mock_app()
     app.config.set('site/root', site_root.rstrip('/') + '/')
+    app.sources = [_getMockSource('blah', params)]
+
     config = {'url': route_pattern, 'source': 'blah'}
     route = Route(app, config)
-    assert route.func_parameters == expected_func_parameters
+    assert route.uri_params == expected_func_parameters
 
 
 @pytest.mark.parametrize(
-        'site_root, config, uri, expected_match',
+        'site_root, config, params, uri, expected_match',
         [
             ('/', {'url': '/%foo%'},
+                ['foo'],
                 'something',
                 {'foo': 'something'}),
             ('/', {'url': '/%foo%'},
+                ['foo'],
                 'something/other',
                 None),
-            ('/', {'url': '/%path:foo%'},
+            ('/', {'url': '/%foo%'},
+                [('foo', 'path')],
                 'something/other',
                 {'foo': 'something/other'}),
-            ('/', {'url': '/%path:foo%'},
+            ('/', {'url': '/%foo%'},
+                [('foo', 'path')],
                 '',
                 {'foo': ''}),
-            ('/', {'url': '/prefix/%path:foo%'},
+            ('/', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix/something/other',
                 {'foo': 'something/other'}),
-            ('/', {'url': '/prefix/%path:foo%'},
+            ('/', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix/',
                 {'foo': ''}),
-            ('/', {'url': '/prefix/%path:foo%'},
+            ('/', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix',
                 {'foo': ''}),
 
             ('/blah', {'url': '/%foo%'},
+                ['foo'],
                 'something',
                 {'foo': 'something'}),
             ('/blah', {'url': '/%foo%'},
+                ['foo'],
                 'something/other',
                 None),
-            ('/blah', {'url': '/%path:foo%'},
+            ('/blah', {'url': '/%foo%'},
+                [('foo', 'path')],
                 'something/other',
                 {'foo': 'something/other'}),
-            ('/blah', {'url': '/%path:foo%'},
+            ('/blah', {'url': '/%foo%'},
+                [('foo', 'path')],
                 '',
                 {'foo': ''}),
-            ('/blah', {'url': '/prefix/%path:foo%'},
+            ('/blah', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix/something/other',
                 {'foo': 'something/other'}),
-            ('/blah', {'url': '/prefix/%path:foo%'},
+            ('/blah', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix/',
                 {'foo': ''}),
-            ('/blah', {'url': '/prefix/%path:foo%'},
+            ('/blah', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix',
                 {'foo': ''}),
 
             ('/~johndoe', {'url': '/%foo%'},
+                ['foo'],
                 'something',
                 {'foo': 'something'}),
             ('/~johndoe', {'url': '/%foo%'},
+                ['foo'],
                 'something/other',
                 None),
-            ('/~johndoe', {'url': '/%path:foo%'},
+            ('/~johndoe', {'url': '/%foo%'},
+                [('foo', 'path')],
                 'something/other',
                 {'foo': 'something/other'}),
-            ('/~johndoe', {'url': '/%path:foo%'},
+            ('/~johndoe', {'url': '/%foo%'},
+                [('foo', 'path')],
                 '',
                 {'foo': ''}),
-            ('/~johndoe', {'url': '/prefix/%path:foo%'},
+            ('/~johndoe', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix/something/other',
                 {'foo': 'something/other'}),
-            ('/~johndoe', {'url': '/prefix/%path:foo%'},
+            ('/~johndoe', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix/',
                 {'foo': ''}),
-            ('/~johndoe', {'url': '/prefix/%path:foo%'},
+            ('/~johndoe', {'url': '/prefix/%foo%'},
+                [('foo', 'path')],
                 'prefix',
                 {'foo': ''}),
             ])
-def test_match_uri(site_root, config, uri, expected_match):
+def test_match_uri(site_root, config, params, uri, expected_match):
     site_root = site_root.rstrip('/') + '/'
     app = get_mock_app()
     app.config.set('site/root', urllib.parse.quote(site_root))
+    app.sources = [_getMockSource('blah', params)]
+
     config.setdefault('source', 'blah')
     route = Route(app, config)
     assert route.uri_pattern == config['url'].lstrip('/')
@@ -133,13 +182,17 @@ def test_match_uri(site_root, config, uri, expected_match):
 @pytest.mark.parametrize(
         'site_root',
         [
-            ('/'), ('/whatever'), ('/~johndoe')
+            ('/'),
+            ('/whatever'),
+            ('/~johndoe')
             ])
 def test_match_uri_requires_absolute_uri(site_root):
     with pytest.raises(Exception):
         app = get_mock_app()
         app.config.set('site/root', site_root.rstrip('/') + '/')
-        config = {'url': '/%path:slug%', 'source': 'blah'}
+        app.sources = [_getMockSource('blah', [('slug', 'path')])]
+
+        config = {'url': '/%slug%', 'source': 'blah'}
         route = Route(app, config)
         route.matchUri('notabsuri')
 
@@ -181,8 +234,9 @@ def test_get_uri(slug, page_num, pretty, expected):
         app.config.set('site/pretty_urls', pretty)
         app.config.set('site/trailing_slash', False)
         app.config.set('__cache/pagination_suffix_format', '/%(num)d')
+        app.sources = [_getMockSource('blah', [('slug', 'path')])]
 
-        config = {'url': '/%path:slug%', 'source': 'blah'}
+        config = {'url': '/%slug%', 'source': 'blah'}
         route = Route(app, config)
         uri = route.getUri({'slug': slug}, sub_num=page_num)
         assert uri == (urllib.parse.quote(root) + expected)

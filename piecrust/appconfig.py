@@ -285,7 +285,7 @@ default_theme_content_model_base = collections.OrderedDict({
                 }),
             'routes': [
                 {
-                    'url': '/%path:slug%',
+                    'url': '/%slug%',
                     'source': 'theme_pages',
                     'func': 'pcurl'
                     }
@@ -337,9 +337,9 @@ default_content_model_base = collections.OrderedDict({
             'posts_fs': DEFAULT_POSTS_FS,
             'default_page_layout': 'default',
             'default_post_layout': 'post',
-            'post_url': '/%int4:year%/%int2:month%/%int2:day%/%slug%',
-            'year_url': '/archives/%int4:year%',
-            'tag_url': '/tag/%+tag%',
+            'post_url': '/%year%/%month%/%day%/%slug%',
+            'year_url': '/archives/%year%',
+            'tag_url': '/tag/%tag%',
             'category_url': '/%category%',
             'posts_per_page': 5
             })
@@ -363,7 +363,7 @@ def get_default_content_model(values, user_overrides):
                     }),
                 'routes': [
                     {
-                        'url': '/%path:slug%',
+                        'url': '/%slug%',
                         'source': 'pages',
                         'func': 'pcurl'
                         }

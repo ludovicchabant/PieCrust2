@@ -85,7 +85,7 @@ class ShowRoutesCommand(ChefCommand):
             logger.info("    regex: %s" % route.uri_re.pattern)
             logger.info("    function: %s(%s)" % (
                 route.func_name,
-                ', '.join(route.func_parameters)))
+                ', '.join(route.uri_params)))
 
 
 class ShowPathsCommand(ChefCommand):

@@ -3,6 +3,7 @@ import os
 import os.path
 import logging
 from piecrust.configuration import ConfigurationError
+from piecrust.routing import RouteParameter
 from piecrust.sources.base import (
         PageSource, PageFactory, InvalidFileSystemEndpointError)
 from piecrust.sources.default import (
@@ -32,6 +33,10 @@ class AutoConfigSourceBase(PageSource, SimplePaginationSourceMixin,
             raise ConfigurationError("Capture mode in source '%s' must be "
                                      "one of: path, dirname, filename" %
                                      name)
+
+    def getSupportedRouteParameters(self):
+        return [
+            RouteParameter('slug', RouteParameter.TYPE_PATH)]
 
     def buildPageFactories(self):
         logger.debug("Scanning for pages in: %s" % self.fs_endpoint_path)

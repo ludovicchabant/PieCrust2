@@ -133,6 +133,9 @@ class PageGenerator(object):
         raise Exception("Can't find source '%s' for generator '%s'." % (
             self.source_name, self.name))
 
+    def getSupportedRouteParameters(self):
+        raise NotImplementedError()
+
     def getPageFactory(self, route_metadata):
         # This will raise `PageNotFoundError` naturally if not found.
         return self.page_ref.getFactory()

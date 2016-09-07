@@ -4,6 +4,7 @@ from piecrust.chefutil import format_timed_scope
 from piecrust.data.filters import PaginationFilter, IFilterClause
 from piecrust.data.iterators import PageIterator
 from piecrust.generation.base import PageGenerator, InvalidRecordExtraKey
+from piecrust.routing import RouteParameter
 
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,9 @@ class BlogArchivesPageGenerator(PageGenerator):
 
     def __init__(self, app, name, config):
         super(BlogArchivesPageGenerator, self).__init__(app, name, config)
+
+    def getSupportedRouteParameters(self):
+        return [RouteParameter('year', RouteParameter.TYPE_INT4)]
 
     def onRouteFunctionUsed(self, route, route_metadata):
         pass

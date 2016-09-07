@@ -8,6 +8,7 @@ from piecrust.data.filters import (
         PaginationFilter, SettingFilterClause,
         page_value_accessor)
 from piecrust.generation.base import PageGenerator, InvalidRecordExtraKey
+from piecrust.routing import RouteParameter
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,13 @@ class TaxonomyPageGenerator(PageGenerator):
             sm = app.config.get('site/slugify_mode', 'encode')
         self.slugify_mode = _parse_slugify_mode(sm)
         self.slugifier = _Slugifier(self.taxonomy, self.slugify_mode)
+
+    def getSupportedRouteParameters(self):
+        name = self.taxonomy.term_name
+        param_type = (RouteParameter.TYPE_PATH if self.taxonomy.is_multiple
+                      else RouteParameter.TYPE_STRING)
+        return [RouteParameter(name, param_type,
+                               variadic=self.taxonomy.is_multiple)]
 
     def slugify(self, term):
         return self.slugifier.slugify(term)

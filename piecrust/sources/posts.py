@@ -4,6 +4,7 @@ import re
 import logging
 import datetime
 from piecrust import osutil
+from piecrust.routing import RouteParameter
 from piecrust.sources.base import (
         PageSource, InvalidFileSystemEndpointError, PageFactory,
         MODE_CREATING, MODE_PARSING)
@@ -35,6 +36,13 @@ class PostsSource(PageSource, IPreparingSource, IInteractiveSource,
         path = os.path.normpath(os.path.join(self.fs_endpoint_path, ref_path))
         metadata = self._parseMetadataFromPath(ref_path)
         return path, metadata
+
+    def getSupportedRouteParameters(self):
+        return [
+            RouteParameter('slug', RouteParameter.TYPE_STRING),
+            RouteParameter('day', RouteParameter.TYPE_INT2),
+            RouteParameter('month', RouteParameter.TYPE_INT2),
+            RouteParameter('year', RouteParameter.TYPE_INT4)]
 
     def buildPageFactory(self, path):
         if not path.startswith(self.fs_endpoint_path):
