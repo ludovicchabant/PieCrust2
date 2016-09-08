@@ -16,13 +16,13 @@ site:
             default_layout: api
     routes:
         -
-            url: /docs/%path:slug%
+            url: /docs/%slug%
             source: docs
-            func: docurl(slug)
+            func: docurl
         -
-            url: /api/%path:slug%
+            url: /api/%slug%
             source: api
-            func: apiurl(slug)
+            func: apiurl
 
 baker:
     assets_dirs:
