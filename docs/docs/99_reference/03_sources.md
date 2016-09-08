@@ -23,6 +23,9 @@ endpoint.
       on of the `site/auto_formats` (`.md`, `.textile`), the extension is
       stripped from the slug.
 
+* Required routing parameter:
+    * `slug`
+
 
 ## Auto-configuring source
 
@@ -54,6 +57,9 @@ they're in.
     * `config`: A page configuration fragment containing the `setting_name` and
       its value extracted from the page's relative path.
 
+* Required routing parameter:
+    * `slug`
+
 
 ## Ordered source
 
@@ -77,6 +83,9 @@ with the added ability to order things easily using the file-system.
       values are stripped away.
     * `config`: A page configuration fragment containing the `setting_name` and
       its value extracted from the page file's name prefix.
+
+* Required routing parameter:
+    * `slug`
 
 * Notes:
     * A setting called `<setting_name>_trail` will also be created in each
@@ -121,6 +130,14 @@ more, and end up with a thousand files in there after a few years.
     * `slug`: Just like for the `default` source. This here is the part that
       comes after the date prefix.
 
+* Required routing parameters:
+    * `slug`
+
+* Optional routing parameters:
+    * `year`, `month`, `day`. Works best when those parameters are declared as
+      integers (`%int:year%`) or more precisely `int4` (for `year`) and `int2`
+      (for `month` and `day`) so you get proper `0` padding.
+
 * Notes:
     * To specify the time of day of a blog post, set the `time` setting in the
       page's configuration header.
@@ -148,8 +165,10 @@ whatever.
       from the first non-blank line in the page file.
 
 * Metadata provided:
-    * Same as for the `default` source.
+    * `slug`: Same as for the `default` source.
     * `config`: The page configuration recipe set in the source configuration,
       with any dynamic settings resolved.
 
+* Required routing parameter:
+    * `slug`
 

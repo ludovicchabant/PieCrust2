@@ -16,23 +16,42 @@ Routes are defined as a list of entries under `site/routes`:
 
 Each route must define the following settings:
 
-* `url`: That's the pattern to use to figure out where the baked page will go.
-  You obviously need to use _placeholders_ here (things of the form `%blah%`)
-  otherwise all your pages would be overwriting each other -- although PieCrust
-  would warn you about that. The available placeholders depend on the source
-  tied to this route. See the [list of available sources][refsrc] to see what
-  kind of routing information they expose.
+  * `url`: That's the pattern to use to figure out where the baked page will go.
+    You need to use _placeholders_ here (things of the form `%blah%`) otherwise
+    all your pages would have the same URL and would be overwriting each other.
+  
+    The available placeholders depend on the source or generator tied to this
+    route (see below). Refer to the [list of available sources][refsrc] and
+    [generators][refgen] to see what kind of routing information they expose.
 
-* `source` or `generator`: This defines the source or generator that this route
-  is defined for. Only pages originating from the source or generator of that
-  name will have their bake output generated from this route. You can't define
-  both `source` and `generator` -- it needs to be one or the other.
+    You'll notice that some routing parameters are *required*, while others are
+    *optional*. The *required* parameters *must* be used in the URL pattern. The
+    *optional* ones are, well, optional.
+
+  * `source` or `generator`: This defines the source or generator that this
+    route is defined for. Only pages originating from the source or generator of
+    that name will have their bake output generated with this route. You can't
+    define both `source` and `generator` -- it needs to be one or the other.
 
 Optional settings include:
 
-* `page_suffix`: Pages that create _sub-pages_ (_e.g._ when using pagination)
-  will append this suffix to the route. By default, this is `/%num%`. You _must_
-  use the `%num%` placeholder somewhere in this setting.
+  * `page_suffix`: Pages that create _sub-pages_ (_e.g._ when using pagination)
+    will append this suffix to the route. By default, this is `/%num%`. You _must_
+    use the `%num%` placeholder somewhere in this setting.
+
+  * `func`: The name for a *route function* that you can use through the
+    [template engine][tpl]. This is what lets you get a URL when you write
+    {%raw%}`{{pcurl('foo/bar')}}`{%endraw%} (the function name being `pcurl`
+    here) to generate an URL to the `foo/bar.html` page (or something similar).
+    The name is up to you, but when you use it, you'll have to pass parameters
+    in the same order as they appear in the URL pattern.
+    
+    So for instance, if you define a route as `/blog/%year%/%slug%`, and that
+    route has a `func` name of `post_url`, then you would use it as such:
+    `post_url(2016, "some-blog-post")`.
+
+    To know what routing parameters a given source or generator supports, see 
+    the reference documentation for [sources][refsrc] and [generators][refgen].
 
 
 ## Route ordering
@@ -48,5 +67,7 @@ found will be returned for that URL.
 
 
 
+[tpl]: {{docurl('content/templating')}}
 [refsrc]: {{docurl('reference/sources')}}
+[refgen]: {{docurl('reference/generators')}}
 
