@@ -1,5 +1,6 @@
 import logging
 from piecrust.commands.base import ChefCommand
+from piecrust.pathutil import SiteNotFoundError
 
 
 logger = logging.getLogger(__name__)
