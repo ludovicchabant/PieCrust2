@@ -9,8 +9,6 @@ import subprocess
 hg_log_template = ("{if(tags, '>>{tags};{date|shortdate}\n')}"
                    "{desc|firstline}\n\n")
 
-re_add_tag_changeset = re.compile('^Added tag [^\s]+ for changeset [\w\d]+$')
-re_merge_pr_changeset = re.compile('^Merge pull request')
 re_tag = re.compile('^\d+\.\d+\.\d+([ab]\d+)?(rc\d+)?$')
 re_change = re.compile('^(\w+):')
 re_clean_code_span = re.compile('([^\s])``([^\s]+)')
@@ -21,16 +19,27 @@ category_commands = [
         'showconfig', 'showrecord', 'sources', 'theme', 'themes', 'admin',
         'publish']
 category_core = [
-        'internal', 'bug', 'templating', 'formatting', 'performance',
+        'internal', 'templating', 'formatting', 'performance',
         'data', 'config', 'rendering', 'render', 'debug', 'reporting',
         'linker', 'pagination', 'routing', 'caching', 'cli']
+category_bugfixes = [
+        'bug']
 category_project = ['build', 'cm', 'docs', 'tests', 'setup']
 categories = [
         ('commands', category_commands),
         ('core', category_core),
+        ('bugfixes', category_bugfixes),
         ('project', category_project),
         ('miscellaneous', None)]
 category_names = list(map(lambda i: i[0], categories))
+
+re_add_tag_changeset = re.compile('^Added tag [^\s]+ for changeset [\w\d]+$')
+re_merge_pr_changeset = re.compile('^Merge pull request')
+re_merge_changes_changeset = re.compile('^Merge(d?) changes')
+message_blacklist = [
+    re_add_tag_changeset,
+    re_merge_pr_changeset,
+    re_merge_changes_changeset]
 
 
 def generate(out_file, last=None):
@@ -76,7 +85,7 @@ def generate(out_file, last=None):
                         _write_version_changes(
                                 templates,
                                 current_version, current_version_info,
-                                current_changes, fp)
+                                current_changes, fp, out_ext)
 
                     current_version += 1
                     current_version_info = tags, tag_date
@@ -89,9 +98,12 @@ def generate(out_file, last=None):
             if skip or current_version == 0:
                 continue
 
-            if re_add_tag_changeset.match(line):
-                continue
-            if re_merge_pr_changeset.match(line):
+            for blre in message_blacklist:
+                if blre.match(line):
+                    skip = True
+                    break
+
+            if skip:
                 continue
 
             m = re_change.match(line)
@@ -113,10 +125,10 @@ def generate(out_file, last=None):
             _write_version_changes(
                     templates,
                     current_version, current_version_info,
-                    current_changes, fp)
+                    current_changes, fp, out_ext)
 
 
-def _write_version_changes(templates, version, version_info, changes, fp):
+def _write_version_changes(templates, version, version_info, changes, fp, ext):
     tokens = {
             'num': str(version),
             'version': version_info[0],
@@ -136,9 +148,11 @@ def _write_version_changes(templates, version, version_info, changes, fp):
         tpl = _multi_replace(templates['category_title'], tokens)
         fp.write(tpl)
 
+        msgs = list(sorted(msgs))
         for msg in msgs:
-            msg = msg.replace('`', '``').rstrip('\n')
-            msg = re_clean_code_span.sub(r'\1`` \2', msg)
+            if ext == '.rst':
+                msg = msg.replace('`', '``').rstrip('\n')
+                msg = re_clean_code_span.sub(r'\1`` \2', msg)
             fp.write('* ' + msg + '\n')
 
 
