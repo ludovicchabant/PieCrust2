@@ -144,6 +144,65 @@ To know more about the different settings you can change in a page's
 configuration header, check out the [page configuration reference][pageconfref].
 
 
+## Add some pages
+
+Just like posts, pages are text files placed in some specific directory -- the
+appropriately named `pages/` directory. If you create a `pages/foo.md` file,
+you'll get a `/foo.html` page in your published website (or just `/foo` if you
+don't want URLs ending with `.html`).
+
+Let's create an "_About_" page for our blog. Once again, we could create the
+text file "by hand" but we can also use the `prepare` command:
+
+    $ chef prepare page about
+    Creating page: pages/about.md
+
+Edit that file and change it to something more appropriate... make the title
+something like "_About This Site_", and add some text.
+
+You should still have the server running, so type
+`http://localhost:8080/about.html` in the address bar. You should see your new
+page show up.
+
+Of course, you probably want a link to that page -- it's not very useful if
+visitors have to know the URL in order to reach it. We could go into layout
+and templating considerations so that we can add it in some kind of sidebar
+menu, but we'll keep this tutorial short for now. Instead, let's just add a link
+to it from one of your blog posts.
+
+Open your last created post in a text file, and add something like this:
+
+    {%raw%}
+    You can learn more [about this site here]({{pcurl('about')}})
+    {%endraw%}
+
+Go back to the home page (`http://localhost:8080`) in your browser and look for
+that new piece of text. It should feature a hyperlink to your new "_About_"
+page.
+
+Here's how this worked:
+
+* The `[text here](url)` syntax is [Markdown][mdown] for hyperlink. All the
+  posts and pages files have a `.md` extension, which means PieCrust will use
+  Markdown to format it. This means you can use things like `*asterisks*` and
+  `**double asterisks**` to show *italics* and **bold** things. See any
+  [Markdown cheat sheet][mdown] to learn about this simple syntax.
+
+* As mentioned above, the part in parenthesis is supposed to be the URL of the
+  hyperlink, so you might be wondering why we're writing this weird
+  {%raw%}`{{pcurl('about')}}`{%endraw%} thing instead of just something like
+  `/about.html`.
+
+    The reason is that a fixed URL is easy to break -- when you change the root
+    URL of your site, or when you change between "ugly" URLs (with the `.html`
+    extension) and "pretty" URLs (without the extension), along with a few other
+    possible changes.
+
+    The `pcurl` function generates the URL according to the current situation
+    and is therefore much more versatile. You can read [more on routing and
+    URL functions][routes], or [more on templating in general][tpl].
+
+
 ## Configuring the website
 
 This is all fine and dandy, but the big title at the top of the home page still
@@ -212,4 +271,7 @@ stylesheets and using PieCrust's built-in asset pipeline.
 [pageconfref]: {{pcurl('docs/reference/page-config')}}
 [siteconfref]: {{pcurl('docs/reference/site-config')}}
 [part2]: {{pcurl('docs/tutorial/making-things-pretty')}}
+[routes]: {{docurl('content-model/routes')}}
+[tpl]: {{docurl('content/templating')}}
+[mdown]: http://commonmark.org/help/
 
