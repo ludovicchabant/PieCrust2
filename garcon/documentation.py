@@ -27,10 +27,6 @@ def gendocs(tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
     if not venv_dir:
         venv_dir = os.path.join(base_dir, 'venv')
 
-    if sys.prefix == venv_dir:
-        raise Exception(
-                "Don't run this script in the PieCrust virtual environment.")
-
     if not os.path.isdir(venv_dir):
         print("Creating virtual environment in: %s" % venv_dir)
         run('virtualenv -p python3 "%s"' % venv_dir)
