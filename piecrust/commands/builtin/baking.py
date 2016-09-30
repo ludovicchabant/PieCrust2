@@ -198,6 +198,9 @@ class ShowRecordCommand(ChefCommand):
                 '--show-stats',
                 action='store_true',
                 help="Show stats from the record.")
+        parser.add_argument(
+                '--show-manifest',
+                help="Show manifest entries from the record.")
 
     def run(self, ctx):
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
@@ -213,23 +216,40 @@ class ShowRecordCommand(ChefCommand):
         if ctx.args.out:
             out_pattern = '*%s*' % ctx.args.out.strip('*')
 
-        if not ctx.args.show_stats:
+        if not ctx.args.show_stats and not ctx.args.show_manifest:
             if not ctx.args.assets_only:
                 self._showBakeRecord(
                         ctx, record_name, pattern, out_pattern)
             if not ctx.args.html_only:
                 self._showProcessingRecord(
                         ctx, record_name, pattern, out_pattern)
+            return
+
+        stats = {}
+        bake_rec = self._getBakeRecord(ctx, record_name)
+        if bake_rec:
+            _merge_stats(bake_rec.stats, stats)
+        proc_rec = self._getProcessingRecord(ctx, record_name)
+        if proc_rec:
+            _merge_stats(proc_rec.stats, stats)
 
         if ctx.args.show_stats:
-            stats = {}
-            bake_rec = self._getBakeRecord(ctx, record_name)
-            if bake_rec:
-                _merge_stats(bake_rec.stats, stats)
-            proc_rec = self._getProcessingRecord(ctx, record_name)
-            if proc_rec:
-                _merge_stats(proc_rec.stats, stats)
             _show_stats(stats, full=False)
+
+        if ctx.args.show_manifest:
+            for name in sorted(stats.keys()):
+                logger.info('%s:' % name)
+                s = stats[name]
+                for name in sorted(s.manifests.keys()):
+                    if ctx.args.show_manifest.lower() in name.lower():
+                        val = s.manifests[name]
+                        logger.info(
+                            "    [%s%s%s] [%d entries]" %
+                            (Fore.CYAN, name, Fore.RESET, len(val)))
+                        for v in val:
+                            logger.info("      - %s" % v)
+
+
 
     def _getBakeRecord(self, ctx, record_name):
         record_cache = ctx.app.cache.getCache('baker')
