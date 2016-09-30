@@ -7,6 +7,7 @@ from piecrust.data.pagedata import PageData
 from piecrust.data.paginator import Paginator
 from piecrust.data.piecrustdata import PieCrustData
 from piecrust.data.providersdata import DataProvidersData
+from piecrust.routing import CompositeRouteFunction
 
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,20 @@ def build_page_data(ctx):
             'pagination': paginator,
             'family': linker
             }
+
+    for route in app.routes:
+        name = route.func_name
+        func = data.get(name)
+        if func is None:
+            func = CompositeRouteFunction()
+            func.addFunc(route)
+            data[name] = func
+        elif isinstance(func, CompositeRouteFunction):
+            func.addFunc(route)
+        else:
+            raise Exception("Route function '%s' collides with an "
+                            "existing function or template data." %
+                            name)
 
     #TODO: handle slugified taxonomy terms.
 

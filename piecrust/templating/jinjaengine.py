@@ -17,7 +17,6 @@ from pygments.lexers import get_lexer_by_name, guess_lexer
 from piecrust.data.paginator import Paginator
 from piecrust.environment import AbortedSourceUseError
 from piecrust.rendering import format_text
-from piecrust.routing import CompositeRouteFunction
 from piecrust.templating.base import (TemplateEngine, TemplateNotFoundError,
                                       TemplatingError)
 from piecrust.uriutil import multi_replace
@@ -233,21 +232,6 @@ class PieCrustEnvironment(Environment):
         if twig_compatibility_mode is True:
             self.filters['raw'] = self.filters['safe']
             self.globals['pcfail'] = raise_exception
-
-        # Add route functions.
-        for route in app.routes:
-            name = route.func_name
-            func = self.globals.get(name)
-            if func is None:
-                func = CompositeRouteFunction()
-                func.addFunc(route)
-                self.globals[name] = func
-            elif isinstance(func, CompositeRouteFunction):
-                self.globals[name].addFunc(route)
-            else:
-                raise Exception("Route function '%s' collides with an "
-                                "existing function or template data." %
-                                name)
 
     def _paginate(self, value, items_per_page=5):
         cpi = self.app.env.exec_info_stack.current_page_info
