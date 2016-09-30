@@ -63,7 +63,8 @@ class PluginLoader(object):
     def getTemplateEngines(self):
         return self._getPluginComponents(
                 'getTemplateEngines',
-                initialize=True, register_timer=True)
+                initialize=True, register_timer=True,
+                register_timer_suffixes=['_segment', '_layout'])
 
     def getDataProviders(self):
         return self._getPluginComponents('getDataProviders')
@@ -135,7 +136,9 @@ class PluginLoader(object):
         return plugin
 
     def _getPluginComponents(self, name, *,
-                             initialize=False, register_timer=False,
+                             initialize=False,
+                             register_timer=False,
+                             register_timer_suffixes=None,
                              order_key=None):
         if name in self._componentCache:
             return self._componentCache[name]
@@ -151,7 +154,12 @@ class PluginLoader(object):
 
             if register_timer:
                 for comp in plugin_components:
-                    self.app.env.registerTimer(comp.__class__.__name__)
+                    if not register_timer_suffixes:
+                        self.app.env.registerTimer(comp.__class__.__name__)
+                    else:
+                        for s in register_timer_suffixes:
+                            self.app.env.registerTimer(
+                                comp.__class__.__name__ + s)
 
         if order_key is not None:
             all_components.sort(key=order_key)

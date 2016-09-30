@@ -279,7 +279,8 @@ def _do_render_page_segments(page, page_data):
         for seg_part in seg.parts:
             part_format = seg_part.fmt or format_name
             try:
-                with app.env.timerScope(engine.__class__.__name__):
+                with app.env.timerScope(
+                        engine.__class__.__name__ + '_segment'):
                     part_text = engine.renderSegmentPart(
                             page.path, seg_part, page_data)
             except TemplatingError as err:
@@ -324,7 +325,7 @@ def _do_render_layout(layout_name, page, layout_data):
     engine = get_template_engine(page.app, engine_name)
 
     try:
-        with page.app.env.timerScope(engine.__class__.__name__):
+        with page.app.env.timerScope(engine.__class__.__name__ + '_layout'):
             output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
         logger.exception(ex)
