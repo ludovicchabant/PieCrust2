@@ -124,7 +124,16 @@ def get_dict_value(d, key):
     return cur
 
 
-def try_get_dict_value(d, key, default=None):
+def get_dict_values(*args):
+    for d, key in args:
+        try:
+            return get_dict_value(d, key)
+        except KeyError:
+            continue
+    raise KeyError()
+
+
+def try_get_dict_value(d, key, *, default=None):
     try:
         return get_dict_value(d, key)
     except KeyError:
@@ -153,14 +162,23 @@ def set_dict_value(d, key, value):
             cur = cur[b]
 
 
-def merge_dicts(source, merging, validator=None, *args):
-    _recurse_merge_dicts(source, merging, None, validator)
+MERGE_NEW_VALUES = 0
+MERGE_OVERWRITE_VALUES = 1
+MERGE_PREPEND_LISTS = 2
+MERGE_APPEND_LISTS = 4
+MERGE_ALL = MERGE_OVERWRITE_VALUES | MERGE_PREPEND_LISTS
+
+
+def merge_dicts(source, merging, *args,
+                validator=None, mode=MERGE_ALL):
+    _recurse_merge_dicts(source, merging, None, validator, mode)
     for other in args:
-        _recurse_merge_dicts(source, other, None, validator)
+        _recurse_merge_dicts(source, other, None, validator, mode)
     return source
 
 
-def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
+def _recurse_merge_dicts(local_cur, incoming_cur, parent_path,
+                         validator, mode):
     for k, v in incoming_cur.items():
         key_path = k
         if parent_path is not None:
@@ -169,17 +187,24 @@ def _recurse_merge_dicts(local_cur, incoming_cur, parent_path, validator):
         local_v = local_cur.get(k)
         if local_v is not None:
             if isinstance(v, dict) and isinstance(local_v, dict):
-                _recurse_merge_dicts(local_v, v, key_path, validator)
+                _recurse_merge_dicts(local_v, v, key_path,
+                                     validator, mode)
             elif isinstance(v, list) and isinstance(local_v, list):
-                local_cur[k] = v + local_v
+                if mode & MERGE_PREPEND_LISTS:
+                    local_cur[k] = v + local_v
+                elif mode & MERGE_APPEND_LISTS:
+                    local_cur[k] = local_v + v
             else:
+                if mode & MERGE_OVERWRITE_VALUES:
+                    if validator is not None:
+                        v = validator(key_path, v)
+                    local_cur[k] = v
+        else:
+            if ((mode & (MERGE_PREPEND_LISTS | MERGE_APPEND_LISTS)) or
+                    not isinstance(v, list)):
                 if validator is not None:
                     v = validator(key_path, v)
                 local_cur[k] = v
-        else:
-            if validator is not None:
-                v = validator(key_path, v)
-            local_cur[k] = v
 
 
 def visit_dict(subject, visitor):

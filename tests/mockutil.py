@@ -7,7 +7,7 @@ from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
 
 def get_mock_app(config=None):
     app = mock.MagicMock(spec=PieCrust)
-    app.config = PieCrustConfiguration()
+    app.config = PieCrustConfiguration(values={})
     return app
 
 

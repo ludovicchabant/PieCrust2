@@ -7,26 +7,34 @@ import logging
 import hashlib
 import collections
 import yaml
-from piecrust import (
-        APP_VERSION, CACHE_VERSION,
-        DEFAULT_FORMAT, DEFAULT_TEMPLATE_ENGINE, DEFAULT_POSTS_FS,
-        DEFAULT_DATE_FORMAT, DEFAULT_THEME_SOURCE)
+from piecrust import APP_VERSION, CACHE_VERSION, DEFAULT_DATE_FORMAT
+from piecrust.appconfigdefaults import (
+    default_configuration,
+    default_theme_content_model_base,
+    default_content_model_base,
+    get_default_content_model, get_default_content_model_for_blog)
 from piecrust.cache import NullCache
 from piecrust.configuration import (
-        Configuration, ConfigurationError, ConfigurationLoader,
-        try_get_dict_value, try_get_dict_values,
-        set_dict_value, merge_dicts, visit_dict)
+    Configuration, ConfigurationError, ConfigurationLoader,
+    try_get_dict_values, try_get_dict_value, set_dict_value,
+    merge_dicts, visit_dict,
+    MERGE_NEW_VALUES, MERGE_OVERWRITE_VALUES, MERGE_PREPEND_LISTS,
+    MERGE_APPEND_LISTS)
 from piecrust.sources.base import REALM_USER, REALM_THEME
 
 
 logger = logging.getLogger(__name__)
 
 
+class InvalidConfigurationPathError(Exception):
+    pass
+
+
 class VariantNotFoundError(Exception):
     def __init__(self, variant_name, message=None):
         super(VariantNotFoundError, self).__init__(
-                message or ("No such configuration variant: %s" %
-                            variant_name))
+            message or ("No such configuration variant: %s" %
+                        variant_name))
 
 
 class PieCrustConfiguration(Configuration):
@@ -44,10 +52,12 @@ class PieCrustConfiguration(Configuration):
         self.theme_config = theme_config
         # Set the values after we set the rest, since our validation needs
         # our attributes.
-        if values:
+        if values is not None:
             self.setAll(values, validate=validate)
 
     def addPath(self, p):
+        if not p:
+            raise InvalidConfigurationPathError()
         self._ensureNotLoaded()
         self._custom_paths.append(p)
 
@@ -57,10 +67,9 @@ class PieCrustConfiguration(Configuration):
             self.addPath(variant_path)
         elif raise_if_not_found:
             logger.error(
-                    "Configuration variants should now be `.yml` files "
-                    "located in the `configs/` directory of your website.")
+                "Configuration variants should now be `.yml` files "
+                "located in the `configs/` directory of your website.")
             raise VariantNotFoundError(variant_path)
-
 
     def addVariantValue(self, path, value):
         def _fixup(config):
@@ -70,7 +79,7 @@ class PieCrustConfiguration(Configuration):
 
     def setAll(self, values, validate=False):
         # Override base class implementation
-        values = self._combineConfigs({}, values)
+        values = self._processConfigs({}, values)
         if validate:
             values = self._validateAll(values)
         self._values = values
@@ -81,14 +90,23 @@ class PieCrustConfiguration(Configuration):
 
     def _load(self):
         # Figure out where to load this configuration from.
-        paths = [self._theme_path, self._path] + self._custom_paths
-        paths = list(filter(lambda i: i is not None, paths))
+        paths = []
+        if self._theme_path:
+            paths.append(self._theme_path)
+        if self._path:
+            paths.append(self._path)
+        paths += self._custom_paths
+
+        if len(paths) == 0:
+            raise ConfigurationError(
+                "No paths to load configuration from. "
+                "Specify paths, or set the values directly.")
 
         # Build the cache-key.
         path_times = [os.path.getmtime(p) for p in paths]
         cache_key_hash = hashlib.md5(
-                ("version=%s&cache=%d" % (
-                    APP_VERSION, CACHE_VERSION)).encode('utf8'))
+            ("version=%s&cache=%d" % (
+                APP_VERSION, CACHE_VERSION)).encode('utf8'))
         for p in paths:
             cache_key_hash.update(("&path=%s" % p).encode('utf8'))
         cache_key = cache_key_hash.hexdigest()
@@ -98,8 +116,8 @@ class PieCrustConfiguration(Configuration):
             logger.debug("Loading configuration from cache...")
             config_text = self._cache.read('config.json')
             self._values = json.loads(
-                    config_text,
-                    object_pairs_hook=collections.OrderedDict)
+                config_text,
+                object_pairs_hook=collections.OrderedDict)
 
             actual_cache_key = self._values.get('__cache_key')
             if actual_cache_key == cache_key:
@@ -107,46 +125,36 @@ class PieCrustConfiguration(Configuration):
                 self._values['__cache_valid'] = True
                 return
             logger.debug("Outdated cache key '%s' (expected '%s')." % (
-                    actual_cache_key, cache_key))
+                actual_cache_key, cache_key))
 
         # Nope, load from the paths.
         try:
-            # Theme config.
-            theme_values = {}
+            # Theme values.
+            theme_values = None
             if self._theme_path:
+                logger.debug("Loading theme layer from: %s" % self._theme_path)
                 theme_values = self._loadFrom(self._theme_path)
 
-            # Site config.
-            site_values = {}
+            # Site and variant values.
+            site_paths = []
             if self._path:
-                site_values = self._loadFrom(self._path)
+                site_paths.append(self._path)
+            site_paths += self._custom_paths
 
-            # Combine!
-            logger.debug("Processing loaded configurations...")
-            values = self._combineConfigs(theme_values, site_values)
+            site_values = {}
+            for path in site_paths:
+                logger.debug("Loading config layer from: %s" % path)
+                cur_values = self._loadFrom(path)
+                merge_dicts(site_values, cur_values)
 
-            # Load additional paths.
-            if self._custom_paths:
-                logger.debug("Loading %d additional configuration paths." %
-                             len(self._custom_paths))
-                for p in self._custom_paths:
-                    loaded = self._loadFrom(p)
-                    if loaded:
-                        merge_dicts(values, loaded)
-
-            # Run final fixups
-            if self._post_fixups:
-                logger.debug("Applying %d configuration fixups." %
-                             len(self._post_fixups))
-                for f in self._post_fixups:
-                    f(values)
-
+            # Do it!
+            values = self._processConfigs(theme_values, site_values)
             self._values = self._validateAll(values)
         except Exception as ex:
             logger.exception(ex)
             raise Exception(
-                    "Error loading configuration from: %s" %
-                    ', '.join(paths)) from ex
+                "Error loading configuration from: %s" %
+                ', '.join(paths)) from ex
 
         logger.debug("Caching configuration...")
         self._values['__cache_key'] = cache_key
@@ -159,27 +167,22 @@ class PieCrustConfiguration(Configuration):
         logger.debug("Loading configuration from: %s" % path)
         with open(path, 'r', encoding='utf-8') as fp:
             values = yaml.load(
-                    fp.read(),
-                    Loader=ConfigurationLoader)
+                fp.read(),
+                Loader=ConfigurationLoader)
         if values is None:
             values = {}
         return values
 
-    def _combineConfigs(self, theme_values, site_values):
+    def _processConfigs(self, theme_values, site_values):
         # Start with the default configuration.
         values = copy.deepcopy(default_configuration)
 
-        if not self.theme_config:
-            # If the theme config wants the default model, add it.
-            theme_sitec = theme_values.setdefault(
-                    'site', collections.OrderedDict())
-            gen_default_theme_model = bool(theme_sitec.setdefault(
-                    'use_default_theme_content', True))
-            if gen_default_theme_model:
-                self._generateDefaultThemeModel(values)
-
-            # Now override with the actual theme config values.
-            values = merge_dicts(values, theme_values)
+        # If we have a theme, apply the theme on that. So stuff like routes
+        # will now look like:
+        # [custom theme] + [default theme] + [default]
+        if theme_values is not None:
+            self._processThemeLayer(theme_values, values)
+            merge_dicts(values, theme_values)
 
         # Make all sources belong to the "theme" realm at this point.
         srcc = values['site'].get('sources')
@@ -187,22 +190,70 @@ class PieCrustConfiguration(Configuration):
             for sn, sc in srcc.items():
                 sc['realm'] = REALM_THEME
 
-        # If the site config wants the default model, add it.
-        site_sitec = site_values.setdefault(
-                'site', collections.OrderedDict())
-        gen_default_site_model = bool(site_sitec.setdefault(
-                'use_default_content', True))
-        if gen_default_site_model:
-            self._generateDefaultSiteModel(values, site_values)
-
-        # And override with the actual site config values.
-        values = merge_dicts(values, site_values)
+        # Now we apply the site stuff. We want to end up with:
+        # [custom site] + [default site] + [custom theme] + [default theme] +
+        #   [default]
+        if site_values is not None:
+            self._processSiteLayer(site_values, values)
+            merge_dicts(values, site_values)
 
         # Set the theme site flag.
         if self.theme_config:
             values['site']['theme_site'] = True
 
+        # Run final fixups
+        if self._post_fixups:
+            logger.debug("Applying %d configuration fixups." %
+                         len(self._post_fixups))
+            for f in self._post_fixups:
+                f(values)
+
         return values
+
+    def _processThemeLayer(self, theme_values, values):
+        # Generate the default theme model.
+        gen_default_theme_model = bool(try_get_dict_values(
+            (theme_values, 'site/use_default_theme_content'),
+            (values, 'site/use_default_theme_content'),
+            default=True))
+        if gen_default_theme_model:
+            self._generateDefaultThemeModel(theme_values, values)
+
+    def _processSiteLayer(self, site_values, values):
+        # Default site content.
+        gen_default_site_model = bool(try_get_dict_values(
+            (site_values, 'site/use_default_content'),
+            (values, 'site/use_default_content'),
+            default=True))
+        if gen_default_site_model:
+            self._generateDefaultSiteModel(site_values, values)
+
+    def _generateDefaultThemeModel(self, theme_values, values):
+        logger.debug("Generating default theme content model...")
+        cc = copy.deepcopy(default_theme_content_model_base)
+        merge_dicts(values, cc)
+
+    def _generateDefaultSiteModel(self, site_values, values):
+        logger.debug("Generating default content model...")
+        cc = copy.deepcopy(default_content_model_base)
+        merge_dicts(values, cc)
+
+        dcm = get_default_content_model(site_values, values)
+        merge_dicts(values, dcm)
+
+        blogsc = try_get_dict_values(
+            (site_values, 'site/blogs'),
+            (values, 'site/blogs'))
+        if blogsc is None:
+            blogsc = ['posts']
+            set_dict_value(site_values, 'site/blogs', blogsc)
+
+        is_only_blog = (len(blogsc) == 1)
+        for blog_name in reversed(blogsc):
+            blog_cfg = get_default_content_model_for_blog(
+                blog_name, is_only_blog, site_values, values,
+                theme_site=self.theme_config)
+            merge_dicts(values, blog_cfg)
 
     def _validateAll(self, values):
         if values is None:
@@ -235,31 +286,6 @@ class PieCrustConfiguration(Configuration):
 
         return values
 
-    def _generateDefaultThemeModel(self, values):
-        logger.debug("Generating default theme content model...")
-        cc = copy.deepcopy(default_theme_content_model_base)
-        merge_dicts(values, cc)
-
-    def _generateDefaultSiteModel(self, values, user_overrides):
-        logger.debug("Generating default content model...")
-        cc = copy.deepcopy(default_content_model_base)
-        merge_dicts(values, cc)
-
-        dcm = get_default_content_model(values, user_overrides)
-        merge_dicts(values, dcm)
-
-        blogsc = try_get_dict_value(user_overrides, 'site/blogs')
-        if blogsc is None:
-            blogsc = ['posts']
-            set_dict_value(user_overrides, 'site/blogs', blogsc)
-
-        is_only_blog = (len(blogsc) == 1)
-        for blog_name in blogsc:
-            blog_cfg = get_default_content_model_for_blog(
-                    blog_name, is_only_blog, values, user_overrides,
-                    theme_site=self.theme_config)
-            merge_dicts(values, blog_cfg)
-
 
 class _ConfigCacheWriter(object):
     def __init__(self, cache_dict):
@@ -268,259 +294,6 @@ class _ConfigCacheWriter(object):
     def write(self, name, val):
         logger.debug("Caching configuration item '%s' = %s" % (name, val))
         self._cache_dict[name] = val
-
-
-default_theme_content_model_base = collections.OrderedDict({
-        'site': collections.OrderedDict({
-            'sources': collections.OrderedDict({
-                'theme_pages': {
-                    'type': 'default',
-                    'ignore_missing_dir': True,
-                    'fs_endpoint': 'pages',
-                    'data_endpoint': 'site.pages',
-                    'default_layout': 'default',
-                    'item_name': 'page',
-                    'realm': REALM_THEME
-                    }
-                }),
-            'routes': [
-                {
-                    'url': '/%slug%',
-                    'source': 'theme_pages',
-                    'func': 'pcurl'
-                    }
-                ],
-            'theme_tag_page': 'theme_pages:_tag.%ext%',
-            'theme_category_page': 'theme_pages:_category.%ext%',
-            'theme_month_page': 'theme_pages:_month.%ext%',
-            'theme_year_page': 'theme_pages:_year.%ext%'
-            })
-        })
-
-
-default_configuration = collections.OrderedDict({
-        'site': collections.OrderedDict({
-            'title': "Untitled PieCrust website",
-            'root': '/',
-            'default_format': DEFAULT_FORMAT,
-            'default_template_engine': DEFAULT_TEMPLATE_ENGINE,
-            'enable_gzip': True,
-            'pretty_urls': False,
-            'trailing_slash': False,
-            'date_format': DEFAULT_DATE_FORMAT,
-            'auto_formats': collections.OrderedDict([
-                ('html', ''),
-                ('md', 'markdown'),
-                ('textile', 'textile')]),
-            'default_auto_format': 'md',
-            'default_pagination_source': None,
-            'pagination_suffix': '/%num%',
-            'slugify_mode': 'encode',
-            'themes_sources': [DEFAULT_THEME_SOURCE],
-            'cache_time': 28800,
-            'enable_debug_info': True,
-            'show_debug_info': False,
-            'use_default_content': True,
-            'use_default_theme_content': True,
-            'theme_site': False
-            }),
-        'baker': collections.OrderedDict({
-            'no_bake_setting': 'draft',
-            'workers': None,
-            'batch_size': None
-            })
-        })
-
-
-default_content_model_base = collections.OrderedDict({
-        'site': collections.OrderedDict({
-            'posts_fs': DEFAULT_POSTS_FS,
-            'default_page_layout': 'default',
-            'default_post_layout': 'post',
-            'post_url': '/%year%/%month%/%day%/%slug%',
-            'year_url': '/archives/%year%',
-            'tag_url': '/tag/%tag%',
-            'category_url': '/%category%',
-            'posts_per_page': 5
-            })
-        })
-
-
-def get_default_content_model(values, user_overrides):
-    default_layout = try_get_dict_value(
-            user_overrides, 'site/default_page_layout',
-            values['site']['default_page_layout'])
-    return collections.OrderedDict({
-            'site': collections.OrderedDict({
-                'sources': collections.OrderedDict({
-                    'pages': {
-                        'type': 'default',
-                        'ignore_missing_dir': True,
-                        'data_endpoint': 'site.pages',
-                        'default_layout': default_layout,
-                        'item_name': 'page'
-                        }
-                    }),
-                'routes': [
-                    {
-                        'url': '/%slug%',
-                        'source': 'pages',
-                        'func': 'pcurl'
-                        }
-                    ],
-                'taxonomies': collections.OrderedDict([
-                    ('tags', {
-                        'multiple': True,
-                        'term': 'tag'
-                        }),
-                    ('categories', {
-                        'term': 'category',
-                        'func_name': 'pccaturl'
-                        })
-                    ])
-                })
-            })
-
-
-def get_default_content_model_for_blog(
-        blog_name, is_only_blog, values, user_overrides, theme_site=False):
-    # Get the global (default) values for various things we're interested in.
-    defs = {}
-    names = ['posts_fs', 'posts_per_page', 'date_format',
-             'default_post_layout', 'post_url', 'year_url']
-    for n in names:
-        defs[n] = try_get_dict_value(
-                user_overrides, 'site/%s' % n,
-                values['site'][n])
-
-    # More stuff we need.
-    if is_only_blog:
-        url_prefix = ''
-        page_prefix = ''
-        fs_endpoint = 'posts'
-        data_endpoint = 'blog'
-        item_name = 'post'
-        tpl_func_prefix = 'pc'
-
-        if theme_site:
-            # If this is a theme site, show posts from a `sample` directory
-            # so it's clearer that those won't show up when the theme is
-            # actually applied to a normal site.
-            fs_endpoint = 'sample/posts'
-    else:
-        url_prefix = blog_name + '/'
-        page_prefix = blog_name + '/'
-        data_endpoint = blog_name
-        fs_endpoint = 'posts/%s' % blog_name
-        item_name = try_get_dict_value(user_overrides,
-                                       '%s/item_name' % blog_name,
-                                       '%spost' % blog_name)
-        tpl_func_prefix = try_get_dict_value(user_overrides,
-                                             '%s/func_prefix' % blog_name,
-                                             'pc%s' % blog_name)
-
-    # Figure out the settings values for this blog, specifically.
-    # The value could be set on the blog config itself, globally, or left at
-    # its default. We already handle the "globally vs. default" with the
-    # `defs` map that we computed above.
-    blog_cfg = user_overrides.get(blog_name, {})
-    blog_values = {}
-    for n in names:
-        blog_values[n] = blog_cfg.get(n, defs[n])
-
-    posts_fs = blog_values['posts_fs']
-    posts_per_page = blog_values['posts_per_page']
-    date_format = blog_values['date_format']
-    default_layout = blog_values['default_post_layout']
-    post_url = '/' + url_prefix + blog_values['post_url'].lstrip('/')
-    year_url = '/' + url_prefix + blog_values['year_url'].lstrip('/')
-
-    year_archive = 'pages:%s_year.%%ext%%' % page_prefix
-    if not theme_site:
-        theme_year_page = values['site'].get('theme_year_page')
-        if theme_year_page:
-            year_archive += ';' + theme_year_page
-
-    cfg = collections.OrderedDict({
-            'site': collections.OrderedDict({
-                'sources': collections.OrderedDict({
-                    blog_name: collections.OrderedDict({
-                        'type': 'posts/%s' % posts_fs,
-                        'fs_endpoint': fs_endpoint,
-                        'data_endpoint': data_endpoint,
-                        'item_name': item_name,
-                        'ignore_missing_dir': True,
-                        'data_type': 'blog',
-                        'items_per_page': posts_per_page,
-                        'date_format': date_format,
-                        'default_layout': default_layout
-                        })
-                    }),
-                'generators': collections.OrderedDict({
-                    ('%s_archives' % blog_name): collections.OrderedDict({
-                        'type': 'blog_archives',
-                        'source': blog_name,
-                        'page': year_archive
-                        })
-                    }),
-                'routes': [
-                    {
-                        'url': post_url,
-                        'source': blog_name,
-                        'func': ('%sposturl' % tpl_func_prefix)
-                        },
-                    {
-                        'url': year_url,
-                        'generator': ('%s_archives' % blog_name),
-                        'func': ('%syearurl' % tpl_func_prefix)
-                        }
-                    ]
-                })
-            })
-
-    # Add a generator and a route for each taxonomy.
-    taxonomies_cfg = values.get('site', {}).get('taxonomies', {}).copy()
-    taxonomies_cfg.update(
-            user_overrides.get('site', {}).get('taxonomies', {}))
-    for tax_name, tax_cfg in taxonomies_cfg.items():
-        term = tax_cfg.get('term', tax_name)
-
-        # Generator.
-        page_ref = 'pages:%s_%s.%%ext%%' % (page_prefix, term)
-        if not theme_site:
-            theme_page_ref = values['site'].get('theme_%s_page' % term)
-            if theme_page_ref:
-                page_ref += ';' + theme_page_ref
-        tax_gen_name = '%s_%s' % (blog_name, tax_name)
-        tax_gen = collections.OrderedDict({
-            'type': 'taxonomy',
-            'source': blog_name,
-            'taxonomy': tax_name,
-            'page': page_ref
-            })
-        cfg['site']['generators'][tax_gen_name] = tax_gen
-
-        # Route.
-        tax_url_cfg_name = '%s_url' % term
-        tax_url = try_get_dict_values(
-                (blog_cfg, tax_url_cfg_name),
-                (user_overrides, 'site/%s' % tax_url_cfg_name),
-                (values, 'site/%s' % tax_url_cfg_name),
-                default=('%s/%%%s%%' % (term, term)))
-        tax_url = '/' + url_prefix + tax_url.lstrip('/')
-        tax_func_name = try_get_dict_values(
-                (user_overrides, 'site/taxonomies/%s/func_name' % tax_name),
-                (values, 'site/taxonomies/%s/func_name' % tax_name),
-                default=('%s%surl' % (tpl_func_prefix, term)))
-        tax_route = collections.OrderedDict({
-            'url': tax_url,
-            'generator': tax_gen_name,
-            'taxonomy': tax_name,
-            'func': tax_func_name
-            })
-        cfg['site']['routes'].append(tax_route)
-
-    return cfg
 
 
 # Configuration value validators.

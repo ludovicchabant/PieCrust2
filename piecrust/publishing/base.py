@@ -45,7 +45,7 @@ class Publisher(object):
     def getConfigValue(self, name, default_value=None):
         if self.has_url_config:
             raise Exception("This publisher only has a URL configuration.")
-        return try_get_dict_value(self.config, name, default_value)
+        return try_get_dict_value(self.config, name, default=default_value)
 
     def run(self, ctx):
         raise NotImplementedError()

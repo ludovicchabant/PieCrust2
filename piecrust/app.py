@@ -67,6 +67,10 @@ class PieCrust(object):
                 path=path, theme_path=theme_path,
                 cache=config_cache, theme_config=self.theme_site)
 
+        local_path = os.path.join(
+                self.root_dir, 'configs', 'local.yml')
+        config.addVariant(local_path, raise_if_not_found=False)
+
         if self.theme_site:
             variant_path = os.path.join(
                     self.root_dir, 'configs', 'theme_preview.yml')
