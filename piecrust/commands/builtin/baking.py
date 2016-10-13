@@ -135,8 +135,9 @@ def _show_stats(stats, *, full=False):
         s = stats[name]
 
         logger.info('  Timers:')
-        for name in sorted(s.timers.keys()):
-            val_str = '%8.1f s' % s.timers[name]
+        for name, val in sorted(s.timers.items(), key=lambda i: i[1],
+                                reverse=True):
+            val_str = '%8.1f s' % val
             logger.info(
                     "%s[%s%s%s] %s" %
                     (indent, Fore.GREEN, val_str, Fore.RESET, name))
