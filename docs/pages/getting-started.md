@@ -152,8 +152,7 @@ your web server. When that's done, you should be able to see the exact same
 website being served from there.
 
 
-That's it! This is an extremely quick tour of PieCrust. Read the
-[documentation][doc] to learn more.
+That's it! This is an extremely quick tour of PieCrust. Read the [documentation][doc] to learn more.
 
 
 [1]: https://www.python.org/downloads/
