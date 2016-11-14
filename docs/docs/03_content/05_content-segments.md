@@ -39,7 +39,7 @@ This mean you can create a page like so:
     ---sidebar---
     Sidebar goes here
 
-You can them use, the page's layout, both the `content` and `sidebar` segments
+You can then use, the page's layout, both the `content` and `sidebar` segments
 to put each piece of text in its appropriate place.
 
 You can also specify a [formatter][] for a given segment, by adding `:formatter`

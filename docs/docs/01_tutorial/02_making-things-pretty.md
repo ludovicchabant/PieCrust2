@@ -28,7 +28,7 @@ into our website, for easy customization:
     templates/post.html
 
 All of those files have been copied into your website's directory -- and it will
-warn you if it was every going to overwrite some of your own files.
+warn you if it was ever going to overwrite some of your own files.
 
 There are a few files we'll be editing here:
 
