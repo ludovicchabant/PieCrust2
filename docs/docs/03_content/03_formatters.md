@@ -6,8 +6,8 @@ As explained in the documentation about [how PieCrust works][how], the page
 contents that you write go through a _formatter_ before the page is rendered or
 baked. PieCrust ships with 2 standard formatters: [Markdown][] and [Textile][].
 
-The formatter used on a page is determined by the `format` setting in the page's
-[configuration header][pageconf]:
+The formatter used on a page is determined by the `format` setting in the
+page's [configuration header][pageconf]:
 
     * `markdown` for Markdown
     * `textile` for Textile

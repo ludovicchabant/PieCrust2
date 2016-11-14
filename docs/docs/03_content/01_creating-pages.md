@@ -4,8 +4,8 @@ title: Creating Pages
 
 In PieCrust, creating pages is a matter of creating a text file in the correct
 place with the correct name. This mostly depends on the [page sources][src]
-you're using, but we can go over how it works for the sources involved in the
-[default content model][dcm].
+you're using, but we can go over how it works for the sources involved in
+the [default content model][dcm].
 
 We will also mention the `chef prepare` command, which semi-automates the
 process of creating pages by letting you type a lot less than what would be
