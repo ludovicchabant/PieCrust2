@@ -269,7 +269,7 @@ stylesheets and using PieCrust's built-in asset pipeline.
 [yaml]: https://en.wikipedia.org/wiki/YAML
 [slug]: http://en.wikipedia.org/wiki/Semantic_URL#Slug
 [pageconfref]: {{pcurl('docs/reference/page-config')}}
-[siteconfref]: {{pcurl('docs/reference/site-config')}}
+[siteconfref]: {{pcurl('docs/reference/website-config')}}
 [part2]: {{pcurl('docs/tutorial/making-things-pretty')}}
 [routes]: {{docurl('content-model/routes')}}
 [tpl]: {{docurl('content/templating')}}
