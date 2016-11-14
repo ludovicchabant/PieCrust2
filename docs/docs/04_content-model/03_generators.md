@@ -16,8 +16,8 @@ site:
   generators:
     my_archives:
       type: blog_archives
-        source: posts
-        page: 'page:_year.md'
+      source: posts
+      page: 'page:_year.md'
 ```
 
 The only required setting for a generator is the `type` setting, which specifies
