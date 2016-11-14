@@ -27,7 +27,7 @@ For each file found in an assets directory, the pipeline will either:
 * Process it, if it matches any of the active asset processors. The output of
   the processing phase will be put in the output directory.
 
-* Copy it as is, if not asset processor was found. Just like for processing, the
+* Copy it as is, if no asset processor was found. Just like for processing, the
   relative path of the asset is preserved in the output directory.
 
 
@@ -45,7 +45,7 @@ matched again against all the other processors... and so on, until no more
 processors match and the `copy` processor copies the result to the output(s)
 directory.
 
-So for instance, you if you have a LessCSS file, it will be processed like so:
+So for instance, if you have a LessCSS file, it will be processed like so:
 
     foo.less    ->    foo.css    ->    foo.min.css
 

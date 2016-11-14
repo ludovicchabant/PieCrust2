@@ -3,7 +3,7 @@ title: Themes
 ---
 
 Themes let you change your website's appearance easily by applying a new set of
-templates, layouts, and styles over you content. You're probably already
+templates, layouts, and styles over your content. You're probably already
 familiar with this concept if you're coming from some other CMS like WordPress.
 
 In PieCrust, themes work better if you don't have any templates -- otherwise,
