@@ -55,7 +55,7 @@ for the current page:
 
 [how]: {{docurl('general/how-it-works')}}
 [pageconf]: {{docurl('content/page-configuration')}}
-[siteconf]: {{docurl('general/site-configuration')}}
+[siteconf]: {{docurl('general/website-configuration')}}
 [dataref]: {{docurl('reference/templating-data')}}
 [assets]: {{docurl('content/assets')}}
 [jinja]: http://jinja.pocoo.org/docs/dev/templates/

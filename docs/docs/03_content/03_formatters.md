@@ -25,7 +25,7 @@ used, and that's Markdown by default.
 
 [how]: {{docurl('general/how-it-works')}}
 [pageconf]: {{docurl('content/page-configuration')}}
-[siteconf]: {{docurl('general/site-configuration')}}
+[siteconf]: {{docurl('general/website-configuration')}}
 [markdown]: https://en.wikipedia.org/wiki/Markdown
 [textile]: https://en.wikipedia.org/wiki/Textile_(markup_language)
 

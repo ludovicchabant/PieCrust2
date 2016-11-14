@@ -64,7 +64,7 @@ temporarily.
 * `--config-set <name> <value>` lets you override _a specific configuration
   setting_.
 
-[3]: {{docurl('general/website-config')}}
+[3]: {{docurl('general/website-configuration')}}
 
 
 ### Logging
