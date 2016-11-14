@@ -4,8 +4,8 @@ needs_pygments: true
 ---
 
 PieCrust returns _iterator objects_ as template data in several cases:
-`pagination.posts`, `assets`, `site.pages`, etc. Any time there's a list of
-_stuff_, you can bet it's returned as an _iterator object_.
+`pagination.posts`, `assets`, `site.pages`, etc. Any time there's a list
+of _stuff_, you can bet it's returned as an _iterator object_.
 
 At first glance, there's not much difference with a simple list:
 
