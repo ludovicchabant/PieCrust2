@@ -226,7 +226,7 @@ example, say you don't like the default URL format for posts. That can be
 adjusted with the `site/post_url` setting. By default, it is:
 
     site:
-        post_url: "%year%/%month%/%day%/%slug%
+        post_url: "%year%/%month%/%day%/%slug%"
 
 The post URL format is defined using some keywords surrounded by percent signs,
 as you can see above. The `%year%`, `%month%` and `%day%` keywords should be
