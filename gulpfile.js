@@ -11,7 +11,7 @@ var gulp = require('gulp'),
 
 // Stylesheets
 gulp.task('sass', function() {
-    return gulp.src('foodtruck/assets/sass/**/*.scss')
+    return gulp.src('piecrust/admin/assets/sass/**/*.scss')
         //.pipe(sourcemaps.init())
         .pipe(sass({
             errLogToConsole: true,
@@ -22,10 +22,10 @@ gulp.task('sass', function() {
         .pipe(cssnano())
         //.pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
-        .pipe(gulp.dest('foodtruck/static/css'));
+        .pipe(gulp.dest('piecrust/admin/static/css'));
 });
 gulp.task('sass:watch', function() {
-    return gulp.watch('foodtruck/assets/sass/**/*.scss', ['sass']);
+    return gulp.watch('piecrust/admin/assets/sass/**/*.scss', ['sass']);
 });
 
 // Javascript
@@ -40,17 +40,17 @@ gulp.task('js', function() {
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/tooltip.js',
             'bower_components/bootstrap-sass/assets/javascripts/bootstrap/transition.js',
             'bower_components/jquery-timeago/jquery.timeago.js',
-            'foodtruck/assets/js/**/*.js'
+            'piecrust/admin/assets/js/**/*.js'
             ])
         .pipe(sourcemaps.init())
         .pipe(concat('foodtruck.js'))
         //.pipe(uglify())
         .pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
-        .pipe(gulp.dest('foodtruck/static/js'));
+        .pipe(gulp.dest('piecrust/admin/static/js'));
 });
 gulp.task('js:watch', function() {
-    return gulp.watch('foodtruck/assets/js/**/*.js', ['js']);
+    return gulp.watch('piecrust/admin/assets/js/**/*.js', ['js']);
 });
 
 // Fonts/images
@@ -59,15 +59,15 @@ gulp.task('fonts', function() {
             'bower_components/bootstrap-sass/assets/fonts/bootstrap/*',
             'bower_components/Ionicons/fonts/*'
         ])
-        .pipe(gulp.dest('foodtruck/static/fonts'));
+        .pipe(gulp.dest('piecrust/admin/static/fonts'));
 });
 
 gulp.task('images', function() {
     return gulp.src([
             'bower_components/bootstrap-sass/assets/images/*',
-            'foodtruck/assets/img/*'
+            'piecrust/admin/assets/img/*'
         ])
-        .pipe(gulp.dest('foodtruck/static/img'));
+        .pipe(gulp.dest('piecrust/admin/static/img'));
 });
 
 // Launch tasks
