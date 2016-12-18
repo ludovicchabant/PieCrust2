@@ -16,7 +16,7 @@
 
     <div class="row">
         <div class="col-sm-6 col-sm-offset-1 col-xs-8">
-            <button type="submit" formtarget="_blank" name="do_preview" class="btn btn-info">Preview</button>
+            <a class="btn btn-info" href="{{url_preview}}">Preview</a>
             <a class="btn btn-danger" href="{{url_cancel}}">Cancel</a>
         </div>
         <div class="col-sm-4 col-xs-4">
@@ -53,6 +53,44 @@
                     <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary" name="do_save_and_commit">Save and Commit</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<div class="row">
+    <div class="col-sm-10 col-sm-offset-1">
+        <h3>Assets</h3>
+        <p>Here are the assets you can use on this page with the <code>{%raw%}{{assets.foo}}{%endraw%}</code> syntax.</p>
+        {% if assets %}
+        <ul>
+        {% for a in assets %}
+            <li><a href="{{a.url}}">{{a.name}}</a></li>
+        {% endfor %}
+        </ul>
+        {% else %}
+        <p>...no assets...</p>
+        {% endif %}
+    </div>
+</div>
+
+<form action="{{url_upload_asset}}" method="POST" enctype="multipart/form-data" class="ft-upload-form" id="ft-upload-form">
+    <div class="row">
+        <div class="col-lg-6 col-sm-offset-1">
+            <p>Upload a new asset:</p>
+            <div class="form-group">
+                <div class="input-group">
+                    <input name="ft-asset-file" type="file"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="input-group">
+                    <span class="input-group-addon" id="ft-label-asset-name">Name</span>
+                    <input name="ft-asset-name" type="text" class="form-control" placeholder="Optional asset name" aria-describedby="ft-label-asset-name"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Upload!" />
             </div>
         </div>
     </div>

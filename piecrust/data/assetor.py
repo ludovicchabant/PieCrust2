@@ -57,9 +57,9 @@ class Assetor(object):
         self._cacheAssets()
         return map(lambda i: i[0], self._cache.values())
 
-    def _getFilenames(self):
-        assert self._cache is not None
-        return map(lambda i: i[1], self._cache.values())
+    def allNames(self):
+        self._cacheAssets()
+        return list(self._cache.keys())
 
     def _debugRenderAssetNames(self):
         self._cacheAssets()
