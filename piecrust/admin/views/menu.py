@@ -27,6 +27,11 @@ def get_menu_context():
                 'url': url_listall,
                 'title': s.name,
                 'icon': source_icon,
+                'quicklink': {
+                    'icon': 'edit',
+                    'url': url_write,
+                    'title': "Write New"
+                },
                 'entries': [
                     {'url': url_listall, 'title': "List All"},
                     {'url': url_write, 'title': "Write New"}
