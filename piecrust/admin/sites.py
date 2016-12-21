@@ -63,10 +63,10 @@ class Site(object):
 
     def publish(self, target):
         args = [
-                'chef',
-                '--pid-file', self.publish_pid_file,
-                'publish', target,
-                '--log-publisher', self.publish_log_file]
+            'chef',
+            '--pid-file', self.publish_pid_file,
+            'publish', target,
+            '--log-publisher', self.publish_log_file]
         proc = subprocess.Popen(args, cwd=self.root_dir)
 
         def _comm():

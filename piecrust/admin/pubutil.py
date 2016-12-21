@@ -30,9 +30,9 @@ def record_pipeline(state):
         # Make sure CTRL+C works correctly.
         logger.debug("Adding SIGINT callback for pipeline thread.")
         signal.signal(
-                signal.SIGINT,
-                lambda *args: _shutdown_server_and_raise_sigint(
-                    state.app.debug))
+            signal.SIGINT,
+            lambda *args: _shutdown_server_and_raise_sigint(
+                state.app.debug))
 
 
 foodtruck_bp.record(record_pipeline)
@@ -117,8 +117,8 @@ class PublishLogReader(object):
                 if pid:
                     is_running = _pid_exists(pid)
                     logger.debug(
-                            "Process %d is %s" %
-                            (pid, 'running' if is_running else 'not running'))
+                        "Process %d is %s" %
+                        (pid, 'running' if is_running else 'not running'))
                     if not is_running:
                         # Let's forget this PID file until it changes.
                         pid = None
@@ -135,8 +135,8 @@ class PublishLogReader(object):
                         # This means we saw the PID file get changed.
                         if not is_pid_file_prehistoric:
                             outstr = (
-                                    'event: message\n'
-                                    'data: Publish started.\n\n')
+                                'event: message\n'
+                                'data: Publish started.\n\n')
                             yield bytes(outstr, 'utf8')
                         last_seek = 0
 

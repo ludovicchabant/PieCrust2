@@ -24,8 +24,8 @@ class GitSourceControl(SourceControl):
                 if path[-1] == '/':
                     import glob
                     res.new_files += [
-                            f for f in glob.glob(path + '**', recursive=True)
-                            if f[-1] != '/']
+                        f for f in glob.glob(path + '**', recursive=True)
+                        if f[-1] != '/']
                 else:
                     res.new_files.append(path)
             elif line.startswith(' M '):
@@ -56,7 +56,7 @@ class GitSourceControl(SourceControl):
 
         logger.debug("Running Git: " + str(exe))
         proc = subprocess.Popen(
-                exe, stdout=subprocess.PIPE, cwd=self.root_dir)
+            exe, stdout=subprocess.PIPE, cwd=self.root_dir)
         out, _ = proc.communicate()
 
         encoded_out = _s(out)

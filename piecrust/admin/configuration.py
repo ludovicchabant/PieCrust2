@@ -3,8 +3,8 @@ import copy
 import logging
 import yaml
 from piecrust.configuration import (
-        Configuration, ConfigurationError, ConfigurationLoader,
-        merge_dicts)
+    Configuration, ConfigurationError, ConfigurationLoader,
+    merge_dicts)
 
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,8 @@ class FoodTruckConfiguration(Configuration):
         try:
             with open(self.cfg_path, 'r', encoding='utf-8') as fp:
                 values = yaml.load(
-                        fp.read(),
-                        Loader=ConfigurationLoader)
+                    fp.read(),
+                    Loader=ConfigurationLoader)
 
             self._values = self._validateAll(values)
         except OSError:
@@ -43,8 +43,8 @@ class FoodTruckConfiguration(Configuration):
             self._values = copy.deepcopy(self.fallback_config)
         except Exception as ex:
             raise ConfigurationError(
-                    "Error loading configuration from: %s" %
-                    self.cfg_path) from ex
+                "Error loading configuration from: %s" %
+                self.cfg_path) from ex
 
     def _validateAll(self, values):
         if values is None:
@@ -60,15 +60,15 @@ class FoodTruckConfiguration(Configuration):
 
 
 default_configuration = {
-        'triggers': {
-            'bake': 'chef bake'
-            },
-        'scm': {
-            'type': 'hg'
-            },
-        'security': {
-            'username': '',
-            'password': ''
-            }
-        }
+    'triggers': {
+        'bake': 'chef bake'
+    },
+    'scm': {
+        'type': 'hg'
+    },
+    'security': {
+        'username': '',
+        'password': ''
+    }
+}
 

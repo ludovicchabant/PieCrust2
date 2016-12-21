@@ -24,19 +24,19 @@ def get_menu_context():
         url_listall = url_for('.list_source', source_name=s.name)
 
         ctx = {
-                'url': url_listall,
-                'title': s.name,
-                'icon': source_icon,
-                'quicklink': {
-                    'icon': 'edit',
-                    'url': url_write,
-                    'title': "Write New"
-                },
-                'entries': [
-                    {'url': url_listall, 'title': "List All"},
-                    {'url': url_write, 'title': "Write New"}
-                    ]
-                }
+            'url': url_listall,
+            'title': s.name,
+            'icon': source_icon,
+            'quicklink': {
+                'icon': 'plus-round',
+                'url': url_write,
+                'title': "Write New"
+            },
+            'entries': [
+                {'url': url_listall, 'title': "List All"},
+                {'url': url_write, 'title': "Write New"}
+            ]
+        }
         entries.append(ctx)
 
     entries.append({

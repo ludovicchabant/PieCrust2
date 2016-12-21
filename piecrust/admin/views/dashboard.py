@@ -2,8 +2,8 @@ import os
 import os.path
 import logging
 from flask import (
-        current_app, g, request,
-        render_template, url_for, redirect)
+    current_app, g, request,
+    render_template, url_for, redirect)
 from flask.ext.login import login_user, logout_user, login_required
 from piecrust.configuration import parse_config_header
 from piecrust.rendering import QualifiedPage
@@ -28,9 +28,9 @@ def index():
             continue
         facs = source.getPageFactories()
         src_data = {
-                'name': source.name,
-                'list_url': url_for('.list_source', source_name=source.name),
-                'page_count': len(facs)}
+            'name': source.name,
+            'list_url': url_for('.list_source', source_name=source.name),
+            'page_count': len(facs)}
         data['sources'].append(src_data)
 
         fe = getattr(source, 'fs_endpoint', None)
@@ -66,7 +66,7 @@ def index():
             'name': s.name,
             'display_name': s.piecrust_app.config.get('site/title'),
             'url': url_for('.index', site_name=s.name)
-            })
+        })
     data['needs_switch'] = len(g.config.get('sites')) > 1
     data['url_switch'] = url_for('.switch_site')
 
@@ -103,11 +103,11 @@ def _getWipData(path, site, fs_endpoints):
     header, offset = parse_config_header(raw_text)
     extract = text_preview(raw_text, offset=offset)
     return {
-            'title': qp.config.get('title'),
-            'slug': slug,
-            'url': url_for('.edit_page', slug=slug),
-            'text': extract
-            }
+        'title': qp.config.get('title'),
+        'slug': slug,
+        'url': url_for('.edit_page', slug=slug),
+        'text': extract
+    }
 
 
 @login_required
@@ -139,8 +139,8 @@ def login():
                 login_user(user, remember=bool(remember))
                 return redirect(url_for('.index'))
         data['message'] = (
-                "User '%s' doesn't exist or password is incorrect." %
-                username)
+            "User '%s' doesn't exist or password is incorrect." %
+            username)
 
     return render_template('login.html', **data)
 

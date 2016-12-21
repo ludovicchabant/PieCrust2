@@ -1,10 +1,8 @@
-import os
-import os.path
 import time
 import logging
-from flask import Blueprint, current_app, g, request, render_template
+from flask import Blueprint, current_app, g, request
 from .configuration import (
-        FoodTruckConfigNotFoundError, get_foodtruck_config)
+    FoodTruckConfigNotFoundError, get_foodtruck_config)
 from .sites import FoodTruckSites, InvalidSiteError
 
 
@@ -12,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 # Prepare the Login extension.
-from flask.ext.login import LoginManager, UserMixin
+from flask.ext.login import LoginManager, UserMixin  # NOQA
 
 
 class User(UserMixin):
@@ -47,7 +45,7 @@ def record_login_manager(state):
 
 
 # Setup Bcrypt.
-from .bcryptfallback import Bcrypt
+from .bcryptfallback import Bcrypt  # NOQA
 bcrypt_ext = Bcrypt()
 
 
@@ -55,8 +53,8 @@ def record_bcrypt(state):
     if (getattr(Bcrypt, 'is_fallback_bcrypt', None) is True and
             not state.app.config.get('FOODTRUCK_CMDLINE_MODE', False)):
         raise Exception(
-                "You're running FoodTruck outside of `chef`, and will need to "
-                "install Flask-Bcrypt to get more proper security.")
+            "You're running FoodTruck outside of `chef`, and will need to "
+            "install Flask-Bcrypt to get more proper security.")
 
     bcrypt_ext.init_app(state.app)
     state.app.bcrypt = bcrypt_ext
@@ -64,9 +62,9 @@ def record_bcrypt(state):
 
 # Create the FoodTruck blueprint.
 foodtruck_bp = Blueprint(
-        'FoodTruck', __name__,
-        template_folder='templates',
-        static_folder='static')
+    'FoodTruck', __name__,
+    template_folder='templates',
+    static_folder='static')
 
 foodtruck_bp.record(record_login_manager)
 foodtruck_bp.record(record_bcrypt)
@@ -103,7 +101,7 @@ def _setup_foodtruck_globals():
         names = g.config.get('sites')
         if not names or not isinstance(names, dict):
             raise InvalidSiteError(
-                    "No sites are defined in the configuration file.")
+                "No sites are defined in the configuration file.")
 
         current = request.cookies.get('foodtruck_site_name')
         if current is not None and current not in names:

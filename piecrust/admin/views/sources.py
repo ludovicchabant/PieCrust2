@@ -2,7 +2,6 @@ from flask import g, abort, render_template, url_for
 from flask.ext.login import login_required
 from piecrust.data.paginator import Paginator
 from ..blueprint import foodtruck_bp
-from ..textutil import text_preview, html_to_text
 from ..views import with_menu_context
 
 
@@ -22,27 +21,27 @@ def list_source(source_name, page_num):
     pgn = Paginator(None, source, page_num=page_num, items_per_page=20)
     for p in pgn.items:
         page_data = {
-                'title': p['title'],
-                'author': p.get('author', default_author),
-                'slug': p['slug'],
-                'timestamp': p['timestamp'],
-                'tags': p.get('tags', []),
-                'category': p.get('category'),
-                'source': source_name,
-                'url': url_for('.edit_page', slug=p['slug'])
-                }
+            'title': p['title'],
+            'author': p.get('author', default_author),
+            'slug': p['slug'],
+            'timestamp': p['timestamp'],
+            'tags': p.get('tags', []),
+            'category': p.get('category'),
+            'source': source_name,
+            'url': url_for('.edit_page', slug=p['slug'])
+        }
         data['pages'].append(page_data)
 
     prev_page_url = None
     if pgn.prev_page_number:
         prev_page_url = url_for(
-                '.list_source', source_name=source_name,
-                page_num=pgn.prev_page_number)
+            '.list_source', source_name=source_name,
+            page_num=pgn.prev_page_number)
     next_page_url = None
     if pgn.next_page_number:
         next_page_url = url_for(
-                '.list_source', source_name=source_name,
-                page_num=pgn.next_page_number)
+            '.list_source', source_name=source_name,
+            page_num=pgn.next_page_number)
 
     page_urls = []
     for i in pgn.all_page_numbers(7):
@@ -52,10 +51,10 @@ def list_source(source_name, page_num):
         page_urls.append({'num': i, 'url': url})
 
     data['pagination'] = {
-            'prev_page': prev_page_url,
-            'next_page': next_page_url,
-            'nums': page_urls
-            }
+        'prev_page': prev_page_url,
+        'next_page': next_page_url,
+        'nums': page_urls
+    }
 
     with_menu_context(data)
     return render_template('list_source.html', **data)

@@ -39,7 +39,7 @@ def publish():
         data['targets'].append({
             'name': tn,
             'description': desc
-            })
+        })
 
     with_menu_context(data)
 

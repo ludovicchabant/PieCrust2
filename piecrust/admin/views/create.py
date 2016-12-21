@@ -2,7 +2,7 @@ import os
 import os.path
 import logging
 from flask import (
-        g, request, abort, render_template, url_for, redirect, flash)
+    g, request, abort, render_template, url_for, redirect, flash)
 from flask.ext.login import login_required
 from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.sources.base import MODE_CREATING
