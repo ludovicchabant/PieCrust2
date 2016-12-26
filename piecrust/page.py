@@ -154,6 +154,12 @@ def _parse_config_date(page_date):
                 year=parsed_d.year,
                 month=parsed_d.month,
                 day=parsed_d.day)
+                
+    if isinstance(page_date, datetime.date):
+        return page_date
+
+    if isinstance(page_date, datetime.datetime):
+        return page_date.date
 
     raise ConfigurationError("Invalid date: %s" % page_date)
 
@@ -164,6 +170,12 @@ def _parse_config_time(page_time):
 
     if isinstance(page_time, datetime.timedelta):
         return page_time
+
+    if isinstance(page_time, datetime.time):
+        return page_time
+
+    if isinstance(page_time, datetime.datetime):
+        return page_time.time
 
     if isinstance(page_time, str):
         try:
