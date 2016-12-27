@@ -135,4 +135,7 @@ class PageSource(object):
             self._provider_type = cls
 
         return self._provider_type(self, page, override)
+    
+    def finalizeConfig(self, page):
+        pass
 
