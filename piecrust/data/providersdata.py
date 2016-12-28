@@ -27,13 +27,14 @@ class DataProvidersData(collections.abc.Mapping):
             return
 
         self._dict = {}
-        for source in self._page.app.sources:
-            endpoint_bits = re_endpoint_sep.split(source.data_endpoint)
-            endpoint = self._dict
-            for e in endpoint_bits[:-1]:
-                if e not in endpoint:
-                    endpoint[e] = {}
-                endpoint = endpoint[e]
-            override = endpoint.get(endpoint_bits[-1])
-            provider = source.buildDataProvider(self._page, override)
-            endpoint[endpoint_bits[-1]] = provider
+        for source in self._page.app.sources + self._page.app.generators:
+            if source.data_endpoint:
+                endpoint_bits = re_endpoint_sep.split(source.data_endpoint)
+                endpoint = self._dict
+                for e in endpoint_bits[:-1]:
+                    if e not in endpoint:
+                        endpoint[e] = {}
+                    endpoint = endpoint[e]
+                override = endpoint.get(endpoint_bits[-1])
+                provider = source.buildDataProvider(self._page, override)
+                endpoint[endpoint_bits[-1]] = provider
