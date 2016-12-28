@@ -125,14 +125,7 @@ class PageSource(object):
         raise NotImplementedError()
 
     def buildDataProvider(self, page, override):
-        if self._provider_type is None:
-            cls = next((pt for pt in self.app.plugin_loader.getDataProviders()
-                        if pt.PROVIDER_NAME == self.data_type),
-                       None)
-            if cls is None:
-                raise ConfigurationError(
-                        "Unknown data provider type: %s" % self.data_type)
-            self._provider_type = cls
-
+        if not self._provider_type:
+            self._provider_type = self.app.getDataProviderClass(self.data_type)
         return self._provider_type(self, page, override)
 
