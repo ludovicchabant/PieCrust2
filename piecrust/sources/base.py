@@ -3,6 +3,7 @@ import logging
 from werkzeug.utils import cached_property
 from piecrust.configuration import ConfigurationError
 from piecrust.page import Page
+from piecrust.data.assetor import Assetor
 
 
 REALM_USER = 0
@@ -135,4 +136,7 @@ class PageSource(object):
             self._provider_type = cls
 
         return self._provider_type(self, page, override)
+
+    def buildPageAssetor(self, page, uri):
+        return Assetor(page, uri)
 
