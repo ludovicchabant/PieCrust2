@@ -1,5 +1,6 @@
 import os
 import os.path
+import shutil
 import logging
 from piecrust import ASSET_DIR_SUFFIX
 from piecrust.uriutil import multi_replace
@@ -92,4 +93,13 @@ class Assetor(object):
         cpi = self._page.app.env.exec_info_stack.current_page_info
         if cpi is not None:
             cpi.render_ctx.current_pass_info.used_assets = True
-
+            
+    def copyAssets(self, page, dest_dir):
+        page_pathname, _ = os.path.splitext(page.path)
+        in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
+        for fn in os.listdir(in_assets_dir):
+            full_fn = os.path.join(in_assets_dir, fn)
+            if os.path.isfile(full_fn):
+                dest_ap = os.path.join(dest_dir, fn)
+                logger.debug("  %s -> %s" % (full_fn, dest_ap))
+                shutil.copy(full_fn, dest_ap)

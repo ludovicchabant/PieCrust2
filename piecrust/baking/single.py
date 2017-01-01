@@ -1,6 +1,5 @@
 import os.path
 import queue
-import shutil
 import logging
 import threading
 import urllib.parse
@@ -167,14 +166,7 @@ class PageBaker(object):
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
 
-                page_pathname, _ = os.path.splitext(qualified_page.path)
-                in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
-                for fn in os.listdir(in_assets_dir):
-                    full_fn = os.path.join(in_assets_dir, fn)
-                    if os.path.isfile(full_fn):
-                        dest_ap = os.path.join(out_assets_dir, fn)
-                        logger.debug("  %s -> %s" % (full_fn, dest_ap))
-                        shutil.copy(full_fn, dest_ap)
+                qualified_path.source.buildPageAssetor().copyAssets(page, out_assets_dir)
 
             # Figure out if we have more work.
             has_more_subs = False
