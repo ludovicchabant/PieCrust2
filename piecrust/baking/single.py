@@ -56,12 +56,14 @@ class PageBaker(object):
         self._writer_queue.put_nowait(None)
         self._writer.join()
 
-    def getOutputPath(self, uri):
+    def getOutputPath(self, uri, pretty_urls=None):
         uri_root, uri_path = split_uri(self.app, uri)
 
         bake_path = [self.out_dir]
         decoded_uri = urllib.parse.unquote(uri_path)
-        if self.pretty_urls:
+        if pretty_urls is None:
+            pretty_urls = self.pretty_urls
+        if pretty_urls:
             bake_path.append(decoded_uri)
             bake_path.append('index.html')
         elif decoded_uri == '':
@@ -82,7 +84,7 @@ class PageBaker(object):
             # Get the URL and path for this sub-page.
             sub_uri = qualified_page.getUri(cur_sub)
             logger.debug("Baking '%s' [%d]..." % (sub_uri, cur_sub))
-            out_path = self.getOutputPath(sub_uri)
+            out_path = self.getOutputPath(sub_uri, qualified_page.pretty_urls)
 
             # Create the sub-entry for the bake record.
             sub_entry = SubPageBakeInfo(sub_uri, out_path)
@@ -155,7 +157,7 @@ class PageBaker(object):
             # Copy page assets.
             if (cur_sub == 1 and self.copy_assets and
                     sub_entry.anyPass(lambda p: p.used_assets)):
-                if self.pretty_urls:
+                if qualified_page.pretty_urls:
                     out_assets_dir = os.path.dirname(out_path)
                 else:
                     out_assets_dir, out_name = os.path.split(out_path)

@@ -32,6 +32,7 @@ class QualifiedPage(object):
         self.page = page
         self.route = route
         self.route_metadata = route_metadata
+        self.pretty_urls = page.config.get("pretty_urls")
 
     def getUri(self, sub_num=1):
         return self.route.getUri(self.route_metadata, sub_num=sub_num)
