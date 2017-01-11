@@ -124,13 +124,14 @@ class PageGenerator(object):
             raise ConfigurationError(
                     "Generator '%s' requires a listing page ref." % name)
         self.page_ref = PageRef(app, page_ref)
+
         self.data_endpoint = config.get('data_endpoint')
         self.data_type = config.get('data_type')
-
         if self.data_endpoint and not self.data_type:
             raise ConfigurationError(
-                    "Generator '%s' requires a data type because it has a data endpoint." % name)
-        
+                "Generator '%s' requires a data type because it has "
+                "a data endpoint." % name)
+
         self._provider_type = None
 
     @cached_property
@@ -156,5 +157,7 @@ class PageGenerator(object):
 
     def buildDataProvider(self, page, override):
         if not self._provider_type:
-            self._provider_type = self.app.getDataProviderClass(self.data_type)
+            from piecrust.data.provider import get_data_provider_class
+            self._provider_type = get_data_provider_class(self.app,
+                                                          self.data_type)
         return self._provider_type(self, page, override)

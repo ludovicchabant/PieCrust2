@@ -1,8 +1,19 @@
 import time
 import collections.abc
+from piecrust.configuration import ConfigurationError
 from piecrust.data.iterators import PageIterator
 from piecrust.generation.taxonomy import Taxonomy
 from piecrust.sources.array import ArraySource
+
+
+def get_data_provider_class(app, provider_type):
+    if not provider_type:
+        raise Exception("No data provider type specified.")
+    for prov in app.plugin_loader.getDataProviders():
+        if prov.PROVIDER_NAME == provider_type:
+            return prov
+    raise ConfigurationError(
+        "Unknown data provider type: %s" % provider_type)
 
 
 class DataProvider(object):
