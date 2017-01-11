@@ -200,6 +200,11 @@ class PieCrust(object):
             tgts.append(tgt)
         return tgts
 
+    @cached_property
+    def dataProviderClasses(self):
+        return self.plugin_loader.getDataProviders()
+        
+
     def getSource(self, source_name):
         for source in self.sources:
             if source.name == source_name:
@@ -235,6 +240,14 @@ class PieCrust(object):
             if pub.target == target_name:
                 return pub
         return None
+        
+    def getDataProviderClass(cls, provider_type):
+        for prov in cls.dataProviderClasses:
+            if prov.PROVIDER_NAME == provider_type:
+                return prov
+        raise ConfigurationError(
+                "Unknown data provider type: %s" % provider_type)
+    
 
     def _get_dir(self, default_rel_dir):
         abs_dir = os.path.join(self.root_dir, default_rel_dir)
