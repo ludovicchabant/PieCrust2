@@ -39,7 +39,7 @@ def build_page_data(ctx):
     paginator = Paginator(page, pgn_source,
                           page_num=ctx.page_num,
                           pgn_filter=ctx.pagination_filter)
-    assetor = page.source.buildPageAssetor(page, first_uri)
+    assetor = page.source.buildAssetor(page, first_uri)
     linker = PageLinkerData(page.source, page.rel_path)
     data = {
             'piecrust': pc_data,

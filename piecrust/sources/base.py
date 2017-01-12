@@ -137,6 +137,6 @@ class PageSource(object):
 
         return self._provider_type(self, page, override)
 
-    def buildPageAssetor(self, page, uri):
+    def buildAssetor(self, page, uri):
         return Assetor(page, uri)
 

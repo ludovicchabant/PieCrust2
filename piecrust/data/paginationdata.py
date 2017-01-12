@@ -45,7 +45,7 @@ class PaginationData(LazyPageConfigData):
             self._setValue('date', page.datetime.strftime(date_format))
         self._setValue('mtime', page.path_mtime)
 
-        assetor = page.source.buildPageAssetor(page, page_url)
+        assetor = page.source.buildAssetor(page, page_url)
         self._setValue('assets', assetor)
 
         segment_names = page.config.get('segments')
