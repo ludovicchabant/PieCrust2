@@ -94,8 +94,8 @@ class Assetor(object):
         if cpi is not None:
             cpi.render_ctx.current_pass_info.used_assets = True
             
-    def copyAssets(self, page, dest_dir):
-        page_pathname, _ = os.path.splitext(page.path)
+    def copyAssets(self, dest_dir):
+        page_pathname, _ = os.path.splitext(self._page.path)
         in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
         for fn in os.listdir(in_assets_dir):
             full_fn = os.path.join(in_assets_dir, fn)

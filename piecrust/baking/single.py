@@ -166,7 +166,7 @@ class PageBaker(object):
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
 
-                qualified_page.source.buildAssetor(qualified_page, sub_uri).copyAssets(qualified_page, out_assets_dir)
+                qualified_page.source.buildAssetor(qualified_page, sub_uri).copyAssets(out_assets_dir)
 
             # Figure out if we have more work.
             has_more_subs = False
