@@ -64,9 +64,9 @@ class AssetorBase(object):
     def _cacheAssets(self):
         if self._cache is not None:
             return
-            
+
         self._cache = dict(self.findAssets())
-        
+
     def findAssets(self):
         raise NotImplementedError()
 
@@ -84,7 +84,7 @@ class Assetor(AssetorBase):
         name, ext = os.path.splitext(self._page.path)
         assets_dir = name + ASSET_DIR_SUFFIX
         if not os.path.isdir(assets_dir):
-            return
+            return assets
 
         rel_assets_dir = os.path.relpath(assets_dir, self._page.app.root_dir)
         base_url = build_base_url(self._page.app, self._uri, rel_assets_dir)
@@ -103,9 +103,9 @@ class Assetor(AssetorBase):
         cpi = self._page.app.env.exec_info_stack.current_page_info
         if cpi is not None:
             cpi.render_ctx.current_pass_info.used_assets = True
-        
+
         return assets
-            
+
     def copyAssets(self, dest_dir):
         page_pathname, _ = os.path.splitext(self._page.path)
         in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
