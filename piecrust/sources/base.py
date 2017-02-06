@@ -129,3 +129,7 @@ class PageSource(object):
             self._provider_type = get_data_provider_class(self.app,
                                                           self.data_type)
         return self._provider_type(self, page, override)
+    
+    def finalizeConfig(self, page):
+        pass
+

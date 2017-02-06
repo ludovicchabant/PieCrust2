@@ -139,6 +139,7 @@ class Page(object):
         if was_cache_valid:
             self._flags |= FLAG_RAW_CACHE_VALID
 
+        self.source.finalizeConfig(self)
 
 def _parse_config_date(page_date):
     if page_date is None:
