@@ -46,7 +46,8 @@ def test_get_output_path(uri, pretty, expected):
         app.config.set('site/root', urllib.parse.quote(site_root))
         baker = PageBaker(app, '/destination')
         try:
-            path = baker.getOutputPath(urllib.parse.quote(site_root) + uri)
+            path = baker.getOutputPath(urllib.parse.quote(site_root) + uri,
+                                       pretty)
             expected = os.path.normpath(
                     os.path.join('/destination', expected))
             assert expected == path
