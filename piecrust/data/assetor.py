@@ -1,5 +1,6 @@
 import os
 import os.path
+import shutil
 import logging
 from piecrust import ASSET_DIR_SUFFIX
 from piecrust.uriutil import multi_replace
@@ -31,12 +32,7 @@ def build_base_url(app, uri, rel_assets_path):
     return base_url.rstrip('/') + '/'
 
 
-class Assetor(object):
-    debug_render_doc = """Helps render URLs to files in the current page's
-                          asset folder."""
-    debug_render = []
-    debug_render_dynamic = ['_debugRenderAssetNames']
-
+class AssetorBase(object):
     def __init__(self, page, uri):
         self._page = page
         self._uri = uri
@@ -68,8 +64,23 @@ class Assetor(object):
     def _cacheAssets(self):
         if self._cache is not None:
             return
+            
+        self._cache = dict(self.findAssets())
+        
+    def findAssets(self):
+        raise NotImplementedError()
 
-        self._cache = {}
+    def copyAssets(self, dest_dir):
+        raise NotImplementedError()
+
+class Assetor(AssetorBase):
+    debug_render_doc = """Helps render URLs to files in the current page's
+                          asset folder."""
+    debug_render = []
+    debug_render_dynamic = ['_debugRenderAssetNames']
+
+    def findAssets(self):
+        assets = {}
         name, ext = os.path.splitext(self._page.path)
         assets_dir = name + ASSET_DIR_SUFFIX
         if not os.path.isdir(assets_dir):
@@ -84,12 +95,23 @@ class Assetor(object):
                 continue
 
             name, ext = os.path.splitext(fn)
-            if name in self._cache:
+            if name in assets:
                 raise UnsupportedAssetsError(
                         "Multiple asset files are named '%s'." % name)
-            self._cache[name] = (base_url + fn, full_fn)
+            assets[name] = (base_url + fn, full_fn)
 
         cpi = self._page.app.env.exec_info_stack.current_page_info
         if cpi is not None:
             cpi.render_ctx.current_pass_info.used_assets = True
-
+        
+        return assets
+            
+    def copyAssets(self, dest_dir):
+        page_pathname, _ = os.path.splitext(self._page.path)
+        in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
+        for fn in os.listdir(in_assets_dir):
+            full_fn = os.path.join(in_assets_dir, fn)
+            if os.path.isfile(full_fn):
+                dest_ap = os.path.join(dest_dir, fn)
+                logger.debug("  %s -> %s" % (full_fn, dest_ap))
+                shutil.copy(full_fn, dest_ap)

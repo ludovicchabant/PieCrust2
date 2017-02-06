@@ -2,6 +2,7 @@ import copy
 import logging
 from werkzeug.utils import cached_property
 from piecrust.page import Page
+from piecrust.data.assetor import Assetor
 
 
 REALM_USER = 0
@@ -132,4 +133,7 @@ class PageSource(object):
     
     def finalizeConfig(self, page):
         pass
+
+    def buildAssetor(self, page, uri):
+        return Assetor(page, uri)
 

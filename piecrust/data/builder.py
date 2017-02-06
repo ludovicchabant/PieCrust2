@@ -1,6 +1,5 @@
 import logging
 from werkzeug.utils import cached_property
-from piecrust.data.assetor import Assetor
 from piecrust.data.base import MergedMapping
 from piecrust.data.linker import PageLinkerData
 from piecrust.data.pagedata import PageData
@@ -40,7 +39,7 @@ def build_page_data(ctx):
     paginator = Paginator(page, pgn_source,
                           page_num=ctx.page_num,
                           pgn_filter=ctx.pagination_filter)
-    assetor = Assetor(page, first_uri)
+    assetor = page.source.buildAssetor(page, first_uri)
     linker = PageLinkerData(page.source, page.rel_path)
     data = {
             'piecrust': pc_data,
