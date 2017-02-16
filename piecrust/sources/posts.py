@@ -22,11 +22,12 @@ class PostsSource(PageSource, IPreparingSource, IInteractiveSource,
     PATH_FORMAT = None
 
     def __init__(self, app, name, config):
-        super(PostsSource, self).__init__(app, name, config)
+        PageSource.__init__(self, app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
         self.supported_extensions = list(app.config.get('site/auto_formats').keys())
         self.default_auto_format = app.config.get('site/default_auto_format')
+        self._source_it_cache = None
 
     @property
     def path_format(self):
@@ -72,7 +73,6 @@ class PostsSource(PageSource, IPreparingSource, IInteractiveSource,
                 int(m.group(1)),
                 int(m.group(2)),
                 int(m.group(3)))
-
 
     def findPageFactory(self, metadata, mode):
         year = metadata.get('year')
@@ -137,6 +137,12 @@ class PostsSource(PageSource, IPreparingSource, IInteractiveSource,
         rel_path = rel_path.replace('\\', '/')
         fac_metadata = self._parseMetadataFromPath(rel_path)
         return PageFactory(self, rel_path, fac_metadata)
+
+    def getSourceIterator(self):
+        if self._source_it_cache is None:
+            it = SimplePaginationSourceMixin.getSourceIterator(self)
+            self._source_it_cache = list(it)
+        return self._source_it_cache
 
     def setupPrepareParser(self, parser, app):
         parser.add_argument(
