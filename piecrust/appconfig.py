@@ -97,11 +97,6 @@ class PieCrustConfiguration(Configuration):
             paths.append(self._path)
         paths += self._custom_paths
 
-        if len(paths) == 0:
-            raise ConfigurationError(
-                "No paths to load configuration from. "
-                "Specify paths, or set the values directly.")
-
         # Build the cache-key.
         path_times = [os.path.getmtime(p) for p in paths]
         cache_key_hash = hashlib.md5(
@@ -112,7 +107,7 @@ class PieCrustConfiguration(Configuration):
         cache_key = cache_key_hash.hexdigest()
 
         # Check the cache for a valid version.
-        if self._cache.isValid('config.json', path_times):
+        if path_times and self._cache.isValid('config.json', path_times):
             logger.debug("Loading configuration from cache...")
             config_text = self._cache.read('config.json')
             self._values = json.loads(
