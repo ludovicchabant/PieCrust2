@@ -54,10 +54,8 @@ class PageFactory(object):
 
     def buildPage(self):
         repo = self.source.app.env.page_repository
-        if repo is not None:
-            cache_key = '%s:%s' % (self.source.name, self.rel_path)
-            return repo.get(cache_key, self._doBuildPage)
-        return self._doBuildPage()
+        cache_key = '%s:%s' % (self.source.name, self.rel_path)
+        return repo.get(cache_key, self._doBuildPage)
 
     def _doBuildPage(self):
         logger.debug("Building page: %s" % self.path)
@@ -130,7 +128,7 @@ class PageSource(object):
             self._provider_type = get_data_provider_class(self.app,
                                                           self.data_type)
         return self._provider_type(self, page, override)
-    
+
     def finalizeConfig(self, page):
         pass
 
