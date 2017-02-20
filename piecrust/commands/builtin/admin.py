@@ -3,6 +3,7 @@ import os.path
 import logging
 from piecrust import CACHE_DIR
 from piecrust.commands.base import ChefCommand
+from piecrust.pathutil import SiteNotFoundError
 
 
 logger = logging.getLogger(__name__)
