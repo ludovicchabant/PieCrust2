@@ -1,17 +1,16 @@
-include README.rst
 include CHANGELOG.rst
+include INSTALL.rst
 include LICENSE.rst
+include README.rst
+
+include pytest.ini
+include setup.cfg
 include requirements.txt
 include dev-requirements.txt
-recursive-include foodtruck *.py *.html
-recursive-include foodtruck/static *
-recursive-include piecrust *.py mime.types
-recursive-include piecrust/resources *
-recursive-include tests *.py
-#global-exclude .DS_Store
-#global-exclude Thumbs.db
-#global-exclude Desktop.ini
-#global-exclude *.swp
-#global-exclude *~
-#global-exclude *.bak
 
+recursive-include piecrust *
+recursive-include tests *
+
+global-exclude *.py[cdo] __pycache__ *.so
+global-exclude .DS_Store Thumbs.db Desktop.ini
+global-exclude *.swp *~ *.bak
