@@ -1,6 +1,6 @@
 import re
 import sys
-import json
+import yaml
 import os.path
 import hashlib
 import logging
@@ -155,6 +155,12 @@ def _parse_config_date(page_date):
                 year=parsed_d.year,
                 month=parsed_d.month,
                 day=parsed_d.day)
+                
+    if isinstance(page_date, datetime.date):
+        return page_date
+
+    if isinstance(page_date, datetime.datetime):
+        return page_date.date
 
     raise ConfigurationError("Invalid date: %s" % page_date)
 
@@ -165,6 +171,12 @@ def _parse_config_time(page_time):
 
     if isinstance(page_time, datetime.timedelta):
         return page_time
+
+    if isinstance(page_time, datetime.time):
+        return page_time
+
+    if isinstance(page_time, datetime.datetime):
+        return page_time.time
 
     if isinstance(page_time, str):
         try:
@@ -212,7 +224,7 @@ class ContentSegmentPart(object):
         return '%s [%s]' % (self.content, self.fmt or '<default>')
 
 
-def json_load_segments(data):
+def yaml_load_segments(data):
     segments = {}
     for key, seg_data in data.items():
         seg = ContentSegment()
@@ -224,7 +236,7 @@ def json_load_segments(data):
     return segments
 
 
-def json_save_segments(segments):
+def yaml_save_segments(segments):
     data = {}
     for key, seg in segments.items():
         seg_data = []
@@ -251,16 +263,15 @@ def load_page(app, path, path_mtime=None):
 def _do_load_page(app, path, path_mtime):
     # Check the cache first.
     cache = app.cache.getCache('pages')
-    cache_path = hashlib.md5(path.encode('utf8')).hexdigest() + '.json'
+    cache_path = hashlib.md5(path.encode('utf8')).hexdigest() + '.yaml'
     page_time = path_mtime or os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
-        cache_data = json.loads(
-                cache.read(cache_path),
-                object_pairs_hook=collections.OrderedDict)
+        cache_data = yaml.load(
+                cache.read(cache_path))
         config = PageConfiguration(
                 values=cache_data['config'],
                 validate=False)
-        content = json_load_segments(cache_data['content'])
+        content = yaml_load_segments(cache_data['content'])
         return config, content, True
 
     # Nope, load the page from the source file.
@@ -281,8 +292,8 @@ def _do_load_page(app, path, path_mtime):
     # Save to the cache.
     cache_data = {
             'config': config.getAll(),
-            'content': json_save_segments(content)}
-    cache.write(cache_path, json.dumps(cache_data))
+            'content': yaml_save_segments(content)}
+    cache.write(cache_path, yaml.dump(cache_data))
 
     return config, content, False
 
