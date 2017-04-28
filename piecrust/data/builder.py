@@ -51,6 +51,9 @@ def build_page_data(ctx):
 
     for route in app.routes:
         name = route.func_name
+        if not name:
+            continue
+
         func = data.get(name)
         if func is None:
             func = CompositeRouteFunction()

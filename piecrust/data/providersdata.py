@@ -37,4 +37,5 @@ class DataProvidersData(collections.abc.Mapping):
                     endpoint = endpoint[e]
                 override = endpoint.get(endpoint_bits[-1])
                 provider = source.buildDataProvider(self._page, override)
-                endpoint[endpoint_bits[-1]] = provider
+                if provider is not None:
+                    endpoint[endpoint_bits[-1]] = provider
