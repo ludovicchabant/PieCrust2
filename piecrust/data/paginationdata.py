@@ -1,3 +1,4 @@
+import copy
 import time
 import logging
 from piecrust.data.assetor import Assetor
@@ -31,9 +32,11 @@ class PaginationData(LazyPageConfigData):
         page = self._page
         dt = page.datetime
         page_url = self._get_uri()
-        _, slug = split_uri(page.app, page_url)
+        _, rel_url = split_uri(page.app, page_url)
         self._setValue('url', page_url)
-        self._setValue('slug', slug)
+        self._setValue('rel_url', rel_url)
+        self._setValue('slug', rel_url)  # For backwards compatibility
+        self._setValue('route', copy.deepcopy(self._route_metadata))
         self._setValue(
                 'timestamp',
                 time.mktime(page.datetime.timetuple()))
