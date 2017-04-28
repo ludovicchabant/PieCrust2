@@ -1,5 +1,8 @@
+import os.path
+import sys
 import logging
 import importlib
+import importlib.util
 
 
 logger = logging.getLogger(__name__)
@@ -113,9 +116,24 @@ class PluginLoader(object):
             plugin.initialize(self.app)
 
     def _loadPlugin(self, plugin_name):
+        mod_name = 'piecrust_%s' % plugin_name
         try:
-            mod = importlib.import_module('piecrust_' + plugin_name)
+            # Import from the current environment.
+            mod = importlib.import_module(mod_name)
         except ImportError as ex:
+            mod = None
+
+        if mod is None:
+            # Import as a loose Python file from the plugins dir.
+            pfile = os.path.join(self.app.plugins_dir, plugin_name + '.py')
+            if os.path.isfile(pfile):
+                spec = importlib.util.spec_from_file_location(plugin_name,
+                                                              pfile)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                sys.modules[mod_name] = mod
+
+        if mod is None:
             logger.error("Failed to load plugin '%s'." % plugin_name)
             logger.error(ex)
             return

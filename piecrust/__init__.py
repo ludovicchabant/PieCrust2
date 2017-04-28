@@ -4,6 +4,7 @@ ASSETS_DIR = 'assets'
 TEMPLATES_DIR = 'templates'
 THEME_DIR = 'theme'
 THEMES_DIR = 'themes'
+PLUGINS_DIR = 'plugins'
 
 CONFIG_PATH = 'config.yml'
 THEME_CONFIG_PATH = 'theme_config.yml'

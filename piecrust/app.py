@@ -7,7 +7,7 @@ from werkzeug.utils import cached_property
 from piecrust import (
         RESOURCES_DIR,
         CACHE_DIR, TEMPLATES_DIR, ASSETS_DIR,
-        THEME_DIR,
+        THEME_DIR, PLUGINS_DIR,
         CONFIG_PATH, THEME_CONFIG_PATH)
 from piecrust.appconfig import PieCrustConfiguration
 from piecrust.cache import ExtensibleCache, NullExtensibleCache
@@ -125,6 +125,10 @@ class PieCrust(object):
 
         # Nothing... use the default theme.
         return os.path.join(RESOURCES_DIR, 'theme')
+
+    @cached_property
+    def plugins_dir(self):
+        return self._get_dir(PLUGINS_DIR)
 
     @cached_property
     def cache_dir(self):
