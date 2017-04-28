@@ -127,6 +127,8 @@ class JinjaTemplateEngine(TemplateEngine):
             if '.' not in n:
                 n = 'jinja2.ext.' + n
             extensions.append(n)
+        for je in self.app.plugin_loader.getTemplateEngineExtensions('jinja'):
+            extensions.append(je)
 
         # Create the Jinja environment.
         logger.debug("Creating Jinja environment with folders: %s" %

@@ -15,6 +15,9 @@ class PieCrustPlugin(object):
     def getTemplateEngines(self):
         return []
 
+    def getTemplateEngineExtensions(self, engine_name):
+        return []
+
     def getDataProviders(self):
         return []
 
@@ -68,6 +71,10 @@ class PluginLoader(object):
                 'getTemplateEngines',
                 initialize=True, register_timer=True,
                 register_timer_suffixes=['_segment', '_layout'])
+
+    def getTemplateEngineExtensions(self, engine_name):
+        return self._getPluginComponents('getTemplateEngineExtensions',
+                                         engine_name)
 
     def getDataProviders(self):
         return self._getPluginComponents('getDataProviders')
@@ -153,7 +160,7 @@ class PluginLoader(object):
 
         return plugin
 
-    def _getPluginComponents(self, name, *,
+    def _getPluginComponents(self, name, *args,
                              initialize=False,
                              register_timer=False,
                              register_timer_suffixes=None,
@@ -163,7 +170,7 @@ class PluginLoader(object):
 
         all_components = []
         for plugin in self.plugins:
-            plugin_components = getattr(plugin, name)()
+            plugin_components = getattr(plugin, name)(*args)
             all_components += plugin_components
 
             if initialize:
