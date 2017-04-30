@@ -1,4 +1,3 @@
-from markdown import Markdown
 from piecrust.formatting.base import Formatter
 
 
@@ -35,6 +34,6 @@ class MarkdownFormatter(Formatter):
 
         extension_configs = config.get('extension_configs', {})
 
+        from markdown import Markdown
         self._formatter = Markdown(extensions=extensions,
                                    extension_configs=extension_configs)
-
