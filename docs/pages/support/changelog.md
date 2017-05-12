@@ -6,7 +6,7 @@ layout: simple
 # Changelog
 
 
-## 1. PieCrust 2.1.0 (2017-05-12)
+## 1. PieCrust 2.1.1 (2017-05-12)
 
 
 ### 1.0 Commands
