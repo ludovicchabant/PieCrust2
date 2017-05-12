@@ -234,6 +234,7 @@ class BakeJobHandler(JobHandler):
         except Exception as ex:
             logger.debug("Got baking error. Sending it to master.")
             result['errors'] = _get_errors(ex)
+            result['sub_entries'] = []
             if self.ctx.app.debug:
                 logger.exception(ex)
 

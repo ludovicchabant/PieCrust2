@@ -167,8 +167,11 @@ class PageBaker(object):
 
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
-
-                qualified_page.source.buildAssetor(qualified_page, sub_uri).copyAssets(out_assets_dir)
+                try:
+                    qualified_page.source.buildAssetor(qualified_page, sub_uri).copyAssets(out_assets_dir)
+                except Exception as ex:
+                    raise BakingError("%s: error deploying page assets." %
+                                      page_rel_path) from ex
 
             # Figure out if we have more work.
             has_more_subs = False
