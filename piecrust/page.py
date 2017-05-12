@@ -110,7 +110,8 @@ class Page(object):
                         self._datetime += page_time
                 else:
                     # No idea what the date/time for this page is.
-                    self._datetime = datetime.datetime.fromtimestamp(0)
+                    self._datetime = datetime.datetime.fromtimestamp(
+                        self.path_mtime)
             except Exception as ex:
                 logger.exception(ex)
                 raise Exception(
