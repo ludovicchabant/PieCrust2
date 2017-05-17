@@ -1,6 +1,5 @@
 import re
 import os.path
-import string
 import logging
 
 
@@ -56,4 +55,9 @@ def split_sub_uri(app, uri):
             uri += '/'
 
     return uri, page_num
+
+
+def uri_to_title(slug):
+    slug = re.sub(r'[\-_]', ' ', slug)
+    return slug.title()
 

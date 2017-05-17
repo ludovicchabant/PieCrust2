@@ -4,16 +4,16 @@ from piecrust import (
     DEFAULT_DATE_FORMAT, DEFAULT_THEME_SOURCE)
 from piecrust.configuration import (
     get_dict_values, try_get_dict_values)
-from piecrust.sources.base import REALM_THEME
 
 
+# Default configuration for all websites.
+#
 default_configuration = collections.OrderedDict({
     'site': collections.OrderedDict({
         'title': "Untitled PieCrust website",
         'root': '/',
         'default_format': DEFAULT_FORMAT,
         'default_template_engine': DEFAULT_TEMPLATE_ENGINE,
-        'enable_gzip': True,
         'pretty_urls': False,
         'trailing_slash': False,
         'date_format': DEFAULT_DATE_FORMAT,
@@ -24,11 +24,9 @@ default_configuration = collections.OrderedDict({
         'default_auto_format': 'md',
         'default_pagination_source': None,
         'pagination_suffix': '/%num%',
+        'asset_url_format': '%uri%',
         'slugify_mode': 'encode',
         'themes_sources': [DEFAULT_THEME_SOURCE],
-        'cache_time': 28800,
-        'enable_debug_info': True,
-        'show_debug_info': False,
         'use_default_content': True,
         'use_default_theme_content': True,
         'theme_site': False
@@ -37,21 +35,32 @@ default_configuration = collections.OrderedDict({
         'no_bake_setting': 'draft',
         'workers': None,
         'batch_size': None
+    }),
+    'server': collections.OrderedDict({
+        'enable_gzip': True,
+        'cache_time': 28800,
+        'enable_debug_info': True,
+        'show_debug_info': False
     })
 })
 
 
+# Default content model for themes.
+#
 default_theme_content_model_base = collections.OrderedDict({
     'site': collections.OrderedDict({
         'sources': collections.OrderedDict({
             'theme_pages': {
-                'type': 'default',
-                'ignore_missing_dir': True,
                 'fs_endpoint': 'pages',
+                'ignore_missing_dir': True,
                 'data_endpoint': 'site.pages',
-                'default_layout': 'default',
                 'item_name': 'page',
-                'realm': REALM_THEME
+            },
+            'theme_assets': {
+                'fs_endpoint': 'assets',
+                'ignore_missing_dir': True,
+                'type': 'fs',
+                'pipeline': 'asset'
             }
         }),
         'routes': [
@@ -60,15 +69,47 @@ default_theme_content_model_base = collections.OrderedDict({
                 'source': 'theme_pages',
                 'func': 'pcurl'
             }
-        ],
-        'theme_tag_page': 'theme_pages:_tag.%ext%',
-        'theme_category_page': 'theme_pages:_category.%ext%',
-        'theme_month_page': 'theme_pages:_month.%ext%',
-        'theme_year_page': 'theme_pages:_year.%ext%'
+        ]
     })
 })
 
 
+# Additional theme configuration when previewing a theme by itself,
+# so it can show some "sample/preview" content.
+#
+default_theme_preview_content_model = collections.OrderedDict({
+    'site': collections.OrderedDict({
+        'sources': collections.OrderedDict({
+            'theme_preview_pages': {
+                'fs_endpoint': 'preview/pages',
+                'ignore_missing_dir': True,
+                'data_endpoint': 'site.pages',
+                'item_name': 'page',
+            },
+            'theme_preview_posts': {
+                'fs_endpoint': 'preview/posts',
+                'ignore_missing_dir': True,
+                'data_endpoint': 'blog.posts',
+                'item_name': 'post'
+            }
+        }),
+        'routes': [
+            {
+                'url': '/posts/%year%/%month%/%slug%',
+                'source': 'theme_preview_posts'
+            },
+            {
+                'url': '/%slug%',
+                'source': 'theme_preview_pages',
+                'func': 'pcurl'
+            }
+        ]
+    })
+})
+
+
+# Default content model for websites.
+#
 default_content_model_base = collections.OrderedDict({
     'site': collections.OrderedDict({
         'posts_fs': DEFAULT_POSTS_FS,
@@ -77,8 +118,18 @@ default_content_model_base = collections.OrderedDict({
         'post_url': '/%year%/%month%/%day%/%slug%',
         'year_url': '/archives/%year%',
         'tag_url': '/tag/%tag%',
+        'tag_feed_url': '/tag/%tag%.xml',
         'category_url': '/%category%',
-        'posts_per_page': 5
+        'category_feed_url': '/%category%.xml',
+        'posts_per_page': 5,
+        'sources': {
+            'assets': {
+                'fs_endpoint': 'assets',
+                'ignore_missing_dir': True,
+                'type': 'fs',
+                'pipeline': 'asset'
+            }
+        }
     })
 })
 
@@ -174,14 +225,7 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
     default_layout = blog_values['default_post_layout']
     post_url = '/' + url_prefix + blog_values['post_url'].lstrip('/')
     year_url = '/' + url_prefix + blog_values['year_url'].lstrip('/')
-
-    year_archive = 'pages:%s_year.%%ext%%' % page_prefix
-    if not theme_site:
-        theme_year_page = try_get_dict_values(
-            (site_values, 'site/theme_year_page'),
-            (values, 'site/theme_year_page'))
-        if theme_year_page:
-            year_archive += ';' + theme_year_page
+    year_archive_tpl = '%s_year.html' % page_prefix
 
     cfg = collections.OrderedDict({
         'site': collections.OrderedDict({
@@ -196,13 +240,11 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
                     'items_per_page': posts_per_page,
                     'date_format': date_format,
                     'default_layout': default_layout
-                })
-            }),
-            'generators': collections.OrderedDict({
-                ('%s_archives' % blog_name): collections.OrderedDict({
+                }),
+                '%s_archives' % blog_name: collections.OrderedDict({
                     'type': 'blog_archives',
                     'source': blog_name,
-                    'page': year_archive
+                    'template': year_archive_tpl
                 })
             }),
             'routes': [
@@ -213,14 +255,14 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
                 },
                 {
                     'url': year_url,
-                    'generator': ('%s_archives' % blog_name),
+                    'source': ('%s_archives' % blog_name),
                     'func': ('%syearurl' % tpl_func_prefix)
                 }
             ]
         })
     })
 
-    # Add a generator and a route for each taxonomy.
+    # Add a source and a route for each taxonomy.
     taxonomies_cfg = try_get_dict_values(
         (site_values, 'site/taxonomies'),
         (values, 'site/taxonomies'),
@@ -228,22 +270,16 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
     for tax_name, tax_cfg in taxonomies_cfg.items():
         term = tax_cfg.get('term', tax_name)
 
-        # Generator.
-        page_ref = 'pages:%s_%s.%%ext%%' % (page_prefix, term)
-        if not theme_site:
-            theme_page_ref = try_get_dict_values(
-                (site_values, 'site/theme_%s_page' % term),
-                (values, 'site/theme_%s_page' % term))
-            if theme_page_ref:
-                page_ref += ';' + theme_page_ref
-        tax_gen_name = '%s_%s' % (blog_name, tax_name)
-        tax_gen = collections.OrderedDict({
+        # Source.
+        term_tpl = '%s_%s.html' % (page_prefix, term)
+        tax_src_name = '%s_%s' % (blog_name, tax_name)
+        tax_src = collections.OrderedDict({
             'type': 'taxonomy',
             'source': blog_name,
             'taxonomy': tax_name,
-            'page': page_ref
+            'template': term_tpl
         })
-        cfg['site']['generators'][tax_gen_name] = tax_gen
+        cfg['site']['sources'][tax_src_name] = tax_src
 
         # Route.
         tax_url_cfg_name = '%s_url' % term
@@ -259,8 +295,8 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
             default=('%s%surl' % (tpl_func_prefix, term)))
         tax_route = collections.OrderedDict({
             'url': tax_url,
-            'generator': tax_gen_name,
-            'taxonomy': tax_name,
+            'pass': 2,
+            'source': tax_src_name,
             'func': tax_func_name
         })
         cfg['site']['routes'].append(tax_route)

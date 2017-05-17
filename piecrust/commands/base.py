@@ -8,12 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class CommandContext(object):
-    def __init__(self, app, parser, args):
+    def __init__(self, appfactory, app, parser, args):
+        self.appfactory = appfactory
         self.app = app
         self.parser = parser
         self.args = args
-        self.config_variant = None
-        self.config_values = None
 
 
 class ChefCommand(object):
@@ -27,8 +26,9 @@ class ChefCommand(object):
         raise NotImplementedError()
 
     def run(self, ctx):
-        raise NotImplementedError("Command '%s' doesn't implement the `run` "
-                "method." % type(self))
+        raise NotImplementedError(
+            "Command '%s' doesn't implement the `run` "
+            "method." % type(self))
 
     def checkedRun(self, ctx):
         if ctx.app.root_dir is None and self.requires_website:
@@ -83,8 +83,9 @@ class HelpCommand(ExtendableChefCommand):
         return [(n, d) for (n, d, e) in self._topic_providers]
 
     def setupParser(self, parser, app):
-        parser.add_argument('topic', nargs='?',
-                help="The command name or topic on which to get help.")
+        parser.add_argument(
+            'topic', nargs='?',
+            help="The command name or topic on which to get help.")
 
         extensions = self.getExtensions(app)
         for ext in extensions:
@@ -106,8 +107,8 @@ class HelpCommand(ExtendableChefCommand):
         for c in ctx.app.plugin_loader.getCommands():
             if c.name == topic:
                 fake = argparse.ArgumentParser(
-                        prog='%s %s' % (ctx.parser.prog, c.name),
-                        description=c.description)
+                    prog='%s %s' % (ctx.parser.prog, c.name),
+                    description=c.description)
                 c.setupParser(fake, ctx.app)
                 fake.print_help()
                 return 0

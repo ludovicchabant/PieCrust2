@@ -73,7 +73,7 @@ class Configuration(collections.abc.MutableMapping):
             other_values = other._values
         else:
             raise Exception(
-                    "Unsupported value type to merge: %s" % type(other))
+                "Unsupported value type to merge: %s" % type(other))
 
         merge_dicts(self._values, other_values,
                     validator=self._validateValue)
@@ -96,7 +96,7 @@ class Configuration(collections.abc.MutableMapping):
             return
         if not isinstance(v, allowed_types):
             raise ConfigurationError(
-                    "Value '%s' is of forbidden type: %s" % (v, type(v)))
+                "Value '%s' is of forbidden type: %s" % (v, type(v)))
         if isinstance(v, dict):
             self._validateDictTypesRecursive(v, allowed_types)
         elif isinstance(v, list):
@@ -223,7 +223,7 @@ def _recurse_visit_dict(cur, parent_path, visitor):
 
 
 header_regex = re.compile(
-        r'(---\s*\n)(?P<header>(.*\n)*?)^(---\s*\n)', re.MULTILINE)
+    r'(---\s*\n)(?P<header>(.*\n)*?)^(---\s*\n)', re.MULTILINE)
 
 
 def parse_config_header(text):
@@ -239,17 +239,18 @@ def parse_config_header(text):
 
 
 class ConfigurationLoader(SafeLoader):
-    """ A YAML loader that loads mappings into ordered dictionaries.
+    """ A YAML loader that loads mappings into ordered dictionaries,
+        and supports sexagesimal notations for timestamps.
     """
     def __init__(self, *args, **kwargs):
         super(ConfigurationLoader, self).__init__(*args, **kwargs)
 
         self.add_constructor('tag:yaml.org,2002:map',
-                type(self).construct_yaml_map)
+                             type(self).construct_yaml_map)
         self.add_constructor('tag:yaml.org,2002:omap',
-                type(self).construct_yaml_map)
+                             type(self).construct_yaml_map)
         self.add_constructor('tag:yaml.org,2002:sexagesimal',
-                type(self).construct_yaml_time)
+                             type(self).construct_yaml_time)
 
     def construct_yaml_map(self, node):
         data = collections.OrderedDict()
@@ -259,21 +260,23 @@ class ConfigurationLoader(SafeLoader):
 
     def construct_mapping(self, node, deep=False):
         if not isinstance(node, yaml.MappingNode):
-            raise ConstructorError(None, None,
-                    "expected a mapping node, but found %s" % node.id,
-                    node.start_mark)
+            raise ConstructorError(
+                None, None,
+                "expected a mapping node, but found %s" % node.id,
+                node.start_mark)
         mapping = collections.OrderedDict()
         for key_node, value_node in node.value:
             key = self.construct_object(key_node, deep=deep)
             if not isinstance(key, collections.Hashable):
-                raise ConstructorError("while constructing a mapping", node.start_mark,
-                        "found unhashable key", key_node.start_mark)
+                raise ConstructorError(
+                    "while constructing a mapping", node.start_mark,
+                    "found unhashable key", key_node.start_mark)
             value = self.construct_object(value_node, deep=deep)
             mapping[key] = value
         return mapping
 
     time_regexp = re.compile(
-            r'''^(?P<hour>[0-9][0-9]?)
+        r'''^(?P<hour>[0-9][0-9]?)
                 :(?P<minute>[0-9][0-9])
                 (:(?P<second>[0-9][0-9])
                 (\.(?P<fraction>[0-9]+))?)?$''', re.X)
@@ -294,10 +297,10 @@ class ConfigurationLoader(SafeLoader):
 
 
 ConfigurationLoader.add_implicit_resolver(
-        'tag:yaml.org,2002:sexagesimal',
-        re.compile(r'''^[0-9][0-9]?:[0-9][0-9]
+    'tag:yaml.org,2002:sexagesimal',
+    re.compile(r'''^[0-9][0-9]?:[0-9][0-9]
                     (:[0-9][0-9](\.[0-9]+)?)?$''', re.X),
-        list('0123456789'))
+    list('0123456789'))
 
 
 # We need to add our `sexagesimal` resolver before the `int` one, which
@@ -319,5 +322,5 @@ class ConfigurationDumper(yaml.SafeDumper):
 
 
 ConfigurationDumper.add_representer(collections.OrderedDict,
-        ConfigurationDumper.represent_ordered_dict)
+                                    ConfigurationDumper.represent_ordered_dict)
 

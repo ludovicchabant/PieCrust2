@@ -1,164 +1,49 @@
 import os.path
 import logging
-from piecrust import osutil
 from piecrust.routing import RouteParameter
-from piecrust.sources.base import (
-        PageFactory, PageSource, InvalidFileSystemEndpointError,
-        MODE_CREATING)
+from piecrust.sources.base import REL_ASSETS, ContentItem
+from piecrust.sources.fs import FSContentSource
 from piecrust.sources.interfaces import (
-        IListableSource, IPreparingSource, IInteractiveSource,
-        InteractiveField)
-from piecrust.sources.mixins import SimplePaginationSourceMixin
+    IPreparingSource, IInteractiveSource, InteractiveField)
+from piecrust.sources.mixins import SimpleAssetsSubDirMixin
+from piecrust.uriutil import uri_to_title
 
 
 logger = logging.getLogger(__name__)
 
 
-def filter_page_dirname(d):
-    return not (d.startswith('.') or d.endswith('-assets'))
-
-
-def filter_page_filename(f):
-    return (f[0] != '.' and   # .DS_store and other crap
-            f[-1] != '~' and  # Vim temp files and what-not
-            f not in ['Thumbs.db'])  # Windows bullshit
-
-
-class DefaultPageSource(PageSource,
-                        IListableSource, IPreparingSource, IInteractiveSource,
-                        SimplePaginationSourceMixin):
+class DefaultContentSource(FSContentSource,
+                           SimpleAssetsSubDirMixin,
+                           IPreparingSource, IInteractiveSource):
     SOURCE_NAME = 'default'
 
     def __init__(self, app, name, config):
-        super(DefaultPageSource, self).__init__(app, name, config)
-        self.fs_endpoint = config.get('fs_endpoint', name)
-        self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
-        self.supported_extensions = list(
-                app.config.get('site/auto_formats').keys())
+        super().__init__(app, name, config)
+        self.auto_formats = app.config.get('site/auto_formats')
         self.default_auto_format = app.config.get('site/default_auto_format')
+        self.supported_extensions = list(self.auto_formats)
 
-    def getSupportedRouteParameters(self):
-        return [
-            RouteParameter('slug', RouteParameter.TYPE_PATH)]
+    def _createItemMetadata(self, path):
+        return self._doCreateItemMetadata(path)
 
-    def buildPageFactories(self):
-        logger.debug("Scanning for pages in: %s" % self.fs_endpoint_path)
-        if not os.path.isdir(self.fs_endpoint_path):
-            if self.ignore_missing_dir:
-                return
-            raise InvalidFileSystemEndpointError(self.name,
-                                                 self.fs_endpoint_path)
+    def _finalizeContent(self, parent_group, items, groups):
+        SimpleAssetsSubDirMixin._onFinalizeContent(
+            self, parent_group, items, groups)
 
-        for dirpath, dirnames, filenames in osutil.walk(self.fs_endpoint_path):
-            rel_dirpath = os.path.relpath(dirpath, self.fs_endpoint_path)
-            dirnames[:] = list(filter(filter_page_dirname, dirnames))
-            for f in sorted(filter(filter_page_filename, filenames)):
-                fac_path = f
-                if rel_dirpath != '.':
-                    fac_path = os.path.join(rel_dirpath, f)
-
-                slug = self._makeSlug(fac_path)
-                metadata = {'slug': slug}
-                fac_path = fac_path.replace('\\', '/')
-                self._populateMetadata(fac_path, metadata)
-                yield PageFactory(self, fac_path, metadata)
-
-    def buildPageFactory(self, path):
-        if not path.startswith(self.fs_endpoint_path):
-            raise Exception("Page path '%s' isn't inside '%s'." % (
-                    path, self.fs_enpoint_path))
-        rel_path = path[len(self.fs_endpoint_path):].lstrip('\\/')
-        slug = self._makeSlug(rel_path)
-        metadata = {'slug': slug}
-        fac_path = rel_path.replace('\\', '/')
-        self._populateMetadata(fac_path, metadata)
-        return PageFactory(self, fac_path, metadata)
-
-    def resolveRef(self, ref_path):
-        path = os.path.normpath(
-                os.path.join(self.fs_endpoint_path, ref_path.lstrip("\\/")))
-        slug = self._makeSlug(ref_path)
-        metadata = {'slug': slug}
-        self._populateMetadata(ref_path, metadata)
-        return path, metadata
-
-    def findPageFactory(self, metadata, mode):
-        uri_path = metadata.get('slug', '')
-        if not uri_path:
-            uri_path = '_index'
-        path = os.path.join(self.fs_endpoint_path, uri_path)
+    def _doCreateItemMetadata(self, path):
+        slug = self._makeSlug(path)
+        metadata = {
+            'slug': slug
+        }
         _, ext = os.path.splitext(path)
+        if ext:
+            fmt = self.auto_formats.get(ext.lstrip('.'))
+            if fmt:
+                metadata['config'] = {'format': fmt}
+        return metadata
 
-        if mode == MODE_CREATING:
-            if ext == '':
-                path = '%s.%s' % (path, self.default_auto_format)
-            rel_path = os.path.relpath(path, self.fs_endpoint_path)
-            rel_path = rel_path.replace('\\', '/')
-            self._populateMetadata(rel_path, metadata, mode)
-            return PageFactory(self, rel_path, metadata)
-
-        if ext == '':
-            paths_to_check = [
-                    '%s.%s' % (path, e)
-                    for e in self.supported_extensions]
-        else:
-            paths_to_check = [path]
-        for path in paths_to_check:
-            if os.path.isfile(path):
-                rel_path = os.path.relpath(path, self.fs_endpoint_path)
-                rel_path = rel_path.replace('\\', '/')
-                self._populateMetadata(rel_path, metadata, mode)
-                return PageFactory(self, rel_path, metadata)
-
-        return None
-
-    def listPath(self, rel_path):
-        rel_path = rel_path.lstrip('\\/')
-        path = os.path.join(self.fs_endpoint_path, rel_path)
-        names = sorted(osutil.listdir(path))
-        items = []
-        for name in names:
-            if os.path.isdir(os.path.join(path, name)):
-                if filter_page_dirname(name):
-                    rel_subdir = os.path.join(rel_path, name)
-                    items.append((True, name, rel_subdir))
-            else:
-                if filter_page_filename(name):
-                    slug = self._makeSlug(os.path.join(rel_path, name))
-                    metadata = {'slug': slug}
-
-                    fac_path = name
-                    if rel_path != '.':
-                        fac_path = os.path.join(rel_path, name)
-                    fac_path = fac_path.replace('\\', '/')
-
-                    self._populateMetadata(fac_path, metadata)
-                    fac = PageFactory(self, fac_path, metadata)
-
-                    name, _ = os.path.splitext(name)
-                    items.append((False, name, fac))
-        return items
-
-    def getDirpath(self, rel_path):
-        return os.path.dirname(rel_path)
-
-    def getBasename(self, rel_path):
-        filename = os.path.basename(rel_path)
-        name, _ = os.path.splitext(filename)
-        return name
-
-    def setupPrepareParser(self, parser, app):
-        parser.add_argument('uri', help='The URI for the new page.')
-
-    def buildMetadata(self, args):
-        return {'slug': args.uri}
-
-    def getInteractiveFields(self):
-        return [
-                InteractiveField('slug', InteractiveField.TYPE_STRING,
-                                 'new-page')]
-
-    def _makeSlug(self, rel_path):
+    def _makeSlug(self, path):
+        rel_path = os.path.relpath(path, self.fs_endpoint_path)
         slug, ext = os.path.splitext(rel_path)
         slug = slug.replace('\\', '/')
         if ext.lstrip('.') not in self.supported_extensions:
@@ -169,6 +54,56 @@ class DefaultPageSource(PageSource,
             slug = ''
         return slug
 
-    def _populateMetadata(self, rel_path, metadata, mode=None):
-        pass
+    def getRelatedContents(self, item, relationship):
+        if relationship == REL_ASSETS:
+            SimpleAssetsSubDirMixin._getRelatedAssetsContents(self, item)
+        raise NotImplementedError()
 
+    def getSupportedRouteParameters(self):
+        return [
+            RouteParameter('slug', RouteParameter.TYPE_PATH)]
+
+    def findContent(self, route_params):
+        uri_path = route_params.get('slug', '')
+        if not uri_path:
+            uri_path = '_index'
+        path = os.path.join(self.fs_endpoint_path, uri_path)
+        _, ext = os.path.splitext(path)
+
+        if ext == '':
+            paths_to_check = [
+                '%s.%s' % (path, e)
+                for e in self.supported_extensions]
+        else:
+            paths_to_check = [path]
+        for path in paths_to_check:
+            if os.path.isfile(path):
+                metadata = self._doCreateItemMetadata(path)
+                return ContentItem(path, metadata)
+        return None
+
+    def setupPrepareParser(self, parser, app):
+        parser.add_argument('uri', help='The URI for the new page.')
+
+    def createContent(self, args):
+        if not hasattr(args, 'uri'):
+            uri = None
+        else:
+            uri = args.uri
+        if not uri:
+            uri = '_index'
+        path = os.path.join(self.fs_endpoint_path, uri)
+        _, ext = os.path.splitext(path)
+        if ext == '':
+            path = '%s.%s' % (path, self.default_auto_format)
+
+        metadata = self._doCreateItemMetadata(path)
+        config = metadata.setdefault('config', {})
+        config.update({'title': uri_to_title(
+            os.path.basename(metadata['slug']))})
+        return ContentItem(path, metadata)
+
+    def getInteractiveFields(self):
+        return [
+            InteractiveField('slug', InteractiveField.TYPE_STRING,
+                             'new-page')]

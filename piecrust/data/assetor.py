@@ -3,6 +3,7 @@ import os.path
 import shutil
 import logging
 from piecrust import ASSET_DIR_SUFFIX
+from piecrust.sources.base import REL_ASSETS
 from piecrust.uriutil import multi_replace
 
 
@@ -14,7 +15,7 @@ class UnsupportedAssetsError(Exception):
 
 
 def build_base_url(app, uri, rel_assets_path):
-    base_url_format = app.env.base_asset_url_format
+    base_url_format = app.config.get('site/base_asset_url_format')
     rel_assets_path = rel_assets_path.replace('\\', '/')
 
     # Remove any extension since we'll be copying assets into the 1st
@@ -24,15 +25,20 @@ def build_base_url(app, uri, rel_assets_path):
         uri, _ = os.path.splitext(uri)
 
     base_url = multi_replace(
-            base_url_format,
-            {
-                '%path%': rel_assets_path,
-                '%uri%': uri})
+        base_url_format,
+        {
+            '%path%': rel_assets_path,
+            '%uri%': uri})
 
     return base_url.rstrip('/') + '/'
 
 
-class AssetorBase(object):
+class Assetor(object):
+    debug_render_doc = """Helps render URLs to files in the current page's
+                          asset folder."""
+    debug_render = []
+    debug_render_dynamic = ['_debugRenderAssetNames']
+
     def __init__(self, page, uri):
         self._page = page
         self._uri = uri
@@ -65,44 +71,22 @@ class AssetorBase(object):
         if self._cache is not None:
             return
 
-        self._cache = dict(self.findAssets())
+        self._cache = self.findAssets() or {}
 
     def findAssets(self):
-        raise NotImplementedError()
+        content_item = self._page.content_item
+        source = content_item.source
+        assets = source.getRelatedContent(content_item, REL_ASSETS)
+        if assets is None:
+            return {}
 
-    def copyAssets(self, dest_dir):
-        raise NotImplementedError()
+        app = source.app
+        stack = app.env.render_ctx_stack
+        cur_ctx = stack.current_ctx
+        if cur_ctx is not None:
+            cur_ctx.current_pass_info.used_assets = True
 
-class Assetor(AssetorBase):
-    debug_render_doc = """Helps render URLs to files in the current page's
-                          asset folder."""
-    debug_render = []
-    debug_render_dynamic = ['_debugRenderAssetNames']
-
-    def findAssets(self):
-        assets = {}
-        name, ext = os.path.splitext(self._page.path)
-        assets_dir = name + ASSET_DIR_SUFFIX
-        if not os.path.isdir(assets_dir):
-            return assets
-
-        rel_assets_dir = os.path.relpath(assets_dir, self._page.app.root_dir)
-        base_url = build_base_url(self._page.app, self._uri, rel_assets_dir)
-        for fn in os.listdir(assets_dir):
-            full_fn = os.path.join(assets_dir, fn)
-            if not os.path.isfile(full_fn):
-                raise Exception("Skipping: %s" % full_fn)
-                continue
-
-            name, ext = os.path.splitext(fn)
-            if name in assets:
-                raise UnsupportedAssetsError(
-                        "Multiple asset files are named '%s'." % name)
-            assets[name] = (base_url + fn, full_fn)
-
-        cpi = self._page.app.env.exec_info_stack.current_page_info
-        if cpi is not None:
-            cpi.render_ctx.current_pass_info.used_assets = True
+        # base_url = build_base_url(app, self._uri, rel_assets_dir)
 
         return assets
 
@@ -115,3 +99,4 @@ class Assetor(AssetorBase):
                 dest_ap = os.path.join(dest_dir, fn)
                 logger.debug("  %s -> %s" % (full_fn, dest_ap))
                 shutil.copy(full_fn, dest_ap)
+

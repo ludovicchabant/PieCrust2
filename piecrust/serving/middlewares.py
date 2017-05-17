@@ -4,12 +4,12 @@ from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator
 from piecrust import RESOURCES_DIR, CACHE_DIR
 from piecrust.data.builder import (
-        DataBuildingContext, build_page_data)
+    DataBuildingContext, build_page_data)
 from piecrust.data.debug import build_var_debug_info
+from piecrust.page import PageNotFoundError
 from piecrust.routing import RouteNotFoundError
 from piecrust.serving.util import (
-        make_wrapped_file_response, get_requested_page, get_app_for_server)
-from piecrust.sources.pageref import PageNotFoundError
+    make_wrapped_file_response, get_requested_page, get_app_for_server)
 
 
 class StaticResourcesMiddleware(object):
@@ -29,7 +29,7 @@ class StaticResourcesMiddleware(object):
             full_path = os.path.join(mount, rel_req_path)
             try:
                 response = make_wrapped_file_response(
-                        environ, request, full_path)
+                    environ, request, full_path)
                 return response(environ, start_response)
             except OSError:
                 pass
@@ -47,11 +47,11 @@ class PieCrustDebugMiddleware(object):
         self.run_sse_check = run_sse_check
         self._proc_loop = None
         self._out_dir = os.path.join(
-                appfactory.root_dir, CACHE_DIR, appfactory.cache_key, 'server')
+            appfactory.root_dir, CACHE_DIR, appfactory.cache_key, 'server')
         self._handlers = {
-                'debug_info': self._getDebugInfo,
-                'werkzeug_shutdown': self._shutdownWerkzeug,
-                'pipeline_status': self._startSSEProvider}
+            'debug_info': self._getDebugInfo,
+            'werkzeug_shutdown': self._shutdownWerkzeug,
+            'pipeline_status': self._startSSEProvider}
 
         if not self.run_sse_check or self.run_sse_check():
             # When using a server with code reloading, some implementations
@@ -111,15 +111,15 @@ class PieCrustDebugMiddleware(object):
 
     def _startSSEProvider(self, request, start_response):
         from piecrust.serving.procloop import (
-                PipelineStatusServerSentEventProducer)
+            PipelineStatusServerSentEventProducer)
         provider = PipelineStatusServerSentEventProducer(
-                self._proc_loop)
+            self._proc_loop)
         it = provider.run()
         response = Response(it, mimetype='text/event-stream')
         response.headers['Cache-Control'] = 'no-cache'
         response.headers['Last-Event-ID'] = \
             self._proc_loop.last_status_id
         return ClosingIterator(
-                response(request.environ, start_response),
-                [provider.close])
+            response(request.environ, start_response),
+            [provider.close])
 

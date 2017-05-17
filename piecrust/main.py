@@ -9,9 +9,9 @@ import argparse
 import colorama
 from piecrust import APP_VERSION
 from piecrust.app import (
-        PieCrust, PieCrustConfiguration, apply_variant_and_values)
+    PieCrustFactory, PieCrustConfiguration)
 from piecrust.chefutil import (
-        format_timed, log_friendly_exception, print_help_item)
+    format_timed, log_friendly_exception, print_help_item)
 from piecrust.commands.base import CommandContext
 from piecrust.pathutil import SiteNotFoundError, find_app_root
 from piecrust.plugins.base import PluginLoader
@@ -22,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 class ColoredFormatter(logging.Formatter):
     COLORS = {
-            'DEBUG': colorama.Fore.BLACK + colorama.Style.BRIGHT,
-            'INFO': '',
-            'WARNING': colorama.Fore.YELLOW,
-            'ERROR': colorama.Fore.RED,
-            'CRITICAL': colorama.Back.RED + colorama.Fore.WHITE
-            }
+        'DEBUG': colorama.Fore.BLACK + colorama.Style.BRIGHT,
+        'INFO': '',
+        'WARNING': colorama.Fore.YELLOW,
+        'ERROR': colorama.Fore.RED,
+        'CRITICAL': colorama.Back.RED + colorama.Fore.WHITE
+    }
 
     def __init__(self, fmt=None, datefmt=None):
         super(ColoredFormatter, self).__init__(fmt, datefmt)
@@ -79,67 +79,67 @@ def main():
 
 def _setup_main_parser_arguments(parser):
     parser.add_argument(
-            '--version',
-            action='version',
-            version=('%(prog)s ' + APP_VERSION))
+        '--version',
+        action='version',
+        version=('%(prog)s ' + APP_VERSION))
     parser.add_argument(
-            '--root',
-            help="The root directory of the website.")
+        '--root',
+        help="The root directory of the website.")
     parser.add_argument(
-            '--theme',
-            action='store_true',
-            help="Makes the current command apply to a theme website.")
+        '--theme',
+        action='store_true',
+        help="Makes the current command apply to a theme website.")
     parser.add_argument(
-            '--config',
-            dest='config_variant',
-            help="The configuration variant to use for this command.")
+        '--config',
+        dest='config_variant',
+        help="The configuration variant to use for this command.")
     parser.add_argument(
-            '--config-set',
-            nargs=2,
-            metavar=('NAME', 'VALUE'),
-            action='append',
-            dest='config_values',
-            help="Sets a specific site configuration setting.")
+        '--config-set',
+        nargs=2,
+        metavar=('NAME', 'VALUE'),
+        action='append',
+        dest='config_values',
+        help="Sets a specific site configuration setting.")
     parser.add_argument(
-            '--debug',
-            help="Show debug information.", action='store_true')
+        '--debug',
+        help="Show debug information.", action='store_true')
     parser.add_argument(
-            '--debug-only',
-            action='append',
-            help="Only show debug information for the given categories.")
+        '--debug-only',
+        action='append',
+        help="Only show debug information for the given categories.")
     parser.add_argument(
-            '--no-cache',
-            help="When applicable, disable caching.",
-            action='store_true')
+        '--no-cache',
+        help="When applicable, disable caching.",
+        action='store_true')
     parser.add_argument(
-            '--quiet',
-            help="Print only important information.",
-            action='store_true')
+        '--quiet',
+        help="Print only important information.",
+        action='store_true')
     parser.add_argument(
-            '--log',
-            dest='log_file',
-            help="Send log messages to the specified file.")
+        '--log',
+        dest='log_file',
+        help="Send log messages to the specified file.")
     parser.add_argument(
-            '--log-debug',
-            help="Log debug messages to the log file.",
-            action='store_true')
+        '--log-debug',
+        help="Log debug messages to the log file.",
+        action='store_true')
     parser.add_argument(
-            '--no-color',
-            help="Don't use colorized output.",
-            action='store_true')
+        '--no-color',
+        help="Don't use colorized output.",
+        action='store_true')
     parser.add_argument(
-            '--pid-file',
-            dest='pid_file',
-            help="Write a PID file for the current process.")
+        '--pid-file',
+        dest='pid_file',
+        help="Write a PID file for the current process.")
 
 
 """ Kinda hacky, but we want the `serve` command to use a different cache
-    so that PieCrust doesn't need to re-render all the pages when going
-    between `serve` and `bake` (or, worse, *not* re-render them all correctly
-    and end up serving or baking the wrong version).
+so that PieCrust doesn't need to re-render all the pages when going
+between `serve` and `bake` (or, worse, *not* re-render them all correctly
+and end up serving or baking the wrong version).
 """
 _command_caches = {
-        'serve': 'server'}
+    'serve': 'server'}
 
 
 def _pre_parse_chef_args(argv):
@@ -235,30 +235,32 @@ def _run_chef(pre_args, argv):
     # Can't apply custom configuration stuff if there's no website.
     if (pre_args.config_variant or pre_args.config_values) and not root:
         raise SiteNotFoundError(
-                "Can't apply any configuration variant or value overrides, "
-                "there is no website here.")
+            "Can't apply any configuration variant or value overrides, "
+            "there is no website here.")
 
     if root:
         cache_key = None
         if not pre_args.no_cache:
             cache_key = _build_cache_key(pre_args)
-        app = PieCrust(
-                root,
-                theme_site=pre_args.theme,
-                cache=(not pre_args.no_cache),
-                cache_key=cache_key,
-                debug=pre_args.debug)
-        apply_variant_and_values(
-                app, pre_args.config_variant, pre_args.config_values)
+        appfactory = PieCrustFactory(
+            root,
+            theme_site=pre_args.theme,
+            cache=(not pre_args.no_cache),
+            cache_key=cache_key,
+            debug=pre_args.debug,
+            config_variant=pre_args.config_variant,
+            config_values=pre_args.config_values)
+        app = appfactory.create()
     else:
+        appfactory = None
         app = NullPieCrust(
-                theme_site=pre_args.theme)
+            theme_site=pre_args.theme)
 
     # Setup the arg parser.
     parser = argparse.ArgumentParser(
-            prog='chef',
-            description="The PieCrust chef manages your website.",
-            formatter_class=argparse.RawDescriptionHelpFormatter)
+        prog='chef',
+        description="The PieCrust chef manages your website.",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     _setup_main_parser_arguments(parser)
 
     commands = sorted(app.plugin_loader.getCommands(),
@@ -289,10 +291,7 @@ def _run_chef(pre_args, argv):
         return 0
 
     # Run the command!
-    ctx = CommandContext(app, parser, result)
-    ctx.config_variant = pre_args.config_variant
-    ctx.config_values = pre_args.config_values
-
+    ctx = CommandContext(appfactory, app, parser, result)
     exit_code = result.func(ctx)
     if exit_code is None:
         return 0

@@ -102,7 +102,7 @@ def _date_convert(obj, func, op):
                 'day': obj.day}
     elif op == _UNPICKLING:
         return datetime.date(
-                obj['year'], obj['month'], obj['day'])
+            obj['year'], obj['month'], obj['day'])
 
 
 def _datetime_convert(obj, func, op):
@@ -117,8 +117,8 @@ def _datetime_convert(obj, func, op):
                 'microsecond': obj.microsecond}
     elif op == _UNPICKLING:
         return datetime.datetime(
-                obj['year'], obj['month'], obj['day'],
-                obj['hour'], obj['minute'], obj['second'], obj['microsecond'])
+            obj['year'], obj['month'], obj['day'],
+            obj['hour'], obj['minute'], obj['second'], obj['microsecond'])
 
 
 def _time_convert(obj, func, op):
@@ -130,47 +130,47 @@ def _time_convert(obj, func, op):
                 'microsecond': obj.microsecond}
     elif op == _UNPICKLING:
         return datetime.time(
-                obj['hour'], obj['minute'], obj['second'], obj['microsecond'])
+            obj['hour'], obj['minute'], obj['second'], obj['microsecond'])
 
 
 _type_convert = {
-        type(None): _identity_dispatch,
-        bool: _identity_dispatch,
-        int: _identity_dispatch,
-        float: _identity_dispatch,
-        str: _identity_dispatch,
-        datetime.date: _date_convert,
-        datetime.datetime: _datetime_convert,
-        datetime.time: _time_convert,
-        tuple: _tuple_convert,
-        list: _list_convert,
-        dict: _dict_convert,
-        set: _set_convert,
-        collections.OrderedDict: _ordered_dict_convert,
-        }
+    type(None): _identity_dispatch,
+    bool: _identity_dispatch,
+    int: _identity_dispatch,
+    float: _identity_dispatch,
+    str: _identity_dispatch,
+    datetime.date: _date_convert,
+    datetime.datetime: _datetime_convert,
+    datetime.time: _time_convert,
+    tuple: _tuple_convert,
+    list: _list_convert,
+    dict: _dict_convert,
+    set: _set_convert,
+    collections.OrderedDict: _ordered_dict_convert,
+}
 
 
 _type_unconvert = {
-        type(None): _identity_dispatch,
-        bool: _identity_dispatch,
-        int: _identity_dispatch,
-        float: _identity_dispatch,
-        str: _identity_dispatch,
-        'date': _date_convert,
-        'datetime': _datetime_convert,
-        'time': _time_convert,
-        }
+    type(None): _identity_dispatch,
+    bool: _identity_dispatch,
+    int: _identity_dispatch,
+    float: _identity_dispatch,
+    str: _identity_dispatch,
+    'date': _date_convert,
+    'datetime': _datetime_convert,
+    'time': _time_convert,
+}
 
 
 _collection_unconvert = {
-        '__type__:tuple': _tuple_convert,
-        '__type__:set': _set_convert,
-        }
+    '__type__:tuple': _tuple_convert,
+    '__type__:set': _set_convert,
+}
 
 
 _mapping_unconvert = {
-        'OrderedDict': _ordered_dict_convert
-        }
+    'OrderedDict': _ordered_dict_convert
+}
 
 
 def _pickle_object(obj):

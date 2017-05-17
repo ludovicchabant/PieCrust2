@@ -5,9 +5,8 @@ import yaml
 from collections import OrderedDict
 from piecrust import CONFIG_PATH
 from piecrust.configuration import (
-        ConfigurationLoader, ConfigurationDumper, merge_dicts)
+    ConfigurationLoader, ConfigurationDumper, merge_dicts)
 from piecrust.importing.base import Importer, create_page, download_asset
-from piecrust.sources.base import MODE_CREATING
 
 
 logger = logging.getLogger(__name__)
@@ -16,25 +15,25 @@ logger = logging.getLogger(__name__)
 class WordpressImporterBase(Importer):
     def setupParser(self, parser, app):
         parser.add_argument(
-                '--pages-source',
-                default="pages",
-                help="The source to store pages in.")
+            '--pages-source',
+            default="pages",
+            help="The source to store pages in.")
         parser.add_argument(
-                '--posts-source',
-                default="posts",
-                help="The source to store posts in.")
+            '--posts-source',
+            default="posts",
+            help="The source to store posts in.")
         parser.add_argument(
-                '--default-post-layout',
-                help="The default layout to use for posts.")
+            '--default-post-layout',
+            help="The default layout to use for posts.")
         parser.add_argument(
-                '--default-post-category',
-                help="The default category to use for posts.")
+            '--default-post-category',
+            help="The default category to use for posts.")
         parser.add_argument(
-                '--default-page-layout',
-                help="The default layout to use for pages.")
+            '--default-page-layout',
+            help="The default layout to use for pages.")
         parser.add_argument(
-                '--default-page-category',
-                help="The default category to use for pages.")
+            '--default-page-category',
+            help="The default category to use for pages.")
 
     def importWebsite(self, app, args):
         impl = self._getImplementation(app, args)
@@ -60,8 +59,8 @@ class _ImporterBase(object):
         site_config = self._getSiteConfig(ctx)
         site_config.setdefault('site', {})
         site_config['site'].update({
-                'post_url': '%year%/%month%/%slug%',
-                'category_url': 'category/%category%'})
+            'post_url': '%year%/%month%/%slug%',
+            'category_url': 'category/%category%'})
 
         site_config_path = os.path.join(self.app.root_dir, CONFIG_PATH)
         with open(site_config_path, 'r') as fp:
@@ -102,10 +101,10 @@ class _ImporterBase(object):
     def _createPost(self, post_info):
         post_dt = post_info['datetime']
         finder = {
-                'year': post_dt.year,
-                'month': post_dt.month,
-                'day': post_dt.day,
-                'slug': post_info['slug']}
+            'year': post_dt.year,
+            'month': post_dt.month,
+            'day': post_dt.day,
+            'slug': post_info['slug']}
         if post_info['type'] == 'post':
             source = self._posts_source
         elif post_info['type'] == 'page':
@@ -174,25 +173,25 @@ class _XmlImporter(_ImporterBase):
         title = find_text(channel, 'title')
         description = find_text(channel, 'description')
         site_config = OrderedDict({
-                'site': {
-                    'title': title,
-                    'description': description}
-                })
+            'site': {
+                'title': title,
+                'description': description}
+        })
 
         # Get authors' names.
         authors = {}
         for a in channel.findall('wp:author', self.ns_wp):
             login = find_text(a, 'wp:author_login', self.ns_wp)
             authors[login] = {
-                    'email': find_text(a, 'wp:author_email', self.ns_wp),
-                    'display_name': find_text(a, 'wp:author_display_name',
-                                              self.ns_wp),
-                    'first_name': find_text(a, 'wp:author_first_name',
-                                            self.ns_wp),
-                    'last_name': find_text(a, 'wp:author_last_name',
-                                           self.ns_wp),
-                    'author_id': find_text(a, 'wp:author_id',
-                                           self.ns_wp)}
+                'email': find_text(a, 'wp:author_email', self.ns_wp),
+                'display_name': find_text(a, 'wp:author_display_name',
+                                          self.ns_wp),
+                'first_name': find_text(a, 'wp:author_first_name',
+                                        self.ns_wp),
+                'last_name': find_text(a, 'wp:author_last_name',
+                                       self.ns_wp),
+                'author_id': find_text(a, 'wp:author_id',
+                                       self.ns_wp)}
         site_config['site']['authors'] = authors
 
         return site_config
@@ -216,9 +215,9 @@ class _XmlImporter(_ImporterBase):
         post_name = find_text(node, 'wp:post_name', self.ns_wp)
         post_type = find_text(node, 'wp:post_type', self.ns_wp)
         post_info = {
-                'type': post_type,
-                'slug': post_name,
-                'datetime': post_date}
+            'type': post_type,
+            'slug': post_name,
+            'datetime': post_date}
 
         title = find_text(node, 'title')
         creator = find_text(node, 'dc:creator', self.ns_dc)
@@ -228,12 +227,12 @@ class _XmlImporter(_ImporterBase):
         description = find_text(node, 'description')
         # TODO: menu order, parent, password, sticky
         post_info.update({
-                'title': title,
-                'author': creator,
-                'status': status,
-                'post_id': post_id,
-                'post_guid': guid,
-                'description': description})
+            'title': title,
+            'author': creator,
+            'status': status,
+            'post_id': post_id,
+            'post_guid': guid,
+            'description': description})
 
         categories = []
         for c in node.findall('category'):
@@ -250,8 +249,8 @@ class _XmlImporter(_ImporterBase):
         content = find_text(node, 'content:encoded', self.ns_content)
         excerpt = find_text(node, 'excerpt:encoded', self.ns_excerpt)
         post_info.update({
-                'content': content,
-                'excerpt': excerpt})
+            'content': content,
+            'excerpt': excerpt})
 
         return post_info
 

@@ -16,24 +16,7 @@ class IPaginationSource(object):
     def getTailIterator(self, it):
         raise NotImplementedError()
 
-    def getPaginationFilter(self, page):
-        raise NotImplementedError()
-
     def getSettingAccessor(self):
-        raise NotImplementedError()
-
-
-class IListableSource(object):
-    """ Defines the interface for a source that can be iterated on in a
-        hierarchical manner, for use with the `family` data endpoint.
-    """
-    def listPath(self, rel_path):
-        raise NotImplementedError()
-
-    def getDirpath(self, rel_path):
-        raise NotImplementedError()
-
-    def getBasename(self, rel_path):
         raise NotImplementedError()
 
 
@@ -44,11 +27,13 @@ class IPreparingSource(object):
     def setupPrepareParser(self, parser, app):
         raise NotImplementedError()
 
-    def buildMetadata(self, args):
+    def createContent(self, args):
         raise NotImplementedError()
 
 
 class InteractiveField(object):
+    """ A field to display in the administration web UI.
+    """
     TYPE_STRING = 0
     TYPE_INT = 1
 
@@ -59,6 +44,9 @@ class InteractiveField(object):
 
 
 class IInteractiveSource(object):
+    """ A content source that a user can interact with in the administration
+        web UI.
+    """
     def getInteractiveFields(self):
         raise NotImplementedError()
 

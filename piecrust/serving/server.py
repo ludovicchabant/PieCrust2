@@ -6,15 +6,15 @@ import os.path
 import hashlib
 import logging
 from werkzeug.exceptions import (
-        NotFound, MethodNotAllowed, InternalServerError, HTTPException)
+    NotFound, MethodNotAllowed, InternalServerError, HTTPException)
 from werkzeug.wrappers import Request, Response
 from jinja2 import FileSystemLoader, Environment
 from piecrust import CACHE_DIR, RESOURCES_DIR
-from piecrust.rendering import PageRenderingContext, render_page
+from piecrust.rendering import RenderingContext, render_page
 from piecrust.routing import RouteNotFoundError
 from piecrust.serving.util import (
-        content_type_map, make_wrapped_file_response, get_requested_page,
-        get_app_for_server)
+    content_type_map, make_wrapped_file_response, get_requested_page,
+    get_app_for_server)
 from piecrust.sources.base import SourceNotFoundError
 
 
@@ -22,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 class WsgiServer(object):
+    """ A WSGI application that serves a PieCrust website.
+    """
     def __init__(self, appfactory, **kwargs):
         self.server = Server(appfactory, **kwargs)
 
@@ -29,30 +31,11 @@ class WsgiServer(object):
         return self.server._run_request(environ, start_response)
 
 
-class ServeRecord(object):
-    def __init__(self):
-        self.entries = {}
-
-    def addEntry(self, entry):
-        key = self._makeKey(entry.uri, entry.sub_num)
-        self.entries[key] = entry
-
-    def getEntry(self, uri, sub_num):
-        key = self._makeKey(uri, sub_num)
-        return self.entries.get(key)
-
-    def _makeKey(self, uri, sub_num):
-        return "%s:%s" % (uri, sub_num)
-
-
-class ServeRecordPageEntry(object):
-    def __init__(self, uri, sub_num):
-        self.uri = uri
-        self.sub_num = sub_num
-        self.used_source_names = set()
-
-
 class MultipleNotFound(HTTPException):
+    """ Represents a 404 (not found) error that tried to serve one or
+        more pages. It will report which pages it tried to serve
+        before failing.
+    """
     code = 404
 
     def __init__(self, description, nfes):
@@ -70,6 +53,8 @@ class MultipleNotFound(HTTPException):
 
 
 class Server(object):
+    """ The PieCrust server.
+    """
     def __init__(self, appfactory,
                  enable_debug_info=True,
                  root_url='/',
@@ -78,12 +63,11 @@ class Server(object):
         self.enable_debug_info = enable_debug_info
         self.root_url = root_url
         self.static_preview = static_preview
-        self._page_record = ServeRecord()
         self._out_dir = os.path.join(
-                appfactory.root_dir,
-                CACHE_DIR,
-                (appfactory.cache_key or 'default'),
-                'server')
+            appfactory.root_dir,
+            CACHE_DIR,
+            (appfactory.cache_key or 'default'),
+            'server')
 
     def _run_request(self, environ, start_response):
         try:
@@ -104,8 +88,14 @@ class Server(object):
                          request.method)
             raise MethodNotAllowed()
 
-        # Also handle requests to a pipeline-built asset right away.
+        # Handle requests to a pipeline-built asset right away.
         response = self._try_serve_asset(environ, request)
+        if response is not None:
+            return response
+
+        # Same for page assets.
+        response = self._try_serve_page_asset(
+            self.appfactory.root_dir, environ, request)
         if response is not None:
             return response
 
@@ -118,14 +108,10 @@ class Server(object):
             app.config.set('site/show_debug_info', True)
 
         # We'll serve page assets directly from where they are.
-        app.env.base_asset_url_format = self.root_url + '_asset/%path%'
+        app.config.set('site/asset_url_format',
+                       self.root_url + '_asset/%path%')
 
-        # Let's see if it can be a page asset.
-        response = self._try_serve_page_asset(app, environ, request)
-        if response is not None:
-            return response
-
-        # Nope. Let's see if it's an actual page.
+        # Let's try to serve a page.
         try:
             response = self._try_serve_page(app, environ, request)
             return response
@@ -152,22 +138,21 @@ class Server(object):
             full_path = os.path.join(self._out_dir, rel_req_path)
 
         try:
-            response = make_wrapped_file_response(environ, request, full_path)
-            return response
+            return make_wrapped_file_response(environ, request, full_path)
         except OSError:
-            pass
-        return None
+            return None
 
-    def _try_serve_page_asset(self, app, environ, request):
+    def _try_serve_page_asset(self, app_root_dir, environ, request):
         if not request.path.startswith(self.root_url + '_asset/'):
             return None
 
         offset = len(self.root_url + '_asset/')
-        full_path = os.path.join(app.root_dir, request.path[offset:])
-        if not os.path.isfile(full_path):
-            return None
+        full_path = os.path.join(app_root_dir, request.path[offset:])
 
-        return make_wrapped_file_response(environ, request, full_path)
+        try:
+            return make_wrapped_file_response(environ, request, full_path)
+        except OSError:
+            return None
 
     def _try_serve_page(self, app, environ, request):
         # Find a matching page.
@@ -181,32 +166,11 @@ class Server(object):
             raise MultipleNotFound(msg, req_page.not_found_errors)
 
         # We have a page, let's try to render it.
-        render_ctx = PageRenderingContext(qp,
-                                          page_num=req_page.page_num,
-                                          force_render=True,
-                                          is_from_request=True)
-        if qp.route.is_generator_route:
-            qp.route.generator.prepareRenderContext(render_ctx)
-
-        # See if this page is known to use sources. If that's the case,
-        # just don't use cached rendered segments for that page (but still
-        # use them for pages that are included in it).
-        uri = qp.getUri()
-        entry = self._page_record.getEntry(uri, req_page.page_num)
-        if (qp.route.is_generator_route or entry is None or
-                entry.used_source_names):
-            cache_key = '%s:%s' % (uri, req_page.page_num)
-            app.env.rendered_segments_repository.invalidate(cache_key)
+        render_ctx = RenderingContext(qp, force_render=True)
+        qp.page.source.prepareRenderContext(render_ctx)
 
         # Render the page.
         rendered_page = render_page(render_ctx)
-
-        # Remember stuff for next time.
-        if entry is None:
-            entry = ServeRecordPageEntry(req_page.req_path, req_page.page_num)
-            self._page_record.addEntry(entry)
-        for pinfo in render_ctx.render_passes:
-            entry.used_source_names |= pinfo.used_source_names
 
         # Start doing stuff.
         page = rendered_page.page
@@ -216,10 +180,10 @@ class Server(object):
         if app.config.get('site/show_debug_info'):
             now_time = time.perf_counter()
             timing_info = (
-                    '%8.1f ms' %
-                    ((now_time - app.env.start_time) * 1000.0))
+                '%8.1f ms' %
+                ((now_time - app.env.start_time) * 1000.0))
             rp_content = rp_content.replace(
-                    '__PIECRUST_TIMING_INFORMATION__', timing_info)
+                '__PIECRUST_TIMING_INFORMATION__', timing_info)
 
         # Build the response.
         response = Response()
@@ -310,5 +274,4 @@ class ErrorMessageLoader(FileSystemLoader):
     def get_source(self, env, template):
         template += '.html'
         return super(ErrorMessageLoader, self).get_source(env, template)
-
 

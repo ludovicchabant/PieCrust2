@@ -3,24 +3,21 @@ import datetime
 from piecrust.chefutil import format_timed_scope
 from piecrust.data.filters import PaginationFilter, IFilterClause
 from piecrust.data.iterators import PageIterator
-from piecrust.generation.base import PageGenerator, InvalidRecordExtraKey
 from piecrust.routing import RouteParameter
+from piecrust.sources.base import ContentSource, GeneratedContentException
 
 
 logger = logging.getLogger(__name__)
 
 
-class BlogArchivesPageGenerator(PageGenerator):
-    GENERATOR_NAME = 'blog_archives'
+class BlogArchivesSource(ContentSource):
+    SOURCE_NAME = 'blog_archives'
 
     def __init__(self, app, name, config):
-        super(BlogArchivesPageGenerator, self).__init__(app, name, config)
+        super().__init__(app, name, config)
 
-    def getSupportedRouteParameters(self):
-        return [RouteParameter('year', RouteParameter.TYPE_INT4)]
-
-    def onRouteFunctionUsed(self, route, route_metadata):
-        pass
+    def getContents(self, group):
+        raise GeneratedContentException()
 
     def prepareRenderContext(self, ctx):
         ctx.pagination_source = self.source
@@ -28,11 +25,11 @@ class BlogArchivesPageGenerator(PageGenerator):
         year = ctx.page.route_metadata.get('year')
         if year is None:
             raise Exception(
-                    "Can't find the archive year in the route metadata")
+                "Can't find the archive year in the route metadata")
         if type(year) is not int:
             raise Exception(
-                    "The route for generator '%s' should specify an integer "
-                    "parameter for 'year'." % self.name)
+                "The route for generator '%s' should specify an integer "
+                "parameter for 'year'." % self.name)
 
         flt = PaginationFilter()
         flt.addClause(IsFromYearFilterClause(year))
@@ -49,8 +46,8 @@ class BlogArchivesPageGenerator(PageGenerator):
     def bake(self, ctx):
         if not self.page_ref.exists:
             logger.debug(
-                    "No page found at '%s', skipping %s archives." %
-                    (self.page_ref, self.source_name))
+                "No page found at '%s', skipping %s archives." %
+                (self.page_ref, self.source_name))
             return
 
         logger.debug("Baking %s archives...", self.source_name)
@@ -61,6 +58,9 @@ class BlogArchivesPageGenerator(PageGenerator):
         with format_timed_scope(logger, "baked %d %s archives." %
                                 (len(dirty_years), self.source_name)):
             self._bakeDirtyYears(ctx, all_years, dirty_years)
+
+    def _getSource(self):
+        return self.app.getSource(self.config['source'])
 
     def _buildDirtyYears(self, ctx):
         logger.debug("Gathering dirty post years.")
@@ -78,8 +78,8 @@ class BlogArchivesPageGenerator(PageGenerator):
         route = self.app.getGeneratorRoute(self.name)
         if route is None:
             raise Exception(
-                    "No routes have been defined for generator: %s" %
-                    self.name)
+                "No routes have been defined for generator: %s" %
+                self.name)
 
         logger.debug("Using archive page: %s" % self.page_ref)
         fac = self.page_ref.getFactory()
@@ -103,11 +103,14 @@ class BlogArchivesPageGenerator(PageGenerator):
                     continue
                 if y in all_str_years:
                     logger.debug(
-                            "Creating unbaked entry for year %s archive." % y)
+                        "Creating unbaked entry for year %s archive." % y)
                     ctx.collapseRecord(prev_entry)
                 else:
                     logger.debug(
-                            "No page references year %s anymore." % y)
+                        "No page references year %s anymore." % y)
+
+    def getSupportedRouteParameters(self):
+        return [RouteParameter('year', RouteParameter.TYPE_INT4)]
 
 
 class IsFromYearFilterClause(IFilterClause):

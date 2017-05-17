@@ -3,7 +3,7 @@ import collections
 from piecrust.data.iterators import PageIterator
 from piecrust.data.pagedata import LazyPageConfigLoaderHasNoValue
 from piecrust.data.paginationdata import PaginationData
-from piecrust.sources.interfaces import IPaginationSource, IListableSource
+from piecrust.sources.interfaces import IPaginationSource
 
 
 logger = logging.getLogger(__name__)
@@ -11,17 +11,17 @@ logger = logging.getLogger(__name__)
 
 class PageLinkerData(object):
     """ Entry template data to get access to related pages from a given
-        root page.
+    root page.
     """
     debug_render = ['parent', 'ancestors', 'siblings', 'children', 'root',
                     'forpath']
     debug_render_invoke = ['parent', 'ancestors', 'siblings', 'children',
                            'root']
     debug_render_redirect = {
-            'ancestors': '_debugRenderAncestors',
-            'siblings': '_debugRenderSiblings',
-            'children': '_debugRenderChildren',
-            'root': '_debugRenderRoot'}
+        'ancestors': '_debugRenderAncestors',
+        'siblings': '_debugRenderSiblings',
+        'children': '_debugRenderChildren',
+        'root': '_debugRenderRoot'}
 
     def __init__(self, source, page_path):
         self._source = source
@@ -81,10 +81,6 @@ class PageLinkerData(object):
             return
 
         self._is_loaded = True
-
-        is_listable = isinstance(self._source, IListableSource)
-        if not is_listable:
-            return
 
         dir_path = self._source.getDirpath(self._root_page_path)
         self._linker = Linker(self._source, dir_path,
@@ -260,8 +256,8 @@ class Linker(object):
                     item = _LinkedPage(parent_page)
                     item._linker_info.name = parent_name
                     item._linker_info.child_linker = Linker(
-                            self._source, parent_dir_path,
-                            root_page_path=self._root_page_path)
+                        self._source, parent_dir_path,
+                        root_page_path=self._root_page_path)
                     self._parent = LinkedPageData(item)
                     break
             else:
@@ -307,10 +303,6 @@ class Linker(object):
     def _load(self):
         if self._items is not None:
             return
-
-        is_listable = isinstance(self._source, IListableSource)
-        if not is_listable:
-            raise Exception("Source '%s' can't be listed." % self._source.name)
 
         items = list(self._source.listPath(self._dir_path))
         self._items = collections.OrderedDict()

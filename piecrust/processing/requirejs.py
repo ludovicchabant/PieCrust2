@@ -1,12 +1,9 @@
 import os
 import os.path
-import json
-import hashlib
 import logging
 import platform
 import subprocess
-from piecrust.processing.base import Processor, PRIORITY_FIRST
-from piecrust.processing.tree import FORCE_BUILD
+from piecrust.processing.base import Processor, PRIORITY_FIRST, FORCE_BUILD
 
 
 logger = logging.getLogger(__name__)
@@ -33,15 +30,15 @@ class RequireJSProcessor(Processor):
         self._conf.setdefault('bin', 'r.js')
         self._conf.setdefault('out_path', self._conf['build_path'])
 
-    def onPipelineStart(self, pipeline):
-        super(RequireJSProcessor, self).onPipelineStart(pipeline)
+    def onPipelineStart(self, ctx):
+        super(RequireJSProcessor, self).onPipelineStart(ctx)
 
         if self._conf is None:
             return
 
         logger.debug("Adding Javascript suppressor to build pipeline.")
         skip = _JavascriptSkipProcessor(self._conf['build_path'])
-        pipeline.processors.append(skip)
+        ctx.extra_processors.append(skip)
 
     def matches(self, path):
         if self._conf is None:

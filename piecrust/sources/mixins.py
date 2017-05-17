@@ -1,17 +1,17 @@
-import os
 import os.path
 import logging
-from piecrust.data.filters import PaginationFilter, page_value_accessor
+from piecrust import osutil
 from piecrust.data.paginationdata import PaginationData
-from piecrust.sources.base import PageFactory
-from piecrust.sources.interfaces import IPaginationSource, IListableSource
-from piecrust.sources.pageref import PageRef
+from piecrust.sources.base import ContentItem
+from piecrust.sources.interfaces import IPaginationSource
 
 
 logger = logging.getLogger(__name__)
 
+assets_suffix = '-assets'
 
-class SourceFactoryIterator(object):
+
+class ContentSourceIterator(object):
     def __init__(self, source):
         self.source = source
 
@@ -20,34 +20,7 @@ class SourceFactoryIterator(object):
         self.it = None
 
     def __iter__(self):
-        return self.source.getPages()
-
-
-class SourceFactoryWithoutGeneratorsIterator(object):
-    def __init__(self, source):
-        self.source = source
-        self._generator_pages = None
-        # See comment above.
-        self.it = None
-
-    def __iter__(self):
-        self._cacheGeneratorPages()
-        for p in self.source.getPages():
-            if p.rel_path in self._generator_pages:
-                continue
-            yield p
-
-    def _cacheGeneratorPages(self):
-        if self._generator_pages is not None:
-            return
-
-        app = self.source.app
-        self._generator_pages = set()
-        for src in app.sources:
-            for gen in app.generators:
-                for sn, rp in gen.page_ref.possible_split_ref_specs:
-                    if sn == self.source.name:
-                        self._generator_pages.add(rp)
+        return self.source.getAllContentItems()
 
 
 class DateSortIterator(object):
@@ -66,10 +39,10 @@ class PaginationDataBuilderIterator(object):
 
     def __iter__(self):
         for page in self.it:
-            if page is None:
-                yield None
-            else:
+            if page is not None:
                 yield PaginationData(page)
+            else:
+                yield None
 
 
 class SimplePaginationSourceMixin(IPaginationSource):
@@ -80,9 +53,7 @@ class SimplePaginationSourceMixin(IPaginationSource):
         return self.config['items_per_page']
 
     def getSourceIterator(self):
-        if self.config.get('iteration_includes_generator_pages', False):
-            return SourceFactoryIterator(self)
-        return SourceFactoryWithoutGeneratorsIterator(self)
+        return ContentSourceIterator(self)
 
     def getSorterIterator(self, it):
         return DateSortIterator(it)
@@ -90,76 +61,33 @@ class SimplePaginationSourceMixin(IPaginationSource):
     def getTailIterator(self, it):
         return PaginationDataBuilderIterator(it)
 
-    def getPaginationFilter(self, page):
-        conf = (page.config.get('items_filters') or
-                self.config.get('items_filters'))
-        if conf == 'none' or conf == 'nil' or conf == '':
-            conf = None
-        if conf is not None:
-            f = PaginationFilter(value_accessor=page_value_accessor)
-            f.addClausesFromConfig(conf)
-            return f
-        return None
 
-    def getSettingAccessor(self):
-        return page_value_accessor
+class SimpleAssetsSubDirMixin:
+    def _getRelatedAssetsContents(self, item, relationship):
+        if not item.metadata.get('__has_assets', False):
+            return None
 
+        assets = {}
+        assets_dir = item.spec + assets_suffix
+        for f in osutil.listdir(assets_dir):
+            fpath = os.path.join(assets_dir, f)
+            name, _ = os.path.splitext(f)
+            if name in assets:
+                raise Exception("Multiple assets are named '%s'." %
+                                name)
+            assets[name] = ContentItem(fpath, {'__is_asset': True})
+        return assets
 
-class SimpleListableSourceMixin(IListableSource):
-    """ Implements the `IListableSource` interface for sources that map to
-        simple file-system structures.
-    """
-    def listPath(self, rel_path):
-        rel_path = rel_path.lstrip('\\/')
-        path = self._getFullPath(rel_path)
-        names = self._sortFilenames(os.listdir(path))
-
-        items = []
-        for name in names:
-            if os.path.isdir(os.path.join(path, name)):
-                if self._filterPageDirname(name):
-                    rel_subdir = os.path.join(rel_path, name)
-                    items.append((True, name, rel_subdir))
-            else:
-                if self._filterPageFilename(name):
-                    slug = self._makeSlug(os.path.join(rel_path, name))
-                    metadata = {'slug': slug}
-
-                    fac_path = name
-                    if rel_path != '.':
-                        fac_path = os.path.join(rel_path, name)
-                    fac_path = fac_path.replace('\\', '/')
-
-                    self._populateMetadata(fac_path, metadata)
-                    fac = PageFactory(self, fac_path, metadata)
-
-                    name, _ = os.path.splitext(name)
-                    items.append((False, name, fac))
-        return items
-
-    def getDirpath(self, rel_path):
-        return os.path.dirname(rel_path)
-
-    def getBasename(self, rel_path):
-        filename = os.path.basename(rel_path)
-        name, _ = os.path.splitext(filename)
-        return name
-
-    def _getFullPath(self, rel_path):
-        return os.path.join(self.fs_endpoint_path, rel_path)
-
-    def _sortFilenames(self, names):
-        return sorted(names)
-
-    def _filterPageDirname(self, name):
-        return True
-
-    def _filterPageFilename(self, name):
-        return True
-
-    def _makeSlug(self, rel_path):
-        return rel_path.replace('\\', '/')
-
-    def _populateMetadata(self, rel_path, metadata, mode=None):
-        pass
+    def _onFinalizeContent(self, parent_group, items, groups):
+        assetsGroups = []
+        for g in groups:
+            if not g.spec.endswith(assets_suffix):
+                continue
+            match = g.spec[:-len(assets_suffix)]
+            item = next(filter(lambda i: i.spec == match), None)
+            if item:
+                item.metadata['__has_assets'] = True
+                assetsGroups.append(g)
+        for g in assetsGroups:
+            groups.remove(g)
 

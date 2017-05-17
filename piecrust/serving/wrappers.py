@@ -1,7 +1,6 @@
 import os
 import signal
 import logging
-import urllib.request
 
 
 logger = logging.getLogger(__name__)
@@ -99,11 +98,11 @@ def run_gunicorn_server(appfactory, gunicorn_options=None):
 
 def _get_piecrust_server(appfactory, run_sse_check=None):
     from piecrust.serving.middlewares import (
-            StaticResourcesMiddleware, PieCrustDebugMiddleware)
+        StaticResourcesMiddleware, PieCrustDebugMiddleware)
     from piecrust.serving.server import WsgiServer
     app = WsgiServer(appfactory)
     app = StaticResourcesMiddleware(app)
     app = PieCrustDebugMiddleware(
-            app, appfactory, run_sse_check=run_sse_check)
+        app, appfactory, run_sse_check=run_sse_check)
     return app
 

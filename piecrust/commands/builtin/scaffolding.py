@@ -1,6 +1,5 @@
 import os
 import os.path
-import re
 import io
 import time
 import glob
@@ -9,17 +8,11 @@ import textwrap
 from piecrust import RESOURCES_DIR
 from piecrust.chefutil import print_help_item
 from piecrust.commands.base import ExtendableChefCommand, ChefCommandExtension
-from piecrust.sources.base import MODE_CREATING
-from piecrust.sources.interfaces import IPreparingSource
-from piecrust.uriutil import multi_replace
+from piecrust.pathutil import SiteNotFoundError
+from piecrust.sources.fs import FSContentSourceBase
 
 
 logger = logging.getLogger(__name__)
-
-
-def make_title(slug):
-    slug = re.sub(r'[\-_]', ' ', slug)
-    return slug.title()
 
 
 class PrepareCommand(ExtendableChefCommand):
@@ -36,6 +29,8 @@ class PrepareCommand(ExtendableChefCommand):
         if app.root_dir is None:
             return
 
+        from piecrust.sources.interfaces import IPreparingSource
+
         subparsers = parser.add_subparsers()
         for src in app.sources:
             if not isinstance(src, IPreparingSource):
@@ -47,14 +42,16 @@ class PrepareCommand(ExtendableChefCommand):
                              "source." % src.name)
                 continue
             p = subparsers.add_parser(
-                    src.item_name,
-                    help=("Creates an empty page in the '%s' source." %
-                          src.name))
+                src.config['item_name'],
+                help=("Creates an empty page in the '%s' source." %
+                      src.name))
             src.setupPrepareParser(p, app)
             p.add_argument('-t', '--template', default='default',
                            help="The template to use, which will change the "
-                                "generated text and header. Run `chef help "
-                                "scaffolding` for more information.")
+                           "generated text and header. Run `chef help "
+                           "scaffolding` for more information.")
+            p.add_argument('-f', '--force', action='store_true',
+                           help="Overwrite any existing content.")
             p.set_defaults(source=src)
             p.set_defaults(sub_func=self._doRun)
 
@@ -68,60 +65,55 @@ class PrepareCommand(ExtendableChefCommand):
         ctx.args.sub_func(ctx)
 
     def _doRun(self, ctx):
+        from piecrust.uriutil import multi_replace
+
         if not hasattr(ctx.args, 'source'):
             raise Exception("No source specified. "
                             "Please run `chef prepare -h` for usage.")
 
         app = ctx.app
-        source = ctx.args.source
-        metadata = source.buildMetadata(ctx.args)
-        factory = source.findPageFactory(metadata, MODE_CREATING)
-        path = factory.path
-        name, ext = os.path.splitext(path)
-        if ext == '.*':
-            path = '%s.%s' % (
-                    name,
-                    app.config.get('site/default_auto_format'))
-        if os.path.exists(path):
-            raise Exception("'%s' already exists." % path)
-
         tpl_name = ctx.args.template
         extensions = self.getExtensions(app)
         ext = next(
-                filter(
-                    lambda e: tpl_name in e.getTemplateNames(ctx.app),
-                    extensions),
-                None)
+            filter(
+                lambda e: tpl_name in e.getTemplateNames(app),
+                extensions),
+            None)
         if ext is None:
             raise Exception("No such page template: %s" % tpl_name)
-
-        tpl_text = ext.getTemplate(ctx.app, tpl_name)
+        tpl_text = ext.getTemplate(app, tpl_name)
         if tpl_text is None:
             raise Exception("Error loading template: %s" % tpl_name)
-        title = (metadata.get('slug') or metadata.get('path') or
-                 'Untitled page')
-        title = make_title(title)
-        tokens = {
-                '%title%': title,
-                '%time.today%': time.strftime('%Y/%m/%d'),
-                '%time.now%': time.strftime('%H:%M:%S')}
-        tpl_text = multi_replace(tpl_text, tokens)
 
-        logger.info("Creating page: %s" % os.path.relpath(path, app.root_dir))
-        if not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path), 0o755)
+        source = ctx.args.source
+        content_item = source.createContent(ctx.args)
 
-        with open(path, 'w') as f:
+        config_tokens = {
+            '%title%': "Untitled Content",
+            '%time.today%': time.strftime('%Y/%m/%d'),
+            '%time.now%': time.strftime('%H:%M:%S')
+        }
+        config = content_item.metadata.get('config')
+        if config:
+            for k, v in config.items():
+                config_tokens['%%%s%%' % k] = v
+        tpl_text = multi_replace(tpl_text, config_tokens)
+
+        logger.info("Creating content: %s" % content_item.spec)
+        mode = 'w' if ctx.args.force else 'x'
+        with content_item.open(mode) as f:
             f.write(tpl_text)
 
+        # If this was a file-system content item, see if we need to auto-open
+        # an editor on it.
         editor = ctx.app.config.get('prepare/editor')
         editor_type = ctx.app.config.get('prepare/editor_type', 'exe')
-        if editor:
+        if editor and isinstance(source, FSContentSourceBase):
             import shlex
             shell = False
-            args = '%s "%s"' % (editor, path)
+            args = '%s "%s"' % (editor, content_item.spec)
             if '%path%' in editor:
-                args = editor.replace('%path%', path)
+                args = editor.replace('%path%', content_item.spec)
 
             if editor_type.lower() == 'shell':
                 shell = True
@@ -146,9 +138,9 @@ class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
 
     def getTemplateDescription(self, app, name):
         descs = {
-                'default': "The default template, for a simple page.",
-                'rss': "A fully functional RSS feed.",
-                'atom': "A fully functional Atom feed."}
+            'default': "The default template, for a simple page.",
+            'rss': "A fully functional RSS feed.",
+            'atom': "A fully functional Atom feed."}
         return descs[name]
 
     def getTemplate(self, app, name):
@@ -189,7 +181,7 @@ class UserDefinedPrepareTemplatesCommandExtension(ChefCommandExtension):
             raise Exception("No such page scaffolding template: %s" % name)
         if len(matches) > 1:
             raise Exception(
-                    "More than one scaffolding template has name: %s" % name)
+                "More than one scaffolding template has name: %s" % name)
         with open(matches[0], 'r', encoding='utf8') as fp:
             return fp.read()
 
@@ -214,16 +206,16 @@ class DefaultPrepareTemplatesHelpTopic(ChefCommandExtension):
             help_list = tplh.getvalue()
 
         help_txt = (
-                textwrap.fill(
-                    "Running the 'prepare' command will let "
-                    "PieCrust setup a page for you in the correct place, with "
-                    "some hopefully useful default text.") +
-                "\n\n" +
-                textwrap.fill("The following templates are available:") +
-                "\n\n" +
-                help_list +
-                "\n" +
-                "You can add user-defined templates by creating pages in a "
-                "`scaffold/pages` sub-directory in your website.")
+            textwrap.fill(
+                "Running the 'prepare' command will let "
+                "PieCrust setup a page for you in the correct place, with "
+                "some hopefully useful default text.") +
+            "\n\n" +
+            textwrap.fill("The following templates are available:") +
+            "\n\n" +
+            help_list +
+            "\n" +
+            "You can add user-defined templates by creating pages in a "
+            "`scaffold/pages` sub-directory in your website.")
         return help_txt
 

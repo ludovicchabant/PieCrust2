@@ -53,29 +53,35 @@ class BuiltInPlugin(PieCrustPlugin):
             DefaultPrepareTemplatesHelpTopic()]
 
     def getSources(self):
-        from piecrust.sources.default import DefaultPageSource
-        from piecrust.sources.posts import (
-                FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
         from piecrust.sources.autoconfig import (
-                AutoConfigSource, OrderedPageSource)
+            AutoConfigContentSource, OrderedContentSource)
+        from piecrust.sources.blogarchives import BlogArchivesSource
+        from piecrust.sources.default import DefaultContentSource
+        from piecrust.sources.fs import FSContentSource
+        from piecrust.sources.posts import (
+            FlatPostsSource, ShallowPostsSource, HierarchyPostsSource)
         from piecrust.sources.prose import ProseSource
+        from piecrust.sources.taxonomy import TaxonomySource
 
         return [
-            DefaultPageSource,
+            AutoConfigContentSource,
+            BlogArchivesSource,
+            DefaultContentSource,
+            FSContentSource,
             FlatPostsSource,
-            ShallowPostsSource,
             HierarchyPostsSource,
-            AutoConfigSource,
-            OrderedPageSource,
-            ProseSource]
+            OrderedContentSource,
+            ProseSource,
+            ShallowPostsSource,
+            TaxonomySource]
 
-    def getPageGenerators(self):
-        from piecrust.generation.blogarchives import BlogArchivesPageGenerator
-        from piecrust.generation.taxonomy import TaxonomyPageGenerator
+    def getPipelines(self):
+        from piecrust.pipelines.page import PagePipeline
+        from piecrust.pipelines.asset import AssetPipeline
 
         return [
-            TaxonomyPageGenerator,
-            BlogArchivesPageGenerator]
+            PagePipeline,
+            AssetPipeline]
 
     def getDataProviders(self):
         from piecrust.data.provider import (
@@ -107,10 +113,10 @@ class BuiltInPlugin(PieCrustPlugin):
             TextileFormatter()]
 
     def getProcessors(self):
-        from piecrust.processing.base import CopyFileProcessor
         from piecrust.processing.compass import CompassProcessor
         from piecrust.processing.compressors import (
             CleanCssProcessor, UglifyJSProcessor)
+        from piecrust.processing.copy import CopyFileProcessor
         from piecrust.processing.less import LessProcessor
         from piecrust.processing.pygments_style import PygmentsStyleProcessor
         from piecrust.processing.requirejs import RequireJSProcessor

@@ -1,6 +1,6 @@
 import os.path
 import logging
-from piecrust.environment import AbortedSourceUseError
+from piecrust.sources.base import AbortedSourceUseError
 from piecrust.templating.base import (TemplateEngine, TemplateNotFoundError,
                                       TemplatingError)
 

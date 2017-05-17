@@ -75,8 +75,8 @@ class LazyPageConfigData(collections.abc.Mapping):
             except Exception as ex:
                 logger.exception(ex)
                 raise Exception(
-                        "Error while loading attribute '%s' for: %s" %
-                        (name, self._page.rel_path)) from ex
+                    "Error while loading attribute '%s' for: %s" %
+                    (name, self._page.rel_path)) from ex
 
             # Forget this loader now that it served its purpose.
             try:
@@ -95,8 +95,8 @@ class LazyPageConfigData(collections.abc.Mapping):
             except Exception as ex:
                 logger.exception(ex)
                 raise Exception(
-                        "Error while loading attribute '%s' for: %s" %
-                        (name, self._page.rel_path)) from ex
+                    "Error while loading attribute '%s' for: %s" %
+                    (name, self._page.rel_path)) from ex
             # We always keep the wildcard loader in the loaders list.
             return self._values[name]
 
@@ -116,12 +116,14 @@ class LazyPageConfigData(collections.abc.Mapping):
 
         if not override_existing and attr_name in self._loaders:
             raise Exception(
-                    "A loader has already been mapped for: %s" % attr_name)
+                "A loader has already been mapped for: %s" % attr_name)
         self._loaders[attr_name] = loader
 
     def _mapValue(self, attr_name, value, override_existing=False):
-        loader = lambda _, __: value
-        self._mapLoader(attr_name, loader, override_existing=override_existing)
+        self._mapLoader(
+            attr_name,
+            lambda _, __: value,
+            override_existing=override_existing)
 
     def _ensureLoaded(self):
         if self._is_loaded:
@@ -133,8 +135,8 @@ class LazyPageConfigData(collections.abc.Mapping):
         except Exception as ex:
             logger.exception(ex)
             raise Exception(
-                    "Error while loading data for: %s" %
-                    self._page.rel_path) from ex
+                "Error while loading data for: %s" %
+                self._page.rel_path) from ex
 
     def _load(self):
         pass
@@ -152,7 +154,7 @@ class PageData(LazyPageConfigData):
     """ Template data for a page.
     """
     def __init__(self, page, ctx):
-        super(PageData, self).__init__(page)
+        super().__init__(page)
         self._ctx = ctx
 
     def _load(self):

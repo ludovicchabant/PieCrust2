@@ -2,14 +2,13 @@ import os
 import os.path
 import copy
 import logging
-from piecrust.sources.base import MODE_CREATING, MODE_PARSING
-from piecrust.sources.default import DefaultPageSource
+from piecrust.sources.default import DefaultContentSource
 
 
 logger = logging.getLogger(__name__)
 
 
-class ProseSource(DefaultPageSource):
+class ProseSource(DefaultContentSource):
     SOURCE_NAME = 'prose'
 
     def __init__(self, app, name, config):

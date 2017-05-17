@@ -3,16 +3,15 @@ import logging
 import yaml
 from piecrust.data.iterators import PageIterator
 from piecrust.processing.base import SimpleFileProcessor
-from piecrust.routing import create_route_metadata
 
 
 logger = logging.getLogger(__name__)
 
 
 SITEMAP_HEADER = \
-"""<?xml version="1.0" encoding="utf-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-"""
+    """<?xml version="1.0" encoding="utf-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    """
 SITEMAP_FOOTER = "</urlset>\n"
 
 SITEURL_HEADER =     "  <url>\n"
@@ -30,7 +29,7 @@ class SitemapProcessor(SimpleFileProcessor):
         super(SitemapProcessor, self).__init__({'sitemap': 'xml'})
         self._start_time = None
 
-    def onPipelineStart(self, pipeline):
+    def onPipelineStart(self, ctx):
         self._start_time = time.time()
 
     def _doProcess(self, in_path, out_path):

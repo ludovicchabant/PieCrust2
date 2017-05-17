@@ -28,13 +28,13 @@ class CompassProcessor(Processor):
     def initialize(self, app):
         super(CompassProcessor, self).initialize(app)
 
-    def onPipelineStart(self, pipeline):
-        super(CompassProcessor, self).onPipelineStart(pipeline)
-        self._maybeActivate(pipeline)
+    def onPipelineStart(self, ctx):
+        super(CompassProcessor, self).onPipelineStart(ctx)
+        self._maybeActivate(ctx)
 
-    def onPipelineEnd(self, pipeline):
-        super(CompassProcessor, self).onPipelineEnd(pipeline)
-        self._maybeRunCompass(pipeline)
+    def onPipelineEnd(self, ctx):
+        super(CompassProcessor, self).onPipelineEnd(ctx)
+        self._maybeRunCompass(ctx)
 
     def matches(self, path):
         if self._state != self.STATE_ACTIVE:
@@ -62,7 +62,7 @@ class CompassProcessor(Processor):
                              "is done.")
                 self._runInSite = True
 
-    def _maybeActivate(self, pipeline):
+    def _maybeActivate(self, ctx):
         if self._state != self.STATE_UNKNOWN:
             return
 
@@ -95,17 +95,17 @@ class CompassProcessor(Processor):
         if custom_args:
             self._args += ' ' + custom_args
 
-        out_dir = pipeline.out_dir
-        tmp_dir = os.path.join(pipeline.tmp_dir, 'compass')
+        out_dir = ctx.out_dir
+        tmp_dir = os.path.join(ctx.tmp_dir, 'compass')
         self._args = multi_replace(
-                self._args,
-                {'%out_dir%': out_dir,
-                    '%tmp_dir%': tmp_dir})
+            self._args,
+            {'%out_dir%': out_dir,
+             '%tmp_dir%': tmp_dir})
 
         self._runInSite = False
         self._runInTheme = False
 
-    def _maybeRunCompass(self, pipeline):
+    def _maybeRunCompass(self, ctx):
         if self._state != self.STATE_ACTIVE:
             return
 

@@ -5,11 +5,8 @@ import logging
 import datetime
 from werkzeug.wrappers import Response
 from werkzeug.wsgi import wrap_file
-from piecrust.app import PieCrust, apply_variant_and_values
-from piecrust.rendering import QualifiedPage
+from piecrust.page import QualifiedPage, PageNotFoundError
 from piecrust.routing import RouteNotFoundError
-from piecrust.sources.base import MODE_PARSING
-from piecrust.sources.pageref import PageNotFoundError
 from piecrust.uriutil import split_sub_uri
 
 
@@ -27,24 +24,18 @@ class RequestedPage(object):
     def __init__(self):
         self.qualified_page = None
         self.req_path = None
-        self.page_num = 1
         self.not_found_errors = []
 
 
-def find_routes(routes, uri, is_sub_page=False):
-    """ Returns routes matching the given URL, but puts generator routes
-        at the end.
+def find_routes(routes, uri, sub_num=1):
+    """ Returns routes matching the given URL.
     """
     res = []
-    gen_res = []
     for route in routes:
-        metadata = route.matchUri(uri)
-        if metadata is not None:
-            if route.is_source_route:
-                res.append((route, metadata, is_sub_page))
-            else:
-                gen_res.append((route, metadata, is_sub_page))
-    return res + gen_res
+        route_params = route.matchUri(uri)
+        if route_params is not None:
+            res.append((route, route_params, sub_num))
+    return res
 
 
 def get_requested_page(app, req_path):
@@ -60,49 +51,40 @@ def get_requested_page(app, req_path):
     # we try to also match the base URL (without the number).
     req_path_no_num, page_num = split_sub_uri(app, req_path)
     if page_num > 1:
-        routes += find_routes(app.routes, req_path_no_num, True)
+        routes += find_routes(app.routes, req_path_no_num, page_num)
 
     if len(routes) == 0:
         raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
     req_page = RequestedPage()
-    for route, route_metadata, is_sub_page in routes:
-        try:
-            cur_req_path = req_path
-            if is_sub_page:
-                cur_req_path = req_path_no_num
+    for route, route_params, route_sub_num in routes:
+        cur_req_path = req_path
+        if route_sub_num > 1:
+            cur_req_path = req_path_no_num
 
-            qp = _get_requested_page_for_route(
-                    app, route, route_metadata, cur_req_path)
-            if qp is not None:
-                req_page.qualified_page = qp
-                req_page.req_path = cur_req_path
-                if is_sub_page:
-                    req_page.page_num = page_num
-                break
-        except PageNotFoundError as nfe:
-            req_page.not_found_errors.append(nfe)
+        qp = _get_requested_page_for_route(app, route, route_params,
+                                           route_sub_num)
+        if qp is not None:
+            req_page.qualified_page = qp
+            req_page.req_path = cur_req_path
+            break
+
+        req_page.not_found_errors.append(PageNotFoundError(
+            "No path found for '%s' in source '%s'." %
+            (cur_req_path, route.source_name)))
+
     return req_page
 
 
-def _get_requested_page_for_route(app, route, route_metadata, req_path):
-    if not route.is_generator_route:
-        source = app.getSource(route.source_name)
-        factory = source.findPageFactory(route_metadata, MODE_PARSING)
-        if factory is None:
-            raise PageNotFoundError(
-                    "No path found for '%s' in source '%s'." %
-                    (req_path, source.name))
-    else:
-        factory = route.generator.getPageFactory(route_metadata)
-        if factory is None:
-            raise PageNotFoundError(
-                    "No path found for '%s' in generator '%s'." %
-                    (req_path, route.generator.name))
+def _get_requested_page_for_route(app, route, route_params, sub_num):
+    source = app.getSource(route.source_name)
+    item = source.findContent(route_params)
+    if item is None:
+        return None
 
     # Build the page.
-    page = factory.buildPage()
-    qp = QualifiedPage(page, route, route_metadata)
+    page = app.getPage(item)
+    qp = QualifiedPage(page, route, route_params, sub_num)
     return qp
 
 

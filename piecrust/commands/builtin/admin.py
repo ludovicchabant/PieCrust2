@@ -20,33 +20,33 @@ class AdministrationPanelCommand(ChefCommand):
         subparsers = parser.add_subparsers()
 
         p = subparsers.add_parser(
-                'init',
-                help="Creates a new administration panel website.")
+            'init',
+            help="Creates a new administration panel website.")
         p.set_defaults(sub_func=self._initFoodTruck)
 
         p = subparsers.add_parser(
-                'genpass',
-                help=("Generates the hashed password for use as an "
-                      "admin password"))
+            'genpass',
+            help=("Generates the hashed password for use as an "
+                  "admin password"))
         p.add_argument('password', help="The password to hash.")
         p.set_defaults(sub_func=self._generatePassword)
 
         p = subparsers.add_parser(
-                'run',
-                help="Runs the administrative panel website.")
+            'run',
+            help="Runs the administrative panel website.")
         p.add_argument(
-                '-p', '--port',
-                help="The port for the administrative panel website.",
-                default=8090)
+            '-p', '--port',
+            help="The port for the administrative panel website.",
+            default=8090)
         p.add_argument(
-                '-a', '--address',
-                help="The host for the administrative panel website.",
-                default='localhost')
+            '-a', '--address',
+            help="The host for the administrative panel website.",
+            default='localhost')
         p.add_argument(
-                '--no-assets',
-                help="Don't process and monitor the asset folder(s).",
-                dest='monitor_assets',
-                action='store_false')
+            '--no-assets',
+            help="Don't process and monitor the asset folder(s).",
+            dest='monitor_assets',
+            action='store_false')
         p.set_defaults(sub_func=self._runFoodTruck)
 
     def checkedRun(self, ctx):
@@ -59,34 +59,26 @@ class AdministrationPanelCommand(ChefCommand):
         return ctx.args.sub_func(ctx)
 
     def _runFoodTruck(self, ctx):
-        # See `_run_sse_check` in `piecrust.serving.wrappers` for an explanation
-        # of this check.
+        # See `_run_sse_check` in `piecrust.serving.wrappers` for an
+        # explanation of this check.
         if (ctx.args.monitor_assets and (
                 not ctx.args.debug or
                 os.environ.get('WERKZEUG_RUN_MAIN') == 'true')):
-            from piecrust.app import PieCrustFactory
             from piecrust.serving.procloop import ProcessingLoop
-            appfactory = PieCrustFactory(
-                    ctx.app.root_dir,
-                    cache=ctx.app.cache.enabled,
-                    cache_key=ctx.app.cache_key,
-                    config_variant=ctx.config_variant,
-                    config_values=ctx.config_values,
-                    debug=ctx.app.debug,
-                    theme_site=ctx.app.theme_site)
-            out_dir = os.path.join(ctx.app.root_dir, CACHE_DIR, 'foodtruck', 'server')
-            proc_loop = ProcessingLoop(appfactory, out_dir)
+            out_dir = os.path.join(
+                ctx.app.root_dir, CACHE_DIR, 'foodtruck', 'server')
+            proc_loop = ProcessingLoop(ctx.appfactory, out_dir)
             proc_loop.start()
 
         es = {
-                'FOODTRUCK_CMDLINE_MODE': True,
-                'FOODTRUCK_ROOT': ctx.app.root_dir}
+            'FOODTRUCK_CMDLINE_MODE': True,
+            'FOODTRUCK_ROOT': ctx.app.root_dir}
         from piecrust.admin.main import run_foodtruck
         run_foodtruck(
-                host=ctx.args.address,
-                port=ctx.args.port,
-                debug=ctx.args.debug,
-                extra_settings=es)
+            host=ctx.args.address,
+            port=ctx.args.port,
+            debug=ctx.args.debug,
+            extra_settings=es)
 
     def _initFoodTruck(self, ctx):
         import getpass
@@ -113,9 +105,9 @@ security:
     password: %(password)s
 """
         ft_config = ft_config % {
-                'username': admin_username,
-                'password': admin_password
-                }
+            'username': admin_username,
+            'password': admin_password
+        }
         with open('foodtruck.yml', 'w', encoding='utf8') as fp:
             fp.write(ft_config)
 

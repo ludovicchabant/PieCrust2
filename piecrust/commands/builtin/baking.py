@@ -5,20 +5,7 @@ import hashlib
 import fnmatch
 import datetime
 from colorama import Fore
-from piecrust import CACHE_DIR
-from piecrust.baking.baker import Baker
-from piecrust.baking.records import (
-        BakeRecord, BakeRecordEntry, SubPageBakeInfo)
-from piecrust.chefutil import format_timed
 from piecrust.commands.base import ChefCommand
-from piecrust.environment import ExecutionStats
-from piecrust.processing.pipeline import ProcessorPipeline
-from piecrust.processing.records import (
-        ProcessorPipelineRecord,
-        FLAG_PREPARED, FLAG_PROCESSED, FLAG_BYPASSED_STRUCTURED_PROCESSING,
-        FLAG_COLLAPSED_FROM_LAST_RUN)
-from piecrust.rendering import (
-        PASS_FORMATTING, PASS_RENDERING)
 
 
 logger = logging.getLogger(__name__)
@@ -32,60 +19,58 @@ class BakeCommand(ChefCommand):
 
     def setupParser(self, parser, app):
         parser.add_argument(
-                '-o', '--output',
-                help="The directory to put all the baked HTML files into "
-                     "(defaults to `_counter`)")
+            '-o', '--output',
+            help="The directory to put all the baked HTML files into "
+            "(defaults to `_counter`)")
         parser.add_argument(
-                '-f', '--force',
-                help="Force re-baking the entire website.",
-                action='store_true')
+            '-f', '--force',
+            help="Force re-baking the entire website.",
+            action='store_true')
         parser.add_argument(
-                '-w', '--workers',
-                help="The number of worker processes to spawn.",
-                type=int, default=-1)
+            '-p', '--pipelines',
+            help="The pipelines to run.",
+            nargs='*')
         parser.add_argument(
-                '--batch-size',
-                help="The number of jobs per batch.",
-                type=int, default=-1)
+            '-w', '--workers',
+            help="The number of worker processes to spawn.",
+            type=int, default=-1)
         parser.add_argument(
-                '--assets-only',
-                help="Only bake the assets (don't bake the web pages).",
-                action='store_true')
+            '--batch-size',
+            help="The number of jobs per batch.",
+            type=int, default=-1)
         parser.add_argument(
-                '--html-only',
-                help="Only bake the pages (don't run the asset pipeline).",
-                action='store_true')
+            '--assets-only',
+            help="Only bake the assets (don't bake the web pages).",
+            action='store_true')
         parser.add_argument(
-                '--show-stats',
-                help="Show detailed information about the bake.",
-                action='store_true')
+            '--html-only',
+            help="Only bake the pages (don't run the asset pipeline).",
+            action='store_true')
+        parser.add_argument(
+            '--show-stats',
+            help="Show detailed information about the bake.",
+            action='store_true')
 
     def run(self, ctx):
+        from piecrust.chefutil import format_timed
+
         out_dir = (ctx.args.output or
                    os.path.join(ctx.app.root_dir, '_counter'))
 
-        success = True
-        ctx.stats = {}
         start_time = time.perf_counter()
         try:
-            # Bake the site sources.
-            if not ctx.args.assets_only:
-                success = success & self._bakeSources(ctx, out_dir)
-
-            # Bake the assets.
-            if not ctx.args.html_only:
-                success = success & self._bakeAssets(ctx, out_dir)
+            records = self._doBake(ctx, out_dir)
 
             # Show merged stats.
             if ctx.args.show_stats:
                 logger.info("-------------------")
                 logger.info("Timing information:")
-                _show_stats(ctx.stats)
+                _show_stats(records.stats)
 
             # All done.
             logger.info('-------------------------')
             logger.info(format_timed(start_time, 'done baking'))
-            return 0 if success else 1
+            return 0 if records.success else 1
         except Exception as ex:
             if ctx.app.debug:
                 logger.exception(ex)
@@ -93,71 +78,58 @@ class BakeCommand(ChefCommand):
                 logger.error(str(ex))
             return 1
 
-    def _bakeSources(self, ctx, out_dir):
+    def _doBake(self, ctx, out_dir):
+        from piecrust.baking.baker import Baker
+
         if ctx.args.workers > 0:
             ctx.app.config.set('baker/workers', ctx.args.workers)
         if ctx.args.batch_size > 0:
             ctx.app.config.set('baker/batch_size', ctx.args.batch_size)
+
+        allowed_pipelines = None
+        if ctx.args.html_only:
+            allowed_pipelines = ['page']
+        elif ctx.args.assets_only:
+            allowed_pipelines = ['asset']
+        elif ctx.args.pipelines:
+            allowed_pipelines = ctx.args.pipelines
+
         baker = Baker(
-                ctx.app, out_dir,
-                force=ctx.args.force,
-                applied_config_variant=ctx.config_variant,
-                applied_config_values=ctx.config_values)
-        record = baker.bake()
-        _merge_stats(record.stats, ctx.stats)
-        return record.success
+            ctx.appfactory, ctx.app, out_dir,
+            force=ctx.args.force,
+            allowed_pipelines=allowed_pipelines)
+        records = baker.bake()
 
-    def _bakeAssets(self, ctx, out_dir):
-        proc = ProcessorPipeline(
-                ctx.app, out_dir,
-                force=ctx.args.force,
-                applied_config_variant=ctx.config_variant,
-                applied_config_values=ctx.config_values)
-        record = proc.run()
-        _merge_stats(record.stats, ctx.stats)
-        return record.success
-
-
-def _merge_stats(source, target):
-    if source is None:
-        return
-
-    for name, val in source.items():
-        if name not in target:
-            target[name] = ExecutionStats()
-        target[name].mergeStats(val)
+        return records
 
 
 def _show_stats(stats, *, full=False):
     indent = '    '
-    for name in sorted(stats.keys()):
-        logger.info('%s:' % name)
-        s = stats[name]
 
-        logger.info('  Timers:')
-        for name, val in sorted(s.timers.items(), key=lambda i: i[1],
-                                reverse=True):
-            val_str = '%8.1f s' % val
-            logger.info(
-                    "%s[%s%s%s] %s" %
-                    (indent, Fore.GREEN, val_str, Fore.RESET, name))
+    logger.info('  Timers:')
+    for name, val in sorted(stats.timers.items(), key=lambda i: i[1],
+                            reverse=True):
+        val_str = '%8.1f s' % val
+        logger.info(
+            "%s[%s%s%s] %s" %
+            (indent, Fore.GREEN, val_str, Fore.RESET, name))
 
-        logger.info('  Counters:')
-        for name in sorted(s.counters.keys()):
-            val_str = '%8d  ' % s.counters[name]
-            logger.info(
-                    "%s[%s%s%s] %s" %
-                    (indent, Fore.GREEN, val_str, Fore.RESET, name))
+    logger.info('  Counters:')
+    for name in sorted(stats.counters.keys()):
+        val_str = '%8d  ' % stats.counters[name]
+        logger.info(
+            "%s[%s%s%s] %s" %
+            (indent, Fore.GREEN, val_str, Fore.RESET, name))
 
-        logger.info('  Manifests:')
-        for name in sorted(s.manifests.keys()):
-            val = s.manifests[name]
-            logger.info(
-                    "%s[%s%s%s] [%d entries]" %
-                    (indent, Fore.CYAN, name, Fore.RESET, len(val)))
-            if full:
-                for v in val:
-                    logger.info("%s  - %s" % (indent, v))
+    logger.info('  Manifests:')
+    for name in sorted(stats.manifests.keys()):
+        val = stats.manifests[name]
+        logger.info(
+            "%s[%s%s%s] [%d entries]" %
+            (indent, Fore.CYAN, name, Fore.RESET, len(val)))
+        if full:
+            for v in val:
+                logger.info("%s  - %s" % (indent, v))
 
 
 class ShowRecordCommand(ChefCommand):
@@ -169,41 +141,47 @@ class ShowRecordCommand(ChefCommand):
 
     def setupParser(self, parser, app):
         parser.add_argument(
-                '-o', '--output',
-                help="The output directory for which to show the bake record "
-                     "(defaults to `_counter`)",
-                nargs='?')
+            '-o', '--output',
+            help="The output directory for which to show the bake record "
+            "(defaults to `_counter`)",
+            nargs='?')
         parser.add_argument(
-                '-p', '--path',
-                help="A pattern that will be used to filter the relative path "
-                     "of entries to show.")
+            '-p', '--path',
+            help="A pattern that will be used to filter the relative path "
+            "of entries to show.")
         parser.add_argument(
-                '-t', '--out',
-                help="A pattern that will be used to filter the output path "
-                     "of entries to show.")
+            '-t', '--out',
+            help="A pattern that will be used to filter the output path "
+            "of entries to show.")
         parser.add_argument(
-                '--last',
-                type=int,
-                default=0,
-                help="Show the last Nth bake record.")
+            '--last',
+            type=int,
+            default=0,
+            help="Show the last Nth bake record.")
         parser.add_argument(
-                '--html-only',
-                action='store_true',
-                help="Only show records for pages (not from the asset "
-                     "pipeline).")
+            '--html-only',
+            action='store_true',
+            help="Only show records for pages (not from the asset "
+            "pipeline).")
         parser.add_argument(
-                '--assets-only',
-                action='store_true',
-                help="Only show records for assets (not from pages).")
+            '--assets-only',
+            action='store_true',
+            help="Only show records for assets (not from pages).")
         parser.add_argument(
-                '--show-stats',
-                action='store_true',
-                help="Show stats from the record.")
+            '--show-stats',
+            action='store_true',
+            help="Show stats from the record.")
         parser.add_argument(
-                '--show-manifest',
-                help="Show manifest entries from the record.")
+            '--show-manifest',
+            help="Show manifest entries from the record.")
 
     def run(self, ctx):
+        from piecrust.processing.records import (
+            FLAG_PREPARED, FLAG_PROCESSED, FLAG_BYPASSED_STRUCTURED_PROCESSING,
+            FLAG_COLLAPSED_FROM_LAST_RUN)
+        from piecrust.rendering import (
+            PASS_FORMATTING, PASS_RENDERING)
+
         out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
         record_id = hashlib.md5(out_dir.encode('utf8')).hexdigest()
         suffix = '' if ctx.args.last == 0 else '.%d' % ctx.args.last
@@ -220,10 +198,10 @@ class ShowRecordCommand(ChefCommand):
         if not ctx.args.show_stats and not ctx.args.show_manifest:
             if not ctx.args.assets_only:
                 self._showBakeRecord(
-                        ctx, record_name, pattern, out_pattern)
+                    ctx, record_name, pattern, out_pattern)
             if not ctx.args.html_only:
                 self._showProcessingRecord(
-                        ctx, record_name, pattern, out_pattern)
+                    ctx, record_name, pattern, out_pattern)
             return
 
         stats = {}
@@ -249,8 +227,6 @@ class ShowRecordCommand(ChefCommand):
                             (Fore.CYAN, name, Fore.RESET, len(val)))
                         for v in val:
                             logger.info("      - %s" % v)
-
-
 
     def _getBakeRecord(self, ctx, record_name):
         record_cache = ctx.app.cache.getCache('baker')
@@ -286,11 +262,11 @@ class ShowRecordCommand(ChefCommand):
                 continue
 
             flags = _get_flag_descriptions(
-                    entry.flags,
-                    {
-                        BakeRecordEntry.FLAG_NEW: 'new',
-                        BakeRecordEntry.FLAG_SOURCE_MODIFIED: 'modified',
-                        BakeRecordEntry.FLAG_OVERRIDEN: 'overriden'})
+                entry.flags,
+                {
+                    BakeRecordEntry.FLAG_NEW: 'new',
+                    BakeRecordEntry.FLAG_SOURCE_MODIFIED: 'modified',
+                    BakeRecordEntry.FLAG_OVERRIDEN: 'overriden'})
 
             logging.info(" - ")
 
@@ -308,17 +284,17 @@ class ShowRecordCommand(ChefCommand):
             logging.info("   %d sub-pages:" % len(entry.subs))
             for sub in entry.subs:
                 sub_flags = _get_flag_descriptions(
-                        sub.flags,
-                        {
-                            SubPageBakeInfo.FLAG_BAKED: 'baked',
-                            SubPageBakeInfo.FLAG_FORCED_BY_SOURCE:
-                                'forced by source',
-                            SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS:
-                                'forced by missing previous record entry',
-                            SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS:
-                                'forced by previous errors',
-                            SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED:
-                                'formatting invalidated'})
+                    sub.flags,
+                    {
+                        SubPageBakeInfo.FLAG_BAKED: 'baked',
+                        SubPageBakeInfo.FLAG_FORCED_BY_SOURCE:
+                        'forced by source',
+                        SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS:
+                        'forced by missing previous record entry',
+                        SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS:
+                        'forced by previous errors',
+                        SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED:
+                        'formatting invalidated'})
 
                 logging.info("   - ")
                 logging.info("     URL:    %s" % sub.out_uri)

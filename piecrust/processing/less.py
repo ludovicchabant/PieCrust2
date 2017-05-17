@@ -7,8 +7,7 @@ import logging
 import platform
 import subprocess
 from piecrust.processing.base import (
-        SimpleFileProcessor, ExternalProcessException)
-from piecrust.processing.tree import FORCE_BUILD
+    SimpleFileProcessor, ExternalProcessException, FORCE_BUILD)
 
 
 logger = logging.getLogger(__name__)
@@ -22,9 +21,9 @@ class LessProcessor(SimpleFileProcessor):
         self._conf = None
         self._map_dir = None
 
-    def onPipelineStart(self, pipeline):
-        self._map_dir = os.path.join(pipeline.tmp_dir, 'less')
-        if (pipeline.is_first_worker and
+    def onPipelineStart(self, ctx):
+        self._map_dir = os.path.join(ctx.tmp_dir, 'less')
+        if (ctx.is_main_process and
                 not os.path.isdir(self._map_dir)):
             os.makedirs(self._map_dir)
 
@@ -59,7 +58,7 @@ class LessProcessor(SimpleFileProcessor):
 
         map_path = self._getMapPath(in_path)
         map_url = '/' + os.path.relpath(
-                map_path, self.app.root_dir).replace('\\', '/')
+            map_path, self.app.root_dir).replace('\\', '/')
 
         # On Windows, it looks like LESSC is confused with paths when the
         # map file is not to be created in the same directory as the input
@@ -67,8 +66,8 @@ class LessProcessor(SimpleFileProcessor):
         # a mix of relative and absolute paths stuck together).
         # So create it there and move it afterwards... :(
         temp_map_path = os.path.join(
-                os.path.dirname(in_path),
-                os.path.basename(map_path))
+            os.path.dirname(in_path),
+            os.path.basename(map_path))
 
         args = [self._conf['bin'],
                 '--source-map=%s' % temp_map_path,
@@ -83,8 +82,8 @@ class LessProcessor(SimpleFileProcessor):
         shell = (platform.system() == 'Windows')
         try:
             proc = subprocess.Popen(
-                    args, shell=shell,
-                    stderr=subprocess.PIPE)
+                args, shell=shell,
+                stderr=subprocess.PIPE)
             stdout_data, stderr_data = proc.communicate()
         except FileNotFoundError as ex:
             logger.error("Tried running LESS processor with command: %s" %
@@ -93,7 +92,7 @@ class LessProcessor(SimpleFileProcessor):
                             "Did you install it?") from ex
         if proc.returncode != 0:
             raise ExternalProcessException(
-                    stderr_data.decode(sys.stderr.encoding))
+                stderr_data.decode(sys.stderr.encoding))
 
         logger.debug("Moving map file: %s -> %s" % (temp_map_path, map_path))
         if os.path.exists(map_path):
@@ -115,8 +114,8 @@ class LessProcessor(SimpleFileProcessor):
 
     def _getMapPath(self, path):
         map_name = "%s_%s.map" % (
-                os.path.basename(path),
-                hashlib.md5(path.encode('utf8')).hexdigest())
+            os.path.basename(path),
+            hashlib.md5(path.encode('utf8')).hexdigest())
         map_path = os.path.join(self._map_dir, map_name)
         return map_path
 

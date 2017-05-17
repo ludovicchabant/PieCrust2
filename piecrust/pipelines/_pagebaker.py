@@ -3,11 +3,8 @@ import queue
 import logging
 import threading
 import urllib.parse
-from piecrust import ASSET_DIR_SUFFIX
-from piecrust.baking.records import SubPageBakeInfo
-from piecrust.rendering import (
-        QualifiedPage, PageRenderingContext, render_page,
-        PASS_FORMATTING)
+from piecrust.pipelines._pagerecords import SubPagePipelineRecordEntry
+from piecrust.rendering import RenderingContext, render_page, PASS_FORMATTING
 from piecrust.uriutil import split_uri
 
 
@@ -18,24 +15,6 @@ class BakingError(Exception):
     pass
 
 
-def _text_writer(q):
-    while True:
-        item = q.get()
-        if item is not None:
-            out_path, txt = item
-            out_dir = os.path.dirname(out_path)
-            _ensure_dir_exists(out_dir)
-
-            with open(out_path, 'w', encoding='utf8') as fp:
-                fp.write(txt)
-
-            q.task_done()
-        else:
-            # Sentinel object, terminate the thread.
-            q.task_done()
-            break
-
-
 class PageBaker(object):
     def __init__(self, app, out_dir, force=False, copy_assets=True):
         self.app = app
@@ -44,14 +23,18 @@ class PageBaker(object):
         self.copy_assets = copy_assets
         self.site_root = app.config.get('site/root')
         self.pretty_urls = app.config.get('site/pretty_urls')
+        self._writer_queue = None
+        self._writer = None
+
+    def startWriterQueue(self):
         self._writer_queue = queue.Queue()
         self._writer = threading.Thread(
-                name='PageSerializer',
-                target=_text_writer,
-                args=(self._writer_queue,))
+            name='PageSerializer',
+            target=_text_writer,
+            args=(self._writer_queue,))
         self._writer.start()
 
-    def shutdown(self):
+    def stopWriterQueue(self):
         self._writer_queue.put_nowait(None)
         self._writer.join()
 
@@ -70,28 +53,28 @@ class PageBaker(object):
 
         return os.path.normpath(os.path.join(*bake_path))
 
-    def bake(self, qualified_page, prev_entry, dirty_source_names,
-             generator_name=None):
+    def bake(self, qualified_page, prev_entry, dirty_source_names):
         # Start baking the sub-pages.
         cur_sub = 1
         has_more_subs = True
         sub_entries = []
+        pretty_urls = qualified_page.config.get(
+            'pretty_urls', self.pretty_urls)
 
         while has_more_subs:
-            # Get the URL and path for this sub-page.
-            sub_uri = qualified_page.getUri(cur_sub)
+            sub_page = qualified_page.getSubPage(cur_sub)
+            sub_uri = sub_page.uri
             logger.debug("Baking '%s' [%d]..." % (sub_uri, cur_sub))
-            pretty_urls = qualified_page.config.get('pretty_urls',
-                                                    self.pretty_urls)
+
             out_path = self.getOutputPath(sub_uri, pretty_urls)
 
             # Create the sub-entry for the bake record.
-            sub_entry = SubPageBakeInfo(sub_uri, out_path)
+            sub_entry = SubPagePipelineRecordEntry(sub_uri, out_path)
             sub_entries.append(sub_entry)
 
             # Find a corresponding sub-entry in the previous bake record.
             prev_sub_entry = None
-            if prev_entry:
+            if prev_entry is not None:
                 try:
                     prev_sub_entry = prev_entry.getSub(cur_sub)
                 except IndexError:
@@ -99,7 +82,7 @@ class PageBaker(object):
 
             # Figure out if we need to invalidate or force anything.
             force_this_sub, invalidate_formatting = _compute_force_flags(
-                    prev_sub_entry, sub_entry, dirty_source_names)
+                prev_sub_entry, sub_entry, dirty_source_names)
             force_this_sub = force_this_sub or self.force
 
             # Check for up-to-date outputs.
@@ -118,7 +101,7 @@ class PageBaker(object):
             # Keep trying for as many subs as we know this page has.
             if not do_bake:
                 sub_entry.render_info = prev_sub_entry.copyRenderInfo()
-                sub_entry.flags = SubPageBakeInfo.FLAG_NONE
+                sub_entry.flags = SubPagePipelineRecordEntry.FLAG_NONE
 
                 if prev_entry.num_subs >= cur_sub + 1:
                     cur_sub += 1
@@ -135,13 +118,12 @@ class PageBaker(object):
                 if invalidate_formatting:
                     cache_key = sub_uri
                     self.app.env.rendered_segments_repository.invalidate(
-                            cache_key)
+                        cache_key)
                     sub_entry.flags |= \
-                        SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED
+                        SubPagePipelineRecordEntry.FLAG_FORMATTING_INVALIDATED
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
-                rp = self._bakeSingle(qualified_page, cur_sub, out_path,
-                                      generator_name)
+                rp = self._bakeSingle(qualified_page, cur_sub, out_path)
             except Exception as ex:
                 logger.exception(ex)
                 page_rel_path = os.path.relpath(qualified_page.path,
@@ -150,7 +132,7 @@ class PageBaker(object):
                                   (page_rel_path, sub_uri)) from ex
 
             # Record what we did.
-            sub_entry.flags |= SubPageBakeInfo.FLAG_BAKED
+            sub_entry.flags |= SubPagePipelineRecordEntry.FLAG_BAKED
             sub_entry.render_info = rp.copyRenderInfo()
 
             # Copy page assets.
@@ -178,19 +160,39 @@ class PageBaker(object):
 
         return sub_entries
 
-    def _bakeSingle(self, qp, num, out_path,
-                    generator_name=None):
-        ctx = PageRenderingContext(qp, page_num=num)
-        if qp.route.is_generator_route:
-            qp.route.generator.prepareRenderContext(ctx)
+    def _bakeSingle(self, qp, out_path):
+        ctx = RenderingContext(qp)
+        qp.source.prepareRenderContext(ctx)
 
         with self.app.env.timerScope("PageRender"):
             rp = render_page(ctx)
 
         with self.app.env.timerScope("PageSerialize"):
-            self._writer_queue.put_nowait((out_path, rp.content))
+            if self._writer_queue is not None:
+                self._writer_queue.put_nowait((out_path, rp.content))
+            else:
+                with open(out_path, 'w', encoding='utf8') as fp:
+                    fp.write(rp.content)
 
         return rp
+
+
+def _text_writer(q):
+    while True:
+        item = q.get()
+        if item is not None:
+            out_path, txt = item
+            out_dir = os.path.dirname(out_path)
+            _ensure_dir_exists(out_dir)
+
+            with open(out_path, 'w', encoding='utf8') as fp:
+                fp.write(txt)
+
+            q.task_done()
+        else:
+            # Sentinel object, terminate the thread.
+            q.task_done()
+            break
 
 
 def _compute_force_flags(prev_sub_entry, sub_entry, dirty_source_names):
@@ -206,38 +208,38 @@ def _compute_force_flags(prev_sub_entry, sub_entry, dirty_source_names):
         # some reason. If so, we need to bake this one too.
         # (this happens for instance with the main page of a blog).
         dirty_for_this, invalidated_render_passes = (
-                _get_dirty_source_names_and_render_passes(
-                    prev_sub_entry, dirty_source_names))
+            _get_dirty_source_names_and_render_passes(
+                prev_sub_entry, dirty_source_names))
         if len(invalidated_render_passes) > 0:
             logger.debug(
-                    "'%s' is known to use sources %s, which have "
-                    "items that got (re)baked. Will force bake this "
-                    "page. " % (sub_uri, dirty_for_this))
+                "'%s' is known to use sources %s, which have "
+                "items that got (re)baked. Will force bake this "
+                "page. " % (sub_uri, dirty_for_this))
             sub_entry.flags |= \
-                SubPageBakeInfo.FLAG_FORCED_BY_SOURCE
+                SubPagePipelineRecordEntry.FLAG_FORCED_BY_SOURCE
             force_this_sub = True
 
             if PASS_FORMATTING in invalidated_render_passes:
                 logger.debug(
-                        "Will invalidate cached formatting for '%s' "
-                        "since sources were using during that pass."
-                        % sub_uri)
+                    "Will invalidate cached formatting for '%s' "
+                    "since sources were using during that pass."
+                    % sub_uri)
                 invalidate_formatting = True
     elif (prev_sub_entry and
             prev_sub_entry.errors):
         # Previous bake failed. We'll have to bake it again.
         logger.debug(
-                "Previous record entry indicates baking failed for "
-                "'%s'. Will bake it again." % sub_uri)
+            "Previous record entry indicates baking failed for "
+            "'%s'. Will bake it again." % sub_uri)
         sub_entry.flags |= \
-            SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS
+            SubPagePipelineRecordEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS
         force_this_sub = True
     elif not prev_sub_entry:
         # No previous record. We'll have to bake it.
         logger.debug("No previous record entry found for '%s'. Will "
                      "force bake it." % sub_uri)
         sub_entry.flags |= \
-            SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS
+            SubPagePipelineRecordEntry.FLAG_FORCED_BY_NO_PREVIOUS
         force_this_sub = True
 
     return force_this_sub, invalidate_formatting

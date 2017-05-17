@@ -5,8 +5,7 @@ import hashlib
 import logging
 import platform
 import subprocess
-from piecrust.processing.base import SimpleFileProcessor
-from piecrust.processing.tree import FORCE_BUILD
+from piecrust.processing.base import SimpleFileProcessor, FORCE_BUILD
 
 
 logger = logging.getLogger(__name__)
@@ -17,23 +16,23 @@ class SassProcessor(SimpleFileProcessor):
 
     def __init__(self):
         super(SassProcessor, self).__init__(
-                extensions={'scss': 'css', 'sass': 'css'})
+            extensions={'scss': 'css', 'sass': 'css'})
         self._conf = None
         self._map_dir = None
 
     def initialize(self, app):
         super(SassProcessor, self).initialize(app)
 
-    def onPipelineStart(self, pipeline):
-        super(SassProcessor, self).onPipelineStart(pipeline)
+    def onPipelineStart(self, ctx):
+        super(SassProcessor, self).onPipelineStart(ctx)
 
-        self._map_dir = os.path.join(pipeline.tmp_dir, 'sass')
-        if pipeline.is_first_worker:
+        self._map_dir = os.path.join(ctx.tmp_dir, 'sass')
+        if ctx.is_main_process:
             if not os.path.isdir(self._map_dir):
                 os.makedirs(self._map_dir)
 
         # Ignore include-only Sass files.
-        pipeline.addIgnorePatterns(['_*.scss', '_*.sass'])
+        ctx.ignore_patterns += ['_*.scss', '_*.sass']
 
     def getDependencies(self, path):
         if _is_include_only(path):

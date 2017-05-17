@@ -39,7 +39,7 @@ class PieCrustPlugin(object):
     def getSources(self):
         return []
 
-    def getPageGenerators(self):
+    def getPipelines(self):
         return []
 
     def getPublishers(self):
@@ -62,15 +62,15 @@ class PluginLoader(object):
 
     def getFormatters(self):
         return self._getPluginComponents(
-                'getFormatters',
-                initialize=True, register_timer=True,
-                order_key=lambda f: f.priority)
+            'getFormatters',
+            initialize=True, register_timer=True,
+            order_key=lambda f: f.priority)
 
     def getTemplateEngines(self):
         return self._getPluginComponents(
-                'getTemplateEngines',
-                initialize=True, register_timer=True,
-                register_timer_suffixes=['_segment', '_layout'])
+            'getTemplateEngines',
+            initialize=True, register_timer=True,
+            register_timer_suffixes=['_segment', '_layout'])
 
     def getTemplateEngineExtensions(self, engine_name):
         return self._getPluginComponents('getTemplateEngineExtensions',
@@ -81,9 +81,9 @@ class PluginLoader(object):
 
     def getProcessors(self):
         return self._getPluginComponents(
-                'getProcessors',
-                initialize=True, register_timer=True,
-                order_key=lambda p: p.priority)
+            'getProcessors',
+            initialize=True, register_timer=True,
+            order_key=lambda p: p.priority)
 
     def getImporters(self):
         return self._getPluginComponents('getImporters')
@@ -100,8 +100,8 @@ class PluginLoader(object):
     def getSources(self):
         return self._getPluginComponents('getSources')
 
-    def getPageGenerators(self):
-        return self._getPluginComponents('getPageGenerators')
+    def getPipelines(self):
+        return self._getPluginComponents('getPipelines')
 
     def getPublishers(self):
         return self._getPluginComponents('getPublishers')
@@ -142,7 +142,6 @@ class PluginLoader(object):
 
         if mod is None:
             logger.error("Failed to load plugin '%s'." % plugin_name)
-            logger.error(ex)
             return
 
         plugin_class = getattr(mod, '__piecrust_plugin__', None)
@@ -180,10 +179,11 @@ class PluginLoader(object):
             if register_timer:
                 for comp in plugin_components:
                     if not register_timer_suffixes:
-                        self.app.env.registerTimer(comp.__class__.__name__)
+                        self.app.env.stats.registerTimer(
+                            comp.__class__.__name__)
                     else:
                         for s in register_timer_suffixes:
-                            self.app.env.registerTimer(
+                            self.app.env.stats.registerTimer(
                                 comp.__class__.__name__ + s)
 
         if order_key is not None:

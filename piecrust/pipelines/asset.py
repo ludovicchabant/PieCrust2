@@ -1,0 +1,188 @@
+import os
+import os.path
+import re
+import logging
+from piecrust.pipelines._procrecords import AssetPipelineRecordEntry
+from piecrust.pipelines._proctree import (
+    ProcessingTreeBuilder, ProcessingTreeRunner,
+    get_node_name_tree, print_node,
+    STATE_DIRTY)
+from piecrust.pipelines.base import ContentPipeline
+from piecrust.processing.base import ProcessorContext
+from piecrust.sources.fs import FSContentSourceBase
+
+
+logger = logging.getLogger(__name__)
+
+
+class AssetPipeline(ContentPipeline):
+    PIPELINE_NAME = 'asset'
+    RECORD_CLASS = AssetPipelineRecordEntry
+
+    def __init__(self, source):
+        if not isinstance(source, FSContentSourceBase):
+            raise Exception(
+                "The asset pipeline only support file-system sources.")
+
+        super().__init__(source)
+        self.enabled_processors = None
+        self.ignore_patterns = []
+        self._processors = None
+        self._base_dir = source.fs_endpoint_path
+
+    def initialize(self, ctx):
+        # Get the list of processors for this run.
+        processors = self.app.plugin_loader.getProcessors()
+        if self.enabled_processors is not None:
+            logger.debug("Filtering processors to: %s" %
+                         self.enabled_processors)
+            processors = get_filtered_processors(processors,
+                                                 self.enabled_processors)
+
+        # Invoke pre-processors.
+        proc_ctx = ProcessorContext(self, ctx)
+        for proc in processors:
+            proc.onPipelineStart(proc_ctx)
+
+        # Add any extra processors registered in the `onPipelineStart` step.
+        processors += proc_ctx.extra_processors
+
+        # Sort our processors by priority.
+        processors.sort(key=lambda p: p.priority)
+
+        # Ok, that's the list of processors for this run.
+        self._processors = processors
+
+        # Pre-processors can define additional ignore patterns so let's
+        # add them to what we had already.
+        self.ignore_patterns += make_re(proc_ctx.ignore_patterns)
+
+        # Register timers.
+        stats = self.app.env.stats
+        stats.registerTimer('BuildProcessingTree', raise_if_registered=False)
+        stats.registerTimer('RunProcessingTree', raise_if_registered=False)
+
+    def run(self, content_item, ctx, result):
+        # See if we need to ignore this item.
+        rel_path = os.path.relpath(content_item.spec, self._base_dir)
+        if re_matchany(rel_path, self.ignore_patterns):
+            return
+
+        record = result.record
+        stats = self.app.env.stats
+
+        # Build the processing tree for this job.
+        with stats.timerScope('BuildProcessingTree'):
+            builder = ProcessingTreeBuilder(self._processors)
+            tree_root = builder.build(rel_path)
+            record.flags |= AssetPipelineRecordEntry.FLAG_PREPARED
+
+        # Prepare and run the tree.
+        print_node(tree_root, recursive=True)
+        leaves = tree_root.getLeaves()
+        record.rel_outputs = [l.path for l in leaves]
+        record.proc_tree = get_node_name_tree(tree_root)
+        if tree_root.getProcessor().is_bypassing_structured_processing:
+            record.flags |= (
+                AssetPipelineRecordEntry.FLAG_BYPASSED_STRUCTURED_PROCESSING)
+
+        if ctx.force:
+            tree_root.setState(STATE_DIRTY, True)
+
+        with stats.timerScope('RunProcessingTree'):
+            runner = ProcessingTreeRunner(
+                self._base_dir, self.tmp_dir, ctx.out_dir)
+            if runner.processSubTree(tree_root):
+                record.flags |= (
+                    AssetPipelineRecordEntry.FLAG_PROCESSED)
+
+    def shutdown(self, ctx):
+        # Invoke post-processors.
+        proc_ctx = ProcessorContext(self, ctx)
+        for proc in self._processors:
+            proc.onPipelineEnd(proc_ctx)
+
+    def collapseRecords(self, record_history):
+        for prev, cur in record_history.diffs():
+            if prev and cur and not cur.was_processed:
+                # This asset wasn't processed, so the information from
+                # last time is still valid.
+                cur.flags = (
+                    prev.flags &
+                    (~AssetPipelineRecordEntry.FLAG_PROCESSED |
+                     AssetPipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN))
+                cur.out_paths = list(prev.out_paths)
+                cur.errors = list(prev.errors)
+
+    def getDeletions(self, record_history):
+        for prev, cur in record_history.diffs():
+            if prev and not cur:
+                for p in prev.out_paths:
+                    yield (p, 'previous asset was removed')
+            elif prev and cur and cur.was_processed_successfully:
+                diff = set(prev.out_paths) - set(cur.out_paths)
+                for p in diff:
+                    yield (p, 'asset changed outputs')
+
+
+split_processor_names_re = re.compile(r'[ ,]+')
+
+
+def get_filtered_processors(processors, authorized_names):
+    if not authorized_names or authorized_names == 'all':
+        return processors
+
+    if isinstance(authorized_names, str):
+        authorized_names = split_processor_names_re.split(authorized_names)
+
+    procs = []
+    has_star = 'all' in authorized_names
+    for p in processors:
+        for name in authorized_names:
+            if name == p.PROCESSOR_NAME:
+                procs.append(p)
+                break
+            if name == ('-%s' % p.PROCESSOR_NAME):
+                break
+        else:
+            if has_star:
+                procs.append(p)
+    return procs
+
+
+def make_re(patterns):
+    re_patterns = []
+    for pat in patterns:
+        if pat[0] == '/' and pat[-1] == '/' and len(pat) > 2:
+            re_patterns.append(pat[1:-1])
+        else:
+            escaped_pat = (
+                re.escape(pat)
+                .replace(r'\*', r'[^/\\]*')
+                .replace(r'\?', r'[^/\\]'))
+            re_patterns.append(escaped_pat)
+    return [re.compile(p) for p in re_patterns]
+
+
+def re_matchany(rel_path, patterns):
+    # skip patterns use a forward slash regardless of the platform.
+    rel_path = rel_path.replace('\\', '/')
+    for pattern in patterns:
+        if pattern.search(rel_path):
+            return True
+    return False
+
+
+re_ansicolors = re.compile('\033\\[\d+m')
+
+
+def _get_errors(ex, strip_colors=False):
+    errors = []
+    while ex is not None:
+        msg = str(ex)
+        if strip_colors:
+            msg = re_ansicolors.sub('', msg)
+        errors.append(msg)
+        ex = ex.__cause__
+    return errors
+

@@ -16,10 +16,8 @@ from piecrust.appconfigdefaults import (
 from piecrust.cache import NullCache
 from piecrust.configuration import (
     Configuration, ConfigurationError, ConfigurationLoader,
-    try_get_dict_values, try_get_dict_value, set_dict_value,
-    merge_dicts, visit_dict,
-    MERGE_NEW_VALUES, MERGE_OVERWRITE_VALUES, MERGE_PREPEND_LISTS,
-    MERGE_APPEND_LISTS)
+    try_get_dict_values, set_dict_value,
+    merge_dicts, visit_dict)
 from piecrust.sources.base import REALM_USER, REALM_THEME
 
 
@@ -177,7 +175,6 @@ class PieCrustConfiguration(Configuration):
         # [custom theme] + [default theme] + [default]
         if theme_values is not None:
             self._processThemeLayer(theme_values, values)
-            merge_dicts(values, theme_values)
 
         # Make all sources belong to the "theme" realm at this point.
         srcc = values['site'].get('sources')
@@ -190,7 +187,6 @@ class PieCrustConfiguration(Configuration):
         #   [default]
         if site_values is not None:
             self._processSiteLayer(site_values, values)
-            merge_dicts(values, site_values)
 
         # Set the theme site flag.
         if self.theme_config:
@@ -209,10 +205,14 @@ class PieCrustConfiguration(Configuration):
         # Generate the default theme model.
         gen_default_theme_model = bool(try_get_dict_values(
             (theme_values, 'site/use_default_theme_content'),
-            (values, 'site/use_default_theme_content'),
             default=True))
         if gen_default_theme_model:
-            self._generateDefaultThemeModel(theme_values, values)
+            logger.debug("Generating default theme content model...")
+            cc = copy.deepcopy(default_theme_content_model_base)
+            merge_dicts(values, cc)
+
+        # Merge the theme config into the result config.
+        merge_dicts(values, theme_values)
 
     def _processSiteLayer(self, site_values, values):
         # Default site content.
@@ -221,34 +221,29 @@ class PieCrustConfiguration(Configuration):
             (values, 'site/use_default_content'),
             default=True))
         if gen_default_site_model:
-            self._generateDefaultSiteModel(site_values, values)
+            logger.debug("Generating default content model...")
+            cc = copy.deepcopy(default_content_model_base)
+            merge_dicts(values, cc)
 
-    def _generateDefaultThemeModel(self, theme_values, values):
-        logger.debug("Generating default theme content model...")
-        cc = copy.deepcopy(default_theme_content_model_base)
-        merge_dicts(values, cc)
+            dcm = get_default_content_model(site_values, values)
+            merge_dicts(values, dcm)
 
-    def _generateDefaultSiteModel(self, site_values, values):
-        logger.debug("Generating default content model...")
-        cc = copy.deepcopy(default_content_model_base)
-        merge_dicts(values, cc)
+            blogsc = try_get_dict_values(
+                (site_values, 'site/blogs'),
+                (values, 'site/blogs'))
+            if blogsc is None:
+                blogsc = ['posts']
+                set_dict_value(site_values, 'site/blogs', blogsc)
 
-        dcm = get_default_content_model(site_values, values)
-        merge_dicts(values, dcm)
+            is_only_blog = (len(blogsc) == 1)
+            for blog_name in reversed(blogsc):
+                blog_cfg = get_default_content_model_for_blog(
+                    blog_name, is_only_blog, site_values, values,
+                    theme_site=self.theme_config)
+                merge_dicts(values, blog_cfg)
 
-        blogsc = try_get_dict_values(
-            (site_values, 'site/blogs'),
-            (values, 'site/blogs'))
-        if blogsc is None:
-            blogsc = ['posts']
-            set_dict_value(site_values, 'site/blogs', blogsc)
-
-        is_only_blog = (len(blogsc) == 1)
-        for blog_name in reversed(blogsc):
-            blog_cfg = get_default_content_model_for_blog(
-                blog_name, is_only_blog, site_values, values,
-                theme_site=self.theme_config)
-            merge_dicts(values, blog_cfg)
+        # Merge the site config into the result config.
+        merge_dicts(values, site_values)
 
     def _validateAll(self, values):
         if values is None:
@@ -304,9 +299,6 @@ def _validate_site(v, values, cache):
     taxonomies = v.get('taxonomies')
     if taxonomies is None:
         v['taxonomies'] = {}
-    generators = v.get('generators')
-    if generators is None:
-        v['generators'] = {}
     return v
 
 
@@ -333,8 +325,8 @@ def _validate_site_auto_formats(v, values, cache):
 
     v.setdefault('html', values['site']['default_format'])
     auto_formats_re = r"\.(%s)$" % (
-            '|'.join(
-                    [re.escape(i) for i in list(v.keys())]))
+        '|'.join(
+            [re.escape(i) for i in list(v.keys())]))
     cache.write('auto_formats_re', auto_formats_re)
     return v
 
@@ -343,7 +335,7 @@ def _validate_site_auto_formats(v, values, cache):
 def _validate_site_default_auto_format(v, values, cache):
     if v not in values['site']['auto_formats']:
         raise ConfigurationError(
-                "Default auto-format '%s' is not declared." % v)
+            "Default auto-format '%s' is not declared." % v)
     return v
 
 
@@ -393,27 +385,20 @@ def _validate_site_sources(v, values, cache):
         sc.setdefault('type', 'default')
         sc.setdefault('fs_endpoint', sn)
         sc.setdefault('ignore_missing_dir', False)
-        sc.setdefault('data_endpoint', sn)
+        sc.setdefault('data_endpoint', None)
         sc.setdefault('data_type', 'iterator')
         sc.setdefault('item_name', sn)
         sc.setdefault('items_per_page', 5)
         sc.setdefault('date_format', DEFAULT_DATE_FORMAT)
         sc.setdefault('realm', REALM_USER)
+        sc.setdefault('pipeline', 'page')
 
         # Validate endpoints.
         endpoint = sc['data_endpoint']
         if endpoint in reserved_endpoints:
             raise ConfigurationError(
-                    "Source '%s' is using a reserved endpoint name: %s" %
-                    (sn, endpoint))
-
-        # Validate generators.
-        for gn, gc in sc.get('generators', {}).items():
-            if not isinstance(gc, dict):
-                raise ConfigurationError(
-                    "Generators for source '%s' should be defined in a "
-                    "dictionary." % sn)
-            gc['source'] = sn
+                "Source '%s' is using a reserved endpoint name: %s" %
+                (sn, endpoint))
 
     return v
 
@@ -439,20 +424,14 @@ def _validate_site_routes(v, values, cache):
             raise ConfigurationError("Route URLs must start with '/'.")
 
         r_source = rc.get('source')
-        r_generator = rc.get('generator')
-        if r_source is None and r_generator is None:
-            raise ConfigurationError("Routes must specify a source or "
-                                     "generator.")
+        if r_source is None:
+            raise ConfigurationError("Routes must specify a source.")
         if (r_source and
                 r_source not in list(values['site']['sources'].keys())):
             raise ConfigurationError("Route is referencing unknown "
                                      "source: %s" % r_source)
-        if (r_generator and
-                r_generator not in list(values['site']['generators'].keys())):
-            raise ConfigurationError("Route is referencing unknown "
-                                     "generator: %s" % r_generator)
 
-        rc.setdefault('generator', None)
+        rc.setdefault('pass', 0)
         rc.setdefault('page_suffix', '/%num%')
 
     return v
@@ -461,22 +440,11 @@ def _validate_site_routes(v, values, cache):
 def _validate_site_taxonomies(v, values, cache):
     if not isinstance(v, dict):
         raise ConfigurationError(
-                "The 'site/taxonomies' setting must be a mapping.")
+            "The 'site/taxonomies' setting must be a mapping.")
     for tn, tc in v.items():
         tc.setdefault('multiple', False)
         tc.setdefault('term', tn)
         tc.setdefault('page', '_%s.%%ext%%' % tc['term'])
-    return v
-
-
-def _validate_site_generators(v, values, cache):
-    if not isinstance(v, dict):
-        raise ConfigurationError(
-                "The 'site/generators' setting must be a mapping.")
-    for gn, gc in v.items():
-        if 'type' not in gc:
-            raise ConfigurationError(
-                    "Generator '%s' doesn't specify a type." % gn)
     return v
 
 
@@ -485,7 +453,7 @@ def _validate_site_plugins(v, values, cache):
         v = v.split(',')
     elif not isinstance(v, list):
         raise ConfigurationError(
-                "The 'site/plugins' setting must be an array, or a "
-                "comma-separated list.")
+            "The 'site/plugins' setting must be an array, or a "
+            "comma-separated list.")
     return v
 

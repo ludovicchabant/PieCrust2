@@ -5,10 +5,10 @@ import unidecode
 from piecrust.chefutil import format_timed, format_timed_scope
 from piecrust.configuration import ConfigurationError
 from piecrust.data.filters import (
-        PaginationFilter, SettingFilterClause,
-        page_value_accessor)
-from piecrust.generation.base import PageGenerator, InvalidRecordExtraKey
+    PaginationFilter, SettingFilterClause,
+    page_value_accessor)
 from piecrust.routing import RouteParameter
+from piecrust.sources.base import ContentSource, GeneratedContentException
 
 
 logger = logging.getLogger(__name__)
@@ -42,25 +42,25 @@ class Taxonomy(object):
         return self.term_name
 
 
-class TaxonomyPageGenerator(PageGenerator):
+class TaxonomySource(ContentSource):
     """ A page generator that handles taxonomies, _i.e._ lists of keywords
         that pages are labelled with, and for which we need to generate
         listing pages.
     """
-    GENERATOR_NAME = 'taxonomy'
+    SOURCE_NAME = 'taxonomy'
 
     def __init__(self, app, name, config):
-        super(TaxonomyPageGenerator, self).__init__(app, name, config)
+        super().__init__(app, name, config)
 
         tax_name = config.get('taxonomy')
         if tax_name is None:
             raise ConfigurationError(
-                    "Generator '%s' requires a taxonomy name." % name)
+                "Generator '%s' requires a taxonomy name." % name)
         tax_config = app.config.get('site/taxonomies/' + tax_name)
         if tax_config is None:
             raise ConfigurationError(
-                    "Error initializing generator '%s', no such taxonomy: %s",
-                    (name, tax_name))
+                "Error initializing generator '%s', no such taxonomy: %s",
+                (name, tax_name))
         self.taxonomy = Taxonomy(tax_name, tax_config)
 
         sm = config.get('slugify_mode')
@@ -68,6 +68,9 @@ class TaxonomyPageGenerator(PageGenerator):
             sm = app.config.get('site/slugify_mode', 'encode')
         self.slugify_mode = _parse_slugify_mode(sm)
         self.slugifier = _Slugifier(self.taxonomy, self.slugify_mode)
+
+    def getContents(self, group):
+        raise GeneratedContentException()
 
     def getSupportedRouteParameters(self):
         name = self.taxonomy.term_name
@@ -117,6 +120,9 @@ class TaxonomyPageGenerator(PageGenerator):
             if not is_combination:
                 mult_val = (mult_val,)
             ctx.custom_data[self.taxonomy.name] = mult_val
+
+    def _getSource(self):
+        return self.app.getSource(self.config['source'])
 
     def _getTaxonomyTerms(self, route_metadata):
         # Get the individual slugified terms from the route metadata.

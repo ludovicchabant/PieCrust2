@@ -1,88 +1,78 @@
-import copy
 import logging
-from werkzeug.utils import cached_property
-from piecrust.page import Page
-from piecrust.data.assetor import Assetor
+import collections
 
 
+# Source realms, to differentiate sources in the site itself ('User')
+# and sources in the site's theme ('Theme').
 REALM_USER = 0
 REALM_THEME = 1
 REALM_NAMES = {
-        REALM_USER: 'User',
-        REALM_THEME: 'Theme'}
+    REALM_USER: 'User',
+    REALM_THEME: 'Theme'}
 
 
-MODE_PARSING = 0
-MODE_CREATING = 1
+# Types of relationships a content source can be asked for.
+REL_ASSETS = 1
 
 
 logger = logging.getLogger(__name__)
-
-
-def build_pages(app, factories):
-    for f in factories:
-        yield f.buildPage()
 
 
 class SourceNotFoundError(Exception):
     pass
 
 
-class InvalidFileSystemEndpointError(Exception):
-    def __init__(self, source_name, fs_endpoint):
-        super(InvalidFileSystemEndpointError, self).__init__(
-                "Invalid file-system endpoint for source '%s': %s" %
-                (source_name, fs_endpoint))
+class InsufficientRouteParameters(Exception):
+    pass
 
 
-class PageFactory(object):
-    """ A class responsible for creating a page.
+class AbortedSourceUseError(Exception):
+    pass
+
+
+class GeneratedContentException(Exception):
+    pass
+
+
+CONTENT_TYPE_PAGE = 0
+CONTENT_TYPE_ASSET = 1
+
+
+class ContentItem:
+    """ Describes a piece of content.
     """
-    def __init__(self, source, rel_path, metadata):
-        self.source = source
-        self.rel_path = rel_path
+    def __init__(self, spec, metadata):
+        self.spec = spec
         self.metadata = metadata
 
-    @cached_property
-    def ref_spec(self):
-        return '%s:%s' % (self.source.name, self.rel_path)
-
-    @cached_property
-    def path(self):
-        path, _ = self.source.resolveRef(self.rel_path)
-        return path
-
-    def buildPage(self):
-        repo = self.source.app.env.page_repository
-        cache_key = '%s:%s' % (self.source.name, self.rel_path)
-        return repo.get(cache_key, self._doBuildPage)
-
-    def _doBuildPage(self):
-        logger.debug("Building page: %s" % self.path)
-        page = Page(self.source, copy.deepcopy(self.metadata), self.rel_path)
-        return page
+    @property
+    def is_group(self):
+        return False
 
 
-class PageSource(object):
-    """ A source for pages, e.g. a directory with one file per page.
+class ContentGroup:
+    """ Describes a group of `ContentItem`s.
+    """
+    def __init__(self, spec, metadata):
+        self.spec = spec
+        self.metadata = metadata
+
+    @property
+    def is_group(self):
+        return True
+
+
+class ContentSource:
+    """ A source for content.
     """
     def __init__(self, app, name, config):
         self.app = app
         self.name = name
         self.config = config or {}
-        self.config.setdefault('realm', REALM_USER)
-        self._factories = None
-        self._provider_type = None
-
-    def __getattr__(self, name):
-        try:
-            return self.config[name]
-        except KeyError:
-            raise AttributeError()
 
     @property
     def is_theme_source(self):
-        return self.realm == REALM_THEME
+        return self.config['realm'] == REALM_THEME
 
     @property
     def root_dir(self):
@@ -90,48 +80,47 @@ class PageSource(object):
             return self.app.theme_dir
         return self.app.root_dir
 
-    def getPages(self):
-        return build_pages(self.app, self.getPageFactories())
+    def openItem(self, item, mode='r'):
+        raise NotImplementedError()
 
-    def getPage(self, metadata):
-        factory = self.findPageFactory(metadata, MODE_PARSING)
-        if factory is None:
-            return None
-        return factory.buildPage()
+    def getItemMtime(self, item):
+        raise NotImplementedError()
 
-    def getPageFactories(self):
-        if self._factories is None:
-            self._factories = list(self.buildPageFactories())
-        return self._factories
+    def getAllContents(self):
+        stack = collections.deque()
+        stack.append(None)
+        while len(stack) > 0:
+            cur = stack.popleft()
+            try:
+                contents = self.getContents(cur)
+            except GeneratedContentException:
+                continue
+            if contents is not None:
+                for c in contents:
+                    if c.is_group:
+                        stack.append(c)
+                    else:
+                        yield c
+
+    def getContents(self, group):
+        raise NotImplementedError("'%s' doesn't implement 'getContents'." %
+                                  self.__class__)
+
+    def getRelatedContents(self, item, relationship):
+        raise NotImplementedError()
+
+    def findContent(self, route_params):
+        raise NotImplementedError()
 
     def getSupportedRouteParameters(self):
         raise NotImplementedError()
 
-    def buildPageFactories(self):
-        raise NotImplementedError()
-
-    def buildPageFactory(self, path):
-        raise NotImplementedError()
-
-    def resolveRef(self, ref_path):
-        """ Returns the full path and source metadata given a source
-            (relative) path, like a ref-spec.
-        """
-        raise NotImplementedError()
-
-    def findPageFactory(self, metadata, mode):
-        raise NotImplementedError()
-
-    def buildDataProvider(self, page, override):
-        if not self._provider_type:
-            from piecrust.data.provider import get_data_provider_class
-            self._provider_type = get_data_provider_class(self.app,
-                                                          self.data_type)
-        return self._provider_type(self, page, override)
-
-    def finalizeConfig(self, page):
+    def prepareRenderContext(self, ctx):
         pass
 
-    def buildAssetor(self, page, uri):
-        return Assetor(page, uri)
+    def onRouteFunctionUsed(self, route_params):
+        pass
+
+    def describe(self):
+        return None
 

@@ -11,23 +11,23 @@ logger = logging.getLogger(__name__)
 
 class Paginator(object):
     debug_render = [
-            'has_more', 'items', 'has_items', 'items_per_page',
-            'items_this_page', 'prev_page_number', 'this_page_number',
-            'next_page_number', 'prev_page', 'next_page',
-            'total_item_count', 'total_page_count',
-            'next_item', 'prev_item']
+        'has_more', 'items', 'has_items', 'items_per_page',
+        'items_this_page', 'prev_page_number', 'this_page_number',
+        'next_page_number', 'prev_page', 'next_page',
+        'total_item_count', 'total_page_count',
+        'next_item', 'prev_item']
     debug_render_invoke = [
-            'has_more', 'items', 'has_items', 'items_per_page',
-            'items_this_page', 'prev_page_number', 'this_page_number',
-            'next_page_number', 'prev_page', 'next_page',
-            'total_item_count', 'total_page_count',
-            'next_item', 'prev_item']
+        'has_more', 'items', 'has_items', 'items_per_page',
+        'items_this_page', 'prev_page_number', 'this_page_number',
+        'next_page_number', 'prev_page', 'next_page',
+        'total_item_count', 'total_page_count',
+        'next_item', 'prev_item']
 
     def __init__(self, qualified_page, source, *,
-                 page_num=1, pgn_filter=None, items_per_page=-1):
+                 pgn_filter=None, items_per_page=-1):
         self._parent_page = qualified_page
+        self._page_num = qualified_page.page_num
         self._source = source
-        self._page_num = page_num
         self._iterator = None
         self._pgn_filter = pgn_filter
         self._items_per_page = items_per_page
@@ -89,7 +89,7 @@ class Paginator(object):
         if self._items_per_page > 0:
             return self._items_per_page
         if self._parent_page:
-            ipp = self._parent_page.config.get('items_per_page')
+            ipp = self._parent_page.page.config.get('items_per_page')
             if ipp is not None:
                 return ipp
         if isinstance(self._source, IPaginationSource):
@@ -195,11 +195,11 @@ class Paginator(object):
         if self._parent_page:
             current_page = self._parent_page.page
         self._iterator = PageIterator(
-                self._source,
-                current_page=current_page,
-                pagination_filter=pag_filter,
-                offset=offset, limit=self.items_per_page,
-                locked=True)
+            self._source,
+            current_page=current_page,
+            pagination_filter=pag_filter,
+            offset=offset, limit=self.items_per_page,
+            locked=True)
         self._iterator._iter_event += self._onIteration
 
     def _getPaginationFilter(self):

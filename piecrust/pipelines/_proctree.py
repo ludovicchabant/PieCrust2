@@ -3,6 +3,7 @@ import time
 import os.path
 import logging
 from piecrust.chefutil import format_timed
+from piecrust.processing.base import FORCE_BUILD
 
 
 logger = logging.getLogger(__name__)
@@ -11,9 +12,6 @@ logger = logging.getLogger(__name__)
 STATE_UNKNOWN = 0
 STATE_DIRTY = 1
 STATE_CLEAN = 2
-
-
-FORCE_BUILD = object()
 
 
 class ProcessingTreeError(Exception):
@@ -107,9 +105,9 @@ class ProcessingTreeBuilder(object):
 
             for n in out_names:
                 out_node = ProcessingTreeNode(
-                        os.path.join(rel_dir, n),
-                        list(cur_node.available_procs),
-                        cur_node.level + 1)
+                    os.path.join(rel_dir, n),
+                    list(cur_node.available_procs),
+                    cur_node.level + 1)
                 cur_node.outputs.append(out_node)
 
                 if proc.PROCESSOR_NAME != 'copy':
@@ -151,13 +149,13 @@ class ProcessingTreeRunner(object):
         if proc.is_bypassing_structured_processing:
             try:
                 start_time = time.perf_counter()
-                with proc.app.env.timerScope(proc.__class__.__name__):
+                with proc.app.env.stats.timerScope(proc.__class__.__name__):
                     proc.process(full_path, self.out_dir)
                 print_node(
-                        node,
-                        format_timed(
-                            start_time, "(bypassing structured processing)",
-                            colored=False))
+                    node,
+                    format_timed(
+                        start_time, "(bypassing structured processing)",
+                        colored=False))
                 return True
             except Exception as e:
                 raise ProcessorError(proc.PROCESSOR_NAME, full_path) from e
@@ -175,7 +173,7 @@ class ProcessingTreeRunner(object):
 
         try:
             start_time = time.perf_counter()
-            with proc.app.env.timerScope(proc.__class__.__name__):
+            with proc.app.env.stats.timerScope(proc.__class__.__name__):
                 proc_res = proc.process(full_path, out_dir)
             if proc_res is None:
                 raise Exception("Processor '%s' didn't return a boolean "
@@ -238,7 +236,7 @@ class ProcessingTreeRunner(object):
                 o_mtime = os.path.getmtime(full_out_path)
                 if o_mtime < in_mtime[1]:
                     message = "Input '%s' is newer than output '%s'." % (
-                            in_mtime[0], o.path)
+                        in_mtime[0], o.path)
                     break
             if message is not None:
                 node.setState(STATE_DIRTY, True)

@@ -5,7 +5,6 @@ import shutil
 import codecs
 import hashlib
 import logging
-import collections
 import repoze.lru
 
 

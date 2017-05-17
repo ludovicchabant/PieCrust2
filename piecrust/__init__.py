@@ -19,13 +19,13 @@ DEFAULT_THEME_SOURCE = 'https://bitbucket.org/ludovicchabant/'
 
 PIECRUST_URL = 'https://bolt80.com/piecrust/'
 
-CACHE_VERSION = 29
+CACHE_VERSION = 30
 
 try:
     from piecrust.__version__ import APP_VERSION
 except ImportError:
     APP_VERSION = 'unknown'
 
-import os.path
+import os.path  # NOQA
 RESOURCES_DIR = os.path.join(os.path.dirname(__file__), 'resources')
 

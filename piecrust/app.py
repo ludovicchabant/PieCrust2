@@ -1,21 +1,20 @@
 import time
 import os.path
-import hashlib
 import logging
 import urllib.parse
 from werkzeug.utils import cached_property
 from piecrust import (
-        RESOURCES_DIR,
-        CACHE_DIR, TEMPLATES_DIR, ASSETS_DIR,
-        THEME_DIR, PLUGINS_DIR,
-        CONFIG_PATH, THEME_CONFIG_PATH)
+    RESOURCES_DIR,
+    CACHE_DIR, TEMPLATES_DIR, ASSETS_DIR,
+    THEME_DIR, PLUGINS_DIR,
+    CONFIG_PATH, THEME_CONFIG_PATH)
 from piecrust.appconfig import PieCrustConfiguration
 from piecrust.cache import ExtensibleCache, NullExtensibleCache
-from piecrust.configuration import ConfigurationError, merge_dicts
+from piecrust.configuration import ConfigurationError
 from piecrust.environment import StandardEnvironment
+from piecrust.page import Page
 from piecrust.plugins.base import PluginLoader
 from piecrust.routing import Route
-from piecrust.sources.base import REALM_THEME
 
 
 logger = logging.getLogger(__name__)
@@ -39,14 +38,14 @@ class PieCrust(object):
         if self.env is None:
             self.env = StandardEnvironment()
         self.env.initialize(self)
-        self.env.registerTimer('SiteConfigLoad')
-        self.env.registerTimer('PageLoad')
-        self.env.registerTimer("PageDataBuild")
-        self.env.registerTimer("BuildRenderData")
-        self.env.registerTimer("PageRender")
-        self.env.registerTimer("PageRenderSegments")
-        self.env.registerTimer("PageRenderLayout")
-        self.env.registerTimer("PageSerialize")
+        self.env.stats.registerTimer('SiteConfigLoad')
+        self.env.stats.registerTimer('PageLoad')
+        self.env.stats.registerTimer("PageDataBuild")
+        self.env.stats.registerTimer("BuildRenderData")
+        self.env.stats.registerTimer("PageRender")
+        self.env.stats.registerTimer("PageRenderSegments")
+        self.env.stats.registerTimer("PageRenderLayout")
+        self.env.stats.registerTimer("PageSerialize")
 
     @cached_property
     def config(self):
@@ -64,25 +63,26 @@ class PieCrust(object):
 
         config_cache = self.cache.getCache('app')
         config = PieCrustConfiguration(
-                path=path, theme_path=theme_path,
-                cache=config_cache, theme_config=self.theme_site)
+            path=path, theme_path=theme_path,
+            cache=config_cache, theme_config=self.theme_site)
 
         local_path = os.path.join(
-                self.root_dir, 'configs', 'local.yml')
+            self.root_dir, 'configs', 'local.yml')
         config.addVariant(local_path, raise_if_not_found=False)
 
         if self.theme_site:
             variant_path = os.path.join(
-                    self.root_dir, 'configs', 'theme_preview.yml')
+                self.root_dir, 'configs', 'theme_preview.yml')
             config.addVariant(variant_path, raise_if_not_found=False)
 
-        self.env.stepTimer('SiteConfigLoad', time.perf_counter() - start_time)
+        self.env.stats.stepTimer('SiteConfigLoad',
+                                 time.perf_counter() - start_time)
         return config
 
     @cached_property
     def assets_dirs(self):
         assets_dirs = self._get_configurable_dirs(
-                ASSETS_DIR, 'site/assets_dirs')
+            ASSETS_DIR, 'site/assets_dirs')
 
         # Also add the theme directory, if any.
         if self.theme_dir:
@@ -95,7 +95,7 @@ class PieCrust(object):
     @cached_property
     def templates_dirs(self):
         templates_dirs = self._get_configurable_dirs(
-                TEMPLATES_DIR, 'site/templates_dirs')
+            TEMPLATES_DIR, 'site/templates_dirs')
 
         # Also, add the theme directory, if any.
         if self.theme_dir:
@@ -148,6 +148,7 @@ class PieCrust(object):
                                          s['type'])
             src = cls(self, n, s)
             sources.append(src)
+
         return sources
 
     @cached_property
@@ -157,22 +158,6 @@ class PieCrust(object):
             rte = Route(self, r)
             routes.append(rte)
         return routes
-
-    @cached_property
-    def generators(self):
-        defs = {}
-        for cls in self.plugin_loader.getPageGenerators():
-            defs[cls.GENERATOR_NAME] = cls
-
-        gens = []
-        for n, g in self.config.get('site/generators').items():
-            cls = defs.get(g['type'])
-            if cls is None:
-                raise ConfigurationError("No such page generator type: %s" %
-                                         g['type'])
-            gen = cls(self, n, g)
-            gens.append(gen)
-        return gens
 
     @cached_property
     def publishers(self):
@@ -197,7 +182,7 @@ class PieCrust(object):
                 pub_type = comps.scheme
                 is_scheme = True
             cls = (defs_by_scheme.get(pub_type) if is_scheme
-                    else defs_by_name.get(pub_type))
+                   else defs_by_name.get(pub_type))
             if cls is None:
                 raise ConfigurationError("No such publisher: %s" % pub_type)
             tgt = cls(self, n, t)
@@ -210,27 +195,15 @@ class PieCrust(object):
                 return source
         return None
 
-    def getGenerator(self, generator_name):
-        for gen in self.generators:
-            if gen.name == generator_name:
-                return gen
-        return None
-
     def getSourceRoutes(self, source_name):
         for route in self.routes:
             if route.source_name == source_name:
                 yield route
 
-    def getSourceRoute(self, source_name, route_metadata):
+    def getSourceRoute(self, source_name, route_params):
         for route in self.getSourceRoutes(source_name):
-            if (route_metadata is None or
-                    route.matchesMetadata(route_metadata)):
-                return route
-        return None
-
-    def getGeneratorRoute(self, generator_name):
-        for route in self.routes:
-            if route.generator_name == generator_name:
+            if (route_params is None or
+                    route.matchesParameters(route_params)):
                 return route
         return None
 
@@ -239,6 +212,12 @@ class PieCrust(object):
             if pub.target == target_name:
                 return pub
         return None
+
+    def getPage(self, content_item):
+        cache_key = content_item.spec
+        return self.env.page_repository.get(
+            cache_key,
+            lambda: Page(content_item))
 
     def _get_dir(self, default_rel_dir):
         abs_dir = os.path.join(self.root_dir, default_rel_dir)
@@ -269,16 +248,19 @@ def apply_variant_and_values(app, config_variant=None, config_values=None):
     if config_variant is not None:
         logger.debug("Adding configuration variant '%s'." % config_variant)
         variant_path = os.path.join(
-                app.root_dir, 'configs', '%s.yml' % config_variant)
+            app.root_dir, 'configs', '%s.yml' % config_variant)
         app.config.addVariant(variant_path)
 
     if config_values is not None:
         for name, value in config_values:
-            logger.debug("Adding configuration override '%s': %s" % (name, value))
+            logger.debug("Adding configuration override '%s': %s" %
+                         (name, value))
             app.config.addVariantValue(name, value)
 
 
 class PieCrustFactory(object):
+    """ A class that builds a PieCrust app instance.
+    """
     def __init__(
             self, root_dir, *,
             cache=True, cache_key=None,
@@ -294,12 +276,12 @@ class PieCrustFactory(object):
 
     def create(self):
         app = PieCrust(
-                self.root_dir,
-                cache=self.cache,
-                cache_key=self.cache_key,
-                debug=self.debug,
-                theme_site=self.theme_site)
+            self.root_dir,
+            cache=self.cache,
+            cache_key=self.cache_key,
+            debug=self.debug,
+            theme_site=self.theme_site)
         apply_variant_and_values(
-                app, self.config_variant, self.config_values)
+            app, self.config_variant, self.config_values)
         return app
 

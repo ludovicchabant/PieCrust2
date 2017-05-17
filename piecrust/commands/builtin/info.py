@@ -3,6 +3,7 @@ import logging
 import fnmatch
 from piecrust.commands.base import ChefCommand
 from piecrust.configuration import ConfigurationDumper
+from piecrust.sources.fs import FSContentSourceBase
 
 
 logger = logging.getLogger(__name__)
@@ -29,9 +30,9 @@ class ShowConfigCommand(ChefCommand):
 
     def setupParser(self, parser, app):
         parser.add_argument(
-                'path',
-                help="The path to a config section or value",
-                nargs='?')
+            'path',
+            help="The path to a config section or value",
+            nargs='?')
 
     def run(self, ctx):
         if ctx.args.path:
@@ -65,7 +66,11 @@ class ShowSourcesCommand(ChefCommand):
         for src in ctx.app.sources:
             logger.info("%s:" % src.name)
             logger.info("    type: %s" % src.config.get('type'))
-            logger.info("    class: %s" % type(src))
+            logger.debug("    class: %s" % type(src))
+            desc = src.describe()
+            if isinstance(desc, dict):
+                for k, v in desc.items():
+                    logger.info("    %s: %s" % (k, v))
 
 
 class ShowRoutesCommand(ChefCommand):
@@ -81,7 +86,6 @@ class ShowRoutesCommand(ChefCommand):
         for route in ctx.app.routes:
             logger.info("%s:" % route.uri_pattern)
             logger.info("    source: %s" % (route.source_name or ''))
-            logger.info("    generator: %s" % (route.generator_name or ''))
             logger.info("    regex: %s" % route.uri_re.pattern)
             logger.info("    function: %s(%s)" % (
                 route.func_name,
@@ -118,29 +122,29 @@ class FindCommand(ChefCommand):
 
     def setupParser(self, parser, app):
         parser.add_argument(
-                'pattern',
-                help="The pattern to match with page filenames",
-                nargs='?')
+            'pattern',
+            help="The pattern to match with page filenames",
+            nargs='?')
         parser.add_argument(
-                '-n', '--name',
-                help="Limit the search to sources matching this name")
+            '-n', '--name',
+            help="Limit the search to sources matching this name")
         parser.add_argument(
-                '--full-path',
-                help="Return full paths instead of root-relative paths",
-                action='store_true')
+            '--full-path',
+            help="Return full paths instead of root-relative paths",
+            action='store_true')
         parser.add_argument(
-                '--metadata',
-                help="Return metadata about the page instead of just the path",
-                action='store_true')
+            '--metadata',
+            help="Return metadata about the page instead of just the path",
+            action='store_true')
         parser.add_argument(
-                '--include-theme',
-                help="Include theme pages to the search",
-                action='store_true')
+            '--include-theme',
+            help="Include theme pages to the search",
+            action='store_true')
         parser.add_argument(
-                '--exact',
-                help=("Match the exact given pattern, instead of any page "
-                      "containing the pattern"),
-                action='store_true')
+            '--exact',
+            help=("Match the exact given pattern, instead of any page "
+                  "containing the pattern"),
+            action='store_true')
 
     def run(self, ctx):
         pattern = ctx.args.pattern
@@ -154,17 +158,28 @@ class FindCommand(ChefCommand):
             if ctx.args.name and not fnmatch.fnmatch(src.name, ctx.args.name):
                 continue
 
-            page_facs = src.getPageFactories()
-            for pf in page_facs:
-                name = os.path.relpath(pf.path, ctx.app.root_dir)
-                if pattern is None or fnmatch.fnmatch(name, pattern):
-                    if ctx.args.full_path:
-                        name = pf.path
-                    if ctx.args.metadata:
-                        logger.info("path:%s" % pf.path)
-                        for key, val in pf.metadata.items():
-                            logger.info("%s:%s" % (key, val))
-                        logger.info("---")
+            is_fs_src = isinstance(src, FSContentSourceBase)
+            items = src.getAllContents()
+            for item in items:
+                if ctx.args.metadata:
+                    logger.info("spec:%s" % item.spec)
+                    for key, val in item.metadata.items():
+                        logger.info("%s:%s" % (key, val))
+                    logger.info("---")
+                else:
+                    if is_fs_src:
+                        name = os.path.relpath(item.spec, ctx.app.root_dir)
+                        if pattern is None or fnmatch.fnmatch(name, pattern):
+                            if ctx.args.metadata:
+                                logger.info("path:%s" % item.spec)
+                                for key, val in item.metadata.items():
+                                    logger.info("%s:%s" % (key, val))
+                                logger.info("---")
+                            else:
+                                if ctx.args.full_path:
+                                    name = item.spec
+                                logger.info(name)
                     else:
-                        logger.info(name)
+                        if pattern is None or fnmatch.fnmatch(name, pattern):
+                            logger.info(item.spec)
 

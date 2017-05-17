@@ -1,6 +1,5 @@
 import re
 import os.path
-import copy
 import logging
 import urllib.parse
 from werkzeug.utils import cached_property
@@ -10,7 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<var>\+)?(?P<name>\w+)%')
-route_esc_re = re.compile(r'\\%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)\\%')
+route_esc_re = re.compile(
+    r'\\%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)\\%')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
@@ -20,15 +20,6 @@ class RouteNotFoundError(Exception):
 
 class InvalidRouteError(Exception):
     pass
-
-
-def create_route_metadata(page):
-    route_metadata = copy.deepcopy(page.source_metadata)
-    return route_metadata
-
-
-ROUTE_TYPE_SOURCE = 0
-ROUTE_TYPE_GENERATOR = 1
 
 
 class RouteParameter(object):
@@ -46,29 +37,21 @@ class RouteParameter(object):
 class Route(object):
     """ Information about a route for a PieCrust application.
         Each route defines the "shape" of an URL and how it maps to
-        sources and generators.
+        content sources.
     """
     def __init__(self, app, cfg):
         self.app = app
 
-        self.source_name = cfg.get('source')
-        self.generator_name = cfg.get('generator')
-        if not self.source_name and not self.generator_name:
-            raise InvalidRouteError(
-                    "Both `source` and `generator` are specified.")
-
+        self.source_name = cfg['source']
         self.uri_pattern = cfg['url'].lstrip('/')
 
-        if self.is_source_route:
-            self.supported_params = self.source.getSupportedRouteParameters()
-        else:
-            self.supported_params = self.generator.getSupportedRouteParameters()
+        self.supported_params = self.source.getSupportedRouteParameters()
 
         self.pretty_urls = app.config.get('site/pretty_urls')
         self.trailing_slash = app.config.get('site/trailing_slash')
         self.show_debug_info = app.config.get('site/show_debug_info')
         self.pagination_suffix_format = app.config.get(
-                '__cache/pagination_suffix_format')
+            '__cache/pagination_suffix_format')
         self.uri_root = app.config.get('site/root')
 
         self.uri_params = []
@@ -87,9 +70,9 @@ class Route(object):
         # (maybe there's a better way to do it but I can't think of any
         # right now)
         uri_pattern_no_path = (
-                route_re.sub(self._uriNoPathRepl, self.uri_pattern)
-                .replace('//', '/')
-                .rstrip('/'))
+            route_re.sub(self._uriNoPathRepl, self.uri_pattern)
+            .replace('//', '/')
+            .rstrip('/'))
         if uri_pattern_no_path != self.uri_pattern:
             p = route_esc_re.sub(self._uriPatternRepl,
                                  re.escape(uri_pattern_no_path)) + '$'
@@ -109,42 +92,14 @@ class Route(object):
             last_param = self.getParameter(self.uri_params[-1])
             self.func_has_variadic_parameter = last_param.variadic
 
-    @property
-    def route_type(self):
-        if self.source_name:
-            return ROUTE_TYPE_SOURCE
-        elif self.generator_name:
-            return ROUTE_TYPE_GENERATOR
-        else:
-            raise InvalidRouteError()
-
-    @property
-    def is_source_route(self):
-        return self.route_type == ROUTE_TYPE_SOURCE
-
-    @property
-    def is_generator_route(self):
-        return self.route_type == ROUTE_TYPE_GENERATOR
-
     @cached_property
     def source(self):
-        if not self.is_source_route:
-            return InvalidRouteError("This is not a source route.")
         for src in self.app.sources:
             if src.name == self.source_name:
                 return src
-        raise Exception("Can't find source '%s' for route '%s'." % (
+        raise Exception(
+            "Can't find source '%s' for route '%s'." % (
                 self.source_name, self.uri_pattern))
-
-    @cached_property
-    def generator(self):
-        if not self.is_generator_route:
-            return InvalidRouteError("This is not a generator route.")
-        for gen in self.app.generators:
-            if gen.name == self.generator_name:
-                return gen
-        raise Exception("Can't find generator '%s' for route '%s'." % (
-                self.generator_name, self.uri_pattern))
 
     def hasParameter(self, name):
         return any(lambda p: p.param_name == name, self.supported_params)
@@ -159,8 +114,8 @@ class Route(object):
     def getParameterType(self, name):
         return self.getParameter(name).param_type
 
-    def matchesMetadata(self, route_metadata):
-        return set(self.uri_params).issubset(route_metadata.keys())
+    def matchesParameters(self, route_params):
+        return set(self.uri_params).issubset(route_params.keys())
 
     def matchUri(self, uri, strict=False):
         if not uri.startswith(self.uri_root):
@@ -172,42 +127,42 @@ class Route(object):
         elif self.trailing_slash:
             uri = uri.rstrip('/')
 
-        route_metadata = None
+        route_params = None
         m = self.uri_re.match(uri)
         if m:
-            route_metadata = m.groupdict()
+            route_params = m.groupdict()
         if self.uri_re_no_path:
             m = self.uri_re_no_path.match(uri)
             if m:
-                route_metadata = m.groupdict()
-        if route_metadata is None:
+                route_params = m.groupdict()
+        if route_params is None:
             return None
 
         if not strict:
             # When matching URIs, if the URI is a match but is missing some
-            # metadata, fill those up with empty strings. This can happen if,
+            # parameters, fill those up with empty strings. This can happen if,
             # say, a route's pattern is `/foo/%slug%`, and we're matching an
             # URL like `/foo`.
-            matched_keys = set(route_metadata.keys())
+            matched_keys = set(route_params.keys())
             missing_keys = set(self.uri_params) - matched_keys
             for k in missing_keys:
                 if self.getParameterType(k) != RouteParameter.TYPE_PATH:
                     return None
-                route_metadata[k] = ''
+                route_params[k] = ''
 
-        for k in route_metadata:
-            route_metadata[k] = self._coerceRouteParameter(
-                    k, route_metadata[k])
+        for k in route_params:
+            route_params[k] = self._coerceRouteParameter(
+                k, route_params[k])
 
-        return route_metadata
+        return route_params
 
-    def getUri(self, route_metadata, *, sub_num=1):
-        route_metadata = dict(route_metadata)
-        for k in route_metadata:
-            route_metadata[k] = self._coerceRouteParameter(
-                    k, route_metadata[k])
+    def getUri(self, route_params, *, sub_num=1):
+        route_params = dict(route_params)
+        for k in route_params:
+            route_params[k] = self._coerceRouteParameter(
+                k, route_params[k])
 
-        uri = self.uri_format % route_metadata
+        uri = self.uri_format % route_params
         suffix = None
         if sub_num > 1:
             # Note that we know the pagination suffix starts with a slash.
@@ -258,9 +213,9 @@ class Route(object):
 
         if len(args) < fixed_param_count:
             raise Exception(
-                    "Route function '%s' expected %d arguments, "
-                    "got %d: %s" %
-                    (self.func_name, fixed_param_count, len(args), args))
+                "Route function '%s' expected %d arguments, "
+                "got %d: %s" %
+                (self.func_name, fixed_param_count, len(args), args))
 
         if self.func_has_variadic_parameter:
             coerced_args = list(args[:fixed_param_count])
@@ -270,15 +225,14 @@ class Route(object):
         else:
             coerced_args = args
 
-        metadata = {}
+        route_params = {}
         for arg_name, arg_val in zip(self.uri_params, coerced_args):
-            metadata[arg_name] = self._coerceRouteParameter(
-                    arg_name, arg_val)
+            route_params[arg_name] = self._coerceRouteParameter(
+                arg_name, arg_val)
 
-        if self.is_generator_route:
-            self.generator.onRouteFunctionUsed(self, metadata)
+        self.source.onRouteFunctionUsed(self, route_params)
 
-        return self.getUri(metadata)
+        return self.getUri(route_params)
 
     def _uriFormatRepl(self, m):
         if m.group('qual') or m.group('var'):
@@ -350,32 +304,9 @@ class Route(object):
         return name
 
 
-class CompositeRouteFunction(object):
-    def __init__(self):
-        self._routes = []
-        self._arg_names = None
-
-    def addFunc(self, route):
-        if self._arg_names is None:
-            self._arg_names = list(route.uri_params)
-
-        if route.uri_params != self._arg_names:
-            raise Exception("Cannot merge route function with arguments '%s' "
-                            "with route function with arguments '%s'." %
-                            (route.uri_params, self._arg_names))
-        self._routes.append(route)
+class RouteFunction:
+    def __init__(self, route):
+        self._route = route
 
     def __call__(self, *args, **kwargs):
-        if len(self._routes) == 1 or len(args) == len(self._arg_names):
-            return self._routes[0].execTemplateFunc(*args, **kwargs)
-
-        if len(args) == len(self._arg_names) + 1:
-            f_args = args[:-1]
-            for r in self._routes:
-                if r.source_name == args[-1]:
-                    return r.execTemplateFunc(*f_args, **kwargs)
-            raise Exception("No such source: %s" % args[-1])
-
-        raise Exception("Incorrect number of arguments for route function. "
-                        "Expected '%s', got '%s'" % (self._arg_names, args))
-
+        return self._route.execTemplateFunc(*args, **kwargs)

@@ -1,4 +1,3 @@
-import shutil
 import os.path
 import logging
 
@@ -11,26 +10,31 @@ PRIORITY_NORMAL = 0
 PRIORITY_LAST = 1
 
 
-class PipelineContext(object):
-    def __init__(self, worker_id, app, out_dir, tmp_dir, force=None):
-        self.worker_id = worker_id
-        self.app = app
-        self.out_dir = out_dir
-        self.tmp_dir = tmp_dir
-        self.force = force
-        self.record = None
-        self._additional_ignore_patterns = []
+FORCE_BUILD = object()
+
+
+class ProcessorContext:
+    def __init__(self, pipeline, pipeline_ctx):
+        self.ignore_patterns = []
+        self.extra_processors = []
+        self._pipeline = pipeline
+        self._pipeline_ctx = pipeline_ctx
 
     @property
-    def is_first_worker(self):
-        return self.worker_id == 0
+    def tmp_dir(self):
+        return self._pipeline.tmp_dir
 
     @property
-    def is_pipeline_process(self):
-        return self.worker_id < 0
+    def out_dir(self):
+        return self._pipeline_ctx.out_dir
 
-    def addIgnorePatterns(self, patterns):
-        self._additional_ignore_patterns += patterns
+    @property
+    def worker_id(self):
+        return self._pipeline_ctx.worker_id
+
+    @property
+    def is_main_process(self):
+        return self._pipeline_ctx.is_main_process
 
 
 class Processor(object):
@@ -63,24 +67,12 @@ class Processor(object):
         pass
 
 
-class CopyFileProcessor(Processor):
-    PROCESSOR_NAME = 'copy'
+class ExternalProcessException(Exception):
+    def __init__(self, stderr_data):
+        self.stderr_data = stderr_data
 
-    def __init__(self):
-        super(CopyFileProcessor, self).__init__()
-        self.priority = PRIORITY_LAST
-
-    def matches(self, path):
-        return True
-
-    def getOutputFilenames(self, filename):
-        return [filename]
-
-    def process(self, path, out_dir):
-        out_path = os.path.join(out_dir, os.path.basename(path))
-        logger.debug("Copying: %s -> %s" % (path, out_path))
-        shutil.copyfile(path, out_path)
-        return True
+    def __str__(self):
+        return self.stderr_data
 
 
 class SimpleFileProcessor(Processor):
@@ -108,13 +100,4 @@ class SimpleFileProcessor(Processor):
 
     def _doProcess(self, in_path, out_path):
         raise NotImplementedError()
-
-
-class ExternalProcessException(Exception):
-    def __init__(self, stderr_data):
-        self.stderr_data = stderr_data
-
-    def __str__(self):
-        return self.stderr_data
-
 

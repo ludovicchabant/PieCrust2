@@ -5,7 +5,6 @@ from flask import (
     g, request, abort, render_template, url_for, redirect, flash)
 from flask.ext.login import login_required
 from piecrust.sources.interfaces import IInteractiveSource
-from piecrust.sources.base import MODE_CREATING
 from piecrust.routing import create_route_metadata
 from ..blueprint import foodtruck_bp
 from ..views import with_menu_context

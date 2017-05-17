@@ -9,8 +9,8 @@ import dateutil.parser
 import collections
 from werkzeug.utils import cached_property
 from piecrust.configuration import (
-        Configuration, ConfigurationError,
-        parse_config_header)
+    Configuration, ConfigurationError,
+    parse_config_header)
 
 
 logger = logging.getLogger(__name__)
@@ -36,32 +36,61 @@ FLAG_NONE = 0
 FLAG_RAW_CACHE_VALID = 2**0
 
 
+class PageNotFoundError(Exception):
+    pass
+
+
+class QualifiedPage(object):
+    def __init__(self, page, route, route_params, *, page_num=1):
+        self.page = page
+        self.page_num = page_num
+        self.route = route
+        self.route_params = route_params
+
+    @property
+    def app(self):
+        return self.page.app
+
+    @property
+    def source(self):
+        return self.page.source
+
+    @cached_property
+    def uri(self):
+        return self.route.getUri(self.route_params, self.page_num)
+
+    def getSubPage(self, page_num):
+        return QualifiedPage(self.page, self.route, self.route_params,
+                             page_num=self.page_num + 1)
+
+
 class Page(object):
-    def __init__(self, source, source_metadata, rel_path):
-        self.source = source
-        self.source_metadata = source_metadata
-        self.rel_path = rel_path
+    def __init__(self, content_item):
+        self.content_item = content_item
         self._config = None
         self._segments = None
         self._flags = FLAG_NONE
         self._datetime = None
 
     @property
-    def app(self):
-        return self.source.app
+    def source(self):
+        return self.content_item.source
 
     @property
-    def ref_spec(self):
-        return '%s:%s' % (self.source.name, self.rel_path)
+    def source_metadata(self):
+        return self.content_item.metadata
+
+    @property
+    def content_spec(self):
+        return self.content_item.spec
+
+    @property
+    def app(self):
+        return self.content_item.source.app
 
     @cached_property
-    def path(self):
-        path, _ = self.source.resolveRef(self.rel_path)
-        return path
-
-    @cached_property
-    def path_mtime(self):
-        return os.path.getmtime(self.path)
+    def content_mtime(self):
+        return self.content_item.getmtime()
 
     @property
     def flags(self):
@@ -91,20 +120,20 @@ class Page(object):
                     page_time = _parse_config_time(self.config.get('time'))
                     if page_time is not None:
                         self._datetime = datetime.datetime(
-                                page_date.year,
-                                page_date.month,
-                                page_date.day) + page_time
+                            page_date.year,
+                            page_date.month,
+                            page_date.day) + page_time
                     else:
                         self._datetime = datetime.datetime(
-                                page_date.year, page_date.month, page_date.day)
+                            page_date.year, page_date.month, page_date.day)
                 elif 'date' in self.config:
                     # Get the date from the page config, and maybe the
                     # time too.
                     page_date = _parse_config_date(self.config.get('date'))
                     self._datetime = datetime.datetime(
-                            page_date.year,
-                            page_date.month,
-                            page_date.day)
+                        page_date.year,
+                        page_date.month,
+                        page_date.day)
                     page_time = _parse_config_time(self.config.get('time'))
                     if page_time is not None:
                         self._datetime += page_time
@@ -114,8 +143,8 @@ class Page(object):
             except Exception as ex:
                 logger.exception(ex)
                 raise Exception(
-                        "Error computing time for page: %s" %
-                        self.path) from ex
+                    "Error computing time for page: %s" %
+                    self.path) from ex
         return self._datetime
 
     @datetime.setter
@@ -129,8 +158,9 @@ class Page(object):
         if self._config is not None:
             return
 
-        config, content, was_cache_valid = load_page(self.app, self.path,
-                                                     self.path_mtime)
+        config, content, was_cache_valid = load_page(
+            self.app, self.path, self.path_mtime)
+
         if 'config' in self.source_metadata:
             config.merge(self.source_metadata['config'])
 
@@ -140,6 +170,7 @@ class Page(object):
             self._flags |= FLAG_RAW_CACHE_VALID
 
         self.source.finalizeConfig(self)
+
 
 def _parse_config_date(page_date):
     if page_date is None:
@@ -152,9 +183,9 @@ def _parse_config_date(page_date):
             logger.exception(ex)
             raise ConfigurationError("Invalid date: %s" % page_date) from ex
         return datetime.date(
-                year=parsed_d.year,
-                month=parsed_d.month,
-                day=parsed_d.day)
+            year=parsed_d.year,
+            month=parsed_d.month,
+            day=parsed_d.day)
 
     raise ConfigurationError("Invalid date: %s" % page_date)
 
@@ -173,9 +204,9 @@ def _parse_config_time(page_time):
             logger.exception(ex)
             raise ConfigurationError("Invalid time: %s" % page_time) from ex
         return datetime.timedelta(
-                hours=parsed_t.hour,
-                minutes=parsed_t.minute,
-                seconds=parsed_t.second)
+            hours=parsed_t.hour,
+            minutes=parsed_t.minute,
+            seconds=parsed_t.second)
 
     if isinstance(page_time, int):
         # Total seconds... convert to a time struct.
@@ -187,8 +218,8 @@ def _parse_config_time(page_time):
 class PageLoadingError(Exception):
     def __init__(self, path, inner=None):
         super(PageLoadingError, self).__init__(
-                "Error loading page: %s" % path,
-                inner)
+            "Error loading page: %s" % path,
+            inner)
 
 
 class ContentSegment(object):
@@ -242,8 +273,8 @@ def load_page(app, path, path_mtime=None):
             return _do_load_page(app, path, path_mtime)
     except Exception as e:
         logger.exception(
-                "Error loading page: %s" %
-                os.path.relpath(path, app.root_dir))
+            "Error loading page: %s" %
+            os.path.relpath(path, app.root_dir))
         _, __, traceback = sys.exc_info()
         raise PageLoadingError(path, e).with_traceback(traceback)
 
@@ -255,11 +286,11 @@ def _do_load_page(app, path, path_mtime):
     page_time = path_mtime or os.path.getmtime(path)
     if cache.isValid(cache_path, page_time):
         cache_data = json.loads(
-                cache.read(cache_path),
-                object_pairs_hook=collections.OrderedDict)
+            cache.read(cache_path),
+            object_pairs_hook=collections.OrderedDict)
         config = PageConfiguration(
-                values=cache_data['config'],
-                validate=False)
+            values=cache_data['config'],
+            validate=False)
         content = json_load_segments(cache_data['content'])
         return config, content, True
 
@@ -280,19 +311,19 @@ def _do_load_page(app, path, path_mtime):
 
     # Save to the cache.
     cache_data = {
-            'config': config.getAll(),
-            'content': json_save_segments(content)}
+        'config': config.getAll(),
+        'content': json_save_segments(content)}
     cache.write(cache_path, json.dumps(cache_data))
 
     return config, content, False
 
 
 segment_pattern = re.compile(
-        r"""^\-\-\-\s*(?P<name>\w+)(\:(?P<fmt>\w+))?\s*\-\-\-\s*$""",
-        re.M)
+    r"""^\-\-\-\s*(?P<name>\w+)(\:(?P<fmt>\w+))?\s*\-\-\-\s*$""",
+    re.M)
 part_pattern = re.compile(
-        r"""^<\-\-\s*(?P<fmt>\w+)\s*\-\->\s*$""",
-        re.M)
+    r"""^<\-\-\s*(?P<fmt>\w+)\s*\-\->\s*$""",
+    re.M)
 
 
 def _count_lines(s):
@@ -323,7 +354,7 @@ def parse_segments(raw, offset=0):
     if not do_parse:
         seg = ContentSegment()
         seg.parts = [
-                ContentSegmentPart(raw[offset:], None, offset, current_line)]
+            ContentSegmentPart(raw[offset:], None, offset, current_line)]
         return {'content': seg}
 
     # Start parsing segments and parts.
@@ -337,7 +368,7 @@ def parse_segments(raw, offset=0):
             # There's some default content segment at the beginning.
             seg = ContentSegment()
             seg.parts, current_line = parse_segment_parts(
-                    raw, offset, first_offset, current_line)
+                raw, offset, first_offset, current_line)
             contents['content'] = seg
 
         for i in range(1, num_matches):
@@ -345,16 +376,16 @@ def parse_segments(raw, offset=0):
             m2 = matches[i]
             seg = ContentSegment()
             seg.parts, current_line = parse_segment_parts(
-                    raw, m1.end() + 1, m2.start(), current_line,
-                    m1.group('fmt'))
+                raw, m1.end() + 1, m2.start(), current_line,
+                m1.group('fmt'))
             contents[m1.group('name')] = seg
 
         # Handle text past the last match.
         lastm = matches[-1]
         seg = ContentSegment()
         seg.parts, current_line = parse_segment_parts(
-                raw, lastm.end() + 1, len(raw), current_line,
-                lastm.group('fmt'))
+            raw, lastm.end() + 1, len(raw), current_line,
+            lastm.group('fmt'))
         contents[lastm.group('name')] = seg
 
         return contents
@@ -362,7 +393,7 @@ def parse_segments(raw, offset=0):
         # No segments, just content.
         seg = ContentSegment()
         seg.parts, current_line = parse_segment_parts(
-                raw, offset, len(raw), current_line)
+            raw, offset, len(raw), current_line)
         return {'content': seg}
 
 
@@ -375,8 +406,8 @@ def parse_segment_parts(raw, start, end, line_offset, first_part_fmt=None):
         # First part, before the first format change.
         part_text = raw[start:matches[0].start()]
         parts.append(
-                ContentSegmentPart(part_text, first_part_fmt, start,
-                                   line_offset))
+            ContentSegmentPart(part_text, first_part_fmt, start,
+                               line_offset))
         line_offset += _count_lines(part_text)
 
         for i in range(1, num_matches):
@@ -384,16 +415,16 @@ def parse_segment_parts(raw, start, end, line_offset, first_part_fmt=None):
             m2 = matches[i]
             part_text = raw[m1.end() + 1:m2.start()]
             parts.append(
-                    ContentSegmentPart(
-                        part_text, m1.group('fmt'), m1.end() + 1,
-                        line_offset))
+                ContentSegmentPart(
+                    part_text, m1.group('fmt'), m1.end() + 1,
+                    line_offset))
             line_offset += _count_lines(part_text)
 
         lastm = matches[-1]
         part_text = raw[lastm.end() + 1:end]
         parts.append(ContentSegmentPart(
-                part_text, lastm.group('fmt'), lastm.end() + 1,
-                line_offset))
+            part_text, lastm.group('fmt'), lastm.end() + 1,
+            line_offset))
 
         return parts, line_offset
     else:
