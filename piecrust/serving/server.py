@@ -160,14 +160,15 @@ class Server(object):
 
         # If we haven't found any good match, report all the places we didn't
         # find it at.
-        qp = req_page.qualified_page
-        if qp is None:
+        if req_page.page is None:
             msg = "Can't find path for '%s':" % request.path
             raise MultipleNotFound(msg, req_page.not_found_errors)
 
         # We have a page, let's try to render it.
-        render_ctx = RenderingContext(qp, force_render=True)
-        qp.page.source.prepareRenderContext(render_ctx)
+        render_ctx = RenderingContext(req_page,
+                                      sub_num=req_page.sub_num,
+                                      force_render=True)
+        req_page.page.source.prepareRenderContext(render_ctx)
 
         # Render the page.
         rendered_page = render_page(render_ctx)

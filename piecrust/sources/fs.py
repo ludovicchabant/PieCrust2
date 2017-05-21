@@ -1,4 +1,6 @@
 import os.path
+import re
+import fnmatch
 import logging
 from piecrust import osutil
 from piecrust.routing import RouteParameter
@@ -28,7 +30,6 @@ class FSContentSourceBase(ContentSource):
         super().__init__(app, name, config)
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
-        self._fs_filter = None
 
     def _checkFSEndpoint(self):
         if not os.path.isdir(self.fs_endpoint_path):
@@ -38,7 +39,7 @@ class FSContentSourceBase(ContentSource):
                                                  self.fs_endpoint_path)
         return True
 
-    def openItem(self, item, mode='r'):
+    def openItem(self, item, mode='r', encoding=None):
         for m in 'wxa+':
             if m in mode:
                 # If opening the file for writing, let's make sure the
@@ -47,10 +48,13 @@ class FSContentSourceBase(ContentSource):
                 if not os.path.exists(dirname):
                     os.makedirs(dirname, 0o755)
                 break
-        return open(item.spec, mode)
+        return open(item.spec, mode, encoding=encoding)
 
     def getItemMtime(self, item):
         return os.path.getmtime(item.spec)
+
+    def describe(self):
+        return {'endpoint_path': self.fs_endpoint_path}
 
 
 class FSContentSource(FSContentSourceBase):
@@ -58,6 +62,15 @@ class FSContentSource(FSContentSourceBase):
         under a given root directory.
     """
     SOURCE_NAME = 'fs'
+
+    def __init__(self, app, name, config):
+        super().__init__(app, name, config)
+
+        config.setdefault('data_type', 'asset_iterator')
+
+        ig, ir = _parse_ignores(config.get('ignore'))
+        self._ignore_globs = ig
+        self._ignore_regexes = ir
 
     def getContents(self, group):
         logger.debug("Scanning for content in: %s" % self.fs_endpoint_path)
@@ -69,12 +82,16 @@ class FSContentSource(FSContentSourceBase):
             parent_path = group.spec
 
         names = filter(_filter_crap_files, osutil.listdir(parent_path))
-        if self._fs_filter is not None:
-            names = filter(self._fs_filter, names)
+
+        final_names = []
+        for name in names:
+            path = os.path.join(parent_path, name)
+            if not self._filterIgnored(path):
+                final_names.append(name)
 
         items = []
         groups = []
-        for name in names:
+        for name in final_names:
             path = os.path.join(parent_path, name)
             if os.path.isdir(path):
                 metadata = self._createGroupMetadata(path)
@@ -84,6 +101,16 @@ class FSContentSource(FSContentSourceBase):
                 items.append(ContentItem(path, metadata))
         self._finalizeContent(group, items, groups)
         return items + groups
+
+    def _filterIgnored(self, path):
+        rel_path = os.path.relpath(path, self.fs_endpoint_path)
+        for g in self._ignore_globs:
+            if fnmatch.fnmatch(rel_path, g):
+                return True
+        for r in self._ignore_regexes:
+            if r.search(g):
+                return True
+        return False
 
     def _createGroupMetadata(self, path):
         return {}
@@ -107,5 +134,14 @@ class FSContentSource(FSContentSourceBase):
         return [
             RouteParameter('path', RouteParameter.TYPE_PATH)]
 
-    def describe(self):
-        return {'endpoint_path': self.fs_endpoint_path}
+
+def _parse_ignores(patterns):
+    globs = []
+    regexes = []
+    if patterns:
+        for pat in patterns:
+            if len(pat) > 2 and pat[0] == '/' and pat[-1] == '/':
+                regexes.append(re.compile(pat[1:-1]))
+            else:
+                globs.append(pat)
+    return globs, regexes

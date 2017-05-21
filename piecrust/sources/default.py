@@ -19,6 +19,9 @@ class DefaultContentSource(FSContentSource,
 
     def __init__(self, app, name, config):
         super().__init__(app, name, config)
+
+        config.setdefault('data_type', 'page_iterator')
+
         self.auto_formats = app.config.get('site/auto_formats')
         self.default_auto_format = app.config.get('site/default_auto_format')
         self.supported_extensions = list(self.auto_formats)
@@ -33,7 +36,9 @@ class DefaultContentSource(FSContentSource,
     def _doCreateItemMetadata(self, path):
         slug = self._makeSlug(path)
         metadata = {
-            'slug': slug
+            'route_params': {
+                'slug': slug
+            }
         }
         _, ext = os.path.splitext(path)
         if ext:

@@ -1,5 +1,7 @@
 
 class Event(object):
+    """ A simple implementation of a subscribable event.
+    """
     def __init__(self):
         self._handlers = []
 

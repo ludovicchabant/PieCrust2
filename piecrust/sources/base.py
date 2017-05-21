@@ -1,5 +1,6 @@
 import logging
 import collections
+from werkzeug.utils import cached_property
 
 
 # Source realms, to differentiate sources in the site itself ('User')
@@ -40,6 +41,12 @@ CONTENT_TYPE_ASSET = 1
 
 class ContentItem:
     """ Describes a piece of content.
+
+        Some known metadata that PieCrust will use include:
+        - `route_params`: A dictionary of route parameters to generate
+              the URL to the content.
+        - `config`: A dictionary of configuration settings to merge
+              into the settings found in the content itself.
     """
     def __init__(self, spec, metadata):
         self.spec = spec
@@ -80,7 +87,11 @@ class ContentSource:
             return self.app.theme_dir
         return self.app.root_dir
 
-    def openItem(self, item, mode='r'):
+    @cached_property
+    def route(self):
+        return self.app.getSourceRoute(self.name)
+
+    def openItem(self, item, mode='r', **kwargs):
         raise NotImplementedError()
 
     def getItemMtime(self, item):

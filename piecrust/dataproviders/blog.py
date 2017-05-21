@@ -1,72 +1,7 @@
 import time
 import collections.abc
-from piecrust.configuration import ConfigurationError
-from piecrust.data.iterators import PageIterator
+from piecrust.dataproviders.base import DataProvider
 from piecrust.generation.taxonomy import Taxonomy
-from piecrust.sources.array import ArraySource
-
-
-def get_data_provider_class(app, provider_type):
-    if not provider_type:
-        raise Exception("No data provider type specified.")
-    for prov in app.plugin_loader.getDataProviders():
-        if prov.PROVIDER_NAME == provider_type:
-            return prov
-    raise ConfigurationError(
-        "Unknown data provider type: %s" % provider_type)
-
-
-class DataProvider(object):
-    debug_render_dynamic = []
-    debug_render_invoke_dynamic = []
-
-    def __init__(self, source, page, override):
-        if source.app is not page.app:
-            raise Exception("The given source and page don't belong to "
-                            "the same application.")
-        self._source = source
-        self._page = page
-
-
-class IteratorDataProvider(DataProvider):
-    PROVIDER_NAME = 'iterator'
-
-    debug_render_doc_dynamic = ['_debugRenderDoc']
-    debug_render_not_empty = True
-
-    def __init__(self, source, page, override):
-        super(IteratorDataProvider, self).__init__(source, page, override)
-
-        self._innerIt = None
-        if isinstance(override, IteratorDataProvider):
-            # Iterator providers can be chained, like for instance with
-            # `site.pages` listing both the theme pages and the user site's
-            # pages.
-            self._innerIt = override
-
-        self._pages = PageIterator(source, current_page=page)
-        self._pages._iter_event += self._onIteration
-        self._ctx_set = False
-
-    def __len__(self):
-        return len(self._pages)
-
-    def __getitem__(self, key):
-        return self._pages[key]
-
-    def __iter__(self):
-        yield from iter(self._pages)
-        if self._innerIt:
-            yield from self._innerIt
-
-    def _onIteration(self):
-        if not self._ctx_set:
-            eis = self._page.app.env.exec_info_stack
-            eis.current_page_info.render_ctx.addUsedSource(self._source.name)
-            self._ctx_set = True
-
-    def _debugRenderDoc(self):
-        return 'Provides a list of %d items' % len(self)
 
 
 class BlogDataProvider(DataProvider, collections.abc.Mapping):
@@ -75,7 +10,7 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     debug_render_doc = """Provides a list of blog posts and yearly/monthly
                           archives."""
     debug_render_dynamic = (['_debugRenderTaxonomies'] +
-            DataProvider.debug_render_dynamic)
+                            DataProvider.debug_render_dynamic)
 
     def __init__(self, source, page, override):
         super(BlogDataProvider, self).__init__(source, page, override)

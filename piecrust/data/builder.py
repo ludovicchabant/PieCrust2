@@ -1,6 +1,7 @@
 import logging
+from piecrust.data.assetor import Assetor
 from piecrust.data.base import MergedMapping
-from piecrust.data.linker import PageLinkerData
+# from piecrust.data.linker import PageLinkerData
 from piecrust.data.pagedata import PageData
 from piecrust.data.paginator import Paginator
 from piecrust.data.piecrustdata import PieCrustData
@@ -11,32 +12,33 @@ from piecrust.routing import RouteFunction
 logger = logging.getLogger(__name__)
 
 
-class DataBuildingContext(object):
-    def __init__(self, qualified_page):
-        self.qualified_page = qualified_page
+class DataBuildingContext:
+    def __init__(self, page, sub_num):
+        self.page = page
+        self.sub_num = sub_num
         self.pagination_source = None
         self.pagination_filter = None
 
 
 def build_page_data(ctx):
-    qpage = ctx.qualified_page
-    page = qpage.page
+    page = ctx.page
+    sub_num = ctx.sub_num
     app = page.app
+
     pgn_source = ctx.pagination_source or get_default_pagination_source(page)
-    first_uri = ctx.page.getUri(1)
 
     pc_data = PieCrustData()
     config_data = PageData(page, ctx)
-    paginator = Paginator(qpage, pgn_source,
+    paginator = Paginator(pgn_source, page, sub_num,
                           pgn_filter=ctx.pagination_filter)
-    assetor = page.source.buildAssetor(page, first_uri)
-    linker = PageLinkerData(page.source, page.rel_path)
+    assetor = Assetor(page)
+    # linker = PageLinkerData(page.source, page.rel_path)
     data = {
         'piecrust': pc_data,
         'page': config_data,
         'assets': assetor,
         'pagination': paginator,
-        'family': linker
+        # 'family': linker
     }
 
     for route in app.routes:

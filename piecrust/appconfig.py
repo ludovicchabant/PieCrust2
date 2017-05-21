@@ -386,7 +386,7 @@ def _validate_site_sources(v, values, cache):
         sc.setdefault('fs_endpoint', sn)
         sc.setdefault('ignore_missing_dir', False)
         sc.setdefault('data_endpoint', None)
-        sc.setdefault('data_type', 'iterator')
+        sc.setdefault('data_type', None)
         sc.setdefault('item_name', sn)
         sc.setdefault('items_per_page', 5)
         sc.setdefault('date_format', DEFAULT_DATE_FORMAT)
@@ -412,6 +412,8 @@ def _validate_site_routes(v, values, cache):
 
     # Check routes are referencing correct sources, have default
     # values, etc.
+    used_sources = set()
+    existing_sources = set(values['site']['sources'].keys())
     for rc in v:
         if not isinstance(rc, dict):
             raise ConfigurationError("All routes in 'site/routes' must be "
@@ -426,12 +428,14 @@ def _validate_site_routes(v, values, cache):
         r_source = rc.get('source')
         if r_source is None:
             raise ConfigurationError("Routes must specify a source.")
-        if (r_source and
-                r_source not in list(values['site']['sources'].keys())):
+        if r_source not in existing_sources:
             raise ConfigurationError("Route is referencing unknown "
                                      "source: %s" % r_source)
+        if r_source in used_sources:
+            raise ConfigurationError("Source '%s' already has a route." %
+                                     r_source)
+        used_sources.add(r_source)
 
-        rc.setdefault('pass', 0)
         rc.setdefault('page_suffix', '/%num%')
 
     return v

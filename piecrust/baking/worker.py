@@ -2,7 +2,7 @@ import time
 import logging
 from piecrust.pipelines.base import PipelineContext, PipelineResult
 from piecrust.pipelines.records import (
-    MultiRecordHistory, MultiRecord, Record, load_records)
+    MultiRecordHistory, MultiRecord, RecordEntry, load_records)
 from piecrust.sources.base import ContentItem
 from piecrust.workerpool import IWorker
 
@@ -42,17 +42,6 @@ class BakeWorker(IWorker):
         stats = app.env.stats
         stats.registerTimer("BakeWorker_%d_Total" % self.wid)
         stats.registerTimer("BakeWorkerInit")
-        stats.registerTimer("JobReceive")
-        stats.registerTimer('LoadJob', raise_if_registered=False)
-        stats.registerTimer('RenderFirstSubJob',
-                            raise_if_registered=False)
-        stats.registerTimer('BakeJob', raise_if_registered=False)
-
-        stats.registerCounter("SourceUseAbortions")
-
-        stats.registerManifest("LoadJobs")
-        stats.registerManifest("RenderJobs")
-        stats.registerManifest("BakeJobs")
 
         self.app = app
 
@@ -90,9 +79,12 @@ class BakeWorker(IWorker):
         src, pp = self._sources[job.source_name]
         item = ContentItem(job.item_spec, job.item_metadata)
 
-        record_class = pp.RECORD_CLASS or Record
-        ppres = PipelineResult(record_class())
-        ppres.record.item_spec = job.item_spec
+        entry_class = pp.RECORD_ENTRY_CLASS or RecordEntry
+        ppres = PipelineResult()
+        ppres.pipeline_name = pp.PIPELINE_NAME
+        ppres.record_entry = entry_class()
+        ppres.record_entry.item_spec = job.item_spec
+
         pp.run(item, self._ppctx, ppres)
         return ppres
 
@@ -112,27 +104,4 @@ class BakeJob:
         self.source_name = source_name
         self.item_spec = item_spec
         self.item_metadata = item_metadata
-
-
-class JobHandler:
-    def __init__(self, ctx):
-        self.ctx = ctx
-
-    @property
-    def app(self):
-        return self.ctx.app
-
-    def handleJob(self, job):
-        raise NotImplementedError()
-
-    def shutdown(self):
-        pass
-
-
-def _get_errors(ex):
-    errors = []
-    while ex is not None:
-        errors.append(str(ex))
-        ex = ex.__cause__
-    return errors
 

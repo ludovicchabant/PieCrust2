@@ -34,18 +34,20 @@ class PieCrust(object):
         else:
             self.cache = NullExtensibleCache()
 
+        if env is None:
+            env = StandardEnvironment()
         self.env = env
-        if self.env is None:
-            self.env = StandardEnvironment()
-        self.env.initialize(self)
-        self.env.stats.registerTimer('SiteConfigLoad')
-        self.env.stats.registerTimer('PageLoad')
-        self.env.stats.registerTimer("PageDataBuild")
-        self.env.stats.registerTimer("BuildRenderData")
-        self.env.stats.registerTimer("PageRender")
-        self.env.stats.registerTimer("PageRenderSegments")
-        self.env.stats.registerTimer("PageRenderLayout")
-        self.env.stats.registerTimer("PageSerialize")
+        env.initialize(self)
+
+        stats = env.stats
+        stats.registerTimer('SiteConfigLoad')
+        stats.registerTimer('PageLoad')
+        stats.registerTimer("PageDataBuild")
+        stats.registerTimer("BuildRenderData")
+        stats.registerTimer("PageRender")
+        stats.registerTimer("PageRenderSegments")
+        stats.registerTimer("PageRenderLayout")
+        stats.registerTimer("PageSerialize")
 
     @cached_property
     def config(self):
@@ -193,19 +195,17 @@ class PieCrust(object):
         for source in self.sources:
             if source.name == source_name:
                 return source
-        return None
 
-    def getSourceRoutes(self, source_name):
+        from piecrust.sources.base import SourceNotFoundError
+        raise SourceNotFoundError(source_name)
+
+    def getSourceRoute(self, source_name):
         for route in self.routes:
             if route.source_name == source_name:
-                yield route
-
-    def getSourceRoute(self, source_name, route_params):
-        for route in self.getSourceRoutes(source_name):
-            if (route_params is None or
-                    route.matchesParameters(route_params)):
                 return route
-        return None
+
+        from piecrust.routing import RouteNotFoundError
+        raise RouteNotFoundError(source_name)
 
     def getPublisher(self, target_name):
         for pub in self.publishers:
@@ -213,11 +213,11 @@ class PieCrust(object):
                 return pub
         return None
 
-    def getPage(self, content_item):
+    def getPage(self, source, content_item):
         cache_key = content_item.spec
         return self.env.page_repository.get(
             cache_key,
-            lambda: Page(content_item))
+            lambda: Page(source, content_item))
 
     def _get_dir(self, default_rel_dir):
         abs_dir = os.path.join(self.root_dir, default_rel_dir)

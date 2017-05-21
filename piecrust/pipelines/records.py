@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class MultiRecord:
+    """ A container that includes multiple `Record` instances.
+    """
     RECORD_VERSION = 12
 
     def __init__(self):
@@ -28,7 +30,7 @@ class MultiRecord:
                 return r
         if not auto_create:
             return None
-        record = Record()
+        record = Record(record_name)
         self.records.append(record)
         return record
 
@@ -48,22 +50,30 @@ class MultiRecord:
 
 
 class Record:
-    def __init__(self):
-        self.name = None
+    """ A basic class that represents a 'record' of a bake operation on a
+        content source.
+    """
+    def __init__(self, name):
+        self.name = name
         self.entries = []
-        self.stats = {}
-        self.out_dir = None
+        self.deleted_out_paths = []
         self.success = True
 
 
 class RecordEntry:
+    """ An entry in a record, for a specific content item.
+    """
     def __init__(self):
         self.item_spec = None
+        self.out_paths = []
         self.errors = []
 
     @property
     def success(self):
         return len(self.errors) == 0
+
+    def describe(self):
+        return {}
 
 
 def _are_records_valid(multi_record):
@@ -101,6 +111,9 @@ def _build_diff_key(item_spec):
 
 
 class MultiRecordHistory:
+    """ Tracks the differences between an 'old' and a 'new' record
+        container.
+    """
     def __init__(self, previous, current):
         if previous is None or current is None:
             raise ValueError()
@@ -114,7 +127,13 @@ class MultiRecordHistory:
         for h in self.histories:
             if h.name == record_name:
                 return h
-        return None
+        rh = RecordHistory(
+            Record(record_name),
+            Record(record_name))
+        self.histories.append(rh)
+        self.previous.records.append(rh.previous)
+        self.current.records.append(rh.current)
+        return rh
 
     def _buildHistories(self, previous, current):
         pairs = {}
@@ -128,22 +147,30 @@ class MultiRecordHistory:
                     raise Exception("Got several records named: %s" % r.name)
                 pairs[r.name] = (p[0], r)
 
-        for p, c in pairs.values():
+        for name, pair in pairs.items():
+            p, c = pair
+            if p is None:
+                p = Record(name)
+                previous.records.append(p)
+            if c is None:
+                c = Record(name)
+                current.records.append(c)
             self.histories.append(RecordHistory(p, c))
 
 
 class RecordHistory:
     def __init__(self, previous, current):
-        self._diffs = {}
-        self._previous = previous
-        self._current = current
+        if previous is None or current is None:
+            raise ValueError()
 
-        if previous and current and previous.name != current.name:
+        if previous.name != current.name:
             raise Exception("The two records must have the same name! "
                             "Got '%s' and '%s'." %
                             (previous.name, current.name))
 
-        self._buildDiffs()
+        self._previous = previous
+        self._current = current
+        self._diffs = None
 
     @property
     def name(self):
@@ -159,9 +186,15 @@ class RecordHistory:
 
     @property
     def diffs(self):
+        if self._diffs is None:
+            raise Exception("This record history hasn't been built yet.")
         return self._diffs.values()
 
-    def _buildDiffs(self):
+    def build(self):
+        if self._diffs is not None:
+            raise Exception("This record history has already been built.")
+
+        self._diffs = {}
         if self._previous is not None:
             for e in self._previous.entries:
                 key = _build_diff_key(e.item_spec)

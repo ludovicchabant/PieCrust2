@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 class AssetPipeline(ContentPipeline):
     PIPELINE_NAME = 'asset'
-    RECORD_CLASS = AssetPipelineRecordEntry
+    RECORD_ENTRY_CLASS = AssetPipelineRecordEntry
 
     def __init__(self, source):
         if not isinstance(source, FSContentSourceBase):
@@ -68,22 +68,23 @@ class AssetPipeline(ContentPipeline):
         if re_matchany(rel_path, self.ignore_patterns):
             return
 
-        record = result.record
+        record_entry = result.record_entry
         stats = self.app.env.stats
 
         # Build the processing tree for this job.
         with stats.timerScope('BuildProcessingTree'):
             builder = ProcessingTreeBuilder(self._processors)
             tree_root = builder.build(rel_path)
-            record.flags |= AssetPipelineRecordEntry.FLAG_PREPARED
+            record_entry.flags |= AssetPipelineRecordEntry.FLAG_PREPARED
 
         # Prepare and run the tree.
         print_node(tree_root, recursive=True)
         leaves = tree_root.getLeaves()
-        record.rel_outputs = [l.path for l in leaves]
-        record.proc_tree = get_node_name_tree(tree_root)
+        record_entry.out_paths = [os.path.join(ctx.out_dir, l.path)
+                                  for l in leaves]
+        record_entry.proc_tree = get_node_name_tree(tree_root)
         if tree_root.getProcessor().is_bypassing_structured_processing:
-            record.flags |= (
+            record_entry.flags |= (
                 AssetPipelineRecordEntry.FLAG_BYPASSED_STRUCTURED_PROCESSING)
 
         if ctx.force:
@@ -93,29 +94,11 @@ class AssetPipeline(ContentPipeline):
             runner = ProcessingTreeRunner(
                 self._base_dir, self.tmp_dir, ctx.out_dir)
             if runner.processSubTree(tree_root):
-                record.flags |= (
+                record_entry.flags |= (
                     AssetPipelineRecordEntry.FLAG_PROCESSED)
 
-    def shutdown(self, ctx):
-        # Invoke post-processors.
-        proc_ctx = ProcessorContext(self, ctx)
-        for proc in self._processors:
-            proc.onPipelineEnd(proc_ctx)
-
-    def collapseRecords(self, record_history):
-        for prev, cur in record_history.diffs():
-            if prev and cur and not cur.was_processed:
-                # This asset wasn't processed, so the information from
-                # last time is still valid.
-                cur.flags = (
-                    prev.flags &
-                    (~AssetPipelineRecordEntry.FLAG_PROCESSED |
-                     AssetPipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN))
-                cur.out_paths = list(prev.out_paths)
-                cur.errors = list(prev.errors)
-
-    def getDeletions(self, record_history):
-        for prev, cur in record_history.diffs():
+    def getDeletions(self, ctx):
+        for prev, cur in ctx.record_history.diffs:
             if prev and not cur:
                 for p in prev.out_paths:
                     yield (p, 'previous asset was removed')
@@ -123,6 +106,23 @@ class AssetPipeline(ContentPipeline):
                 diff = set(prev.out_paths) - set(cur.out_paths)
                 for p in diff:
                     yield (p, 'asset changed outputs')
+
+    def collapseRecords(self, ctx):
+        for prev, cur in ctx.record_history.diffs:
+            if prev and cur and not cur.was_processed:
+                # This asset wasn't processed, so the information from
+                # last time is still valid.
+                cur.flags = (
+                    (prev.flags & ~AssetPipelineRecordEntry.FLAG_PROCESSED) |
+                    AssetPipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN)
+                cur.out_paths = list(prev.out_paths)
+                cur.errors = list(prev.errors)
+
+    def shutdown(self, ctx):
+        # Invoke post-processors.
+        proc_ctx = ProcessorContext(self, ctx)
+        for proc in self._processors:
+            proc.onPipelineEnd(proc_ctx)
 
 
 split_processor_names_re = re.compile(r'[ ,]+')

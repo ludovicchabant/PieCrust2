@@ -1,9 +1,8 @@
 import logging
 import collections
-from piecrust.data.iterators import PageIterator
 from piecrust.data.pagedata import LazyPageConfigLoaderHasNoValue
 from piecrust.data.paginationdata import PaginationData
-from piecrust.sources.interfaces import IPaginationSource
+from piecrust.dataproviders.page_iterator import PageIterator
 
 
 logger = logging.getLogger(__name__)
@@ -11,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class PageLinkerData(object):
     """ Entry template data to get access to related pages from a given
-    root page.
+        root page.
     """
     debug_render = ['parent', 'ancestors', 'siblings', 'children', 'root',
                     'forpath']

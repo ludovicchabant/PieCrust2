@@ -37,15 +37,16 @@ class RenderedLayout(object):
 
 
 class RenderedPage(object):
-    def __init__(self, qualified_page):
-        self.qualified_page = qualified_page
+    def __init__(self, page, sub_num):
+        self.page = page
+        self.sub_num = sub_num
         self.data = None
         self.content = None
         self.render_info = [None, None]
 
     @property
     def app(self):
-        return self.qualified_page.app
+        return self.page.app
 
     def copyRenderInfo(self):
         return copy.deepcopy(self.render_info)
@@ -77,8 +78,9 @@ class RenderPassInfo(object):
 
 
 class RenderingContext(object):
-    def __init__(self, qualified_page, force_render=False):
-        self.qualified_page = qualified_page
+    def __init__(self, page, *, sub_num=1, force_render=False):
+        self.page = page
+        self.sub_num = sub_num
         self.force_render = force_render
         self.pagination_source = None
         self.pagination_filter = None
@@ -88,7 +90,7 @@ class RenderingContext(object):
 
     @property
     def app(self):
-        return self.qualified_page.app
+        return self.page.app
 
     @property
     def current_pass_info(self):
@@ -138,13 +140,13 @@ class RenderingContextStack(object):
 
     def hasPage(self, page):
         for ei in self._ctx_stack:
-            if ei.qualified_page.page == page:
+            if ei.page == page:
                 return True
         return False
 
     def pushCtx(self, render_ctx):
         for ctx in self._ctx_stack:
-            if ctx.qualified_page.page == render_ctx.qualified_page.page:
+            if ctx.page == render_ctx.page:
                 raise Exception("Loop detected during rendering!")
         self._ctx_stack.append(render_ctx)
 
@@ -161,7 +163,8 @@ def render_page(ctx):
     stack = env.render_ctx_stack
     stack.pushCtx(ctx)
 
-    qpage = ctx.qualified_page
+    page = ctx.page
+    page_uri = page.getUri(ctx.sub_num)
 
     try:
         # Build the data for both segment and layout rendering.
@@ -177,20 +180,20 @@ def render_page(ctx):
         with env.timerScope("PageRenderSegments"):
             if repo is not None and not ctx.force_render:
                 render_result = repo.get(
-                    qpage.uri,
+                    page_uri,
                     lambda: _do_render_page_segments(ctx, page_data),
-                    fs_cache_time=qpage.page.content_mtime,
+                    fs_cache_time=page.content_mtime,
                     save_to_fs=save_to_fs)
             else:
                 render_result = _do_render_page_segments(ctx, page_data)
                 if repo:
-                    repo.put(qpage.uri, render_result, save_to_fs)
+                    repo.put(page_uri, render_result, save_to_fs)
 
         # Render layout.
         ctx.setCurrentPass(PASS_RENDERING)
-        layout_name = qpage.page.config.get('layout')
+        layout_name = page.config.get('layout')
         if layout_name is None:
-            layout_name = qpage.page.source.config.get(
+            layout_name = page.source.config.get(
                 'default_layout', 'default')
         null_names = ['', 'none', 'nil']
         if layout_name not in null_names:
@@ -199,13 +202,13 @@ def render_page(ctx):
 
             with ctx.app.env.timerScope("PageRenderLayout"):
                 layout_result = _do_render_layout(
-                    layout_name, qpage, page_data)
+                    layout_name, page, page_data)
         else:
             layout_result = {
                 'content': render_result['segments']['content'],
                 'pass_info': None}
 
-        rp = RenderedPage(qpage)
+        rp = RenderedPage(page, ctx.sub_num)
         rp.data = page_data
         rp.content = layout_result['content']
         rp.render_info[PASS_FORMATTING] = _unpickle_object(
@@ -233,7 +236,8 @@ def render_page_segments(ctx):
     stack = env.render_ctx_stack
     stack.pushCtx(ctx)
 
-    qpage = ctx.qualified_page
+    page = ctx.page
+    page_uri = page.getUri(ctx.sub_num)
 
     try:
         ctx.setCurrentPass(PASS_FORMATTING)
@@ -244,14 +248,14 @@ def render_page_segments(ctx):
         with ctx.app.env.timerScope("PageRenderSegments"):
             if repo is not None and not ctx.force_render:
                 render_result = repo.get(
-                    qpage.uri,
+                    page_uri,
                     lambda: _do_render_page_segments_from_ctx(ctx),
-                    fs_cache_time=qpage.page.content_mtime,
+                    fs_cache_time=page.content_mtime,
                     save_to_fs=save_to_fs)
             else:
                 render_result = _do_render_page_segments_from_ctx(ctx)
                 if repo:
-                    repo.put(qpage.uri, render_result, save_to_fs)
+                    repo.put(page_uri, render_result, save_to_fs)
     finally:
         ctx.setCurrentPass(PASS_NONE)
         stack.popCtx()
@@ -264,7 +268,7 @@ def render_page_segments(ctx):
 
 def _build_render_data(ctx):
     with ctx.app.env.timerScope("PageDataBuild"):
-        data_ctx = DataBuildingContext(ctx.qualified_page)
+        data_ctx = DataBuildingContext(ctx.page, ctx.sub_num)
         data_ctx.pagination_source = ctx.pagination_source
         data_ctx.pagination_filter = ctx.pagination_filter
         page_data = build_page_data(data_ctx)
@@ -279,7 +283,7 @@ def _do_render_page_segments_from_ctx(ctx):
 
 
 def _do_render_page_segments(ctx, page_data):
-    page = ctx.qualified_page.page
+    page = ctx.page
     app = page.app
 
     engine_name = page.config.get('template_engine')

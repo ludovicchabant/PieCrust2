@@ -1,7 +1,5 @@
 import re
-import sys
 import json
-import os.path
 import hashlib
 import logging
 import datetime
@@ -10,7 +8,8 @@ import collections
 from werkzeug.utils import cached_property
 from piecrust.configuration import (
     Configuration, ConfigurationError,
-    parse_config_header)
+    parse_config_header,
+    MERGE_PREPEND_LISTS)
 
 
 logger = logging.getLogger(__name__)
@@ -40,41 +39,25 @@ class PageNotFoundError(Exception):
     pass
 
 
-class QualifiedPage(object):
-    def __init__(self, page, route, route_params, *, page_num=1):
-        self.page = page
-        self.page_num = page_num
-        self.route = route
-        self.route_params = route_params
-
-    @property
-    def app(self):
-        return self.page.app
-
-    @property
-    def source(self):
-        return self.page.source
-
-    @cached_property
-    def uri(self):
-        return self.route.getUri(self.route_params, self.page_num)
-
-    def getSubPage(self, page_num):
-        return QualifiedPage(self.page, self.route, self.route_params,
-                             page_num=self.page_num + 1)
-
-
-class Page(object):
-    def __init__(self, content_item):
+class Page:
+    """ Represents a page that is text content with an optional YAML
+        front-matter, and that goes through the page pipeline.
+    """
+    def __init__(self, source, content_item):
+        self.source = source
         self.content_item = content_item
         self._config = None
         self._segments = None
         self._flags = FLAG_NONE
         self._datetime = None
 
-    @property
-    def source(self):
-        return self.content_item.source
+    @cached_property
+    def app(self):
+        return self.source.app
+
+    @cached_property
+    def route(self):
+        return self.source.route
 
     @property
     def source_metadata(self):
@@ -84,13 +67,9 @@ class Page(object):
     def content_spec(self):
         return self.content_item.spec
 
-    @property
-    def app(self):
-        return self.content_item.source.app
-
     @cached_property
     def content_mtime(self):
-        return self.content_item.getmtime()
+        return self.source.getItemMtime(self.content_item)
 
     @property
     def flags(self):
@@ -110,66 +89,81 @@ class Page(object):
     def datetime(self):
         if self._datetime is None:
             try:
-                if 'datetime' in self.source_metadata:
-                    # Get the date/time from the source.
-                    self._datetime = self.source_metadata['datetime']
-                elif 'date' in self.source_metadata:
-                    # Get the date from the source. Potentially get the
-                    # time from the page config.
-                    page_date = self.source_metadata['date']
-                    page_time = _parse_config_time(self.config.get('time'))
-                    if page_time is not None:
-                        self._datetime = datetime.datetime(
-                            page_date.year,
-                            page_date.month,
-                            page_date.day) + page_time
-                    else:
-                        self._datetime = datetime.datetime(
-                            page_date.year, page_date.month, page_date.day)
-                elif 'date' in self.config:
-                    # Get the date from the page config, and maybe the
-                    # time too.
-                    page_date = _parse_config_date(self.config.get('date'))
-                    self._datetime = datetime.datetime(
-                        page_date.year,
-                        page_date.month,
-                        page_date.day)
-                    page_time = _parse_config_time(self.config.get('time'))
-                    if page_time is not None:
-                        self._datetime += page_time
-                else:
-                    # No idea what the date/time for this page is.
-                    self._datetime = datetime.datetime.fromtimestamp(0)
+                self._datetime = self._computeDateTime()
             except Exception as ex:
                 logger.exception(ex)
                 raise Exception(
                     "Error computing time for page: %s" %
-                    self.path) from ex
+                    self.content_spec) from ex
+
+            if self._datetime is None:
+                self._datetime = datetime.datetime.fromtimestamp(
+                    self.content_mtime)
+
         return self._datetime
 
     @datetime.setter
     def datetime(self, value):
         self._datetime = value
 
+    def getUri(self, sub_num=1):
+        route_params = self.source_metadata['route_params']
+        return self.route.getUri(route_params, sub_num=sub_num)
+
     def getSegment(self, name='content'):
         return self.segments[name]
+
+    def _computeDateTime(self):
+        if 'datetime' in self.source_metadata:
+            # Get the date/time from the source.
+            self._datetime = self.source_metadata['datetime']
+        elif 'date' in self.source_metadata:
+            # Get the date from the source. Potentially get the
+            # time from the page config.
+            page_date = self.source_metadata['date']
+            page_time = _parse_config_time(self.config.get('time'))
+            if page_time is not None:
+                self._datetime = datetime.datetime(
+                    page_date.year,
+                    page_date.month,
+                    page_date.day) + page_time
+            else:
+                self._datetime = datetime.datetime(
+                    page_date.year, page_date.month, page_date.day)
+        elif 'date' in self.config:
+            # Get the date from the page config, and maybe the
+            # time too.
+            page_date = _parse_config_date(self.config.get('date'))
+            self._datetime = datetime.datetime(
+                page_date.year,
+                page_date.month,
+                page_date.day)
+            page_time = _parse_config_time(self.config.get('time'))
+            if page_time is not None:
+                self._datetime += page_time
+            else:
+                # No idea what the date/time for this page is.
+                self._datetime = datetime.datetime.fromtimestamp(0)
 
     def _load(self):
         if self._config is not None:
             return
 
         config, content, was_cache_valid = load_page(
-            self.app, self.path, self.path_mtime)
+            self.source, self.content_item)
 
-        if 'config' in self.source_metadata:
-            config.merge(self.source_metadata['config'])
+        extra_config = self.source_metadata.get('config')
+        if extra_config is not None:
+            # Merge the source metadata configuration settings with the
+            # configuration settings from the page's contents. We only
+            # prepend to lists, i.e. we don't overwrite values because we
+            # want to keep what the user wrote in the file.
+            config.merge(extra_config, mode=MERGE_PREPEND_LISTS)
 
         self._config = config
         self._segments = content
         if was_cache_valid:
             self._flags |= FLAG_RAW_CACHE_VALID
-
-        self.source.finalizeConfig(self)
 
 
 def _parse_config_date(page_date):
@@ -216,10 +210,8 @@ def _parse_config_time(page_time):
 
 
 class PageLoadingError(Exception):
-    def __init__(self, path, inner=None):
-        super(PageLoadingError, self).__init__(
-            "Error loading page: %s" % path,
-            inner)
+    def __init__(self, spec):
+        super().__init__("Error loading page: %s" % spec)
 
 
 class ContentSegment(object):
@@ -267,23 +259,22 @@ def json_save_segments(segments):
     return data
 
 
-def load_page(app, path, path_mtime=None):
+def load_page(source, content_item):
     try:
-        with app.env.timerScope('PageLoad'):
-            return _do_load_page(app, path, path_mtime)
+        with source.app.env.stats.timerScope('PageLoad'):
+            return _do_load_page(source, content_item)
     except Exception as e:
-        logger.exception(
-            "Error loading page: %s" %
-            os.path.relpath(path, app.root_dir))
-        _, __, traceback = sys.exc_info()
-        raise PageLoadingError(path, e).with_traceback(traceback)
+        logger.exception("Error loading page: %s" % content_item.spec)
+        raise PageLoadingError(content_item.spec) from e
 
 
-def _do_load_page(app, path, path_mtime):
+def _do_load_page(source, content_item):
     # Check the cache first.
+    app = source.app
     cache = app.cache.getCache('pages')
-    cache_path = hashlib.md5(path.encode('utf8')).hexdigest() + '.json'
-    page_time = path_mtime or os.path.getmtime(path)
+    cache_token = "%s@%s" % (source.name, content_item.spec)
+    cache_path = hashlib.md5(cache_token.encode('utf8')).hexdigest() + '.json'
+    page_time = source.getItemMtime(content_item)
     if cache.isValid(cache_path, page_time):
         cache_data = json.loads(
             cache.read(cache_path),
@@ -295,15 +286,10 @@ def _do_load_page(app, path, path_mtime):
         return config, content, True
 
     # Nope, load the page from the source file.
-    logger.debug("Loading page configuration from: %s" % path)
-    with open(path, 'r', encoding='utf-8') as fp:
+    logger.debug("Loading page configuration from: %s" % content_item.spec)
+    with source.openItem(content_item, 'r', encoding='utf-8') as fp:
         raw = fp.read()
     header, offset = parse_config_header(raw)
-
-    if 'format' not in header:
-        auto_formats = app.config.get('site/auto_formats')
-        name, ext = os.path.splitext(path)
-        header['format'] = auto_formats.get(ext, None)
 
     config = PageConfiguration(header)
     content = parse_segments(raw, offset)

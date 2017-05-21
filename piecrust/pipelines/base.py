@@ -30,10 +30,17 @@ class PipelineContext:
         """
         return self.worker_id < 0
 
+    @property
+    def current_record(self):
+        return self.record_history.current
+
 
 class PipelineResult:
-    def __init__(self, record):
-        self.record = record
+    """ Result of running a pipeline on a content item.
+    """
+    def __init__(self):
+        self.pipeline_name = None
+        self.record_entry = None
 
 
 class ContentPipeline:
@@ -41,7 +48,7 @@ class ContentPipeline:
     """
     PIPELINE_NAME = None
     PIPELINE_PASSES = 1
-    RECORD_CLASS = None
+    RECORD_ENTRY_CLASS = None
 
     def __init__(self, source):
         self.source = source
@@ -63,11 +70,11 @@ class ContentPipeline:
     def run(self, content_item, ctx, result):
         raise NotImplementedError()
 
+    def getDeletions(self, ctx):
+        pass
+
+    def collapseRecords(self, ctx):
+        pass
+
     def shutdown(self, ctx):
-        pass
-
-    def collapseRecords(self, record_history):
-        pass
-
-    def getDeletions(self, record_history):
         pass

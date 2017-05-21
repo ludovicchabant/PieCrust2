@@ -89,8 +89,8 @@ class PieCrustDebugMiddleware(object):
         if not found:
             return NotFound("No such page: %s" % page_path)
 
-        ctx = DataBuildingContext(req_page.qualified_page,
-                                  page_num=req_page.page_num)
+        ctx = DataBuildingContext(req_page.page,
+                                  sub_num=req_page.sub_num)
         data = build_page_data(ctx)
 
         var_path = request.args.getlist('var')

@@ -10,8 +10,7 @@ from piecrust.sources.fs import (
     FSContentSource, InvalidFileSystemEndpointError)
 from piecrust.sources.interfaces import (
     IPreparingSource, IInteractiveSource, InteractiveField)
-from piecrust.sources.mixins import (
-    SimplePaginationSourceMixin, SimpleAssetsSubDirMixin)
+from piecrust.sources.mixins import SimpleAssetsSubDirMixin
 from piecrust.uriutil import uri_to_title
 
 
@@ -24,7 +23,10 @@ class PostsSource(FSContentSource,
     PATH_FORMAT = None
 
     def __init__(self, app, name, config):
-        FSContentSource.__init__(self, app, name, config)
+        super().__init__(app, name, config)
+
+        config.setdefault('data_type', 'page_iterator')
+
         self.auto_formats = app.config.get('site/auto_formats')
         self.default_auto_format = app.config.get('site/default_auto_format')
         self.supported_extensions = list(self.auto_formats)
@@ -135,12 +137,6 @@ class PostsSource(FSContentSource,
             RouteParameter('month', RouteParameter.TYPE_INT2),
             RouteParameter('year', RouteParameter.TYPE_INT4)]
 
-    def getSourceIterator(self):
-        if self._source_it_cache is None:
-            it = SimplePaginationSourceMixin.getSourceIterator(self)
-            self._source_it_cache = list(it)
-        return self._source_it_cache
-
     def setupPrepareParser(self, parser, app):
         parser.add_argument(
             '-d', '--date', help="The date of the post, "
@@ -201,15 +197,24 @@ class PostsSource(FSContentSource,
                                                  self.fs_endpoint_path)
         return True
 
-    def _makeContentItem(self, path, slug, year, month, day):
-        path = path.replace('\\', '/')
+    def _makeContentItem(self, rel_path, slug, year, month, day):
+        path = os.path.join(self.fs_endpoint_path, rel_path)
         timestamp = datetime.date(year, month, day)
         metadata = {
-            'slug': slug,
-            'year': year,
-            'month': month,
-            'day': day,
-            'date': timestamp}
+            'route_params': {
+                'slug': slug,
+                'year': year,
+                'month': month,
+                'day': day},
+            'date': timestamp
+        }
+
+        _, ext = os.path.splitext(path)
+        if ext:
+            fmt = self.auto_formats.get(ext.lstrip('.'))
+            if fmt:
+                metadata['config'] = {'format': fmt}
+
         return ContentItem(path, metadata)
 
 

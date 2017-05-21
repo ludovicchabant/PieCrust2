@@ -2,7 +2,7 @@ import logging
 import datetime
 from piecrust.chefutil import format_timed_scope
 from piecrust.data.filters import PaginationFilter, IFilterClause
-from piecrust.data.iterators import PageIterator
+from piecrust.dataproviders.page_iterator import PageIterator
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentSource, GeneratedContentException
 

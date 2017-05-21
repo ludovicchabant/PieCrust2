@@ -17,7 +17,7 @@ class CleanCssProcessor(Processor):
         self._conf = None
 
     def matches(self, path):
-        return path.endswith('.css')
+        return path.endswith('.css') and not path.endswith('.min.css')
 
     def getOutputFilenames(self, filename):
         self._ensureInitialized()
@@ -72,6 +72,9 @@ class UglifyJSProcessor(SimpleFileProcessor):
     def __init__(self):
         super(UglifyJSProcessor, self).__init__({'js': 'js'})
         self._conf = None
+
+    def matches(self, path):
+        return path.endswith('.js') and not path.endswith('.min.js')
 
     def _doProcess(self, in_path, out_path):
         self._ensureInitialized()

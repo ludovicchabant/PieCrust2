@@ -15,7 +15,9 @@ class AutoConfigContentSourceBase(DefaultContentSource):
         settings to their generated pages based on those pages' paths.
     """
     def __init__(self, app, name, config):
-        DefaultContentSource.__init__(app, name, config)
+        super().__init__(app, name, config)
+
+        config.setdefault('data_type', 'page_iterator')
 
         self.capture_mode = config.get('capture_mode', 'path')
         if self.capture_mode not in ['path', 'dirname', 'filename']:

@@ -1,7 +1,6 @@
 import time
 import os.path
 import logging
-import hashlib
 import fnmatch
 import datetime
 from colorama import Fore
@@ -103,6 +102,132 @@ class BakeCommand(ChefCommand):
         return records
 
 
+class ShowRecordCommand(ChefCommand):
+    def __init__(self):
+        super(ShowRecordCommand, self).__init__()
+        self.name = 'showrecord'
+        self.description = ("Shows the bake record for a given output "
+                            "directory.")
+
+    def setupParser(self, parser, app):
+        parser.add_argument(
+            '-o', '--output',
+            help="The output directory for which to show the bake record "
+            "(defaults to `_counter`)",
+            nargs='?')
+        parser.add_argument(
+            '-i', '--in-path',
+            help="A pattern that will be used to filter the relative path "
+            "of entries to show.")
+        parser.add_argument(
+            '-t', '--out-path',
+            help="A pattern that will be used to filter the output path "
+            "of entries to show.")
+        parser.add_argument(
+            '--fails',
+            action='store_true',
+            help="Only show record entries for failures.")
+        parser.add_argument(
+            '--last',
+            type=int,
+            default=0,
+            help="Show the last Nth bake record.")
+        parser.add_argument(
+            '--html-only',
+            action='store_true',
+            help="Only show records for pages (not from the asset "
+            "pipeline).")
+        parser.add_argument(
+            '--assets-only',
+            action='store_true',
+            help="Only show records for assets (not from pages).")
+        parser.add_argument(
+            '-p', '--pipelines',
+            nargs='*',
+            help="Only show records for the given pipeline(s).")
+        parser.add_argument(
+            '--show-stats',
+            action='store_true',
+            help="Show stats from the record.")
+        parser.add_argument(
+            '--show-manifest',
+            help="Show manifest entries from the record.")
+
+    def run(self, ctx):
+        from piecrust.baking.baker import get_bake_records_path
+        from piecrust.pipelines.records import load_records
+
+        out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
+        suffix = '' if ctx.args.last == 0 else '.%d' % ctx.args.last
+        records_path = get_bake_records_path(ctx.app, out_dir, suffix=suffix)
+        records = load_records(records_path)
+        if records.invalidated:
+            raise Exception(
+                "The bake record was saved by a previous version of "
+                "PieCrust and can't be shown.")
+
+        in_pattern = None
+        if ctx.args.in_path:
+            in_pattern = '*%s*' % ctx.args.in_path.strip('*')
+
+        out_pattern = None
+        if ctx.args.out_path:
+            out_pattern = '*%s*' % ctx.args.out.strip('*')
+
+        pipelines = ctx.args.pipelines
+        if not pipelines:
+            pipelines = [p.PIPELINE_NAME
+                         for p in ctx.app.plugin_loader.getPipelines()]
+        if ctx.args.assets_only:
+            pipelines = ['asset']
+        if ctx.args.html_only:
+            pipelines = ['page']
+
+        logger.info("Bake record for: %s" % out_dir)
+        logger.info("Status: %s" % ('SUCCESS' if records.success
+                                    else 'FAILURE'))
+        logger.info("Date/time: %s" %
+                    datetime.datetime.fromtimestamp(records.bake_time))
+        logger.info("Incremental count: %d" % records.incremental_count)
+        logger.info("Versions: %s/%s" % (records._app_version,
+                                         records._record_version))
+        logger.info("")
+
+        for rec in records.records:
+            if ctx.args.fails and rec.success:
+                continue
+
+            logger.info("Record: %s" % rec.name)
+            logger.info("Status: %s" % ('SUCCESS' if rec.success
+                                        else 'FAILURE'))
+            for e in rec.entries:
+                if ctx.args.fails and e.success:
+                    continue
+                if in_pattern and not fnmatch.fnmatch(e.item_spec, in_pattern):
+                    continue
+                if out_pattern and not any(
+                        [fnmatch.fnmatch(op, out_pattern)
+                         for op in e.out_paths]):
+                    continue
+                _print_record_entry(e)
+
+            logger.info("")
+
+        stats = records.stats
+        if ctx.args.show_stats:
+            _show_stats(stats)
+
+        if ctx.args.show_manifest:
+            for name in sorted(stats.manifests.keys()):
+                if ctx.args.show_manifest.lower() in name.lower():
+                    val = stats.manifests[name]
+                    logger.info(
+                        "    [%s%s%s] [%d entries]" %
+                        (Fore.CYAN, name, Fore.RESET, len(val)))
+                    for v in val:
+                        logger.info("      - %s" % v)
+
+
 def _show_stats(stats, *, full=False):
     indent = '    '
 
@@ -132,275 +257,20 @@ def _show_stats(stats, *, full=False):
                 logger.info("%s  - %s" % (indent, v))
 
 
-class ShowRecordCommand(ChefCommand):
-    def __init__(self):
-        super(ShowRecordCommand, self).__init__()
-        self.name = 'showrecord'
-        self.description = ("Shows the bake record for a given output "
-                            "directory.")
+def _print_record_entry(e):
+    logger.info(" - %s" % e.item_spec)
+    logger.info("   Outputs:")
+    if e.out_paths:
+        for op in e.out_paths:
+            logger.info("    - %s" % op)
+    else:
+        logger.info("      <none>")
 
-    def setupParser(self, parser, app):
-        parser.add_argument(
-            '-o', '--output',
-            help="The output directory for which to show the bake record "
-            "(defaults to `_counter`)",
-            nargs='?')
-        parser.add_argument(
-            '-p', '--path',
-            help="A pattern that will be used to filter the relative path "
-            "of entries to show.")
-        parser.add_argument(
-            '-t', '--out',
-            help="A pattern that will be used to filter the output path "
-            "of entries to show.")
-        parser.add_argument(
-            '--last',
-            type=int,
-            default=0,
-            help="Show the last Nth bake record.")
-        parser.add_argument(
-            '--html-only',
-            action='store_true',
-            help="Only show records for pages (not from the asset "
-            "pipeline).")
-        parser.add_argument(
-            '--assets-only',
-            action='store_true',
-            help="Only show records for assets (not from pages).")
-        parser.add_argument(
-            '--show-stats',
-            action='store_true',
-            help="Show stats from the record.")
-        parser.add_argument(
-            '--show-manifest',
-            help="Show manifest entries from the record.")
+    e_desc = e.describe()
+    for k in sorted(e_desc.keys()):
+        logger.info("   %s: %s" % (k, e_desc[k]))
 
-    def run(self, ctx):
-        from piecrust.processing.records import (
-            FLAG_PREPARED, FLAG_PROCESSED, FLAG_BYPASSED_STRUCTURED_PROCESSING,
-            FLAG_COLLAPSED_FROM_LAST_RUN)
-        from piecrust.rendering import (
-            PASS_FORMATTING, PASS_RENDERING)
-
-        out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
-        record_id = hashlib.md5(out_dir.encode('utf8')).hexdigest()
-        suffix = '' if ctx.args.last == 0 else '.%d' % ctx.args.last
-        record_name = '%s%s.record' % (record_id, suffix)
-
-        pattern = None
-        if ctx.args.path:
-            pattern = '*%s*' % ctx.args.path.strip('*')
-
-        out_pattern = None
-        if ctx.args.out:
-            out_pattern = '*%s*' % ctx.args.out.strip('*')
-
-        if not ctx.args.show_stats and not ctx.args.show_manifest:
-            if not ctx.args.assets_only:
-                self._showBakeRecord(
-                    ctx, record_name, pattern, out_pattern)
-            if not ctx.args.html_only:
-                self._showProcessingRecord(
-                    ctx, record_name, pattern, out_pattern)
-            return
-
-        stats = {}
-        bake_rec = self._getBakeRecord(ctx, record_name)
-        if bake_rec:
-            _merge_stats(bake_rec.stats, stats)
-        proc_rec = self._getProcessingRecord(ctx, record_name)
-        if proc_rec:
-            _merge_stats(proc_rec.stats, stats)
-
-        if ctx.args.show_stats:
-            _show_stats(stats, full=False)
-
-        if ctx.args.show_manifest:
-            for name in sorted(stats.keys()):
-                logger.info('%s:' % name)
-                s = stats[name]
-                for name in sorted(s.manifests.keys()):
-                    if ctx.args.show_manifest.lower() in name.lower():
-                        val = s.manifests[name]
-                        logger.info(
-                            "    [%s%s%s] [%d entries]" %
-                            (Fore.CYAN, name, Fore.RESET, len(val)))
-                        for v in val:
-                            logger.info("      - %s" % v)
-
-    def _getBakeRecord(self, ctx, record_name):
-        record_cache = ctx.app.cache.getCache('baker')
-        if not record_cache.has(record_name):
-            logger.warning(
-                    "No page bake record has been created for this output "
-                    "path.")
-            return None
-
-        record = BakeRecord.load(record_cache.getCachePath(record_name))
-        return record
-
-    def _showBakeRecord(self, ctx, record_name, pattern, out_pattern):
-        record = self._getBakeRecord(ctx, record_name)
-        if record is None:
-            return
-
-        logging.info("Bake record for: %s" % record.out_dir)
-        logging.info("From: %s" % record_name)
-        logging.info("Last baked: %s" %
-                     datetime.datetime.fromtimestamp(record.bake_time))
-        if record.success:
-            logging.info("Status: success")
-        else:
-            logging.error("Status: failed")
-        logging.info("Entries:")
-        for entry in record.entries:
-            if pattern and not fnmatch.fnmatch(entry.path, pattern):
-                continue
-            if out_pattern and not (
-                    any([o for o in entry.all_out_paths
-                         if fnmatch.fnmatch(o, out_pattern)])):
-                continue
-
-            flags = _get_flag_descriptions(
-                entry.flags,
-                {
-                    BakeRecordEntry.FLAG_NEW: 'new',
-                    BakeRecordEntry.FLAG_SOURCE_MODIFIED: 'modified',
-                    BakeRecordEntry.FLAG_OVERRIDEN: 'overriden'})
-
-            logging.info(" - ")
-
-            rel_path = os.path.relpath(entry.path, ctx.app.root_dir)
-            logging.info("   path:      %s" % rel_path)
-            logging.info("   source:    %s" % entry.source_name)
-            if entry.extra_key:
-                logging.info("   extra key: %s" % entry.extra_key)
-            logging.info("   flags:     %s" % _join(flags))
-            logging.info("   config:    %s" % entry.config)
-
-            if entry.errors:
-                logging.error("   errors: %s" % entry.errors)
-
-            logging.info("   %d sub-pages:" % len(entry.subs))
-            for sub in entry.subs:
-                sub_flags = _get_flag_descriptions(
-                    sub.flags,
-                    {
-                        SubPageBakeInfo.FLAG_BAKED: 'baked',
-                        SubPageBakeInfo.FLAG_FORCED_BY_SOURCE:
-                        'forced by source',
-                        SubPageBakeInfo.FLAG_FORCED_BY_NO_PREVIOUS:
-                        'forced by missing previous record entry',
-                        SubPageBakeInfo.FLAG_FORCED_BY_PREVIOUS_ERRORS:
-                        'forced by previous errors',
-                        SubPageBakeInfo.FLAG_FORMATTING_INVALIDATED:
-                        'formatting invalidated'})
-
-                logging.info("   - ")
-                logging.info("     URL:    %s" % sub.out_uri)
-                logging.info("     path:   %s" % os.path.relpath(
-                        sub.out_path, record.out_dir))
-                logging.info("     flags:  %s" % _join(sub_flags))
-
-                pass_names = {
-                        PASS_FORMATTING: 'formatting pass',
-                        PASS_RENDERING: 'rendering pass'}
-                for p, ri in enumerate(sub.render_info):
-                    logging.info("     - %s" % pass_names[p])
-                    if not ri:
-                        logging.info("       no info")
-                        continue
-
-                    logging.info("       used sources:  %s" %
-                                 _join(ri.used_source_names))
-                    pgn_info = 'no'
-                    if ri.used_pagination:
-                        pgn_info = 'yes'
-                    if ri.pagination_has_more:
-                        pgn_info += ', has more'
-                    logging.info("       used pagination: %s", pgn_info)
-                    logging.info("       used assets: %s",
-                                 'yes' if ri.used_assets else 'no')
-                    logging.info("       other info:")
-                    for k, v in ri._custom_info.items():
-                        logging.info("       - %s: %s" % (k, v))
-
-                if sub.errors:
-                    logging.error("   errors: %s" % sub.errors)
-
-    def _getProcessingRecord(self, ctx, record_name):
-        record_cache = ctx.app.cache.getCache('proc')
-        if not record_cache.has(record_name):
-            logger.warning(
-                    "No asset processing record has been created for this "
-                    "output path.")
-            return None
-
-        record = ProcessorPipelineRecord.load(
-                record_cache.getCachePath(record_name))
-        return record
-
-    def _showProcessingRecord(self, ctx, record_name, pattern, out_pattern):
-        record = self._getProcessingRecord(ctx, record_name)
-        if record is None:
-            return
-
-        logging.info("")
-        logging.info("Processing record for: %s" % record.out_dir)
-        logging.info("Last baked: %s" %
-                     datetime.datetime.fromtimestamp(record.process_time))
-        if record.success:
-            logging.info("Status: success")
-        else:
-            logging.error("Status: failed")
-        logging.info("Entries:")
-        for entry in record.entries:
-            rel_path = os.path.relpath(entry.path, ctx.app.root_dir)
-            if pattern and not fnmatch.fnmatch(rel_path, pattern):
-                continue
-            if out_pattern and not (
-                    any([o for o in entry.rel_outputs
-                         if fnmatch.fnmatch(o, out_pattern)])):
-                continue
-
-            flags = _get_flag_descriptions(
-                    entry.flags,
-                    {
-                        FLAG_PREPARED: 'prepared',
-                        FLAG_PROCESSED: 'processed',
-                        FLAG_BYPASSED_STRUCTURED_PROCESSING: 'external',
-                        FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run'})
-
-            logger.info(" - ")
-            logger.info("   path:      %s" % rel_path)
-            logger.info("   out paths: %s" % entry.rel_outputs)
-            logger.info("   flags:     %s" % _join(flags))
-            logger.info("   proc tree: %s" % _format_proc_tree(
-                    entry.proc_tree, 14*' '))
-
-            if entry.errors:
-                logger.error("   errors: %s" % entry.errors)
-
-
-def _join(items, sep=', ', text_if_none='none'):
-    if items:
-        return sep.join(items)
-    return text_if_none
-
-
-def _get_flag_descriptions(flags, descriptions):
-    res = []
-    for k, v in descriptions.items():
-        if flags & k:
-            res.append(v)
-    return res
-
-
-def _format_proc_tree(tree, margin='', level=0):
-    name, children = tree
-    res = '%s%s+ %s\n' % (margin if level > 0 else '', level * '  ', name)
-    if children:
-        for c in children:
-            res += _format_proc_tree(c, margin, level + 1)
-    return res
-
+    if e.errors:
+        logger.error("   Errors:")
+        for err in e.errors:
+            logger.error("    - %s" % err)

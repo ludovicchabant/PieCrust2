@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 default_allowed_types = (dict, list, tuple, float, int, bool, str)
 
 
+MERGE_NEW_VALUES = 0
+MERGE_OVERWRITE_VALUES = 1
+MERGE_PREPEND_LISTS = 2
+MERGE_APPEND_LISTS = 4
+MERGE_ALL = MERGE_OVERWRITE_VALUES | MERGE_PREPEND_LISTS
+
+
 class ConfigurationError(Exception):
     pass
 
@@ -64,7 +71,7 @@ class Configuration(collections.abc.MutableMapping):
         self._ensureLoaded()
         return self._values
 
-    def merge(self, other):
+    def merge(self, other, mode=MERGE_ALL):
         self._ensureLoaded()
 
         if isinstance(other, dict):
@@ -160,13 +167,6 @@ def set_dict_value(d, key, value):
             if b not in cur:
                 cur[b] = {}
             cur = cur[b]
-
-
-MERGE_NEW_VALUES = 0
-MERGE_OVERWRITE_VALUES = 1
-MERGE_PREPEND_LISTS = 2
-MERGE_APPEND_LISTS = 4
-MERGE_ALL = MERGE_OVERWRITE_VALUES | MERGE_PREPEND_LISTS
 
 
 def merge_dicts(source, merging, *args,

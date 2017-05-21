@@ -33,15 +33,14 @@ def build_base_url(app, uri, rel_assets_path):
     return base_url.rstrip('/') + '/'
 
 
-class Assetor(object):
+class Assetor:
     debug_render_doc = """Helps render URLs to files in the current page's
                           asset folder."""
     debug_render = []
     debug_render_dynamic = ['_debugRenderAssetNames']
 
-    def __init__(self, page, uri):
+    def __init__(self, page):
         self._page = page
-        self._uri = uri
         self._cache = None
 
     def __getattr__(self, name):

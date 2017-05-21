@@ -5,7 +5,7 @@ import logging
 import datetime
 from werkzeug.wrappers import Response
 from werkzeug.wsgi import wrap_file
-from piecrust.page import QualifiedPage, PageNotFoundError
+from piecrust.page import PageNotFoundError
 from piecrust.routing import RouteNotFoundError
 from piecrust.uriutil import split_sub_uri
 
@@ -22,7 +22,8 @@ def get_app_for_server(appfactory, root_url='/'):
 
 class RequestedPage(object):
     def __init__(self):
-        self.qualified_page = None
+        self.page = None
+        self.sub_num = 1
         self.req_path = None
         self.not_found_errors = []
 
@@ -62,10 +63,11 @@ def get_requested_page(app, req_path):
         if route_sub_num > 1:
             cur_req_path = req_path_no_num
 
-        qp = _get_requested_page_for_route(app, route, route_params,
-                                           route_sub_num)
-        if qp is not None:
-            req_page.qualified_page = qp
+        page = _get_requested_page_for_route(app, route, route_params,
+                                             route_sub_num)
+        if page is not None:
+            req_page.page = page
+            req_page.sub_num = route_sub_num
             req_page.req_path = cur_req_path
             break
 
@@ -76,16 +78,12 @@ def get_requested_page(app, req_path):
     return req_page
 
 
-def _get_requested_page_for_route(app, route, route_params, sub_num):
+def _get_requested_page_for_route(app, route, route_params):
     source = app.getSource(route.source_name)
     item = source.findContent(route_params)
-    if item is None:
-        return None
-
-    # Build the page.
-    page = app.getPage(item)
-    qp = QualifiedPage(page, route, route_params, sub_num)
-    return qp
+    if item is not None:
+        return app.getPage(item)
+    return None
 
 
 def load_mimetype_map():

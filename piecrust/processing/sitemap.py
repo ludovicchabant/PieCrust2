@@ -1,7 +1,9 @@
+import os
+import os.path
 import time
 import logging
 import yaml
-from piecrust.data.iterators import PageIterator
+from piecrust.dataproviders.page_iterator import PageIterator
 from piecrust.processing.base import SimpleFileProcessor
 
 
@@ -36,11 +38,19 @@ class SitemapProcessor(SimpleFileProcessor):
         with open(in_path, 'r') as fp:
             sitemap = yaml.load(fp)
 
-        with open(out_path, 'w') as fp:
-            fp.write(SITEMAP_HEADER)
-            self._writeManualLocs(sitemap, fp)
-            self._writeAutoLocs(sitemap, fp)
-            fp.write(SITEMAP_FOOTER)
+        try:
+            with open(out_path, 'w') as fp:
+                fp.write(SITEMAP_HEADER)
+                self._writeManualLocs(sitemap, fp)
+                self._writeAutoLocs(sitemap, fp)
+                fp.write(SITEMAP_FOOTER)
+        except:
+            # If an exception occurs, delete the output file otherwise
+            # the pipeline will think the output was correctly produced.
+            if os.path.isfile(out_path):
+                logger.debug("Error occured, removing output sitemap.")
+                os.unlink(out_path)
+            raise
 
         return True
 

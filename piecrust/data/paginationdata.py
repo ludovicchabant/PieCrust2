@@ -7,31 +7,30 @@ logger = logging.getLogger(__name__)
 
 
 class PaginationData(LazyPageConfigData):
-    def __init__(self, qualified_page):
-        super(PaginationData, self).__init__(qualified_page.page)
-        self._qualified_page = qualified_page
+    def __init__(self, page):
+        super().__init__(page)
 
     def _load(self):
+        from piecrust.data.assetor import Assetor
         from piecrust.uriutil import split_uri
 
         page = self._page
         dt = page.datetime
-        page_url = self._qualified_page.uri
+        page_url = page.getUri()
         _, slug = split_uri(page.app, page_url)
         self._setValue('url', page_url)
         self._setValue('slug', slug)
-        self._setValue(
-            'timestamp',
-            time.mktime(page.datetime.timetuple()))
+        self._setValue('timestamp',
+                       time.mktime(page.datetime.timetuple()))
         self._setValue('datetime', {
             'year': dt.year, 'month': dt.month, 'day': dt.day,
             'hour': dt.hour, 'minute': dt.minute, 'second': dt.second})
         date_format = page.app.config.get('site/date_format')
         if date_format:
             self._setValue('date', page.datetime.strftime(date_format))
-        self._setValue('mtime', page.path_mtime)
+        self._setValue('mtime', page.content_mtime)
 
-        assetor = page.source.buildAssetor(page, page_url)
+        assetor = Assetor(page)
         self._setValue('assets', assetor)
 
         segment_names = page.config.get('segments')
@@ -50,11 +49,11 @@ class PaginationData(LazyPageConfigData):
         assert self is data
 
         if do_render:
-            uri = self._qualified_page.uri
+            uri = self.getUri()
             try:
                 from piecrust.rendering import (
                     RenderingContext, render_page_segments)
-                ctx = RenderingContext(self._qualified_page)
+                ctx = RenderingContext(self._page)
                 render_result = render_page_segments(ctx)
                 segs = render_result.segments
             except Exception as ex:

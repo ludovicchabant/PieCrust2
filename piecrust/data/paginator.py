@@ -1,9 +1,6 @@
 import math
 import logging
 from werkzeug.utils import cached_property
-from piecrust.data.filters import PaginationFilter, page_value_accessor
-from piecrust.data.iterators import PageIterator
-from piecrust.sources.interfaces import IPaginationSource
 
 
 logger = logging.getLogger(__name__)
@@ -23,11 +20,11 @@ class Paginator(object):
         'total_item_count', 'total_page_count',
         'next_item', 'prev_item']
 
-    def __init__(self, qualified_page, source, *,
+    def __init__(self, source, current_page, sub_num, *,
                  pgn_filter=None, items_per_page=-1):
-        self._parent_page = qualified_page
-        self._page_num = qualified_page.page_num
         self._source = source
+        self._page = current_page
+        self._sub_num = sub_num
         self._iterator = None
         self._pgn_filter = pgn_filter
         self._items_per_page = items_per_page
@@ -88,12 +85,11 @@ class Paginator(object):
     def items_per_page(self):
         if self._items_per_page > 0:
             return self._items_per_page
-        if self._parent_page:
-            ipp = self._parent_page.page.config.get('items_per_page')
-            if ipp is not None:
-                return ipp
-        if isinstance(self._source, IPaginationSource):
-            return self._source.getItemsPerPage()
+
+        ipp = self._page.config.get('items_per_page')
+        if ipp is not None:
+            return ipp
+
         raise Exception("No way to figure out how many items to display "
                         "per page.")
 
@@ -104,19 +100,19 @@ class Paginator(object):
 
     @property
     def prev_page_number(self):
-        if self._page_num > 1:
-            return self._page_num - 1
+        if self._sub_num > 1:
+            return self._sub_num - 1
         return None
 
     @property
     def this_page_number(self):
-        return self._page_num
+        return self._sub_num
 
     @property
     def next_page_number(self):
         self._load()
         if self._iterator._has_more:
-            return self._page_num + 1
+            return self._sub_num + 1
         return None
 
     @property
@@ -128,7 +124,7 @@ class Paginator(object):
 
     @property
     def this_page(self):
-        return self._getPageUri(self._page_num)
+        return self._getPageUri(self._sub_num)
 
     @property
     def next_page(self):
@@ -166,8 +162,8 @@ class Paginator(object):
         if radius <= 0 or total_page_count < (2 * radius + 1):
             return list(range(1, total_page_count + 1))
 
-        first_num = self._page_num - radius
-        last_num = self._page_num + radius
+        first_num = self._sub_num - radius
+        last_num = self._sub_num + radius
         if first_num <= 0:
             last_num += 1 - first_num
             first_num = 1
@@ -185,42 +181,30 @@ class Paginator(object):
         if self._iterator is not None:
             return
 
-        if self._source is None:
-            raise Exception("Can't load pagination data: no source has "
-                            "been defined.")
+        from piecrust.data.filters import PaginationFilter
+        from piecrust.dataproviders.page_iterator import PageIterator
 
-        pag_filter = self._getPaginationFilter()
-        offset = (self._page_num - 1) * self.items_per_page
-        current_page = None
-        if self._parent_page:
-            current_page = self._parent_page.page
+        pag_filter = PaginationFilter()
+        if self._pgn_filter is not None:
+            pag_filter.addClause(self._pgn_filter.root_clause)
+
         self._iterator = PageIterator(
             self._source,
-            current_page=current_page,
+            current_page=self._page,
             pagination_filter=pag_filter,
-            offset=offset, limit=self.items_per_page,
             locked=True)
         self._iterator._iter_event += self._onIteration
 
-    def _getPaginationFilter(self):
-        f = PaginationFilter(value_accessor=page_value_accessor)
-
-        if self._pgn_filter is not None:
-            f.addClause(self._pgn_filter.root_clause)
-
-        if self._parent_page and isinstance(self._source, IPaginationSource):
-            sf = self._source.getPaginationFilter(self._parent_page)
-            if sf is not None:
-                f.addClause(sf.root_clause)
-
-        return f
+        offset = (self._sub_num - 1) * self.items_per_page
+        limit = self.items_per_page
+        self._iterator.slice(offset, limit)
 
     def _getPageUri(self, index):
-        return self._parent_page.getUri(index)
+        return self._page.getUri(index)
 
     def _onIteration(self):
-        if self._parent_page is not None and not self._pgn_set_on_ctx:
-            eis = self._parent_page.app.env.exec_info_stack
+        if not self._pgn_set_on_ctx:
+            eis = self._page.app.env.exec_info_stack
             eis.current_page_info.render_ctx.setPagination(self)
             self._pgn_set_on_ctx = True
 

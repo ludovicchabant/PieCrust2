@@ -1,5 +1,3 @@
-import os
-import os.path
 import copy
 import logging
 from piecrust.sources.default import DefaultContentSource
@@ -12,21 +10,19 @@ class ProseSource(DefaultContentSource):
     SOURCE_NAME = 'prose'
 
     def __init__(self, app, name, config):
-        super(ProseSource, self).__init__(app, name, config)
+        super().__init__(app, name, config)
         self.config_recipe = config.get('config', {})
 
-    def _populateMetadata(self, rel_path, metadata, mode=None):
-        metadata['config'] = self._makeConfig(rel_path, mode)
+    def _doCreateItemMetadata(self, path):
+        metadata = super()._doCreateItemMetadata(path)
+        config = metadata.setdefault('config', {})
+        config.update(self._makeConfig(path))
+        return config
 
-    def _makeConfig(self, rel_path, mode):
+    def _makeConfig(self, path):
         c = copy.deepcopy(self.config_recipe)
-        if c.get('title') == '%first_line%' and mode != MODE_CREATING:
-            path = os.path.join(self.fs_endpoint_path, rel_path)
-            try:
-                c['title'] = get_first_line(path)
-            except IOError:
-                if mode == MODE_PARSING:
-                    raise
+        if c.get('title') == '%first_line%':
+            c['title'] = get_first_line(path)
         return c
 
 
