@@ -1,7 +1,9 @@
-import time
 import os.path
+import time
+import pprint
 import logging
 import fnmatch
+import textwrap
 import datetime
 from colorama import Fore
 from piecrust.commands.base import ChefCommand
@@ -28,7 +30,7 @@ class BakeCommand(ChefCommand):
         parser.add_argument(
             '-p', '--pipelines',
             help="The pipelines to run.",
-            nargs='*')
+            action='append')
         parser.add_argument(
             '-w', '--workers',
             help="The number of worker processes to spawn.",
@@ -91,6 +93,10 @@ class BakeCommand(ChefCommand):
         elif ctx.args.assets_only:
             allowed_pipelines = ['asset']
         elif ctx.args.pipelines:
+            if allowed_pipelines:
+                raise Exception(
+                    "Can't specify `--html-only` or `--assets-only` with "
+                    "`--pipelines`.")
             allowed_pipelines = ctx.args.pipelines
 
         baker = Baker(
@@ -200,14 +206,14 @@ class ShowRecordCommand(ChefCommand):
             logger.info("Record: %s" % rec.name)
             logger.info("Status: %s" % ('SUCCESS' if rec.success
                                         else 'FAILURE'))
-            for e in rec.entries:
+            for e in rec.getEntries():
                 if ctx.args.fails and e.success:
                     continue
                 if in_pattern and not fnmatch.fnmatch(e.item_spec, in_pattern):
                     continue
                 if out_pattern and not any(
                         [fnmatch.fnmatch(op, out_pattern)
-                         for op in e.out_paths]):
+                         for op in e.getAllOutputPaths()]):
                     continue
                 _print_record_entry(e)
 
@@ -260,17 +266,24 @@ def _show_stats(stats, *, full=False):
 def _print_record_entry(e):
     logger.info(" - %s" % e.item_spec)
     logger.info("   Outputs:")
-    if e.out_paths:
-        for op in e.out_paths:
+    out_paths = list(e.getAllOutputPaths())
+    if out_paths:
+        for op in out_paths:
             logger.info("    - %s" % op)
     else:
         logger.info("      <none>")
 
     e_desc = e.describe()
-    for k in sorted(e_desc.keys()):
-        logger.info("   %s: %s" % (k, e_desc[k]))
+    for k, v in e_desc.items():
+        if isinstance(v, dict):
+            text = pprint.pformat(v, indent=2)
+            logger.info("   %s:" % k)
+            logger.info(textwrap.indent(text, '     '))
+        else:
+            logger.info("   %s: %s" % (k, v))
 
-    if e.errors:
+    errors = list(e.getAllErrors())
+    if errors:
         logger.error("   Errors:")
-        for err in e.errors:
+        for err in errors:
             logger.error("    - %s" % err)

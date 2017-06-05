@@ -90,6 +90,10 @@ class Paginator(object):
         if ipp is not None:
             return ipp
 
+        ipp = self._source.config.get('items_per_page')
+        if ipp is not None:
+            return ipp
+
         raise Exception("No way to figure out how many items to display "
                         "per page.")
 
@@ -182,29 +186,34 @@ class Paginator(object):
             return
 
         from piecrust.data.filters import PaginationFilter
-        from piecrust.dataproviders.page_iterator import PageIterator
-
-        pag_filter = PaginationFilter()
-        if self._pgn_filter is not None:
-            pag_filter.addClause(self._pgn_filter.root_clause)
+        from piecrust.dataproviders.pageiterator import (
+            PageIterator, HardCodedFilterIterator)
 
         self._iterator = PageIterator(
             self._source,
-            current_page=self._page,
-            pagination_filter=pag_filter,
-            locked=True)
-        self._iterator._iter_event += self._onIteration
+            current_page=self._page)
+        #self._iterator._iter_event += self._onIteration
+
+        if self._pgn_filter is not None:
+            pag_fil = PaginationFilter()
+            pag_fil.addClause(self._pgn_filter.root_clause)
+            self._iterator._simpleNonSortedWrap(
+                HardCodedFilterIterator, pag_fil)
 
         offset = (self._sub_num - 1) * self.items_per_page
         limit = self.items_per_page
         self._iterator.slice(offset, limit)
 
+        self._iterator._lockIterator()
+
+        self._onIteration(self._iterator)
+
     def _getPageUri(self, index):
         return self._page.getUri(index)
 
-    def _onIteration(self):
+    def _onIteration(self, it):
         if not self._pgn_set_on_ctx:
-            eis = self._page.app.env.exec_info_stack
-            eis.current_page_info.render_ctx.setPagination(self)
+            rcs = self._page.app.env.render_ctx_stack
+            rcs.current_ctx.setPagination(self)
             self._pgn_set_on_ctx = True
 

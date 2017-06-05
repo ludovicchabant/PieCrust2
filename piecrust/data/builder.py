@@ -1,7 +1,7 @@
 import logging
 from piecrust.data.assetor import Assetor
 from piecrust.data.base import MergedMapping
-# from piecrust.data.linker import PageLinkerData
+from piecrust.data.linker import Linker
 from piecrust.data.pagedata import PageData
 from piecrust.data.paginator import Paginator
 from piecrust.data.piecrustdata import PieCrustData
@@ -32,13 +32,13 @@ def build_page_data(ctx):
     paginator = Paginator(pgn_source, page, sub_num,
                           pgn_filter=ctx.pagination_filter)
     assetor = Assetor(page)
-    # linker = PageLinkerData(page.source, page.rel_path)
+    linker = Linker(page)
     data = {
         'piecrust': pc_data,
         'page': config_data,
         'assets': assetor,
         'pagination': paginator,
-        # 'family': linker
+        'family': linker
     }
 
     for route in app.routes:
@@ -49,6 +49,12 @@ def build_page_data(ctx):
         func = data.get(name)
         if func is None:
             data[name] = RouteFunction(route)
+        elif isinstance(func, RouteFunction):
+            if not func._isCompatibleRoute(route):
+                raise Exception(
+                    "Route function '%s' can't target both route '%s' and "
+                    "route '%s' as the 2 patterns are incompatible." %
+                    (name, func._route.uri_pattern, route.uri_pattern))
         else:
             raise Exception("Route function '%s' collides with an "
                             "existing function or template data." %

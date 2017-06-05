@@ -165,7 +165,7 @@ class Server(object):
             raise MultipleNotFound(msg, req_page.not_found_errors)
 
         # We have a page, let's try to render it.
-        render_ctx = RenderingContext(req_page,
+        render_ctx = RenderingContext(req_page.page,
                                       sub_num=req_page.sub_num,
                                       force_render=True)
         req_page.page.source.prepareRenderContext(render_ctx)

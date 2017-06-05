@@ -63,8 +63,7 @@ def get_requested_page(app, req_path):
         if route_sub_num > 1:
             cur_req_path = req_path_no_num
 
-        page = _get_requested_page_for_route(app, route, route_params,
-                                             route_sub_num)
+        page = _get_requested_page_for_route(app, route, route_params)
         if page is not None:
             req_page.page = page
             req_page.sub_num = route_sub_num
@@ -82,7 +81,7 @@ def _get_requested_page_for_route(app, route, route_params):
     source = app.getSource(route.source_name)
     item = source.findContent(route_params)
     if item is not None:
-        return app.getPage(item)
+        return app.getPage(source, item)
     return None
 
 

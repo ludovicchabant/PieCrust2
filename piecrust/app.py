@@ -159,6 +159,7 @@ class PieCrust(object):
         for r in self.config.get('site/routes'):
             rte = Route(self, r)
             routes.append(rte)
+        routes = sorted(routes, key=lambda r: r.pass_num)
         return routes
 
     @cached_property

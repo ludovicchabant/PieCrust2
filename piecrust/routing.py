@@ -1,5 +1,6 @@
 import re
 import os.path
+import copy
 import logging
 import urllib.parse
 from werkzeug.utils import cached_property
@@ -41,9 +42,11 @@ class Route(object):
     """
     def __init__(self, app, cfg):
         self.app = app
+        self.config = copy.deepcopy(cfg)
 
         self.source_name = cfg['source']
         self.uri_pattern = cfg['url'].lstrip('/')
+        self.pass_num = cfg['pass']
 
         self.supported_params = self.source.getSupportedRouteParameters()
 
@@ -230,7 +233,7 @@ class Route(object):
             route_params[arg_name] = self._coerceRouteParameter(
                 arg_name, arg_val)
 
-        self.source.onRouteFunctionUsed(self, route_params)
+        self.source.onRouteFunctionUsed(route_params)
 
         return self.getUri(route_params)
 
@@ -310,3 +313,6 @@ class RouteFunction:
 
     def __call__(self, *args, **kwargs):
         return self._route.execTemplateFunc(*args, **kwargs)
+
+    def _isCompatibleRoute(self, route):
+        return self._route.uri_pattern == route.uri_pattern

@@ -4,14 +4,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def page_value_accessor(page, name):
-    return page.config.get(name)
-
-
 class PaginationFilter(object):
-    def __init__(self, value_accessor=None):
+    def __init__(self):
         self.root_clause = None
-        self.value_accessor = value_accessor or self._default_value_accessor
 
     @property
     def is_empty(self):
@@ -81,13 +76,6 @@ class PaginationFilter(object):
             else:
                 raise Exception("Unknown filter clause: %s" % key)
 
-    @staticmethod
-    def _default_value_accessor(item, name):
-        try:
-            return getattr(item, name)
-        except AttributeError:
-            return None
-
 
 class IFilterClause(object):
     def addClause(self, clause):
@@ -151,7 +139,7 @@ class SettingFilterClause(IFilterClause):
 
 class HasFilterClause(SettingFilterClause):
     def pageMatches(self, fil, page):
-        actual_value = fil.value_accessor(page, self.name)
+        actual_value = page.config.get(self.name)
         if actual_value is None or not isinstance(actual_value, list):
             return False
 
@@ -163,7 +151,7 @@ class HasFilterClause(SettingFilterClause):
 
 class IsFilterClause(SettingFilterClause):
     def pageMatches(self, fil, page):
-        actual_value = fil.value_accessor(page, self.name)
+        actual_value = page.config.get(self.name)
         if self.coercer:
             actual_value = self.coercer(actual_value)
         return actual_value == self.value

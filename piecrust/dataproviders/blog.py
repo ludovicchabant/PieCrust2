@@ -1,7 +1,8 @@
 import time
 import collections.abc
 from piecrust.dataproviders.base import DataProvider
-from piecrust.generation.taxonomy import Taxonomy
+from piecrust.dataproviders.pageiterator import PageIterator
+from piecrust.sources.taxonomy import Taxonomy
 
 
 class BlogDataProvider(DataProvider, collections.abc.Mapping):
@@ -12,8 +13,8 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     debug_render_dynamic = (['_debugRenderTaxonomies'] +
                             DataProvider.debug_render_dynamic)
 
-    def __init__(self, source, page, override):
-        super(BlogDataProvider, self).__init__(source, page, override)
+    def __init__(self, source, page):
+        super().__init__(source, page)
         self._yearly = None
         self._monthly = None
         self._taxonomies = {}
@@ -72,15 +73,15 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
             posts_this_year = yearly_index.get(year)
             if posts_this_year is None:
                 timestamp = time.mktime(
-                        (post.datetime.year, 1, 1, 0, 0, 0, 0, 0, -1))
+                    (post.datetime.year, 1, 1, 0, 0, 0, 0, 0, -1))
                 posts_this_year = BlogArchiveEntry(self._page, year, timestamp)
                 self._yearly.append(posts_this_year)
                 yearly_index[year] = posts_this_year
 
             posts_this_year._data_source.append(post)
         self._yearly = sorted(self._yearly,
-                key=lambda e: e.timestamp,
-                reverse=True)
+                              key=lambda e: e.timestamp,
+                              reverse=True)
         self._onIteration()
         return self._yearly
 
@@ -93,19 +94,20 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
             month = post.datetime.strftime('%B %Y')
 
             posts_this_month = next(
-                    filter(lambda m: m.name == month, self._monthly),
-                    None)
+                filter(lambda m: m.name == month, self._monthly),
+                None)
             if posts_this_month is None:
                 timestamp = time.mktime(
-                        (post.datetime.year, post.datetime.month, 1,
-                            0, 0, 0, 0, 0, -1))
-                posts_this_month = BlogArchiveEntry(self._page, month, timestamp)
+                    (post.datetime.year, post.datetime.month, 1,
+                     0, 0, 0, 0, 0, -1))
+                posts_this_month = BlogArchiveEntry(
+                    self._page, month, timestamp)
                 self._monthly.append(posts_this_month)
 
             posts_this_month._data_source.append(post)
         self._monthly = sorted(self._monthly,
-                key=lambda e: e.timestamp,
-                reverse=True)
+                               key=lambda e: e.timestamp,
+                               reverse=True)
         self._onIteration()
         return self._monthly
 

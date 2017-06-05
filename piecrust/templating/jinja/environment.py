@@ -2,12 +2,16 @@ import re
 import time
 import email.utils
 import hashlib
+import logging
 import strict_rfc3339
 from jinja2 import Environment
 from .extensions import get_highlight_css
 from piecrust.data.paginator import Paginator
 from piecrust.rendering import format_text
 from piecrust.uriutil import multi_replace
+
+
+logger = logging.getLogger(__name__)
 
 
 class PieCrustEnvironment(Environment):
@@ -32,6 +36,16 @@ class PieCrustEnvironment(Environment):
             val = app.config.get('jinja/' + name)
             if val is not None:
                 kwargs.setdefault(name, val)
+
+        # Undefined behaviour.
+        undef = app.config.get('jinja/undefined')
+        if undef == 'logging':
+            from jinja2 import make_logging_undefined
+            kwargs.setdefault('undefined',
+                              make_logging_undefined(logger))
+        elif undef == 'strict':
+            from jinja2 import StrictUndefined
+            kwargs.setdefault('undefined', StrictUndefined)
 
         # Twig trims blocks.
         if twig_compatibility_mode is True:

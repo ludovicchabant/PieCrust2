@@ -78,17 +78,22 @@ class BuiltInPlugin(PieCrustPlugin):
     def getPipelines(self):
         from piecrust.pipelines.page import PagePipeline
         from piecrust.pipelines.asset import AssetPipeline
+        from piecrust.sources.taxonomy import TaxonomyPipeline
+        from piecrust.sources.blogarchives import BlogArchivesPipeline
 
         return [
             PagePipeline,
-            AssetPipeline]
+            AssetPipeline,
+            TaxonomyPipeline,
+            BlogArchivesPipeline]
 
     def getDataProviders(self):
-        from piecrust.data.provider import (
-            IteratorDataProvider, BlogDataProvider)
+        from piecrust.dataproviders.pageiterator import \
+            PageIteratorDataProvider
+        from piecrust.dataproviders.blog import BlogDataProvider
 
         return [
-            IteratorDataProvider,
+            PageIteratorDataProvider,
             BlogDataProvider]
 
     def getTemplateEngines(self):

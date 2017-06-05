@@ -90,6 +90,11 @@ def _real_worker_func(params):
         from piecrust.main import _pre_parse_chef_args
         _pre_parse_chef_args(sys.argv[1:])
 
+    from piecrust.main import ColoredFormatter
+    root_logger = logging.getLogger()
+    root_logger.handlers[0].setFormatter(ColoredFormatter(
+        ('[W-%d]' % wid) + '[%(name)s] %(message)s'))
+
     logger.debug("Worker %d initializing..." % wid)
 
     # We don't need those.
@@ -178,7 +183,10 @@ class _WorkerParams:
 class WorkerPool:
     def __init__(self, worker_class, initargs=(), *,
                  callback=None, error_callback=None,
-                 worker_count=None, batch_size=None):
+                 worker_count=None, batch_size=None,
+                 userdata=None):
+        self.userdata = userdata
+
         worker_count = worker_count or os.cpu_count() or 1
 
         if use_fastqueue:
@@ -271,6 +279,7 @@ class WorkerPool:
 
     @staticmethod
     def _handleResults(pool):
+        userdata = pool.userdata
         while True:
             try:
                 res = pool._quick_get()
@@ -287,10 +296,10 @@ class WorkerPool:
             try:
                 if success:
                     if pool._callback:
-                        pool._callback(task_data, data)
+                        pool._callback(task_data, data, userdata)
                 else:
                     if pool._error_callback:
-                        pool._error_callback(task_data, data)
+                        pool._error_callback(task_data, data, userdata)
                     else:
                         logger.error(
                             "Worker %d failed to process a job:" % wid)
@@ -312,7 +321,7 @@ class _ReportHandler:
     def wait(self, timeout=None):
         return self._event.wait(timeout)
 
-    def _handle(self, job, res):
+    def _handle(self, job, res, _):
         wid, data = res
         if wid < 0 or wid > self._count:
             logger.error("Ignoring report from unknown worker %d." % wid)
@@ -324,7 +333,7 @@ class _ReportHandler:
         if self._received == self._count:
             self._event.set()
 
-    def _handleError(self, job, res):
+    def _handleError(self, job, res, _):
         logger.error("Worker %d failed to send its report." % res.wid)
         logger.error(res)
 

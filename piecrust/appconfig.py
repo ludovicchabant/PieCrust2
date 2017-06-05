@@ -391,7 +391,7 @@ def _validate_site_sources(v, values, cache):
         sc.setdefault('items_per_page', 5)
         sc.setdefault('date_format', DEFAULT_DATE_FORMAT)
         sc.setdefault('realm', REALM_USER)
-        sc.setdefault('pipeline', 'page')
+        sc.setdefault('pipeline', None)
 
         # Validate endpoints.
         endpoint = sc['data_endpoint']
@@ -436,6 +436,7 @@ def _validate_site_routes(v, values, cache):
                                      r_source)
         used_sources.add(r_source)
 
+        rc.setdefault('pass', 1)
         rc.setdefault('page_suffix', '/%num%')
 
     return v

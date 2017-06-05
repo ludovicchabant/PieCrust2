@@ -1,5 +1,5 @@
 import copy
-from piecrust.pipelines.records import RecordEntry
+from piecrust.pipelines.records import RecordEntry, get_flag_descriptions
 
 
 class SubPagePipelineRecordEntry:
@@ -44,12 +44,17 @@ class PagePipelineRecordEntry(RecordEntry):
     FLAG_NEW = 2**0
     FLAG_SOURCE_MODIFIED = 2**1
     FLAG_OVERRIDEN = 2**2
+    FLAG_COLLAPSED_FROM_LAST_RUN = 2**3
 
     def __init__(self):
         super().__init__()
         self.flags = self.FLAG_NONE
         self.config = None
         self.subs = []
+
+    @property
+    def was_touched(self):
+        return (self.flags & self.FLAG_SOURCE_MODIFIED) != 0
 
     @property
     def was_overriden(self):
@@ -65,16 +70,6 @@ class PagePipelineRecordEntry(RecordEntry):
             if o.was_baked:
                 return True
         return False
-
-    @property
-    def all_assets(self):
-        for sub in self.subs:
-            yield from sub.assets
-
-    @property
-    def all_out_paths(self):
-        for sub in self.subs:
-            yield sub.out_path
 
     @property
     def has_any_error(self):
@@ -101,3 +96,36 @@ class PagePipelineRecordEntry(RecordEntry):
                     res |= pinfo.used_source_names
         return res
 
+    def getAllOutputPaths(self):
+        for o in self.subs:
+            yield o.out_path
+
+    def describe(self):
+        d = super().describe()
+        d['Flags'] = get_flag_descriptions(self.flags, flag_descriptions)
+        for i, sub in enumerate(self.subs):
+            d['Sub%02d' % i] = {
+                'URI': sub.out_uri,
+                'Path': sub.out_path,
+                'Flags': get_flag_descriptions(
+                    sub.flags, sub_flag_descriptions)
+            }
+        return d
+
+
+flag_descriptions = {
+    PagePipelineRecordEntry.FLAG_NEW: 'new',
+    PagePipelineRecordEntry.FLAG_SOURCE_MODIFIED: 'touched',
+    PagePipelineRecordEntry.FLAG_OVERRIDEN: 'overriden',
+    PagePipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run'}
+
+
+sub_flag_descriptions = {
+    SubPagePipelineRecordEntry.FLAG_BAKED: 'baked',
+    SubPagePipelineRecordEntry.FLAG_FORCED_BY_SOURCE: 'forced by source',
+    SubPagePipelineRecordEntry.FLAG_FORCED_BY_NO_PREVIOUS: 'forced b/c new',
+    SubPagePipelineRecordEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS:
+    'forced by errors',
+    SubPagePipelineRecordEntry.FLAG_FORMATTING_INVALIDATED:
+    'formatting invalidated'
+}

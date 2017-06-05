@@ -1,5 +1,8 @@
 import re
 import collections.abc
+from piecrust.configuration import ConfigurationError
+from piecrust.dataproviders.base import (
+    DataProvider, build_data_provider)
 
 
 re_endpoint_sep = re.compile(r'[\/\.]')
@@ -27,15 +30,31 @@ class DataProvidersData(collections.abc.Mapping):
             return
 
         self._dict = {}
-        for source in self._page.app.sources + self._page.app.generators:
-            if source.data_endpoint:
-                endpoint_bits = re_endpoint_sep.split(source.data_endpoint)
-                endpoint = self._dict
-                for e in endpoint_bits[:-1]:
-                    if e not in endpoint:
-                        endpoint[e] = {}
-                    endpoint = endpoint[e]
-                override = endpoint.get(endpoint_bits[-1])
-                provider = source.buildDataProvider(self._page, override)
-                if provider is not None:
-                    endpoint[endpoint_bits[-1]] = provider
+        for source in self._page.app.sources:
+            pname = source.config.get('data_type')
+            pendpoint = source.config.get('data_endpoint')
+            if not pname or not pendpoint:
+                continue
+
+            endpoint_bits = re_endpoint_sep.split(pendpoint)
+            endpoint = self._dict
+            for e in endpoint_bits[:-1]:
+                if e not in endpoint:
+                    endpoint[e] = {}
+                endpoint = endpoint[e]
+            existing = endpoint.get(endpoint_bits[-1])
+
+            if existing is None:
+                provider = build_data_provider(pname, source, self._page)
+                endpoint[endpoint_bits[-1]] = provider
+            elif isinstance(existing, DataProvider):
+                if existing.PROVIDER_NAME != pname:
+                    raise ConfigurationError(
+                        "Can't combine data providers '%s' and '%' on "
+                        "endpoint '%s'." %
+                        (existing.PROVIDER_NAME, pname, pendpoint))
+                existing._addSource(source)
+            else:
+                raise ConfigurationError(
+                    "Endpoint '%s' can't be used for a data provider because "
+                    "it's already used for something else." % pendpoint)

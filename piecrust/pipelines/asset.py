@@ -19,18 +19,18 @@ class AssetPipeline(ContentPipeline):
     PIPELINE_NAME = 'asset'
     RECORD_ENTRY_CLASS = AssetPipelineRecordEntry
 
-    def __init__(self, source):
+    def __init__(self, source, ppctx):
         if not isinstance(source, FSContentSourceBase):
             raise Exception(
                 "The asset pipeline only support file-system sources.")
 
-        super().__init__(source)
+        super().__init__(source, ppctx)
         self.enabled_processors = None
         self.ignore_patterns = []
         self._processors = None
         self._base_dir = source.fs_endpoint_path
 
-    def initialize(self, ctx):
+    def initialize(self):
         # Get the list of processors for this run.
         processors = self.app.plugin_loader.getProcessors()
         if self.enabled_processors is not None:
@@ -40,7 +40,7 @@ class AssetPipeline(ContentPipeline):
                                                  self.enabled_processors)
 
         # Invoke pre-processors.
-        proc_ctx = ProcessorContext(self, ctx)
+        proc_ctx = ProcessorContext(self)
         for proc in processors:
             proc.onPipelineStart(proc_ctx)
 
@@ -62,14 +62,15 @@ class AssetPipeline(ContentPipeline):
         stats.registerTimer('BuildProcessingTree', raise_if_registered=False)
         stats.registerTimer('RunProcessingTree', raise_if_registered=False)
 
-    def run(self, content_item, ctx, result):
+    def run(self, job, ctx, result):
         # See if we need to ignore this item.
-        rel_path = os.path.relpath(content_item.spec, self._base_dir)
+        rel_path = os.path.relpath(job.content_item.spec, self._base_dir)
         if re_matchany(rel_path, self.ignore_patterns):
             return
 
         record_entry = result.record_entry
         stats = self.app.env.stats
+        out_dir = self.ctx.out_dir
 
         # Build the processing tree for this job.
         with stats.timerScope('BuildProcessingTree'):
@@ -80,19 +81,19 @@ class AssetPipeline(ContentPipeline):
         # Prepare and run the tree.
         print_node(tree_root, recursive=True)
         leaves = tree_root.getLeaves()
-        record_entry.out_paths = [os.path.join(ctx.out_dir, l.path)
+        record_entry.out_paths = [os.path.join(out_dir, l.path)
                                   for l in leaves]
         record_entry.proc_tree = get_node_name_tree(tree_root)
         if tree_root.getProcessor().is_bypassing_structured_processing:
             record_entry.flags |= (
                 AssetPipelineRecordEntry.FLAG_BYPASSED_STRUCTURED_PROCESSING)
 
-        if ctx.force:
+        if self.ctx.force:
             tree_root.setState(STATE_DIRTY, True)
 
         with stats.timerScope('RunProcessingTree'):
             runner = ProcessingTreeRunner(
-                self._base_dir, self.tmp_dir, ctx.out_dir)
+                self._base_dir, self.tmp_dir, out_dir)
             if runner.processSubTree(tree_root):
                 record_entry.flags |= (
                     AssetPipelineRecordEntry.FLAG_PROCESSED)
@@ -118,9 +119,9 @@ class AssetPipeline(ContentPipeline):
                 cur.out_paths = list(prev.out_paths)
                 cur.errors = list(prev.errors)
 
-    def shutdown(self, ctx):
+    def shutdown(self):
         # Invoke post-processors.
-        proc_ctx = ProcessorContext(self, ctx)
+        proc_ctx = ProcessorContext(self)
         for proc in self._processors:
             proc.onPipelineEnd(proc_ctx)
 

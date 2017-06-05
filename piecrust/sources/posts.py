@@ -21,6 +21,7 @@ class PostsSource(FSContentSource,
                   SimpleAssetsSubDirMixin,
                   IPreparingSource, IInteractiveSource):
     PATH_FORMAT = None
+    DEFAULT_PIPELINE_NAME = 'page'
 
     def __init__(self, app, name, config):
         super().__init__(app, name, config)
@@ -122,10 +123,12 @@ class PostsSource(FSContentSource,
         day = int(m.group('day'))
         timestamp = datetime.date(year, month, day)
         metadata = {
-            'year': year,
-            'month': month,
-            'day': day,
-            'slug': m.group('slug'),
+            'route_params': {
+                'year': year,
+                'month': month,
+                'day': day,
+                'slug': m.group('slug')
+            },
             'date': timestamp
         }
         return metadata

@@ -13,7 +13,10 @@ REALM_NAMES = {
 
 
 # Types of relationships a content source can be asked for.
-REL_ASSETS = 1
+REL_PARENT_GROUP = 1
+REL_LOGICAL_PARENT_ITEM = 2
+REL_LOGICAl_CHILD_GROUP = 3
+REL_ASSETS = 10
 
 
 logger = logging.getLogger(__name__)
@@ -43,10 +46,13 @@ class ContentItem:
     """ Describes a piece of content.
 
         Some known metadata that PieCrust will use include:
-        - `route_params`: A dictionary of route parameters to generate
-              the URL to the content.
-        - `config`: A dictionary of configuration settings to merge
-              into the settings found in the content itself.
+        - `date`: A `datetime.date` object that will set the date of the page.
+        - `datetime`: A `datetime.datetime` object that will set the date and
+            time of the page.
+        - `route_params`: A dictionary of route parameters to generate the
+            URL to the content.
+        - `config`: A dictionary of configuration settings to merge into the
+            settings found in the content itself.
     """
     def __init__(self, spec, metadata):
         self.spec = spec
@@ -72,6 +78,8 @@ class ContentGroup:
 class ContentSource:
     """ A source for content.
     """
+    DEFAULT_PIPELINE_NAME = None
+
     def __init__(self, app, name, config):
         self.app = app
         self.name = name

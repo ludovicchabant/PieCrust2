@@ -3,7 +3,7 @@ import os.path
 import time
 import logging
 import yaml
-from piecrust.dataproviders.page_iterator import PageIterator
+from piecrust.dataproviders.pageiterator import PageIterator
 from piecrust.processing.base import SimpleFileProcessor
 
 

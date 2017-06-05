@@ -14,11 +14,11 @@ FORCE_BUILD = object()
 
 
 class ProcessorContext:
-    def __init__(self, pipeline, pipeline_ctx):
+    def __init__(self, pipeline):
         self.ignore_patterns = []
         self.extra_processors = []
         self._pipeline = pipeline
-        self._pipeline_ctx = pipeline_ctx
+        self._pipeline_ctx = pipeline.ctx
 
     @property
     def tmp_dir(self):

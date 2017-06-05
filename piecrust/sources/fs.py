@@ -1,10 +1,13 @@
 import os.path
 import re
+import glob
 import fnmatch
 import logging
 from piecrust import osutil
 from piecrust.routing import RouteParameter
-from piecrust.sources.base import ContentItem, ContentGroup, ContentSource
+from piecrust.sources.base import (
+    ContentItem, ContentGroup, ContentSource,
+    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
 
 
 logger = logging.getLogger(__name__)
@@ -73,7 +76,6 @@ class FSContentSource(FSContentSourceBase):
         self._ignore_regexes = ir
 
     def getContents(self, group):
-        logger.debug("Scanning for content in: %s" % self.fs_endpoint_path)
         if not self._checkFSEndpoint():
             return None
 
@@ -122,6 +124,39 @@ class FSContentSource(FSContentSourceBase):
         pass
 
     def getRelatedContents(self, item, relationship):
+        if relationship == REL_PARENT_GROUP:
+            parent_dir = os.path.dirname(item.spec)
+            if len(parent_dir) >= len(self.fs_endpoint_path):
+                metadata = self._createGroupMetadata(parent_dir)
+                return ContentGroup(parent_dir, metadata)
+
+            # Don't return a group for paths that are outside of our
+            # endpoint directory.
+            return None
+
+        if relationship == REL_LOGICAL_PARENT_ITEM:
+            # If we want the logical parent item of a folder, we find a
+            # page file with the same name as the folder.
+            if not item.is_group:
+                raise ValueError()
+            parent_glob = os.path.join(item.spec, '*')
+            for n in glob.iglob(parent_glob):
+                if os.path.isfile(n):
+                    metadata = self._createItemMetadata(n)
+                    return ContentItem(n, metadata)
+            return None
+
+        if relationship == REL_LOGICAl_CHILD_GROUP:
+            # If we want the children items of an item, we look for
+            # a directory that has the same name as the item's file.
+            if item.is_group:
+                raise ValueError()
+            dir_path, _ = os.path.splitext(item.spec)
+            if os.path.isdir(dir_path):
+                metadata = self._createGroupMetadata(dir_path)
+                return [ContentGroup(dir_path, metadata)]
+            return None
+
         return None
 
     def findContent(self, route_params):

@@ -1,10 +1,6 @@
 from piecrust.configuration import ConfigurationError
 
 
-class UnsupportedWrappedDataProviderError(Exception):
-    pass
-
-
 class DataProvider:
     """ The base class for a data provider.
     """
@@ -13,19 +9,27 @@ class DataProvider:
     debug_render_dynamic = []
     debug_render_invoke_dynamic = []
 
-    def __init__(self, source):
-        self._source = source
+    def __init__(self, source, page):
+        self._page = page
+        self._sources = []
+        if source is not None:
+            self._sources.append(source)
 
-    def _wrapDataProvider(self, provider):
-        raise UnsupportedWrappedDataProviderError()
+    def _addSource(self, source):
+        self._sources.append(source)
 
 
-def get_data_provider_class(app, provider_type):
+def build_data_provider(provider_type, source, page):
     if not provider_type:
         raise Exception("No data provider type specified.")
-    for prov in app.plugin_loader.getDataProviders():
-        if prov.PROVIDER_NAME == provider_type:
-            return prov
-    raise ConfigurationError(
-        "Unknown data provider type: %s" % provider_type)
+
+    for p in page.app.plugin_loader.getDataProviders():
+        if p.PROVIDER_NAME == provider_type:
+            pclass = p
+            break
+    else:
+        raise ConfigurationError("Unknown data provider type: %s" %
+                                 provider_type)
+
+    return pclass(source, page)
 

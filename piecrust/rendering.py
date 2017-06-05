@@ -5,7 +5,6 @@ import logging
 from piecrust.data.builder import (
     DataBuildingContext, build_page_data, add_layout_data)
 from piecrust.fastpickle import _pickle_object, _unpickle_object
-from piecrust.sources.base import ContentSource
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
 
 
@@ -115,9 +114,8 @@ class RenderingContext(object):
 
     def addUsedSource(self, source):
         self._raiseIfNoCurrentPass()
-        if isinstance(source, ContentSource):
-            pass_info = self.current_pass_info
-            pass_info.used_source_names.add(source.name)
+        pass_info = self.current_pass_info
+        pass_info.used_source_names.add(source.name)
 
     def _raiseIfNoCurrentPass(self):
         if self._current_pass == PASS_NONE:
@@ -159,6 +157,7 @@ class RenderingContextStack(object):
 
 def render_page(ctx):
     env = ctx.app.env
+    stats = env.stats
 
     stack = env.render_ctx_stack
     stack.pushCtx(ctx)
@@ -168,7 +167,7 @@ def render_page(ctx):
 
     try:
         # Build the data for both segment and layout rendering.
-        with env.timerScope("BuildRenderData"):
+        with stats.timerScope("BuildRenderData"):
             page_data = _build_render_data(ctx)
 
         # Render content segments.
@@ -177,7 +176,7 @@ def render_page(ctx):
         save_to_fs = True
         if env.fs_cache_only_for_main_page and not stack.is_main_ctx:
             save_to_fs = False
-        with env.timerScope("PageRenderSegments"):
+        with stats.timerScope("PageRenderSegments"):
             if repo is not None and not ctx.force_render:
                 render_result = repo.get(
                     page_uri,
@@ -197,10 +196,10 @@ def render_page(ctx):
                 'default_layout', 'default')
         null_names = ['', 'none', 'nil']
         if layout_name not in null_names:
-            with ctx.app.env.timerScope("BuildRenderData"):
+            with stats.timerScope("BuildRenderData"):
                 add_layout_data(page_data, render_result['segments'])
 
-            with ctx.app.env.timerScope("PageRenderLayout"):
+            with stats.timerScope("PageRenderLayout"):
                 layout_result = _do_render_layout(
                     layout_name, page, page_data)
         else:
@@ -222,8 +221,8 @@ def render_page(ctx):
         if ctx.app.debug:
             raise
         logger.exception(ex)
-        page_rel_path = os.path.relpath(ctx.page.path, ctx.app.root_dir)
-        raise Exception("Error rendering page: %s" % page_rel_path) from ex
+        raise Exception("Error rendering page: %s" %
+                        ctx.page.content_spec) from ex
 
     finally:
         ctx.setCurrentPass(PASS_NONE)
@@ -232,6 +231,7 @@ def render_page(ctx):
 
 def render_page_segments(ctx):
     env = ctx.app.env
+    stats = env.stats
 
     stack = env.render_ctx_stack
     stack.pushCtx(ctx)
@@ -241,11 +241,13 @@ def render_page_segments(ctx):
 
     try:
         ctx.setCurrentPass(PASS_FORMATTING)
-        repo = ctx.app.env.rendered_segments_repository
+        repo = env.rendered_segments_repository
+
         save_to_fs = True
-        if ctx.app.env.fs_cache_only_for_main_page and not stack.is_main_ctx:
+        if env.fs_cache_only_for_main_page and not stack.is_main_ctx:
             save_to_fs = False
-        with ctx.app.env.timerScope("PageRenderSegments"):
+
+        with stats.timerScope("PageRenderSegments"):
             if repo is not None and not ctx.force_render:
                 render_result = repo.get(
                     page_uri,
@@ -267,7 +269,7 @@ def render_page_segments(ctx):
 
 
 def _build_render_data(ctx):
-    with ctx.app.env.timerScope("PageDataBuild"):
+    with ctx.app.env.stats.timerScope("PageDataBuild"):
         data_ctx = DataBuildingContext(ctx.page, ctx.sub_num)
         data_ctx.pagination_source = ctx.pagination_source
         data_ctx.pagination_filter = ctx.pagination_filter
@@ -297,10 +299,10 @@ def _do_render_page_segments(ctx, page_data):
         for seg_part in seg.parts:
             part_format = seg_part.fmt or format_name
             try:
-                with app.env.timerScope(
+                with app.env.stats.timerScope(
                         engine.__class__.__name__ + '_segment'):
                     part_text = engine.renderSegmentPart(
-                        page.path, seg_part, page_data)
+                        page.content_spec, seg_part, page_data)
             except TemplatingError as err:
                 err.lineno += seg_part.line
                 raise err
@@ -324,17 +326,15 @@ def _do_render_page_segments(ctx, page_data):
 
 
 def _do_render_layout(layout_name, page, layout_data):
-    cpi = page.app.env.exec_info_stack.current_page_info
-    assert cpi is not None
-    assert cpi.page == page
+    cur_ctx = page.app.env.render_ctx_stack.current_ctx
+    assert cur_ctx is not None
+    assert cur_ctx.page == page
 
     names = layout_name.split(',')
-    default_exts = page.app.env.default_layout_extensions
     full_names = []
     for name in names:
         if '.' not in name:
-            for ext in default_exts:
-                full_names.append(name + ext)
+            full_names.append(name + '.html')
         else:
             full_names.append(name)
 
@@ -343,7 +343,8 @@ def _do_render_layout(layout_name, page, layout_data):
     engine = get_template_engine(page.app, engine_name)
 
     try:
-        with page.app.env.timerScope(engine.__class__.__name__ + '_layout'):
+        with page.app.env.stats.timerScope(
+                engine.__class__.__name__ + '_layout'):
             output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
         logger.exception(ex)
@@ -351,7 +352,7 @@ def _do_render_layout(layout_name, page, layout_data):
         msg += "Looked for: %s" % ', '.join(full_names)
         raise Exception(msg) from ex
 
-    pass_info = cpi.render_ctx.render_passes[PASS_RENDERING]
+    pass_info = cur_ctx.render_passes[PASS_RENDERING]
     res = {'content': output, 'pass_info': _pickle_object(pass_info)}
     return res
 
@@ -376,7 +377,7 @@ def format_text(app, format_name, txt, exact_format=False):
         if not fmt.enabled:
             continue
         if fmt.FORMAT_NAMES is None or format_name in fmt.FORMAT_NAMES:
-            with app.env.timerScope(fmt.__class__.__name__):
+            with app.env.stats.timerScope(fmt.__class__.__name__):
                 txt = fmt.render(format_name, txt)
             format_count += 1
             if fmt.OUTPUT_FORMAT is not None:

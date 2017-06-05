@@ -25,6 +25,7 @@ class PageBaker(object):
         self.pretty_urls = app.config.get('site/pretty_urls')
         self._writer_queue = None
         self._writer = None
+        self._stats = app.env.stats
 
     def startWriterQueue(self):
         self._writer_queue = queue.Queue()
@@ -53,24 +54,21 @@ class PageBaker(object):
 
         return os.path.normpath(os.path.join(*bake_path))
 
-    def bake(self, qualified_page, prev_entry, dirty_source_names):
+    def bake(self, page, prev_entry, cur_entry, dirty_source_names):
         # Start baking the sub-pages.
         cur_sub = 1
         has_more_subs = True
-        sub_entries = []
-        pretty_urls = qualified_page.config.get(
-            'pretty_urls', self.pretty_urls)
+        pretty_urls = page.config.get('pretty_urls', self.pretty_urls)
 
         while has_more_subs:
-            sub_page = qualified_page.getSubPage(cur_sub)
-            sub_uri = sub_page.uri
+            sub_uri = page.getUri(sub_num=cur_sub)
             logger.debug("Baking '%s' [%d]..." % (sub_uri, cur_sub))
 
             out_path = self.getOutputPath(sub_uri, pretty_urls)
 
             # Create the sub-entry for the bake record.
             sub_entry = SubPagePipelineRecordEntry(sub_uri, out_path)
-            sub_entries.append(sub_entry)
+            cur_entry.subs.append(sub_entry)
 
             # Find a corresponding sub-entry in the previous bake record.
             prev_sub_entry = None
@@ -89,7 +87,7 @@ class PageBaker(object):
             do_bake = True
             if not force_this_sub:
                 try:
-                    in_path_time = qualified_page.path_mtime
+                    in_path_time = page.content_mtime
                     out_path_time = os.path.getmtime(out_path)
                     if out_path_time >= in_path_time:
                         do_bake = False
@@ -123,13 +121,11 @@ class PageBaker(object):
                         SubPagePipelineRecordEntry.FLAG_FORMATTING_INVALIDATED
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
-                rp = self._bakeSingle(qualified_page, cur_sub, out_path)
+                rp = self._bakeSingle(page, cur_sub, out_path)
             except Exception as ex:
                 logger.exception(ex)
-                page_rel_path = os.path.relpath(qualified_page.path,
-                                                self.app.root_dir)
                 raise BakingError("%s: error baking '%s'." %
-                                  (page_rel_path, sub_uri)) from ex
+                                  (page.content_spec, sub_uri)) from ex
 
             # Record what we did.
             sub_entry.flags |= SubPagePipelineRecordEntry.FLAG_BAKED
@@ -149,8 +145,7 @@ class PageBaker(object):
 
                 logger.debug("Copying page assets to: %s" % out_assets_dir)
                 _ensure_dir_exists(out_assets_dir)
-
-                qualified_page.source.buildAssetor(qualified_page, sub_uri).copyAssets(out_assets_dir)
+                # TODO: copy assets to out dir
 
             # Figure out if we have more work.
             has_more_subs = False
@@ -158,16 +153,14 @@ class PageBaker(object):
                 cur_sub += 1
                 has_more_subs = True
 
-        return sub_entries
+    def _bakeSingle(self, page, sub_num, out_path):
+        ctx = RenderingContext(page, sub_num=sub_num)
+        page.source.prepareRenderContext(ctx)
 
-    def _bakeSingle(self, qp, out_path):
-        ctx = RenderingContext(qp)
-        qp.source.prepareRenderContext(ctx)
-
-        with self.app.env.timerScope("PageRender"):
+        with self._stats.timerScope("PageRender"):
             rp = render_page(ctx)
 
-        with self.app.env.timerScope("PageSerialize"):
+        with self._stats.timerScope("PageSerialize"):
             if self._writer_queue is not None:
                 self._writer_queue.put_nowait((out_path, rp.content))
             else:

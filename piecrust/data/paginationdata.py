@@ -49,7 +49,7 @@ class PaginationData(LazyPageConfigData):
         assert self is data
 
         if do_render:
-            uri = self.getUri()
+            uri = self._page.getUri()
             try:
                 from piecrust.rendering import (
                     RenderingContext, render_page_segments)

@@ -76,7 +76,7 @@ class LazyPageConfigData(collections.abc.Mapping):
                 logger.exception(ex)
                 raise Exception(
                     "Error while loading attribute '%s' for: %s" %
-                    (name, self._page.rel_path)) from ex
+                    (name, self._page.content_spec)) from ex
 
             # Forget this loader now that it served its purpose.
             try:
@@ -96,11 +96,14 @@ class LazyPageConfigData(collections.abc.Mapping):
                 logger.exception(ex)
                 raise Exception(
                     "Error while loading attribute '%s' for: %s" %
-                    (name, self._page.rel_path)) from ex
+                    (name, self._page.content_spec)) from ex
             # We always keep the wildcard loader in the loaders list.
-            return self._values[name]
+            try:
+                return self._values[name]
+            except KeyError:
+                pass
 
-        raise LazyPageConfigLoaderHasNoValue("No such value: %s" % name)
+        raise LazyPageConfigLoaderHasNoValue()
 
     def _setValue(self, name, value):
         self._values[name] = value
@@ -136,7 +139,7 @@ class LazyPageConfigData(collections.abc.Mapping):
             logger.exception(ex)
             raise Exception(
                 "Error while loading data for: %s" %
-                self._page.rel_path) from ex
+                self._page.content_spec) from ex
 
     def _load(self):
         pass
@@ -162,7 +165,7 @@ class PageData(LazyPageConfigData):
         dt = page.datetime
         for k, v in page.source_metadata.items():
             self._setValue(k, v)
-        self._setValue('url', self._ctx.uri)
+        self._setValue('url', self._page.getUri(self._ctx.sub_num))
         self._setValue('timestamp', time.mktime(dt.timetuple()))
         self._setValue('datetime', {
             'year': dt.year, 'month': dt.month, 'day': dt.day,

@@ -1,4 +1,5 @@
-from piecrust.pipelines.records import RecordEntry
+from piecrust.pipelines.records import (
+    RecordEntry, get_flag_descriptions)
 
 
 class AssetPipelineRecordEntry(RecordEntry):
@@ -12,6 +13,7 @@ class AssetPipelineRecordEntry(RecordEntry):
         super().__init__()
         self.flags = self.FLAG_NONE
         self.proc_tree = None
+        self.out_paths = []
 
     @property
     def was_prepared(self):
@@ -33,8 +35,9 @@ class AssetPipelineRecordEntry(RecordEntry):
 
     def describe(self):
         d = super().describe()
-        d['Flags'] = _get_flag_descriptions(self.flags)
+        d['Flags'] = get_flag_descriptions(self.flags, flag_descriptions)
         d['Processing Tree'] = _format_proc_tree(self.proc_tree, 20 * ' ')
+        d['Outputs'] = list(self.out_paths)
         return d
 
 
@@ -43,16 +46,6 @@ flag_descriptions = {
     AssetPipelineRecordEntry.FLAG_PROCESSED: 'processed',
     AssetPipelineRecordEntry.FLAG_BYPASSED_STRUCTURED_PROCESSING: 'external',
     AssetPipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run'}
-
-
-def _get_flag_descriptions(flags):
-    res = []
-    for k, v in flag_descriptions.items():
-        if flags & k:
-            res.append(v)
-    if res:
-        return ', '.join(res)
-    return 'none'
 
 
 def _format_proc_tree(tree, margin='', level=0):

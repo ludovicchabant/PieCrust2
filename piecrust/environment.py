@@ -74,7 +74,6 @@ class Environment:
         self.render_ctx_stack = RenderingContextStack()
         self.fs_cache_only_for_main_page = False
         self.abort_source_use = False
-        self._default_layout_extensions = None
         self._stats = ExecutionStats()
 
     @property

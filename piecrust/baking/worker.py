@@ -1,9 +1,10 @@
 import time
 import logging
-from piecrust.pipelines.base import PipelineContext, PipelineResult
+from piecrust.pipelines.base import (
+    PipelineManager, PipelineJobRunContext, PipelineJobResult,
+    get_pipeline_name_for_source)
 from piecrust.pipelines.records import (
-    MultiRecordHistory, MultiRecord, RecordEntry, load_records)
-from piecrust.sources.base import ContentItem
+    MultiRecordHistory, MultiRecord, load_records)
 from piecrust.workerpool import IWorker
 
 
@@ -25,7 +26,7 @@ class BakeWorker(IWorker):
     def __init__(self, ctx):
         self.ctx = ctx
         self.app = None
-        self.record_history = None
+        self.record_histories = None
         self._work_start_time = time.perf_counter()
         self._sources = {}
         self._ppctx = None
@@ -51,41 +52,39 @@ class BakeWorker(IWorker):
         else:
             previous_records = MultiRecord()
         current_records = MultiRecord()
-        self.record_history = MultiRecordHistory(
+        self.record_histories = MultiRecordHistory(
             previous_records, current_records)
 
-        # Cache sources and create pipelines.
-        ppclasses = {}
-        for ppclass in app.plugin_loader.getPipelines():
-            ppclasses[ppclass.PIPELINE_NAME] = ppclass
-
-        self._ppctx = PipelineContext(self.ctx.out_dir, self.record_history,
-                                      worker_id=self.wid,
-                                      force=self.ctx.force)
+        # Create the pipelines.
+        self.ppmngr = PipelineManager(
+            app, self.ctx.out_dir, self.record_histories,
+            worker_id=self.wid, force=self.ctx.force)
         for src in app.sources:
-            ppname = src.config['pipeline']
+            pname = get_pipeline_name_for_source(src)
             if (self.ctx.allowed_pipelines is not None and
-                    ppname not in self.ctx.allowed_pipelines):
+                    pname not in self.ctx.allowed_pipelines):
                 continue
 
-            pp = ppclasses[ppname](src)
-            pp.initialize(self._ppctx)
-            self._sources[src.name] = (src, pp)
+            self.ppmngr.createPipeline(src)
 
         stats.stepTimerSince("BakeWorkerInit", self._work_start_time)
 
     def process(self, job):
-        logger.debug("Received job: %s@%s" % (job.source_name, job.item_spec))
-        src, pp = self._sources[job.source_name]
-        item = ContentItem(job.item_spec, job.item_metadata)
+        item = job.content_item
+        logger.debug("Received job: %s@%s" % (job.source_name, item.spec))
 
-        entry_class = pp.RECORD_ENTRY_CLASS or RecordEntry
-        ppres = PipelineResult()
-        ppres.pipeline_name = pp.PIPELINE_NAME
-        ppres.record_entry = entry_class()
-        ppres.record_entry.item_spec = job.item_spec
+        ppinfo = self.ppmngr.getPipeline(job.source_name)
+        pp = ppinfo.pipeline
 
-        pp.run(item, self._ppctx, ppres)
+        ppres = PipelineJobResult()
+        # For subsequent pass jobs, there will be a record entry given. For
+        # first pass jobs, there's none so we get the pipeline to create it.
+        ppres.record_entry = job.data.get('record_entry')
+        if ppres.record_entry is None:
+            ppres.record_entry = pp.createRecordEntry(job)
+
+        runctx = PipelineJobRunContext(job, pp, self.record_histories)
+        pp.run(job, runctx, ppres)
         return ppres
 
     def getStats(self):
@@ -97,11 +96,4 @@ class BakeWorker(IWorker):
     def shutdown(self):
         for src, pp in self._sources.values():
             pp.shutdown(self._ppctx)
-
-
-class BakeJob:
-    def __init__(self, source_name, item_spec, item_metadata):
-        self.source_name = source_name
-        self.item_spec = item_spec
-        self.item_metadata = item_metadata
 

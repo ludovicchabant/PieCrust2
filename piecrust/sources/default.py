@@ -16,6 +16,7 @@ class DefaultContentSource(FSContentSource,
                            SimpleAssetsSubDirMixin,
                            IPreparingSource, IInteractiveSource):
     SOURCE_NAME = 'default'
+    DEFAULT_PIPELINE_NAME = 'page'
 
     def __init__(self, app, name, config):
         super().__init__(app, name, config)

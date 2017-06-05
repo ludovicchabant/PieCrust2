@@ -2,7 +2,8 @@ import logging
 import datetime
 from piecrust.chefutil import format_timed_scope
 from piecrust.data.filters import PaginationFilter, IFilterClause
-from piecrust.dataproviders.page_iterator import PageIterator
+from piecrust.dataproviders.pageiterator import PageIterator
+from piecrust.pipelines.base import ContentPipeline
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentSource, GeneratedContentException
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class BlogArchivesSource(ContentSource):
     SOURCE_NAME = 'blog_archives'
+    DEFAULT_PIPELINE_NAME = 'blog_archives'
 
     def __init__(self, app, name, config):
         super().__init__(app, name, config)
@@ -124,3 +126,7 @@ class IsFromYearFilterClause(IFilterClause):
 def _date_sorter(it):
     return sorted(it, key=lambda x: x.datetime)
 
+
+class BlogArchivesPipeline(ContentPipeline):
+    PIPELINE_NAME = 'blog_archives'
+    PASS_NUM = 1

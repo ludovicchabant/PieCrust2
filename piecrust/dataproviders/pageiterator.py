@@ -9,6 +9,12 @@ from piecrust.sources.base import AbortedSourceUseError
 logger = logging.getLogger(__name__)
 
 
+class _ItInfo:
+    def __init__(self):
+        self.it = None
+        self.iterated = False
+
+
 class PageIteratorDataProvider(DataProvider):
     """ A data provider that reads a content source as a list of pages.
 
@@ -22,44 +28,51 @@ class PageIteratorDataProvider(DataProvider):
     debug_render_doc_dynamic = ['_debugRenderDoc']
     debug_render_not_empty = True
 
-    def __init__(self, source, current_page=None):
-        super().__init__(source)
-        self._it = PageIterator(source, current_page=current_page)
-        self._it._iter_event += self._onIteration
-        self._innerProvider = None
-        self._iterated = False
+    def __init__(self, source, page):
+        super().__init__(source, page)
+        self._its = None
+        self._app = source.app
 
     def __len__(self):
-        res = len(self._it)
-        if self._innerProvider is not None:
-            res += len(self._innerProvider)
-        return res
+        self._load()
+        return sum([len(i.it) for i in self._its])
 
     def __iter__(self):
-        yield from self._it
-        if self._innerProvider is not None:
-            yield from self._innerProvider
+        self._load()
+        for i in self._its:
+            yield from i.it
 
-    def _onIteration(self):
-        if not self._iterated:
-            rcs = self._source.app.env.render_ctx_stack
+    def _load(self):
+        if self._its is not None:
+            return
+
+        self._its = []
+        for source in self._sources:
+            i = _ItInfo()
+            i.it = PageIterator(source, current_page=self._page)
+            i.it._iter_event += self._onIteration
+            self._its.append(i)
+
+    def _onIteration(self, it):
+        ii = next(filter(lambda i: i.it == it, self._its))
+        if not ii.iterated:
+            rcs = self._app.env.render_ctx_stack
             rcs.current_ctx.addUsedSource(self._source.name)
-            self._iterated = True
+            ii.iterated = True
 
     def _debugRenderDoc(self):
         return 'Provides a list of %d items' % len(self)
 
 
 class PageIterator:
-    def __init__(self, source, *,
-                 current_page=None, locked=False):
+    def __init__(self, source, *, current_page=None):
         self._source = source
         self._cache = None
         self._pagination_slicer = None
         self._has_sorter = False
         self._next_page = None
         self._prev_page = None
-        self._locked = locked
+        self._locked = False
         self._iter_event = Event()
         self._current_page = current_page
         self._it = PageContentSourceIterator(self._source)
@@ -177,6 +190,10 @@ class PageIterator:
         self._it = it_class(self._it, *args, **kwargs)
         return self
 
+    def _lockIterator(self):
+        self._ensureUnlocked()
+        self._locked = True
+
     def _ensureUnlocked(self):
         if self._locked:
             raise Exception(
@@ -209,7 +226,7 @@ class PageIterator:
         if self._source.app.env.abort_source_use:
             if self._current_page is not None:
                 logger.debug("Aborting iteration of '%s' from: %s." %
-                             (self.source.name,
+                             (self._source.name,
                               self._current_page.content_spec))
             else:
                 logger.debug("Aborting iteration of '%s'." %
@@ -229,7 +246,7 @@ class PageIterator:
                                                   self._source.route)
             self._prev_page, self._next_page = (list(pn_it))
 
-        self._iter_event.fire()
+        self._iter_event.fire(self)
 
     def _debugRenderDoc(self):
         return "Contains %d items" % len(self)
@@ -246,6 +263,17 @@ class SettingFilterIterator:
             self._fil = PaginationFilter()
             self._fil.addClausesFromConfig(self.fil_conf)
 
+        for i in self.it:
+            if self._fil.pageMatches(i):
+                yield i
+
+
+class HardCodedFilterIterator:
+    def __init__(self, it, fil):
+        self.it = it
+        self._fil = fil
+
+    def __iter__(self):
         for i in self.it:
             if self._fil.pageMatches(i):
                 yield i
