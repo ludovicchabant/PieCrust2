@@ -190,6 +190,13 @@ class PageIterator:
         self._it = it_class(self._it, *args, **kwargs)
         return self
 
+    def _wrapAsSort(self, sort_it_class, *args, **kwargs):
+        self._ensureUnlocked()
+        self._ensureUnloaded()
+        self._it = sort_it_class(self._it, *args, **kwargs)
+        self._has_sorter = True
+        return self
+
     def _lockIterator(self):
         self._ensureUnlocked()
         self._locked = True

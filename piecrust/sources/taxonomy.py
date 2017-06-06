@@ -1,9 +1,6 @@
-import io
 import re
-import time
 import logging
 import unidecode
-from werkzeug.utils import cached_property
 from piecrust.configuration import ConfigurationError
 from piecrust.data.filters import (
     PaginationFilter, SettingFilterClause)
@@ -14,8 +11,8 @@ from piecrust.pipelines.base import (
     ContentPipeline, get_record_name_for_source)
 from piecrust.pipelines.records import RecordHistory
 from piecrust.routing import RouteParameter
-from piecrust.sources.base import (
-    ContentItem, ContentSource, GeneratedContentException)
+from piecrust.sources.base import ContentItem
+from piecrust.sources.generator import GeneratorSourceBase
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +54,7 @@ layout: %(template)s
 """
 
 
-class TaxonomySource(ContentSource):
+class TaxonomySource(GeneratorSourceBase):
     """ A content source that generates taxonomy listing pages.
     """
     SOURCE_NAME = 'taxonomy'
@@ -65,12 +62,6 @@ class TaxonomySource(ContentSource):
 
     def __init__(self, app, name, config):
         super().__init__(app, name, config)
-
-        source_name = config.get('source')
-        if source_name is None:
-            raise ConfigurationError(
-                "Taxonomy source '%s' requires an inner source." % name)
-        self._inner_source_name = source_name
 
         tax_name = config.get('taxonomy')
         if tax_name is None:
@@ -83,25 +74,6 @@ class TaxonomySource(ContentSource):
 
         tpl_name = config.get('template', '_%s.html' % tax_name)
         self._raw_item = _taxonomy_index % {'template': tpl_name}
-
-    @cached_property
-    def inner_source(self):
-        return self.app.getSource(self._inner_source_name)
-
-    def openItem(self, item, mode='r', **kwargs):
-        return io.StringIO(self._raw_item)
-
-    def getItemMtime(self, item):
-        return time.time()
-
-    def getContents(self, group):
-        # Our content is procedurally generated from other content sources,
-        # so we really don't support listing anything here -- it would be
-        # quite costly.
-        #
-        # Instead, our pipeline (the `TaxonomyPipeline`) will generate
-        # content items for us when it is asked to produce bake jobs.
-        raise GeneratedContentException()
 
     def getSupportedRouteParameters(self):
         name = self.taxonomy.term_name
@@ -321,6 +293,7 @@ class TaxonomyPipeline(ContentPipeline):
         page = Page(self.source, job.content_item)
         prev_entry = ctx.previous_entry
         cur_entry = result.record_entry
+        cur_entry.term = content_item.metadata['term']
         self._pagebaker.bake(page, prev_entry, cur_entry, [])
 
     def postJobRun(self, ctx):

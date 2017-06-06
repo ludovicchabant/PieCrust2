@@ -89,7 +89,8 @@ class Page:
     def datetime(self):
         if self._datetime is None:
             try:
-                self._datetime = self._computeDateTime()
+                self._datetime = _compute_datetime(self.source_metadata,
+                                                   self.config)
             except Exception as ex:
                 logger.exception(ex)
                 raise Exception(
@@ -113,38 +114,6 @@ class Page:
     def getSegment(self, name='content'):
         return self.segments[name]
 
-    def _computeDateTime(self):
-        if 'datetime' in self.source_metadata:
-            # Get the date/time from the source.
-            self._datetime = self.source_metadata['datetime']
-        elif 'date' in self.source_metadata:
-            # Get the date from the source. Potentially get the
-            # time from the page config.
-            page_date = self.source_metadata['date']
-            page_time = _parse_config_time(self.config.get('time'))
-            if page_time is not None:
-                self._datetime = datetime.datetime(
-                    page_date.year,
-                    page_date.month,
-                    page_date.day) + page_time
-            else:
-                self._datetime = datetime.datetime(
-                    page_date.year, page_date.month, page_date.day)
-        elif 'date' in self.config:
-            # Get the date from the page config, and maybe the
-            # time too.
-            page_date = _parse_config_date(self.config.get('date'))
-            self._datetime = datetime.datetime(
-                page_date.year,
-                page_date.month,
-                page_date.day)
-            page_time = _parse_config_time(self.config.get('time'))
-            if page_time is not None:
-                self._datetime += page_time
-            else:
-                # No idea what the date/time for this page is.
-                self._datetime = datetime.datetime.fromtimestamp(0)
-
     def _load(self):
         if self._config is not None:
             return
@@ -164,6 +133,42 @@ class Page:
         self._segments = content
         if was_cache_valid:
             self._flags |= FLAG_RAW_CACHE_VALID
+
+
+def _compute_datetime(source_metadata, config):
+    # Get the date/time from the source.
+    dt = source_metadata.get('datetime')
+    if dt is not None:
+        return dt
+
+    # Get the date from the source. Potentially get the
+    # time from the page config.
+    page_date = source_metadata.get('date')
+    if page_date is not None:
+        dt = datetime.datetime(
+            page_date.year, page_date.month, page_date.day)
+
+        page_time = _parse_config_time(config.get('time'))
+        if page_time is not None:
+            dt += page_time
+
+        return dt
+
+    # Get the date from the page config, and maybe the
+    # time too.
+    page_date = _parse_config_date(config.get('date'))
+    if page_date is not None:
+        dt = datetime.datetime(
+            page_date.year, page_date.month, page_date.day)
+
+        page_time = _parse_config_time(config.get('time'))
+        if page_time is not None:
+            dt += page_time
+
+        return dt
+
+    # No idea what the date/time for this page is.
+    return datetime.datetime.fromtimestamp(0)
 
 
 def _parse_config_date(page_date):
