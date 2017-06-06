@@ -2,9 +2,6 @@ from jinja2.ext import Extension, Markup
 from jinja2.lexer import Token, describe_token
 from jinja2.nodes import CallBlock, Const
 from compressinja.html import HtmlCompressor, StreamProcessContext
-from pygments import highlight
-from pygments.formatters import HtmlFormatter
-from pygments.lexers import get_lexer_by_name, guess_lexer
 from piecrust.rendering import format_text
 
 
@@ -65,6 +62,10 @@ class PieCrustHighlightExtension(Extension):
 
     def _highlight(self, lang, line_numbers=False, use_classes=False,
                    css_class=None, css_id=None, caller=None):
+        from pygments import highlight
+        from pygments.formatters import HtmlFormatter
+        from pygments.lexers import get_lexer_by_name, guess_lexer
+
         # Try to be mostly compatible with Jinja2-highlight's settings.
         body = caller()
 
@@ -90,6 +91,7 @@ class PieCrustHighlightExtension(Extension):
 
 
 def get_highlight_css(style_name='default', class_name='.highlight'):
+    from pygments.formatters import HtmlFormatter
     return HtmlFormatter(style=style_name).get_style_defs(class_name)
 
 

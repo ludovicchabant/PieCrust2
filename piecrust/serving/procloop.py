@@ -257,7 +257,7 @@ class ProcessingLoop(threading.Thread):
                     logger.error("  " + e)
 
         # Do all the final stuff.
-        ppmngr.buildHistoryDiffs()
+        ppmngr.postJobRun()
         ppmngr.deleteStaleOutputs()
         ppmngr.collapseRecords()
         ppmngr.shutdownPipelines()

@@ -1,7 +1,6 @@
----
-title:
-format: none
----
+{% extends "default.html" %}
+
+{% block main %}
 {% set display_tag = tag %}
 {% if is_multiple_tag %}
     {% set display_tag = tag|join(', ') %}
@@ -17,4 +16,4 @@ format: none
     {% if pagination.prev_page %}<div class="prev"><a href="{{ pagination.prev_page }}">Next Posts</a></div>{% endif %}
     {% if pagination.next_page %}<div class="next"><a href="{{ pagination.next_page }}">Previous Posts</a></div>{% endif %}
 </section>
-
+{% endblock %}

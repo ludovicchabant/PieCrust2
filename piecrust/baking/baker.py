@@ -6,7 +6,7 @@ from piecrust.chefutil import (
     format_timed_scope, format_timed)
 from piecrust.environment import ExecutionStats
 from piecrust.pipelines.base import (
-    PipelineMergeRecordContext, PipelineManager,
+    PipelineJobCreateContext, PipelineMergeRecordContext, PipelineManager,
     get_pipeline_name_for_source)
 from piecrust.pipelines.records import (
     MultiRecordHistory, MultiRecord, RecordEntry,
@@ -103,7 +103,7 @@ class Baker(object):
                             "out. There's nothing to do.")
 
         # Create the worker processes.
-        pool_userdata = _PoolUserData(self, ppmngr, current_records)
+        pool_userdata = _PoolUserData(self, ppmngr)
         pool = self._createWorkerPool(records_path, pool_userdata)
         realm_list = [REALM_USER, REALM_THEME]
 
@@ -124,10 +124,10 @@ class Baker(object):
             for realm in realm_list:
                 pplist = pp_by_realm.get(realm)
                 if pplist is not None:
-                    self._bakeRealm(pool, pplist)
+                    self._bakeRealm(pool, pp_pass, record_histories, pplist)
 
         # Handle deletions, collapse records, etc.
-        ppmngr.buildHistoryDiffs()
+        ppmngr.postJobRun()
         ppmngr.deleteStaleOutputs()
         ppmngr.collapseRecords()
 
@@ -212,12 +212,13 @@ class Baker(object):
                 start_time, "cache is assumed valid", colored=False))
             return True
 
-    def _bakeRealm(self, pool, pplist):
+    def _bakeRealm(self, pool, pppass, record_histories, pplist):
         # Start with the first pass, where we iterate on the content sources'
         # items and run jobs on those.
         pool.userdata.cur_pass = 0
         next_pass_jobs = {}
         pool.userdata.next_pass_jobs = next_pass_jobs
+        queued_any_job = False
         for ppinfo in pplist:
             src = ppinfo.source
             pp = ppinfo.pipeline
@@ -227,8 +228,16 @@ class Baker(object):
                 (src.name, pp.PIPELINE_NAME))
 
             next_pass_jobs[src.name] = []
-            jobs = pp.createJobs()
-            pool.queueJobs(jobs)
+            jcctx = PipelineJobCreateContext(pppass, record_histories)
+            jobs = pp.createJobs(jcctx)
+            if jobs is not None:
+                pool.queueJobs(jobs)
+                queued_any_job = True
+
+        if not queued_any_job:
+            logger.debug("No jobs queued! Bailing out of this bake pass.")
+            return
+
         pool.wait()
 
         # Now let's see if any job created a follow-up job. Let's keep
@@ -332,9 +341,9 @@ class Baker(object):
 
 
 class _PoolUserData:
-    def __init__(self, baker, ppmngr, current_records):
+    def __init__(self, baker, ppmngr):
         self.baker = baker
         self.ppmngr = ppmngr
-        self.records = current_records
+        self.records = ppmngr.record_histories.current
         self.cur_pass = 0
         self.next_pass_jobs = {}

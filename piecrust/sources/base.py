@@ -89,12 +89,6 @@ class ContentSource:
     def is_theme_source(self):
         return self.config['realm'] == REALM_THEME
 
-    @property
-    def root_dir(self):
-        if self.is_theme_source:
-            return self.app.theme_dir
-        return self.app.root_dir
-
     @cached_property
     def route(self):
         return self.app.getSourceRoute(self.name)

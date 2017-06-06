@@ -40,6 +40,10 @@ class Record:
         self.success = True
         self._entries = {}
 
+    @property
+    def entry_count(self):
+        return len(self._entries)
+
     def addEntry(self, entry):
         if entry.item_spec in self._entries:
             raise ValueError("Entry '%s' is already in the record." %
@@ -50,7 +54,7 @@ class Record:
         return self._entries.values()
 
     def getEntry(self, item_spec):
-        return self._entries[item_spec]
+        return self._entries.get(item_spec)
 
 
 class MultiRecord:
@@ -74,7 +78,7 @@ class MultiRecord:
             if r.name == record_name:
                 return r
         if not auto_create:
-            return None
+            raise Exception("No such record: %s" % record_name)
         record = Record(record_name)
         self.records.append(record)
         return record

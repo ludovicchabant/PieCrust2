@@ -34,6 +34,12 @@ class FSContentSourceBase(ContentSource):
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
 
+    @property
+    def root_dir(self):
+        if self.is_theme_source:
+            return self.app.theme_dir
+        return self.app.root_dir
+
     def _checkFSEndpoint(self):
         if not os.path.isdir(self.fs_endpoint_path):
             if self.config.get('ignore_missing_dir'):

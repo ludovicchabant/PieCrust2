@@ -1,14 +1,21 @@
+import io
 import re
 import time
 import logging
 import unidecode
-from piecrust.chefutil import format_timed, format_timed_scope
+from werkzeug.utils import cached_property
 from piecrust.configuration import ConfigurationError
 from piecrust.data.filters import (
     PaginationFilter, SettingFilterClause)
-from piecrust.pipelines.base import ContentPipeline
+from piecrust.page import Page
+from piecrust.pipelines._pagebaker import PageBaker
+from piecrust.pipelines._pagerecords import PagePipelineRecordEntry
+from piecrust.pipelines.base import (
+    ContentPipeline, get_record_name_for_source)
+from piecrust.pipelines.records import RecordHistory
 from piecrust.routing import RouteParameter
-from piecrust.sources.base import ContentSource, GeneratedContentException
+from piecrust.sources.base import (
+    ContentItem, ContentSource, GeneratedContentException)
 
 
 logger = logging.getLogger(__name__)
@@ -44,6 +51,12 @@ class Taxonomy(object):
         return self.term_name
 
 
+_taxonomy_index = """---
+layout: %(template)s
+---
+"""
+
+
 class TaxonomySource(ContentSource):
     """ A content source that generates taxonomy listing pages.
     """
@@ -53,6 +66,12 @@ class TaxonomySource(ContentSource):
     def __init__(self, app, name, config):
         super().__init__(app, name, config)
 
+        source_name = config.get('source')
+        if source_name is None:
+            raise ConfigurationError(
+                "Taxonomy source '%s' requires an inner source." % name)
+        self._inner_source_name = source_name
+
         tax_name = config.get('taxonomy')
         if tax_name is None:
             raise ConfigurationError(
@@ -61,6 +80,19 @@ class TaxonomySource(ContentSource):
 
         sm = config.get('slugify_mode')
         self.slugifier = _get_slugifier(app, self.taxonomy, sm)
+
+        tpl_name = config.get('template', '_%s.html' % tax_name)
+        self._raw_item = _taxonomy_index % {'template': tpl_name}
+
+    @cached_property
+    def inner_source(self):
+        return self.app.getSource(self._inner_source_name)
+
+    def openItem(self, item, mode='r', **kwargs):
+        return io.StringIO(self._raw_item)
+
+    def getItemMtime(self, item):
+        return time.time()
 
     def getContents(self, group):
         # Our content is procedurally generated from other content sources,
@@ -78,6 +110,15 @@ class TaxonomySource(ContentSource):
         return [RouteParameter(name, param_type,
                                variadic=self.taxonomy.is_multiple)]
 
+    def findContent(self, route_params):
+        slugified_term = route_params[self.taxonomy.term_name]
+        spec = '_index[%s]' % slugified_term
+        metadata = {'term': slugified_term,
+                    'route_params': {
+                        self.taxonomy.term_name: slugified_term}
+                    }
+        return ContentItem(spec, metadata)
+
     def slugify(self, term):
         return self.slugifier.slugify(term)
 
@@ -86,7 +127,7 @@ class TaxonomySource(ContentSource):
 
     def prepareRenderContext(self, ctx):
         # Set the pagination source as the source we're generating for.
-        ctx.pagination_source = self.source
+        ctx.pagination_source = self.inner_source
 
         # Get the taxonomy terms from the route metadata... this can come from
         # the browser's URL (while serving) or from the baking (see `bake`
@@ -141,7 +182,7 @@ class TaxonomySource(ContentSource):
         # Set up the filter that will check the pages' terms.
         flt = PaginationFilter()
         flt.addClause(HasTaxonomyTermsFilterClause(
-            self.taxonomy, self.slugify.mode, term_value, is_combination))
+            self.taxonomy, self.slugifier.mode, term_value, is_combination))
         ctx.pagination_filter = flt
 
     def onRouteFunctionUsed(self, route_params):
@@ -173,30 +214,34 @@ class HasTaxonomyTermsFilterClause(SettingFilterClause):
         self._taxonomy = taxonomy
         self._is_combination = is_combination
         self._slugifier = _Slugifier(taxonomy, slugify_mode)
-
-    def pageMatches(self, fil, page):
-        if self._taxonomy.is_multiple:
-            # Multiple taxonomy, i.e. it supports multiple terms, like tags.
-            page_values = fil.value_accessor(page, self.name)
-            if page_values is None or not isinstance(page_values, list):
-                return False
-
-            page_set = set(map(self._slugifier.slugify, page_values))
-            if self._is_combination:
-                # Multiple taxonomy, and multiple terms to match. Check that
-                # the ones to match are all in the page's terms.
-                value_set = set(self.value)
-                return value_set.issubset(page_set)
-            else:
-                # Multiple taxonomy, one term to match.
-                return self.value in page_set
+        if taxonomy.is_multiple:
+            self.pageMatches = self._pageMatchesAny
         else:
-            # Single taxonomy. Just compare the values.
-            page_value = fil.value_accessor(page, self.name)
-            if page_value is None:
-                return False
-            page_value = self._slugifier.slugify(page_value)
-            return page_value == self.value
+            self.pageMatches = self._pageMatchesSingle
+
+    def _pageMatchesAny(self, fil, page):
+        # Multiple taxonomy, i.e. it supports multiple terms, like tags.
+        page_values = page.config.get(self.name)
+        if page_values is None or not isinstance(page_values, list):
+            return False
+
+        page_set = set(map(self._slugifier.slugify, page_values))
+        if self._is_combination:
+            # Multiple taxonomy, and multiple terms to match. Check that
+            # the ones to match are all in the page's terms.
+            value_set = set(self.value)
+            return value_set.issubset(page_set)
+        else:
+            # Multiple taxonomy, one term to match.
+            return self.value in page_set
+
+    def _pageMatchesSingle(self, fil, page):
+        # Single taxonomy. Just compare the values.
+        page_value = page.config.get(self.name)
+        if page_value is None:
+            return False
+        page_value = self._slugifier.slugify(page_value)
+        return page_value == self.value
 
 
 def _get_taxonomy(app, tax_name):
@@ -213,9 +258,16 @@ def _get_slugifier(app, taxonomy, slugify_mode=None):
     return _Slugifier(taxonomy, sm)
 
 
+class TaxonomyPipelineRecordEntry(PagePipelineRecordEntry):
+    def __init__(self):
+        super().__init__()
+        self.term = None
+
+
 class TaxonomyPipeline(ContentPipeline):
     PIPELINE_NAME = 'taxonomy'
     PASS_NUM = 1
+    RECORD_ENTRY_CLASS = TaxonomyPipelineRecordEntry
 
     def __init__(self, source, ctx):
         if not isinstance(source, TaxonomySource):
@@ -223,94 +275,80 @@ class TaxonomyPipeline(ContentPipeline):
                             "content sources.")
 
         super().__init__(source, ctx)
+        self.inner_source = source.inner_source
         self.taxonomy = source.taxonomy
         self.slugifier = source.slugifier
+        self._tpl_name = source.config['template']
+        self._analyzer = None
+        self._pagebaker = None
 
-    def buildJobs(self):
-        logger.debug("Building taxonomy pages for source: %s" %
-                     self.source.name)
-        analyzer = _TaxonomyTermsAnalyzer(self)
-        with format_timed_scope(logger, 'gathered taxonomy terms',
-                                level=logging.DEBUG, colored=False):
-            analyzer.analyze(ctx)
+    def initialize(self):
+        self._pagebaker = PageBaker(self.app,
+                                    self.ctx.out_dir,
+                                    force=self.ctx.force)
+        self._pagebaker.startWriterQueue()
 
-    def bake(self, ctx):
-        if not self.page_ref.exists:
-            logger.debug(
-                "No page found at '%s', skipping taxonomy '%s'." %
-                (self.page_ref, self.taxonomy.name))
-            return
+    def shutdown(self):
+        self._pagebaker.stopWriterQueue()
 
-        logger.debug("Baking %s pages...", self.taxonomy.name)
-        analyzer = _TaxonomyTermsAnalyzer(self.source_name, self.taxonomy,
-                                          self.slugify_mode)
-        with format_timed_scope(logger, 'gathered taxonomy terms',
-                                level=logging.DEBUG, colored=False):
-            analyzer.analyze(ctx)
+    def createJobs(self, ctx):
+        logger.debug("Building '%s' taxonomy pages for source: %s" %
+                     (self.taxonomy.name, self.inner_source.name))
+        self._analyzer = _TaxonomyTermsAnalyzer(self, ctx.record_histories)
+        self._analyzer.analyze()
 
-        start_time = time.perf_counter()
-        page_count = self._bakeTaxonomyTerms(ctx, analyzer)
-        if page_count > 0:
-            logger.info(format_timed(
-                start_time,
-                "baked %d %s pages for %s." % (
-                    page_count, self.taxonomy.term_name, self.source_name)))
+        logger.debug("Queuing %d '%s' jobs." %
+                     (len(self._analyzer.dirty_slugified_terms),
+                      self.taxonomy.name))
+        jobs = []
+        for slugified_term in self._analyzer.dirty_slugified_terms:
+            item = ContentItem(
+                '_index[%s]' % slugified_term,
+                {'term': slugified_term,
+                 'route_params': {
+                     self.taxonomy.term_name: slugified_term}
+                 })
+            jobs.append(self.createJob(item))
+        if len(jobs) > 0:
+            return jobs
+        return None
 
-    def _bakeTaxonomyTerms(self, ctx, analyzer):
-        # Start baking those terms.
-        logger.debug(
-            "Baking '%s' for source '%s': %d terms" %
-            (self.taxonomy.name, self.source_name,
-             len(analyzer.dirty_slugified_terms)))
+    def run(self, job, ctx, result):
+        content_item = job.content_item
+        logger.debug("Rendering '%s' page: %s" %
+                     (self.taxonomy.name, content_item.metadata['term']))
 
-        route = self.app.getGeneratorRoute(self.name)
-        if route is None:
-            raise Exception("No routes have been defined for generator: %s" %
-                            self.name)
+        page = Page(self.source, job.content_item)
+        prev_entry = ctx.previous_entry
+        cur_entry = result.record_entry
+        self._pagebaker.bake(page, prev_entry, cur_entry, [])
 
-        logger.debug("Using taxonomy page: %s" % self.page_ref)
-        fac = self.page_ref.getFactory()
-
-        job_count = 0
-        for slugified_term in analyzer.dirty_slugified_terms:
-            extra_route_params = {
-                self.taxonomy.term_name: slugified_term}
-
-            # Use the slugified term as the record's extra key seed.
-            logger.debug(
-                "Queuing: %s [%s=%s]" %
-                (fac.ref_spec, self.taxonomy.name, slugified_term))
-            ctx.queueBakeJob(fac, route, extra_route_params, slugified_term)
-            job_count += 1
-        ctx.runJobQueue()
-
-        # Now we create bake entries for all the terms that were *not* dirty.
+    def postJobRun(self, ctx):
+        # We create bake entries for all the terms that were *not* dirty.
         # This is because otherwise, on the next incremental bake, we wouldn't
         # find any entry for those things, and figure that we need to delete
         # their outputs.
-        for prev_entry, cur_entry in ctx.getAllPageRecords():
-            # Only consider taxonomy-related entries that don't have any
-            # current version (i.e. they weren't baked just now).
-            if prev_entry and not cur_entry:
-                try:
-                    t = ctx.getSeedFromRecordExtraKey(prev_entry.extra_key)
-                except InvalidRecordExtraKey:
-                    continue
-
+        analyzer = self._analyzer
+        for prev, cur in ctx.record_history.diffs:
+            # Only consider entries that don't have any current version
+            # (i.e. they weren't baked just now).
+            if prev and not cur:
+                t = prev.term
                 if analyzer.isKnownSlugifiedTerm(t):
-                    logger.debug("Creating unbaked entry for %s term: %s" %
-                                 (self.name, t))
-                    ctx.collapseRecord(prev_entry)
+                    logger.debug("Creating unbaked entry for '%s' term: %s" %
+                                 (self.taxonomy.name, t))
+                    cur.term = t
+                    cur.out_paths = list(prev.out_paths)
+                    cur.errors = list(prev.errors)
                 else:
-                    logger.debug("Term %s in %s isn't used anymore." %
-                                 (self.name, t))
-
-        return job_count
+                    logger.debug("Term '%s' in '%s' isn't used anymore." %
+                                 (t, self.taxonomy.name))
 
 
 class _TaxonomyTermsAnalyzer(object):
-    def __init__(self, source):
-        self.source = source
+    def __init__(self, pipeline, record_histories):
+        self.pipeline = pipeline
+        self.record_histories = record_histories
         self._all_terms = {}
         self._single_dirty_slugified_terms = set()
         self._all_dirty_slugified_terms = None
@@ -328,39 +366,49 @@ class _TaxonomyTermsAnalyzer(object):
         """
         return term in self._all_terms
 
-    def analyze(self, ctx):
+    def analyze(self):
         # Build the list of terms for our taxonomy, and figure out which ones
         # are 'dirty' for the current bake.
         #
         # Remember all terms used.
-        for _, cur_entry in ctx.getAllPageRecords():
-            if cur_entry and not cur_entry.was_overriden:
-                cur_terms = cur_entry.config.get(self.taxonomy.setting_name)
+        source = self.pipeline.inner_source
+        taxonomy = self.pipeline.taxonomy
+        slugifier = self.pipeline.slugifier
+
+        record_name = get_record_name_for_source(source)
+        current_records = self.record_histories.current
+        cur_rec = current_records.getRecord(record_name)
+        for cur_entry in cur_rec.getEntries():
+            if not cur_entry.was_overriden:
+                cur_terms = cur_entry.config.get(taxonomy.setting_name)
                 if cur_terms:
-                    if not self.taxonomy.is_multiple:
-                        self._addTerm(cur_entry.path, cur_terms)
+                    if not taxonomy.is_multiple:
+                        self._addTerm(
+                            slugifier, cur_entry.item_spec, cur_terms)
                     else:
-                        self._addTerms(cur_entry.path, cur_terms)
+                        self._addTerms(
+                            slugifier, cur_entry.item_spec, cur_terms)
 
         # Re-bake all taxonomy terms that include new or changed pages, by
         # marking them as 'dirty'.
-        for prev_entry, cur_entry in ctx.getBakedPageRecords():
-            if cur_entry.source_name != self.source_name:
-                continue
-
+        previous_records = self.record_histories.previous
+        prev_rec = previous_records.getRecord(record_name)
+        history = RecordHistory(prev_rec, cur_rec)
+        history.build()
+        for prev_entry, cur_entry in history.diffs:
             entries = [cur_entry]
             if prev_entry:
                 entries.append(prev_entry)
 
             for e in entries:
-                entry_terms = e.config.get(self.taxonomy.setting_name)
+                entry_terms = e.config.get(taxonomy.setting_name)
                 if entry_terms:
-                    if not self.taxonomy.is_multiple:
+                    if not taxonomy.is_multiple:
                         self._single_dirty_slugified_terms.add(
-                            self.slugifier.slugify(entry_terms))
+                            slugifier.slugify(entry_terms))
                     else:
                         self._single_dirty_slugified_terms.update(
-                            (self.slugifier.slugify(t)
+                            (slugifier.slugify(t)
                              for t in entry_terms))
 
         self._all_dirty_slugified_terms = list(
@@ -376,37 +424,36 @@ class _TaxonomyTermsAnalyzer(object):
         # Add the combinations to that list. We get those combinations from
         # wherever combinations were used, so they're coming from the
         # `onRouteFunctionUsed` method.
-        if self.taxonomy.is_multiple:
+        if taxonomy.is_multiple:
             known_combinations = set()
-            for _, cur_entry in ctx.getAllPageRecords():
-                if cur_entry:
-                    used_terms = _get_all_entry_taxonomy_terms(cur_entry)
-                    for terms in used_terms:
-                        if len(terms) > 1:
-                            known_combinations.add(terms)
+            for cur_entry in cur_rec.getEntries():
+                used_terms = _get_all_entry_taxonomy_terms(cur_entry)
+                for terms in used_terms:
+                    if len(terms) > 1:
+                        known_combinations.add(terms)
 
             dcc = 0
             for terms in known_combinations:
                 if not self._single_dirty_slugified_terms.isdisjoint(
                         set(terms)):
                     self._all_dirty_slugified_terms.append(
-                        self.taxonomy.separator.join(terms))
+                        taxonomy.separator.join(terms))
                     dcc += 1
             logger.debug("Gathered %d term combinations, with %d dirty." %
                          (len(known_combinations), dcc))
 
-    def _addTerms(self, entry_path, terms):
+    def _addTerms(self, slugifier, item_spec, terms):
         for t in terms:
-            self._addTerm(entry_path, t)
+            self._addTerm(slugifier, item_spec, t)
 
-    def _addTerm(self, entry_path, term):
-        st = self.slugifier.slugify(term)
+    def _addTerm(self, slugifier, item_spec, term):
+        st = slugifier.slugify(term)
         orig_terms = self._all_terms.setdefault(st, [])
         if orig_terms and orig_terms[0] != term:
             logger.warning(
                 "Term '%s' in '%s' is slugified to '%s' which conflicts with "
                 "previously existing '%s'. The two will be merged." %
-                (term, entry_path, st, orig_terms[0]))
+                (term, item_spec, st, orig_terms[0]))
         orig_terms.append(term)
 
 

@@ -37,8 +37,10 @@ class AssetPipelineRecordEntry(RecordEntry):
         d = super().describe()
         d['Flags'] = get_flag_descriptions(self.flags, flag_descriptions)
         d['Processing Tree'] = _format_proc_tree(self.proc_tree, 20 * ' ')
-        d['Outputs'] = list(self.out_paths)
         return d
+
+    def getAllOutputPaths(self):
+        return self.out_paths
 
 
 flag_descriptions = {

@@ -42,6 +42,14 @@ class PipelineJob:
         self.data = {}
 
 
+class PipelineJobCreateContext:
+    """ Context for create pipeline baking jobs.
+    """
+    def __init__(self, pass_num, record_histories):
+        self.pass_num = pass_num
+        self.record_histories = record_histories
+
+
 class PipelineJobRunContext:
     """ Context for running pipeline baking jobs.
     """
@@ -75,6 +83,11 @@ class PipelineMergeRecordContext:
         self.record = record
         self.job = job
         self.pass_num = pass_num
+
+
+class PipelinePostJobRunContext:
+    def __init__(self, record_history):
+        self.record_history = record_history
 
 
 class PipelineDeletionContext:
@@ -113,7 +126,7 @@ class ContentPipeline:
     def initialize(self):
         pass
 
-    def createJobs(self):
+    def createJobs(self, ctx):
         return [
             self.createJob(item)
             for item in self.source.getAllContents()]
@@ -133,6 +146,9 @@ class ContentPipeline:
     def run(self, job, ctx, result):
         raise NotImplementedError()
 
+    def postJobRun(self, ctx):
+        pass
+
     def getDeletions(self, ctx):
         pass
 
@@ -141,6 +157,11 @@ class ContentPipeline:
 
     def shutdown(self):
         pass
+
+
+def get_record_name_for_source(source):
+    ppname = get_pipeline_name_for_source(source)
+    return '%s@%s' % (source.name, ppname)
 
 
 def get_pipeline_name_for_source(source):
@@ -191,9 +212,13 @@ class PipelineManager:
         self._pipelines[source.name] = info
         return info
 
-    def buildHistoryDiffs(self):
+    def postJobRun(self):
         for ppinfo in self.getPipelines():
             ppinfo.record_history.build()
+
+        for ppinfo in self.getPipelines():
+            ctx = PipelinePostJobRunContext(ppinfo.record_history)
+            ppinfo.pipeline.postJobRun(ctx)
 
     def deleteStaleOutputs(self):
         for ppinfo in self.getPipelines():

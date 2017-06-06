@@ -84,21 +84,30 @@ class JinjaTemplateEngine(TemplateEngine):
         raise err from tse
 
     def _ensureLoaded(self):
-        if self.env:
+        if self.env is not None:
             return
 
+        stats = self.app.env.stats
+        stats.registerTimer('JinjaTemplateEngineEnvironmentSetup',
+                            raise_if_registered=False)
+        with stats.timerScope('JinjaTemplateEngineEnvironmentSetup'):
+            self._load()
+
+    def _load(self):
+        get_config = self.app.config.get
+
         # Get the list of extensions to load.
-        ext_names = self.app.config.get('jinja/extensions', [])
+        ext_names = get_config('jinja/extensions', [])
         if not isinstance(ext_names, list):
             ext_names = [ext_names]
 
         # Turn on autoescape by default.
-        autoescape = self.app.config.get('twig/auto_escape')
+        autoescape = get_config('twig/auto_escape')
         if autoescape is not None:
             logger.warning("The `twig/auto_escape` setting is now called "
                            "`jinja/auto_escape`.")
         else:
-            autoescape = self.app.config.get('jinja/auto_escape', True)
+            autoescape = get_config('jinja/auto_escape', True)
         if autoescape:
             ext_names.append('autoescape')
 
