@@ -27,4 +27,4 @@ smartypants==1.8.6
 strict-rfc3339==0.5
 textile==2.2.2
 Unidecode==0.4.18
-Werkzeug==0.10.4
+Werkzeug==0.12.2
