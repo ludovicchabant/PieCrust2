@@ -2,6 +2,7 @@ import time
 import collections.abc
 from piecrust.dataproviders.base import DataProvider
 from piecrust.dataproviders.pageiterator import PageIterator
+from piecrust.sources.list import ListSource
 from piecrust.sources.taxonomy import Taxonomy
 
 
@@ -15,146 +16,159 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
 
     def __init__(self, source, page):
         super().__init__(source, page)
+        self._posts = None
         self._yearly = None
         self._monthly = None
         self._taxonomies = {}
+        self._archives_built = False
         self._ctx_set = False
+
+    def _addSource(self, source):
+        raise Exception("The blog data provider doesn't support "
+                        "combining multiple sources.")
 
     @property
     def posts(self):
-        return self._posts()
+        self._buildPosts()
+        return self._posts
 
     @property
     def years(self):
-        return self._buildYearlyArchive()
+        self._buildArchives()
+        return self._yearly
 
     @property
     def months(self):
-        return self._buildMonthlyArchive()
+        self._buildArchives()
+        return self._montly
 
     def __getitem__(self, name):
-        if name == 'posts':
-            return self._posts()
-        elif name == 'years':
-            return self._buildYearlyArchive()
-        elif name == 'months':
-            return self._buildMonthlyArchive()
+        self._buildArchives()
+        return self._taxonomies[name]
 
-        if self._source.app.config.get('site/taxonomies/' + name) is not None:
-            return self._buildTaxonomy(name)
-
-        raise KeyError("No such item: %s" % name)
+    def __getattr__(self, name):
+        self._buildArchives()
+        try:
+            return self._taxonomies[name]
+        except KeyError:
+            raise AttributeError("No such taxonomy: %s" % name)
 
     def __iter__(self):
-        keys = ['posts', 'years', 'months']
-        keys += list(self._source.app.config.get('site/taxonomies').keys())
-        return iter(keys)
+        self._buildPosts()
+        self._buildArchives()
+        return ['posts', 'years', 'months'] + list(self._taxonomies.keys())
 
     def __len__(self):
-        return 3 + len(self._source.app.config.get('site/taxonomies'))
+        self._buildPosts()
+        self._buildArchives()
+        return 3 + len(self._taxonomies)
 
     def _debugRenderTaxonomies(self):
-        return list(self._source.app.config.get('site/taxonomies').keys())
+        return list(self._app.config.get('site/taxonomies').keys())
 
-    def _posts(self):
-        it = PageIterator(self._source, current_page=self._page)
-        it._iter_event += self._onIteration
-        return it
+    def _buildPosts(self):
+        if self._posts is None:
+            it = PageIterator(self._sources[0], current_page=self._page)
+            it._iter_event += self._onIteration
+            self._posts = it
 
-    def _buildYearlyArchive(self):
-        if self._yearly is not None:
-            return self._yearly
+    def _buildArchives(self):
+        if self._archives_built:
+            return
 
-        self._yearly = []
         yearly_index = {}
-        for post in self._source.getPages():
+        monthly_index = {}
+        tax_index = {}
+
+        taxonomies = []
+        tax_names = list(self._app.config.get('site/taxonomies').keys())
+        for tn in tax_names:
+            tax_cfg = self._app.config.get('site/taxonomies/' + tn)
+            taxonomies.append(Taxonomy(tn, tax_cfg))
+            tax_index[tn] = {}
+
+        app = self._app
+        page = self._page
+        source = self._sources[0]
+
+        for item in source.getAllContents():
+            post = app.getPage(source, item)
+
             year = post.datetime.strftime('%Y')
+            month = post.datetime.strftime('%B %Y')
 
             posts_this_year = yearly_index.get(year)
             if posts_this_year is None:
                 timestamp = time.mktime(
                     (post.datetime.year, 1, 1, 0, 0, 0, 0, 0, -1))
-                posts_this_year = BlogArchiveEntry(self._page, year, timestamp)
-                self._yearly.append(posts_this_year)
+                posts_this_year = BlogArchiveEntry(
+                    source, page, year, timestamp)
                 yearly_index[year] = posts_this_year
+            posts_this_year._items.append(post.content_item)
 
-            posts_this_year._data_source.append(post)
-        self._yearly = sorted(self._yearly,
-                              key=lambda e: e.timestamp,
-                              reverse=True)
-        self._onIteration()
-        return self._yearly
-
-    def _buildMonthlyArchive(self):
-        if self._monthly is not None:
-            return self._monthly
-
-        self._monthly = []
-        for post in self._source.getPages():
-            month = post.datetime.strftime('%B %Y')
-
-            posts_this_month = next(
-                filter(lambda m: m.name == month, self._monthly),
-                None)
+            posts_this_month = monthly_index.get(month)
             if posts_this_month is None:
                 timestamp = time.mktime(
                     (post.datetime.year, post.datetime.month, 1,
                      0, 0, 0, 0, 0, -1))
                 posts_this_month = BlogArchiveEntry(
-                    self._page, month, timestamp)
-                self._monthly.append(posts_this_month)
+                    source, page, month, timestamp)
+                monthly_index[month] = posts_this_month
+            posts_this_month._items.append(post.content_item)
 
-            posts_this_month._data_source.append(post)
-        self._monthly = sorted(self._monthly,
-                               key=lambda e: e.timestamp,
-                               reverse=True)
-        self._onIteration()
-        return self._monthly
+            for tax in taxonomies:
+                post_term = post.config.get(tax.setting_name)
+                if post_term is None:
+                    continue
 
-    def _buildTaxonomy(self, tax_name):
-        if tax_name in self._taxonomies:
-            return self._taxonomies[tax_name]
+                posts_this_tax = tax_index[tax.name]
+                if tax.is_multiple:
+                    for val in post_term:
+                        entry = posts_this_tax.get(val)
+                        if entry is None:
+                            entry = BlogTaxonomyEntry(source, page, val)
+                            posts_this_tax[val] = entry
+                        entry._items.append(post.content_item)
+                else:
+                    entry = posts_this_tax.get(val)
+                    if entry is None:
+                        entry = BlogTaxonomyEntry(source, page, post_term)
+                        posts_this_tax[val] = entry
+                    entry._items.append(post.content_item)
 
-        tax_cfg = self._page.app.config.get('site/taxonomies/' + tax_name)
-        tax = Taxonomy(tax_name, tax_cfg)
+        self._yearly = list(sorted(
+            yearly_index.values(),
+            key=lambda e: e.timestamp, reverse=True))
+        self._monthly = list(sorted(
+            monthly_index.values(),
+            key=lambda e: e.timestamp, reverse=True))
 
-        posts_by_tax_value = {}
-        for post in self._source.getPages():
-            tax_values = post.config.get(tax.setting_name)
-            if tax_values is None:
-                continue
-            if not isinstance(tax_values, list):
-                tax_values = [tax_values]
-            for val in tax_values:
-                posts = posts_by_tax_value.setdefault(val, [])
-                posts.append(post)
+        self._taxonomies = {}
+        for tax_name, entries in tax_index.items():
+            self._taxonomies[tax_name] = list(entries.values())
 
-        entries = []
-        for value, ds in posts_by_tax_value.items():
-            source = ArraySource(self._page.app, ds)
-            entries.append(BlogTaxonomyEntry(self._page, source, value))
-        self._taxonomies[tax_name] = sorted(entries, key=lambda k: k.name)
+        self._onIteration(None)
 
-        self._onIteration()
-        return self._taxonomies[tax_name]
+        self._archives_built = True
 
-    def _onIteration(self):
+    def _onIteration(self, it):
         if not self._ctx_set:
-            eis = self._page.app.env.exec_info_stack
-            if eis.current_page_info:
-                eis.current_page_info.render_ctx.addUsedSource(self._source)
+            rcs = self._app.env.render_ctx_stack
+            if rcs.current_ctx:
+                rcs.current_ctx.addUsedSource(self._sources[0])
             self._ctx_set = True
 
 
-class BlogArchiveEntry(object):
+class BlogArchiveEntry:
     debug_render = ['name', 'timestamp', 'posts']
     debug_render_invoke = ['name', 'timestamp', 'posts']
 
-    def __init__(self, page, name, timestamp):
+    def __init__(self, source, page, name, timestamp):
         self.name = name
         self.timestamp = timestamp
+        self._source = source
         self._page = page
-        self._data_source = []
+        self._items = []
         self._iterator = None
 
     def __str__(self):
@@ -172,26 +186,28 @@ class BlogArchiveEntry(object):
     def _load(self):
         if self._iterator is not None:
             return
-        source = ArraySource(self._page.app, self._data_source)
-        self._iterator = PageIterator(source, current_page=self._page)
+
+        src = ListSource(self._source, self._items)
+        self._iterator = PageIterator(src, current_page=self._page)
 
 
-class BlogTaxonomyEntry(object):
+class BlogTaxonomyEntry:
     debug_render = ['name', 'post_count', 'posts']
     debug_render_invoke = ['name', 'post_count', 'posts']
 
-    def __init__(self, page, source, property_value):
-        self._page = page
+    def __init__(self, source, page, term):
+        self.term = term
         self._source = source
-        self._property_value = property_value
+        self._page = page
+        self._items = []
         self._iterator = None
 
     def __str__(self):
-        return self._property_value
+        return self.term
 
     @property
     def name(self):
-        return self._property_value
+        return self.term
 
     @property
     def posts(self):
@@ -201,11 +217,12 @@ class BlogTaxonomyEntry(object):
 
     @property
     def post_count(self):
-        return self._source.page_count
+        return len(self._items)
 
     def _load(self):
         if self._iterator is not None:
             return
 
-        self._iterator = PageIterator(self._source, current_page=self._page)
+        src = ListSource(self._source, self._items)
+        self._iterator = PageIterator(src, current_page=self._page)
 

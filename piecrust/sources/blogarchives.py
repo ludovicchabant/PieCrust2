@@ -1,5 +1,7 @@
+import time
 import logging
 import datetime
+import collections
 from piecrust.data.filters import PaginationFilter, IFilterClause
 from piecrust.dataproviders.pageiterator import (
     PageIterator, HardCodedFilterIterator, DateSortIterator)
@@ -11,6 +13,7 @@ from piecrust.pipelines.base import (
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentItem
 from piecrust.sources.generator import GeneratorSourceBase
+from piecrust.sources.list import ListSource
 
 
 logger = logging.getLogger(__name__)
@@ -67,22 +70,8 @@ class BlogArchivesSource(GeneratorSourceBase):
         it._wrapAsSort(DateSortIterator, reverse=False)
         ctx.custom_data['archives'] = it
 
-    def _bakeDirtyYears(self, ctx, all_years, dirty_years):
-        route = self.app.getGeneratorRoute(self.name)
-        if route is None:
-            raise Exception(
-                "No routes have been defined for generator: %s" %
-                self.name)
-
-        logger.debug("Using archive page: %s" % self.page_ref)
-        fac = self.page_ref.getFactory()
-
-        for y in dirty_years:
-            extra_route_metadata = {'year': y}
-
-            logger.debug("Queuing: %s [%s]" % (fac.ref_spec, y))
-            ctx.queueBakeJob(fac, route, extra_route_metadata, str(y))
-        ctx.runJobQueue()
+        ctx.custom_data['monthly_archives'] = _MonthlyArchiveData(
+            self.inner_source, year)
 
 
 class IsFromYearFilterClause(IFilterClause):
@@ -93,8 +82,56 @@ class IsFromYearFilterClause(IFilterClause):
         return (page.datetime.year == self.year)
 
 
-def _date_sorter(it):
-    return sorted(it, key=lambda x: x.datetime)
+class _MonthlyArchiveData(collections.abc.Mapping):
+    def __init__(self, inner_source, year):
+        self._inner_source = inner_source
+        self._year = year
+        self._months = None
+
+    def __iter__(self):
+        self._load()
+        return iter(self._months)
+
+    def __len__(self):
+        self._load()
+        return len(self._months)
+
+    def __getitem__(self, i):
+        self._load()
+        return self._months[i]
+
+    def _load(self):
+        if self._months is not None:
+            return
+
+        month_index = {}
+        src = self._inner_source
+        app = src.app
+        for item in self._inner_source.getAllContents():
+            page = app.getPage(src, item)
+
+            if page.datetime.year != self._year:
+                continue
+
+            month = page.datetime.month
+
+            posts_this_month = month_index.get(month)
+            if posts_this_month is None:
+                posts_this_month = []
+                month_index[month] = posts_this_month
+            posts_this_month.append(page.content_item)
+
+        self._months = []
+        for m, ptm in month_index.items():
+            timestamp = time.mktime((self._year, m, 1, 0, 0, 0, 0, 0, -1))
+
+            it = PageIterator(ListSource(self._inner_source, ptm))
+            it._wrapAsSort(DateSortIterator, reverse=False)
+
+            self._months.append({
+                'timestamp': timestamp,
+                'posts': it
+            })
 
 
 class BlogArchivesPipelineRecordEntry(PagePipelineRecordEntry):

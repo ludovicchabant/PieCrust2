@@ -10,10 +10,9 @@ class DataProvider:
     debug_render_invoke_dynamic = []
 
     def __init__(self, source, page):
+        self._sources = [source]
         self._page = page
-        self._sources = []
-        if source is not None:
-            self._sources.append(source)
+        self._app = source.app
 
     def _addSource(self, source):
         self._sources.append(source)
