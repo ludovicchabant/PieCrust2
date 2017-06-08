@@ -128,9 +128,8 @@ class PieCrustCacheExtension(Extension):
     def _cache_support(self, name, caller):
         key = self.environment.piecrust_cache_prefix + name
 
-        exc_stack = self.environment.app.env.exec_info_stack
-        render_ctx = exc_stack.current_page_info.render_ctx
-        rdr_pass = render_ctx.current_pass_info
+        rcs = self.environment.app.env.render_ctx_stack
+        rdr_pass = rcs.current_ctx.current_pass_info
 
         # try to load the block from the cache
         # if there is no fragment in the cache, render it and store

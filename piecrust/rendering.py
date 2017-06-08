@@ -348,7 +348,7 @@ def _do_render_layout(layout_name, page, layout_data):
             output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
         logger.exception(ex)
-        msg = "Can't find template for page: %s\n" % page.path
+        msg = "Can't find template for page: %s\n" % page.content_item.spec
         msg += "Looked for: %s" % ', '.join(full_names)
         raise Exception(msg) from ex
 
