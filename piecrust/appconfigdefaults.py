@@ -163,7 +163,7 @@ def get_default_content_model(site_values, values):
                 }),
                 ('categories', {
                     'term': 'category',
-                    'func_name': 'pccaturl'
+                    'func_term_name': 'cat'
                 })
             ])
         })
@@ -289,10 +289,11 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
             (values, 'site/%s' % tax_url_cfg_name),
             default=('%s/%%%s%%' % (term, term)))
         tax_url = '/' + url_prefix + tax_url.lstrip('/')
-        tax_func_name = try_get_dict_values(
-            (site_values, 'site/taxonomies/%s/func_name' % tax_name),
-            (values, 'site/taxonomies/%s/func_name' % tax_name),
-            default=('%s%surl' % (tpl_func_prefix, term)))
+        tax_func_term_name = try_get_dict_values(
+            (site_values, 'site/taxonomies/%s/func_term_name' % tax_name),
+            (values, 'site/taxonomies/%s/func_term_name' % tax_name),
+            default=term)
+        tax_func_name = '%s%surl' % (tpl_func_prefix, tax_func_term_name)
         tax_route = collections.OrderedDict({
             'url': tax_url,
             'pass': 2,
