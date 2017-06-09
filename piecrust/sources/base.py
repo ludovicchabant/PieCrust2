@@ -13,9 +13,8 @@ REALM_NAMES = {
 
 
 # Types of relationships a content source can be asked for.
-REL_PARENT_GROUP = 1
-REL_LOGICAL_PARENT_ITEM = 2
-REL_LOGICAl_CHILD_GROUP = 3
+REL_LOGICAL_PARENT_ITEM = 1
+REL_LOGICAl_CHILD_GROUP = 2
 REL_ASSETS = 10
 
 
@@ -118,6 +117,9 @@ class ContentSource:
     def getContents(self, group):
         raise NotImplementedError("'%s' doesn't implement 'getContents'." %
                                   self.__class__)
+
+    def getParentGroup(self, item):
+        raise NotImplementedError()
 
     def getRelatedContents(self, item, relationship):
         raise NotImplementedError()

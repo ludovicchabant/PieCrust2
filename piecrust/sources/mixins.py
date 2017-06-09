@@ -10,31 +10,34 @@ assets_suffix = '-assets'
 
 
 class SimpleAssetsSubDirMixin:
-    def _getRelatedAssetsContents(self, item, relationship):
-        if not item.metadata.get('__has_assets', False):
+    """ A content source mixin for sources that are file-system-based,
+        and have item assets stored in a sub-folder that is named after
+        the item.
+
+        More specifically, assets are stored in a sub-folder named:
+        `<item_path>-assets`
+    """
+    def _getRelatedAssetsContents(self, item):
+        spec_no_ext, _ = os.path.splitext(item.spec)
+        assets_dir = spec_no_ext + assets_suffix
+        try:
+            asset_files = osutil.listdir(assets_dir)
+        except OSError:
             return None
 
-        assets = {}
-        assets_dir = item.spec + assets_suffix
-        for f in osutil.listdir(assets_dir):
+        assets = []
+        for f in asset_files:
             fpath = os.path.join(assets_dir, f)
             name, _ = os.path.splitext(f)
-            if name in assets:
-                raise Exception("Multiple assets are named '%s'." %
-                                name)
-            assets[name] = ContentItem(fpath, {'__is_asset': True})
+            assets.append(ContentItem(
+                fpath,
+                {'name': name,
+                 'filename': f,
+                 '__is_asset': True}))
         return assets
 
-    def _onFinalizeContent(self, parent_group, items, groups):
-        assetsGroups = []
-        for g in groups:
-            if not g.spec.endswith(assets_suffix):
-                continue
-            match = g.spec[:-len(assets_suffix)]
-            item = next(filter(lambda i: i.spec == match), None)
-            if item:
-                item.metadata['__has_assets'] = True
-                assetsGroups.append(g)
-        for g in assetsGroups:
+    def _removeAssetGroups(self, groups):
+        asset_groups = [g for g in groups
+                        if g.spec.endswith(assets_suffix)]
+        for g in asset_groups:
             groups.remove(g)
-

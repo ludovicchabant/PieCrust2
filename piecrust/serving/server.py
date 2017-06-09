@@ -107,10 +107,6 @@ class Server(object):
                 '!debug' in request.args):
             app.config.set('site/show_debug_info', True)
 
-        # We'll serve page assets directly from where they are.
-        app.config.set('site/asset_url_format',
-                       self.root_url + '_asset/%path%')
-
         # Let's try to serve a page.
         try:
             response = self._try_serve_page(app, environ, request)

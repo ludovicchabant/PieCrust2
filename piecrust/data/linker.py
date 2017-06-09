@@ -1,7 +1,7 @@
 import logging
 from piecrust.data.paginationdata import PaginationData
 from piecrust.sources.base import (
-    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
+    REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
 
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,7 @@ class Linker:
     def siblings(self):
         if self._siblings is None:
             self._siblings = []
-            parent_group = self._source.getRelatedContents(
-                self._content_item, REL_PARENT_GROUP)
+            parent_group = self._source.getParentGroup(self._content_item)
             for i in self._source.getContents(parent_group):
                 if not i.is_group:
                     ipage = self._app.getPage(self._source, i)

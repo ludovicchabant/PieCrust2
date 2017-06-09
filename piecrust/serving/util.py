@@ -17,6 +17,8 @@ def get_app_for_server(appfactory, root_url='/'):
     app = appfactory.create()
     app.config.set('site/root', root_url)
     app.config.set('server/is_serving', True)
+    # We'll serve page assets directly from where they are.
+    app.config.set('site/asset_url_format', root_url + '_asset/%path%')
     return app
 
 

@@ -36,14 +36,17 @@ class PostsSource(FSContentSource,
     def path_format(self):
         return self.__class__.PATH_FORMAT
 
-    def _finalizeContent(self, parent_group, items, groups):
-        SimpleAssetsSubDirMixin._onFinalizeContent(
-            parent_group, items, groups)
+    def _finalizeContent(self, groups):
+        SimpleAssetsSubDirMixin._removeAssetGroups(groups)
+
+    def getParentGroup(self, item):
+        return None
 
     def getRelatedContents(self, item, relationship):
         if relationship == REL_ASSETS:
-            SimpleAssetsSubDirMixin._getRelatedAssetsContents(item)
-        raise NotImplementedError()
+            return SimpleAssetsSubDirMixin._getRelatedAssetsContents(
+                self, item)
+        return FSContentSource.getRelatedContents(self, item, relationship)
 
     def findContent(self, route_params):
         year = route_params.get('year')

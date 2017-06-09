@@ -31,8 +31,7 @@ class DefaultContentSource(FSContentSource,
         return self._doCreateItemMetadata(path)
 
     def _finalizeContent(self, parent_group, items, groups):
-        SimpleAssetsSubDirMixin._onFinalizeContent(
-            self, parent_group, items, groups)
+        SimpleAssetsSubDirMixin._removeAssetGroups(groups)
 
     def _doCreateItemMetadata(self, path):
         slug = self._makeSlug(path)
@@ -62,8 +61,9 @@ class DefaultContentSource(FSContentSource,
 
     def getRelatedContents(self, item, relationship):
         if relationship == REL_ASSETS:
-            SimpleAssetsSubDirMixin._getRelatedAssetsContents(self, item)
-        raise NotImplementedError()
+            return SimpleAssetsSubDirMixin._getRelatedAssetsContents(
+                self, item)
+        return FSContentSource.getRelatedContents(self, item, relationship)
 
     def getSupportedRouteParameters(self):
         return [
