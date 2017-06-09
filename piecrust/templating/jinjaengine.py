@@ -72,6 +72,8 @@ class JinjaTemplateEngine(TemplateEngine):
         except AbortedSourceUseError:
             raise
         except Exception as ex:
+            if self.app.debug:
+                raise
             msg = "Error rendering Jinja markup"
             rel_path = os.path.relpath(rendered_path, self.app.root_dir)
             raise TemplatingError(msg, rel_path) from ex
