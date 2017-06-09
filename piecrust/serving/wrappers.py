@@ -57,6 +57,9 @@ def run_werkzeug_server(appfactory, host, port,
     signal.signal(signal.SIGINT,
                   lambda *args: _shutdown_server_and_raise_sigint())
 
+    # Disable debugger PIN protection.
+    os.environ['WERKZEUG_DEBUG_PIN'] = 'off'
+
     try:
         run_simple(host, port, app,
                    threaded=True,
