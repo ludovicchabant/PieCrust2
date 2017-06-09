@@ -30,14 +30,19 @@ class RequestedPage(object):
         self.not_found_errors = []
 
 
-def find_routes(routes, uri, sub_num=1):
+def find_routes(routes, uri, uri_no_sub, sub_num=1):
     """ Returns routes matching the given URL.
     """
     res = []
     for route in routes:
         route_params = route.matchUri(uri)
         if route_params is not None:
-            res.append((route, route_params, sub_num))
+            res.append((route, route_params, 1))
+
+        if sub_num > 1:
+            route_params = route.matchUri(uri_no_sub)
+            if route_params is not None:
+                res.append((route, route_params, sub_num))
     return res
 
 
@@ -48,14 +53,10 @@ def get_requested_page(app, req_path):
         req_path = req_path.rstrip('/')
 
     # Try to find what matches the requested URL.
-    routes = find_routes(app.routes, req_path)
-
     # It could also be a sub-page (i.e. the URL ends with a page number), so
     # we try to also match the base URL (without the number).
-    req_path_no_num, page_num = split_sub_uri(app, req_path)
-    if page_num > 1:
-        routes += find_routes(app.routes, req_path_no_num, page_num)
-
+    req_path_no_sub, sub_num = split_sub_uri(app, req_path)
+    routes = find_routes(app.routes, req_path, req_path_no_sub, sub_num)
     if len(routes) == 0:
         raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
@@ -63,7 +64,7 @@ def get_requested_page(app, req_path):
     for route, route_params, route_sub_num in routes:
         cur_req_path = req_path
         if route_sub_num > 1:
-            cur_req_path = req_path_no_num
+            cur_req_path = req_path_no_sub
 
         page = _get_requested_page_for_route(app, route, route_params)
         if page is not None:
