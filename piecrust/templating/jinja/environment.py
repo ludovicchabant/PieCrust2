@@ -84,12 +84,11 @@ class PieCrustEnvironment(Environment):
             self.globals['pcfail'] = raise_exception
 
     def _paginate(self, value, items_per_page=5):
-        cpi = self.app.env.exec_info_stack.current_page_info
-        if cpi is None or cpi.page is None or cpi.render_ctx is None:
+        ctx = self.app.env.render_ctx_stack.current_ctx
+        if ctx is None or ctx.page is None:
             raise Exception("Can't paginate when no page has been pushed "
                             "on the execution stack.")
-        return Paginator(cpi.page, value,
-                         page_num=cpi.render_ctx.page_num,
+        return Paginator(value, ctx.page, ctx.sub_num,
                          items_per_page=items_per_page)
 
     def _formatWith(self, value, format_name):
