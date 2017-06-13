@@ -35,7 +35,7 @@ class Assetor(collections.abc.Sequence):
     def __getattr__(self, name):
         try:
             self._cacheAssets()
-            return self._cache[name].uri
+            return self._cache_map[name].uri
         except KeyError:
             raise AttributeError()
 
@@ -49,7 +49,7 @@ class Assetor(collections.abc.Sequence):
 
     def _debugRenderAssetNames(self):
         self._cacheAssets()
-        return list(self._cache.keys())
+        return list(self._cache_map.keys())
 
     def _cacheAssets(self):
         if self._cache_map is not None:
