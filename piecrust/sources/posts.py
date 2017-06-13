@@ -37,7 +37,7 @@ class PostsSource(FSContentSource,
         return self.__class__.PATH_FORMAT
 
     def _finalizeContent(self, groups):
-        SimpleAssetsSubDirMixin._removeAssetGroups(groups)
+        SimpleAssetsSubDirMixin._removeAssetGroups(self, groups)
 
     def getParentGroup(self, item):
         return None
@@ -47,6 +47,9 @@ class PostsSource(FSContentSource,
             return SimpleAssetsSubDirMixin._getRelatedAssetsContents(
                 self, item)
         return FSContentSource.getRelatedContents(self, item, relationship)
+
+    def findGroup(self, spec):
+        return None
 
     def findContent(self, route_params):
         year = route_params.get('year')

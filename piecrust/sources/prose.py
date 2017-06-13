@@ -17,7 +17,7 @@ class ProseSource(DefaultContentSource):
         metadata = super()._doCreateItemMetadata(path)
         config = metadata.setdefault('config', {})
         config.update(self._makeConfig(path))
-        return config
+        return metadata
 
     def _makeConfig(self, path):
         c = copy.deepcopy(self.config_recipe)

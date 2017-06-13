@@ -139,6 +139,13 @@ class FSContentSource(FSContentSourceBase):
     def _finalizeContent(self, parent_group, items, groups):
         pass
 
+    def findGroup(self, rel_spec):
+        path = os.path.join(self.fs_endpoint_path, rel_spec)
+        if os.path.isdir(path):
+            metadata = self._createGroupMetadata(path)
+            return ContentGroup(path, metadata)
+        return None
+
     def getRelatedContents(self, item, relationship):
         if relationship == REL_LOGICAL_PARENT_ITEM:
             # If we want the logical parent item of a folder, we find a
@@ -164,12 +171,6 @@ class FSContentSource(FSContentSourceBase):
             return None
 
         return None
-
-    def findContent(self, route_params):
-        rel_path = route_params['path']
-        path = os.path.join(self.fs_endpoint_path, rel_path)
-        metadata = self._createItemMetadata(path)
-        return ContentItem(path, metadata)
 
     def getSupportedRouteParameters(self):
         return [

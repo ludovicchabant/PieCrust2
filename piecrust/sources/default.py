@@ -31,7 +31,7 @@ class DefaultContentSource(FSContentSource,
         return self._doCreateItemMetadata(path)
 
     def _finalizeContent(self, parent_group, items, groups):
-        SimpleAssetsSubDirMixin._removeAssetGroups(groups)
+        SimpleAssetsSubDirMixin._removeAssetGroups(self, groups)
 
     def _doCreateItemMetadata(self, path):
         slug = self._makeSlug(path)

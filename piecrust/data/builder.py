@@ -32,7 +32,7 @@ def build_page_data(ctx):
     paginator = Paginator(pgn_source, page, sub_num,
                           pgn_filter=ctx.pagination_filter)
     assetor = Assetor(page)
-    linker = Linker(page)
+    linker = Linker(page.source, page.content_item)
     data = {
         'piecrust': pc_data,
         'page': config_data,

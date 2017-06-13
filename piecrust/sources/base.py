@@ -124,6 +124,9 @@ class ContentSource:
     def getRelatedContents(self, item, relationship):
         raise NotImplementedError()
 
+    def findGroup(self, rel_spec):
+        raise NotImplementedError()
+
     def findContent(self, route_params):
         raise NotImplementedError()
 

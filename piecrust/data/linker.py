@@ -24,41 +24,39 @@ class Linker:
         'children': '_debugRenderChildren',
         'root': '_debugRenderRoot'}
 
-    def __init__(self, page):
-        self._page = page
-        self._content_item = page.content_item
-        self._source = page.source
-        self._app = page.app
+    def __init__(self, source, content_item):
+        self._source = source
+        self._content_item = content_item
 
-        self._parent = _unloaded
+        self._parent_group = _unloaded
         self._ancestors = None
         self._siblings = None
         self._children = None
 
     @property
     def parent(self):
-        if self._parent is _unloaded:
-            pi = self._source.getRelatedContents(self._content_item,
-                                                 REL_LOGICAL_PARENT_ITEM)
-            if pi is not None:
-                pipage = self._app.getPage(self._source, pi)
-                self._parent = PaginationData(pipage)
-            else:
-                self._parent = None
-        return self._parent
+        a = self.ancestors
+        if a:
+            return a[0]
+        return None
 
     @property
     def ancestors(self):
         if self._ancestors is None:
-            cur_item = self._content_item
+            self._ensureParentGroup()
+
+            src = self._source
+            app = src.app
+
+            cur_group = self._parent_group
             self._ancestors = []
-            while True:
-                pi = self._source.getRelatedContents(
-                    cur_item, REL_LOGICAL_PARENT_ITEM)
+            while cur_group:
+                pi = src.getRelatedContents(cur_group,
+                                            REL_LOGICAL_PARENT_ITEM)
                 if pi is not None:
-                    pipage = self._app.getPage(self._source, pi)
+                    pipage = app.getPage(src, pi)
                     self._ancestors.append(PaginationData(pipage))
-                    cur_item = pi
+                    cur_group = src.getParentGroup(pi)
                 else:
                     break
         return self._ancestors
@@ -66,38 +64,62 @@ class Linker:
     @property
     def siblings(self):
         if self._siblings is None:
+            self._ensureParentGroup()
+
+            src = self._source
+            app = src.app
+
             self._siblings = []
-            parent_group = self._source.getParentGroup(self._content_item)
-            for i in self._source.getContents(parent_group):
+            for i in src.getContents(self._parent_group):
                 if not i.is_group:
-                    ipage = self._app.getPage(self._source, i)
+                    ipage = app.getPage(src, i)
                     self._siblings.append(PaginationData(ipage))
         return self._siblings
 
     @property
     def children(self):
         if self._children is None:
+            src = self._source
+            app = src.app
+
             self._children = []
-            child_group = self._source.getRelatedContents(
-                self._content_item, REL_LOGICAl_CHILD_GROUP)
+            child_group = src.getRelatedContents(self._content_item,
+                                                 REL_LOGICAl_CHILD_GROUP)
             if child_group:
-                for i in self._source.getContents(child_group):
-                    ipage = self._app.getPage(self._source, i)
+                for i in src.getContents(child_group):
+                    ipage = app.getPage(src, i)
                     self._children.append(PaginationData(ipage))
         return self._children
 
+    def forpath(self, path):
+        # TODO: generalize this for sources that aren't file-system based.
+        item = self._source.findContent({'slug': path})
+        return Linker(self._source, item)
+
+    def childrenof(self, path):
+        # TODO: generalize this for sources that aren't file-system based.
+        src = self._source
+        app = src.app
+        group = src.findGroup(path)
+        if group is not None:
+            for i in src.getContents(group):
+                if not i.is_group:
+                    ipage = app.getPage(src, i)
+                    yield PaginationData(ipage)
+        return None
+
+    def _ensureParentGroup(self):
+        if self._parent_group is _unloaded:
+            src = self._source
+            item = self._content_item
+            self._parent_group = src.getParentGroup(item)
+
     def _debugRenderAncestors(self):
-        return [i.name for i in self.ancestors]
+        return [i.title for i in self.ancestors]
 
     def _debugRenderSiblings(self):
-        return [i.name for i in self.siblings]
+        return [i.title for i in self.siblings]
 
     def _debugRenderChildren(self):
-        return [i.name for i in self.children]
-
-    def _debugRenderRoot(self):
-        r = self.root
-        if r is not None:
-            return r.name
-        return None
+        return [i.title for i in self.children]
 
