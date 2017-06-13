@@ -88,21 +88,27 @@ class BakeCommand(ChefCommand):
             ctx.app.config.set('baker/batch_size', ctx.args.batch_size)
 
         allowed_pipelines = None
+        forbidden_pipelines = None
         if ctx.args.html_only:
-            allowed_pipelines = ['page']
+            forbidden_pipelines = ['asset']
         elif ctx.args.assets_only:
             allowed_pipelines = ['asset']
         elif ctx.args.pipelines:
-            if allowed_pipelines:
+            if allowed_pipelines or forbidden_pipelines:
                 raise Exception(
                     "Can't specify `--html-only` or `--assets-only` with "
                     "`--pipelines`.")
-            allowed_pipelines = ctx.args.pipelines
+            for p in ctx.args.pipelines:
+                if p[0] == '-':
+                    forbidden_pipelines.append(p)
+                else:
+                    allowed_pipelines.append(p)
 
         baker = Baker(
             ctx.appfactory, ctx.app, out_dir,
             force=ctx.args.force,
-            allowed_pipelines=allowed_pipelines)
+            allowed_pipelines=allowed_pipelines,
+            forbidden_pipelines=forbidden_pipelines)
         records = baker.bake()
 
         return records

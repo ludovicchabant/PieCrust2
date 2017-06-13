@@ -14,12 +14,13 @@ logger = logging.getLogger(__name__)
 class BakeWorkerContext(object):
     def __init__(self, appfactory, out_dir, *,
                  force=False, previous_records_path=None,
-                 allowed_pipelines=None):
+                 allowed_pipelines=None, forbidden_pipelines=None):
         self.appfactory = appfactory
         self.out_dir = out_dir
         self.force = force
         self.previous_records_path = previous_records_path
         self.allowed_pipelines = allowed_pipelines
+        self.forbidden_pipelines = forbidden_pipelines
 
 
 class BakeWorker(IWorker):
@@ -59,10 +60,13 @@ class BakeWorker(IWorker):
         self.ppmngr = PipelineManager(
             app, self.ctx.out_dir, self.record_histories,
             worker_id=self.wid, force=self.ctx.force)
+        ok_pp = self.ctx.allowed_pipelines
+        nok_pp = self.ctx.forbidden_pipelines
         for src in app.sources:
             pname = get_pipeline_name_for_source(src)
-            if (self.ctx.allowed_pipelines is not None and
-                    pname not in self.ctx.allowed_pipelines):
+            if ok_pp is not None and pname not in ok_pp:
+                continue
+            if nok_pp is not None and pname in nok_pp:
                 continue
 
             self.ppmngr.createPipeline(src)

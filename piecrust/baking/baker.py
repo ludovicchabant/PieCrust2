@@ -26,15 +26,14 @@ def get_bake_records_path(app, out_dir, *, suffix=''):
 
 class Baker(object):
     def __init__(self, appfactory, app, out_dir,
-                 force=False, allowed_pipelines=None):
+                 force=False, allowed_pipelines=None,
+                 forbidden_pipelines=None):
         self.appfactory = appfactory
         self.app = app
         self.out_dir = out_dir
         self.force = force
-
         self.allowed_pipelines = allowed_pipelines
-        if allowed_pipelines is None:
-            self.allowed_pipelines = list(self._pipeline_classes.keys())
+        self.forbidden_pipelines = forbidden_pipelines
 
     def bake(self):
         start_time = time.perf_counter()
@@ -85,18 +84,20 @@ class Baker(object):
         has_any_pp = False
         ppmngr = PipelineManager(
             self.app, self.out_dir, record_histories)
+        ok_pp = self.allowed_pipelines
+        nok_pp = self.forbidden_pipelines
         for source in self.app.sources:
             pname = get_pipeline_name_for_source(source)
-            if pname in self.allowed_pipelines:
-                ppinfo = ppmngr.createPipeline(source)
-                logger.debug(
-                    "Created pipeline '%s' for source: %s" %
-                    (ppinfo.pipeline.PIPELINE_NAME, source.name))
-                has_any_pp = True
-            else:
-                logger.debug(
-                    "Skip source '%s' because pipeline '%s' is ignored." %
-                    (source.name, pname))
+            if ok_pp is not None and pname not in ok_pp:
+                continue
+            if nok_pp is not None and pname in nok_pp:
+                continue
+
+            ppinfo = ppmngr.createPipeline(source)
+            logger.debug(
+                "Created pipeline '%s' for source: %s" %
+                (ppinfo.pipeline.PIPELINE_NAME, source.name))
+            has_any_pp = True
         if not has_any_pp:
             raise Exception("The website has no content sources, or the bake "
                             "command was invoked with all pipelines filtered "
@@ -284,7 +285,8 @@ class Baker(object):
             self.out_dir,
             force=self.force,
             previous_records_path=previous_records_path,
-            allowed_pipelines=self.allowed_pipelines)
+            allowed_pipelines=self.allowed_pipelines,
+            forbidden_pipelines=self.forbidden_pipelines)
         pool = WorkerPool(
             worker_count=worker_count,
             batch_size=batch_size,
