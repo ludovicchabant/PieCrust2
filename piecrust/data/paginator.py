@@ -90,9 +90,11 @@ class Paginator(object):
         if ipp is not None:
             return ipp
 
-        ipp = self._source.config.get('items_per_page')
-        if ipp is not None:
-            return ipp
+        from piecrust.sources.base import ContentSource
+        if isinstance(self._source, ContentSource):
+            ipp = self._source.config.get('items_per_page')
+            if ipp is not None:
+                return ipp
 
         raise Exception("No way to figure out how many items to display "
                         "per page.")
@@ -188,11 +190,11 @@ class Paginator(object):
         from piecrust.data.filters import PaginationFilter
         from piecrust.dataproviders.pageiterator import (
             PageIterator, HardCodedFilterIterator)
+        from piecrust.sources.base import ContentSource
 
         self._iterator = PageIterator(
             self._source,
             current_page=self._page)
-        #self._iterator._iter_event += self._onIteration
 
         if self._pgn_filter is not None:
             pag_fil = PaginationFilter()
@@ -206,7 +208,8 @@ class Paginator(object):
 
         self._iterator._lockIterator()
 
-        self._onIteration(self._iterator)
+        if isinstance(self._source, ContentSource):
+            self._onIteration(self._iterator)
 
     def _getPageUri(self, index):
         return self._page.getUri(index)

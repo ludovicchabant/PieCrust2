@@ -21,7 +21,7 @@ class _AssetInfo:
         self.uri = uri
 
 
-class Assetor(collections.abc.Mapping):
+class Assetor(collections.abc.Sequence):
     debug_render_doc = """Helps render URLs to files in the current page's
                           asset folder."""
     debug_render = []
@@ -29,7 +29,8 @@ class Assetor(collections.abc.Mapping):
 
     def __init__(self, page):
         self._page = page
-        self._cache = None
+        self._cache_map = None
+        self._cache_list = None
 
     def __getattr__(self, name):
         try:
@@ -38,35 +39,31 @@ class Assetor(collections.abc.Mapping):
         except KeyError:
             raise AttributeError()
 
-    def __getitem__(self, key):
+    def __getitem__(self, i):
         self._cacheAssets()
-        return self._cache[key].uri
-
-    def __iter__(self):
-        self._cacheAssets()
-        return self._cache.keys()
+        return self._cache_list[i]
 
     def __len__(self):
         self._cacheAssets()
-        return len(self._cache)
+        return len(self._cache_list)
 
     def _debugRenderAssetNames(self):
         self._cacheAssets()
         return list(self._cache.keys())
 
     def _cacheAssets(self):
-        if self._cache is not None:
+        if self._cache_map is not None:
             return
 
         source = self._page.source
         content_item = self._page.content_item
-
         assets = source.getRelatedContents(content_item, REL_ASSETS)
-        if assets is None:
-            self._cache = {}
-            return
 
-        self._cache = {}
+        self._cache_map = {}
+        self._cache_list = []
+
+        if assets is None:
+            return
 
         app = source.app
         root_dir = app.root_dir
@@ -85,7 +82,7 @@ class Assetor(collections.abc.Mapping):
 
         for a in assets:
             name = a.metadata['name']
-            if name in self._cache:
+            if name in self._cache_map:
                 raise UnsupportedAssetsError(
                     "An asset with name '%s' already exists for item '%s'. "
                     "Do you have multiple assets with colliding names?" %
@@ -97,7 +94,8 @@ class Assetor(collections.abc.Mapping):
             uri_build_tokens['%filename%'] = a.metadata['filename'],
             uri = multi_replace(asset_url_format, uri_build_tokens)
 
-            self._cache[name] = _AssetInfo(a, uri)
+            self._cache_map[name] = _AssetInfo(a, uri)
+            self._cache_list.append(uri)
 
         stack = app.env.render_ctx_stack
         cur_ctx = stack.current_ctx
