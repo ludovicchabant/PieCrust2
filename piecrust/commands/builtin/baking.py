@@ -209,9 +209,12 @@ class ShowRecordCommand(ChefCommand):
             if ctx.args.fails and rec.success:
                 continue
 
-            logger.info("Record: %s" % rec.name)
-            logger.info("Status: %s" % ('SUCCESS' if rec.success
-                                        else 'FAILURE'))
+            ppname = rec.name[rec.name.index('@') + 1:]
+            if ppname not in pipelines:
+                continue
+
+            entries_to_show = []
+
             for e in rec.getEntries():
                 if ctx.args.fails and e.success:
                     continue
@@ -221,9 +224,15 @@ class ShowRecordCommand(ChefCommand):
                         [fnmatch.fnmatch(op, out_pattern)
                          for op in e.getAllOutputPaths()]):
                     continue
-                _print_record_entry(e)
+                entries_to_show.append(e)
 
-            logger.info("")
+            if entries_to_show:
+                logger.info("Record: %s" % rec.name)
+                logger.info("Status: %s" % ('SUCCESS' if rec.success
+                                            else 'FAILURE'))
+                for e in entries_to_show:
+                    _print_record_entry(e)
+                logger.info("")
 
         stats = records.stats
         if ctx.args.show_stats:
