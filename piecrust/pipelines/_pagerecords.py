@@ -50,6 +50,7 @@ class PagePipelineRecordEntry(RecordEntry):
         super().__init__()
         self.flags = self.FLAG_NONE
         self.config = None
+        self.timestamp = None
         self.subs = []
 
     @property
@@ -108,7 +109,11 @@ class PagePipelineRecordEntry(RecordEntry):
                 'URI': sub.out_uri,
                 'Path': sub.out_path,
                 'Flags': get_flag_descriptions(
-                    sub.flags, sub_flag_descriptions)
+                    sub.flags, sub_flag_descriptions),
+                'RenderInfo': [
+                    _describe_render_info(sub.render_info[0]),
+                    _describe_render_info(sub.render_info[1])
+                ]
             }
         return d
 
@@ -129,3 +134,12 @@ sub_flag_descriptions = {
     SubPagePipelineRecordEntry.FLAG_FORMATTING_INVALIDATED:
     'formatting invalidated'
 }
+
+
+def _describe_render_info(ri):
+    return {
+        'UsedPagination': ri.used_pagination,
+        'PaginationHasMore': ri.pagination_has_more,
+        'UsedAssets': ri.used_assets,
+        'UsedSourceNames': ri.used_source_names
+    }

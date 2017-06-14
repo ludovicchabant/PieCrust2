@@ -37,7 +37,7 @@ class BakeWorker(IWorker):
         app = self.ctx.appfactory.create()
         app.config.set('baker/is_baking', True)
         app.config.set('baker/worker_id', self.wid)
-        app.config.set('site/base_asset_url_format', '%uri')
+        app.config.set('site/asset_url_format', '%page_uri%/%filename%')
 
         app.env.fs_cache_only_for_main_page = True
 

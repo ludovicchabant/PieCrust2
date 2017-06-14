@@ -1,9 +1,7 @@
 import os
 import os.path
-import shutil
 import logging
 import collections.abc
-from piecrust import ASSET_DIR_SUFFIX
 from piecrust.sources.base import REL_ASSETS
 from piecrust.uriutil import multi_replace
 
@@ -47,6 +45,10 @@ class Assetor(collections.abc.Sequence):
         self._cacheAssets()
         return len(self._cache_list)
 
+    def _getAssetItems(self):
+        self._cacheAssets()
+        return map(lambda i: i.content_item, self._cache_map.values())
+
     def _debugRenderAssetNames(self):
         self._cacheAssets()
         return list(self._cache_map.keys())
@@ -89,9 +91,9 @@ class Assetor(collections.abc.Sequence):
                     (name, content_item.spec))
 
             # TODO: this assumes a file-system source!
-            uri_build_tokens['%path%'] = (
-                os.path.relpath(a.spec, root_dir).replace('\\', '/'))
-            uri_build_tokens['%filename%'] = a.metadata['filename'],
+            uri_build_tokens['%path%'] = \
+                os.path.relpath(a.spec, root_dir).replace('\\', '/')
+            uri_build_tokens['%filename%'] = a.metadata['filename']
             uri = multi_replace(asset_url_format, uri_build_tokens)
 
             self._cache_map[name] = _AssetInfo(a, uri)
@@ -101,14 +103,4 @@ class Assetor(collections.abc.Sequence):
         cur_ctx = stack.current_ctx
         if cur_ctx is not None:
             cur_ctx.current_pass_info.used_assets = True
-
-    def copyAssets(self, dest_dir):
-        page_pathname, _ = os.path.splitext(self._page.path)
-        in_assets_dir = page_pathname + ASSET_DIR_SUFFIX
-        for fn in os.listdir(in_assets_dir):
-            full_fn = os.path.join(in_assets_dir, fn)
-            if os.path.isfile(full_fn):
-                dest_ap = os.path.join(dest_dir, fn)
-                logger.debug("  %s -> %s" % (full_fn, dest_ap))
-                shutil.copy(full_fn, dest_ap)
 

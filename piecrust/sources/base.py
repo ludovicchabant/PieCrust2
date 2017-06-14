@@ -83,6 +83,7 @@ class ContentSource:
         self.app = app
         self.name = name
         self.config = config or {}
+        self._cache = None
 
     @property
     def is_theme_source(self):
@@ -99,6 +100,10 @@ class ContentSource:
         raise NotImplementedError()
 
     def getAllContents(self):
+        if self._cache is not None:
+            return self._cache
+
+        cache = []
         stack = collections.deque()
         stack.append(None)
         while len(stack) > 0:
@@ -112,7 +117,9 @@ class ContentSource:
                     if c.is_group:
                         stack.append(c)
                     else:
-                        yield c
+                        cache.append(c)
+        self._cache = cache
+        return cache
 
     def getContents(self, group):
         raise NotImplementedError("'%s' doesn't implement 'getContents'." %

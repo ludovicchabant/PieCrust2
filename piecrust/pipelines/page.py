@@ -70,6 +70,7 @@ class PagePipeline(ContentPipeline):
 
         page = self.app.getPage(self.source, content_item)
         record_entry.config = page.config.getAll()
+        record_entry.timestamp = page.datetime.timestamp()
 
         rdrctx = RenderingContext(page)
         self.app.env.abort_source_use = True
@@ -93,4 +94,4 @@ class PagePipeline(ContentPipeline):
         page = self.app.getPage(self.source, content_item)
         prev_entry = ctx.previous_entry
         cur_entry = result.record_entry
-        self._pagebaker.bake(page, prev_entry, cur_entry, [])
+        self._pagebaker.bake(page, prev_entry, cur_entry)

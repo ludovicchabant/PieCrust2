@@ -294,7 +294,7 @@ class TaxonomyPipeline(ContentPipeline):
         prev_entry = ctx.previous_entry
         cur_entry = result.record_entry
         cur_entry.term = content_item.metadata['term']
-        self._pagebaker.bake(page, prev_entry, cur_entry, [])
+        self._pagebaker.bake(page, prev_entry, cur_entry)
 
     def postJobRun(self, ctx):
         # We create bake entries for all the terms that were *not* dirty.

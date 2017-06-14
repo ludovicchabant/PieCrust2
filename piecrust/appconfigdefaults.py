@@ -24,7 +24,6 @@ default_configuration = collections.OrderedDict({
         'default_auto_format': 'md',
         'default_pagination_source': None,
         'pagination_suffix': '/%num%',
-        'asset_url_format': '%uri%',
         'slugify_mode': 'encode',
         'themes_sources': [DEFAULT_THEME_SOURCE],
         'use_default_content': True,

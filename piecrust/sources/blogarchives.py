@@ -188,7 +188,7 @@ class BlogArchivesPipeline(ContentPipeline):
         prev_entry = ctx.previous_entry
         cur_entry = result.record_entry
         cur_entry.year = job.content_item.metadata['route_params']['year']
-        self._pagebaker.bake(page, prev_entry, cur_entry, [])
+        self._pagebaker.bake(page, prev_entry, cur_entry)
 
     def postJobRun(self, ctx):
         # Create bake entries for the years that were *not* dirty.

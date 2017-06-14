@@ -11,7 +11,7 @@ from piecrust.pipelines.base import (
 from piecrust.pipelines.records import (
     MultiRecordHistory, MultiRecord, RecordEntry,
     load_records)
-from piecrust.sources.base import REALM_USER, REALM_THEME
+from piecrust.sources.base import REALM_USER, REALM_THEME, REALM_NAMES
 
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class Baker(object):
 
         # Get into bake mode.
         self.app.config.set('baker/is_baking', True)
-        self.app.config.set('site/base_asset_url_format', '%uri')
+        self.app.config.set('site/asset_url_format', '%page_uri%/%filename%')
 
         # Make sure the output directory exists.
         if not os.path.isdir(self.out_dir):
@@ -119,13 +119,14 @@ class Baker(object):
                 ppinfo.pipeline.source.config['realm'], [])
             pplist.append(ppinfo)
 
-        for pp_pass in sorted(pp_by_pass_and_realm.keys()):
-            logger.debug("Pipelines pass %d" % pp_pass)
-            pp_by_realm = pp_by_pass_and_realm[pp_pass]
+        for pp_pass_num in sorted(pp_by_pass_and_realm.keys()):
+            logger.debug("Pipelines pass %d" % pp_pass_num)
+            pp_by_realm = pp_by_pass_and_realm[pp_pass_num]
             for realm in realm_list:
                 pplist = pp_by_realm.get(realm)
                 if pplist is not None:
-                    self._bakeRealm(pool, pp_pass, record_histories, pplist)
+                    self._bakeRealm(
+                        pool, record_histories, pp_pass_num, realm, pplist)
 
         # Handle deletions, collapse records, etc.
         ppmngr.postJobRun()
@@ -213,59 +214,75 @@ class Baker(object):
                 start_time, "cache is assumed valid", colored=False))
             return True
 
-    def _bakeRealm(self, pool, pppass, record_histories, pplist):
+    def _bakeRealm(self, pool, record_histories, pp_pass_num, realm, pplist):
         # Start with the first pass, where we iterate on the content sources'
         # items and run jobs on those.
         pool.userdata.cur_pass = 0
         next_pass_jobs = {}
         pool.userdata.next_pass_jobs = next_pass_jobs
-        queued_any_job = False
+
+        start_time = time.perf_counter()
+        job_count = 0
+        realm_name = REALM_NAMES[realm].lower()
+
         for ppinfo in pplist:
             src = ppinfo.source
             pp = ppinfo.pipeline
 
             logger.debug(
-                "Queuing jobs for source '%s' using pipeline '%s' (pass 0)." %
-                (src.name, pp.PIPELINE_NAME))
+                "Queuing jobs for source '%s' using pipeline '%s' "
+                "(%s, pass 0)." %
+                (src.name, pp.PIPELINE_NAME, realm_name))
 
             next_pass_jobs[src.name] = []
-            jcctx = PipelineJobCreateContext(pppass, record_histories)
+            jcctx = PipelineJobCreateContext(pp_pass_num, record_histories)
             jobs = pp.createJobs(jcctx)
             if jobs is not None:
+                job_count += len(jobs)
                 pool.queueJobs(jobs)
-                queued_any_job = True
 
-        if not queued_any_job:
+        if job_count == 0:
             logger.debug("No jobs queued! Bailing out of this bake pass.")
             return
 
         pool.wait()
 
+        logger.info(format_timed(
+            start_time, "%d pipeline jobs completed (%s, pass 0)." %
+            (job_count, realm_name)))
+
         # Now let's see if any job created a follow-up job. Let's keep
         # processing those jobs as long as they create new ones.
         pool.userdata.cur_pass = 1
         while True:
-            had_any_job = False
-
             # Make a copy of out next pass jobs and reset the list, so
             # the first jobs to be processed don't mess it up as we're
             # still iterating on it.
             next_pass_jobs = pool.userdata.next_pass_jobs
             pool.userdata.next_pass_jobs = {}
 
+            start_time = time.perf_counter()
+            job_count = 0
+
             for sn, jobs in next_pass_jobs.items():
                 if jobs:
                     logger.debug(
-                        "Queuing jobs for source '%s' (pass %d)." %
-                        (sn, pool.userdata.cur_pass))
+                        "Queuing jobs for source '%s' (%s, pass %d)." %
+                        (sn, realm_name, pool.userdata.cur_pass))
+                    job_count += len(jobs)
                     pool.userdata.next_pass_jobs[sn] = []
                     pool.queueJobs(jobs)
-                    had_any_job = True
 
-            if not had_any_job:
+            if job_count == 0:
                 break
 
             pool.wait()
+
+            logger.info(format_timed(
+                start_time,
+                "%d pipeline jobs completed (%s, pass %d)." %
+                (job_count, realm_name, pool.userdata.cur_pass)))
+
             pool.userdata.cur_pass += 1
 
     def _logErrors(self, item_spec, errors):
