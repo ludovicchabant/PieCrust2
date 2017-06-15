@@ -80,14 +80,15 @@ class BakeWorker(IWorker):
         ppinfo = self.ppmngr.getPipeline(job.source_name)
         pp = ppinfo.pipeline
 
+        runctx = PipelineJobRunContext(job, pp.record_name,
+                                       self.record_histories)
+
         ppres = PipelineJobResult()
         # For subsequent pass jobs, there will be a record entry given. For
         # first pass jobs, there's none so we get the pipeline to create it.
         ppres.record_entry = job.data.get('record_entry')
         if ppres.record_entry is None:
-            ppres.record_entry = pp.createRecordEntry(job)
-
-        runctx = PipelineJobRunContext(job, pp, self.record_histories)
+            ppres.record_entry = pp.createRecordEntry(job, runctx)
         pp.run(job, runctx, ppres)
         return ppres
 

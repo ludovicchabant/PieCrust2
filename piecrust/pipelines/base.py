@@ -53,18 +53,28 @@ class PipelineJobCreateContext:
 class PipelineJobRunContext:
     """ Context for running pipeline baking jobs.
     """
-    def __init__(self, job, pipeline, record_histories):
+    def __init__(self, job, record_name, record_histories):
+        self.job = job
+        self.record_name = record_name
         self.record_histories = record_histories
-        self._job_item_spec = job.content_item.spec
-        self._record_name = pipeline.record_name
+
+    @property
+    def content_item(self):
+        return self.job.content_item
 
     @cached_property
     def previous_record(self):
-        return self.record_histories.getPreviousRecord(self._record_name)
+        return self.record_histories.getPreviousRecord(self.record_name)
+
+    @cached_property
+    def record_entry_spec(self):
+        content_item = self.content_item
+        return content_item.metadata.get('record_entry_spec',
+                                         content_item.spec)
 
     @cached_property
     def previous_entry(self):
-        return self.previous_record.getEntry(self._job_item_spec)
+        return self.previous_record.getEntry(self.record_entry_spec)
 
 
 class PipelineJobResult:
@@ -134,10 +144,10 @@ class ContentPipeline:
     def createJob(self, content_item):
         return PipelineJob(self, content_item)
 
-    def createRecordEntry(self, job):
+    def createRecordEntry(self, job, ctx):
         entry_class = self.RECORD_ENTRY_CLASS
         record_entry = entry_class()
-        record_entry.item_spec = job.content_item.spec
+        record_entry.item_spec = ctx.record_entry_spec
         return record_entry
 
     def mergeRecordEntry(self, record_entry, ctx):

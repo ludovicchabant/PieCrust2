@@ -322,11 +322,15 @@ def _do_render_page_segments(ctx, page_data):
     res = {
         'segments': formatted_segments,
         'pass_info': _pickle_object(pass_info)}
+
+    app.env.stats.stepCounter('PageRenderSegments')
+
     return res
 
 
 def _do_render_layout(layout_name, page, layout_data):
-    cur_ctx = page.app.env.render_ctx_stack.current_ctx
+    app = page.app
+    cur_ctx = app.env.render_ctx_stack.current_ctx
     assert cur_ctx is not None
     assert cur_ctx.page == page
 
@@ -340,10 +344,10 @@ def _do_render_layout(layout_name, page, layout_data):
 
     _, engine_name = os.path.splitext(full_names[0])
     engine_name = engine_name.lstrip('.')
-    engine = get_template_engine(page.app, engine_name)
+    engine = get_template_engine(app, engine_name)
 
     try:
-        with page.app.env.stats.timerScope(
+        with app.env.stats.timerScope(
                 engine.__class__.__name__ + '_layout'):
             output = engine.renderFile(full_names, layout_data)
     except TemplateNotFoundError as ex:
@@ -354,6 +358,9 @@ def _do_render_layout(layout_name, page, layout_data):
 
     pass_info = cur_ctx.render_passes[PASS_RENDERING]
     res = {'content': output, 'pass_info': _pickle_object(pass_info)}
+
+    app.env.stats.stepCounter('PageRenderLayout')
+
     return res
 
 

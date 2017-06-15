@@ -84,8 +84,9 @@ class TaxonomySource(GeneratorSourceBase):
 
     def findContent(self, route_params):
         slugified_term = route_params[self.taxonomy.term_name]
-        spec = '_index[%s]' % slugified_term
+        spec = '_index'
         metadata = {'term': slugified_term,
+                    'record_entry_spec': '_index[%s]' % slugified_term,
                     'route_params': {
                         self.taxonomy.term_name: slugified_term}
                     }
@@ -264,6 +265,11 @@ class TaxonomyPipeline(ContentPipeline):
         self._pagebaker.stopWriterQueue()
 
     def createJobs(self, ctx):
+        logger.debug("Caching template page for taxonomy '%s'." %
+                     self.taxonomy.name)
+        page = self.app.getPage(self.source, ContentItem('_index', {}))
+        page._load()
+
         logger.debug("Building '%s' taxonomy pages for source: %s" %
                      (self.taxonomy.name, self.inner_source.name))
         self._analyzer = _TaxonomyTermsAnalyzer(self, ctx.record_histories)
@@ -275,8 +281,9 @@ class TaxonomyPipeline(ContentPipeline):
         jobs = []
         for slugified_term in self._analyzer.dirty_slugified_terms:
             item = ContentItem(
-                '_index[%s]' % slugified_term,
+                '_index',
                 {'term': slugified_term,
+                 'record_entry_spec': '_index[%s]' % slugified_term,
                  'route_params': {
                      self.taxonomy.term_name: slugified_term}
                  })

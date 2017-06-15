@@ -306,6 +306,8 @@ def _do_load_page(source, content_item):
         'content': json_save_segments(content)}
     cache.write(cache_path, json.dumps(cache_data))
 
+    app.env.stats.stepCounter('PageLoads')
+
     return config, content, False
 
 

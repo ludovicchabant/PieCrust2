@@ -16,6 +16,7 @@ class GeneratorSourceBase(ContentSource):
         self._inner_source_name = source_name
 
         self._raw_item = ''
+        self._raw_item_time = time.time()
 
     @cached_property
     def inner_source(self):
@@ -31,5 +32,5 @@ class GeneratorSourceBase(ContentSource):
         return io.StringIO(self._raw_item)
 
     def getItemMtime(self, item):
-        return time.time()
+        return self._raw_item_time
 

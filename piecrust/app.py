@@ -48,6 +48,9 @@ class PieCrust(object):
         stats.registerTimer("PageRenderSegments")
         stats.registerTimer("PageRenderLayout")
         stats.registerTimer("PageSerialize")
+        stats.registerCounter('PageLoads')
+        stats.registerCounter('PageRenderSegments')
+        stats.registerCounter('PageRenderLayout')
 
     @cached_property
     def config(self):
@@ -215,7 +218,7 @@ class PieCrust(object):
         return None
 
     def getPage(self, source, content_item):
-        cache_key = content_item.spec
+        cache_key = '%s@%s' % (source.name, content_item.spec)
         return self.env.page_repository.get(
             cache_key,
             lambda: Page(source, content_item))

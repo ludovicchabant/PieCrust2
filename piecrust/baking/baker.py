@@ -44,6 +44,9 @@ class Baker(object):
         self.app.config.set('baker/is_baking', True)
         self.app.config.set('site/asset_url_format', '%page_uri%/%filename%')
 
+        stats = self.app.env.stats
+        stats.registerTimer('WorkerTastPut')
+
         # Make sure the output directory exists.
         if not os.path.isdir(self.out_dir):
             os.makedirs(self.out_dir, 0o755)
@@ -111,13 +114,8 @@ class Baker(object):
         # Bake the realms -- user first, theme second, so that a user item
         # can override a theme item.
         # Do this for as many times as we have pipeline passes left to do.
-        pp_by_pass_and_realm = {}
-        for ppinfo in ppmngr.getPipelines():
-            pp_by_realm = pp_by_pass_and_realm.setdefault(
-                ppinfo.pipeline.PASS_NUM, {})
-            pplist = pp_by_realm.setdefault(
-                ppinfo.pipeline.source.config['realm'], [])
-            pplist.append(ppinfo)
+        pp_by_pass_and_realm = _get_pipeline_infos_by_pass_and_realm(
+            ppmngr.getPipelines())
 
         for pp_pass_num in sorted(pp_by_pass_and_realm.keys()):
             logger.debug("Pipelines pass %d" % pp_pass_num)
@@ -136,6 +134,7 @@ class Baker(object):
         # All done with the workers. Close the pool and get reports.
         pool_stats = pool.close()
         total_stats = ExecutionStats()
+        total_stats.mergeStats(stats)
         for ps in pool_stats:
             if ps is not None:
                 total_stats.mergeStats(ps)
@@ -224,6 +223,7 @@ class Baker(object):
         start_time = time.perf_counter()
         job_count = 0
         realm_name = REALM_NAMES[realm].lower()
+        stats = self.app.env.stats
 
         for ppinfo in pplist:
             src = ppinfo.source
@@ -240,6 +240,8 @@ class Baker(object):
             if jobs is not None:
                 job_count += len(jobs)
                 pool.queueJobs(jobs)
+
+        stats.stepTimer('WorkerTastPut', time.perf_counter() - start_time)
 
         if job_count == 0:
             logger.debug("No jobs queued! Bailing out of this bake pass.")
@@ -272,6 +274,8 @@ class Baker(object):
                     job_count += len(jobs)
                     pool.userdata.next_pass_jobs[sn] = []
                     pool.queueJobs(jobs)
+
+            stats.stepTimer('WorkerTastPut', time.perf_counter() - start_time)
 
             if job_count == 0:
                 break
@@ -348,7 +352,7 @@ class Baker(object):
             e.errors.append(str(exc_data))
             record.addEntry(e)
         else:
-            e = record.getEntry(job.content_item.spec)
+            e = record.getEntry(job.record_entry_spec)
             e.errors.append(str(exc_data))
 
         record.success = False
@@ -366,3 +370,26 @@ class _PoolUserData:
         self.records = ppmngr.record_histories.current
         self.cur_pass = 0
         self.next_pass_jobs = {}
+
+
+def _get_pipeline_infos_by_pass_and_realm(pp_infos):
+    pp_by_pass_and_realm = {}
+    for pp_info in pp_infos:
+        pp_pass_num = pp_info.pipeline.PASS_NUM
+        if isinstance(pp_pass_num, list):
+            for ppn in pp_pass_num:
+                _add_pipeline_info_to_pass_and_realm_dict(
+                    ppn, pp_info, pp_by_pass_and_realm)
+        else:
+            _add_pipeline_info_to_pass_and_realm_dict(
+                pp_pass_num, pp_info, pp_by_pass_and_realm)
+    return pp_by_pass_and_realm
+
+
+def _add_pipeline_info_to_pass_and_realm_dict(pp_pass_num, pp_info,
+                                              pp_by_pass_and_realm):
+    pp_by_realm = pp_by_pass_and_realm.setdefault(pp_pass_num, {})
+    pplist = pp_by_realm.setdefault(
+        pp_info.pipeline.source.config['realm'], [])
+    pplist.append(pp_info)
+

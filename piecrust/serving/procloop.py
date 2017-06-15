@@ -239,11 +239,12 @@ class ProcessingLoop(threading.Thread):
         jobctx = PipelineJobCreateContext(0, record_histories)
         jobs = pp.createJobs(jobctx)
         for job in jobs:
-            ppres = PipelineJobResult()
-            ppres.record_entry = pp.createRecordEntry(job)
-
             runctx = PipelineJobRunContext(
-                job, pp, record_histories)
+                job, pp.record_name, record_histories)
+
+            ppres = PipelineJobResult()
+            ppres.record_entry = pp.createRecordEntry(job, runctx)
+
             try:
                 pp.run(job, runctx, ppres)
             except Exception as e:

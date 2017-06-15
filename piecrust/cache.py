@@ -191,8 +191,12 @@ class MemCache(object):
             self._hits += 1
             return item
 
-        if (self.fs_cache is not None and
-                fs_cache_time is not None):
+        if self.fs_cache is not None:
+            if fs_cache_time is None:
+                raise ValueError(
+                    "No file-system cache time was given for '%s'. "
+                    "This would result in degraded performance." % key)
+
             # Try first from the file-system cache.
             fs_key = _make_fs_cache_key(key)
             if (fs_key not in self._invalidated_fs_items and
