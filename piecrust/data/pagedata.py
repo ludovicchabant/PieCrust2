@@ -162,15 +162,23 @@ class PageData(LazyPageConfigData):
 
     def _load(self):
         page = self._page
+        set_val = self._setValue
+
         dt = page.datetime
         for k, v in page.source_metadata.items():
-            self._setValue(k, v)
-        self._setValue('url', self._page.getUri(self._ctx.sub_num))
-        self._setValue('timestamp', time.mktime(dt.timetuple()))
-        self._setValue('datetime', {
+            set_val(k, v)
+        set_val('url', page.getUri(self._ctx.sub_num))
+        set_val('timestamp', time.mktime(dt.timetuple()))
+        set_val('datetime', {
             'year': dt.year, 'month': dt.month, 'day': dt.day,
             'hour': dt.hour, 'minute': dt.minute, 'second': dt.second})
-        date_format = page.app.config.get('site/date_format')
-        if date_format:
-            self._setValue('date', page.datetime.strftime(date_format))
 
+        self._mapLoader('date', _load_date)
+
+
+def _load_date(data, name):
+    page = data._page
+    date_format = page.app.config.get('site/date_format')
+    if date_format:
+        return page.datetime.strftime(date_format)
+    return None

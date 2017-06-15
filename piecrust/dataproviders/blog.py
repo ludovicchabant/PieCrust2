@@ -93,14 +93,15 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
 
         for item in source.getAllContents():
             post = app.getPage(source, item)
+            post_dt = post.datetime
 
-            year = post.datetime.strftime('%Y')
-            month = post.datetime.strftime('%B %Y')
+            year = post_dt.year
+            month = (post_dt.month, post_dt.year)
 
             posts_this_year = yearly_index.get(year)
             if posts_this_year is None:
                 timestamp = time.mktime(
-                    (post.datetime.year, 1, 1, 0, 0, 0, 0, 0, -1))
+                    (post_dt.year, 1, 1, 0, 0, 0, 0, 0, -1))
                 posts_this_year = BlogArchiveEntry(
                     source, page, year, timestamp)
                 yearly_index[year] = posts_this_year
@@ -109,7 +110,7 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
             posts_this_month = monthly_index.get(month)
             if posts_this_month is None:
                 timestamp = time.mktime(
-                    (post.datetime.year, post.datetime.month, 1,
+                    (post_dt.year, post_dt.month, 1,
                      0, 0, 0, 0, 0, -1))
                 posts_this_month = BlogArchiveEntry(
                     source, page, month, timestamp)
