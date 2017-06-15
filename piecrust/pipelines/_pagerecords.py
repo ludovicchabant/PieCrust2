@@ -137,6 +137,8 @@ sub_flag_descriptions = {
 
 
 def _describe_render_info(ri):
+    if ri is None:
+        return '<null>'
     return {
         'UsedPagination': ri.used_pagination,
         'PaginationHasMore': ri.pagination_has_more,
