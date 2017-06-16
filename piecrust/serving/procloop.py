@@ -7,6 +7,7 @@ import logging
 import itertools
 import threading
 from piecrust import CONFIG_PATH, THEME_CONFIG_PATH
+from piecrust.chefutil import format_timed_scope
 from piecrust.pipelines.base import (
     PipelineJobCreateContext, PipelineJobRunContext, PipelineJobResult,
     PipelineManager)
@@ -151,7 +152,11 @@ class ProcessingLoop(threading.Thread):
                         found_new_or_modified = True
                         break
                 if found_new_or_modified:
-                    self._runPipelines(procinfo.source)
+                    with format_timed_scope(
+                            logger,
+                            "change detected, reprocessed '%s'." %
+                            procinfo.source.name):
+                        self._runPipelines(procinfo.source)
 
             time.sleep(self.interval)
 
@@ -250,9 +255,9 @@ class ProcessingLoop(threading.Thread):
             except Exception as e:
                 ppres.record_entry.errors.append(str(e))
 
-            if ppres.next_pass_job is not None:
+            if ppres.next_step_job is not None:
                 logger.error("The processing loop for the server "
-                             "doesn't support multi-pass pipelines.")
+                             "doesn't support multi-step pipelines.")
 
             cr.addEntry(ppres.record_entry)
             if not ppres.record_entry.success:
