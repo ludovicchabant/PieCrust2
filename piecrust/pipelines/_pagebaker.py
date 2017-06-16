@@ -6,6 +6,7 @@ import threading
 import urllib.parse
 from piecrust.pipelines._pagerecords import SubPagePipelineRecordEntry
 from piecrust.rendering import RenderingContext, render_page
+from piecrust.sources.base import AbortedSourceUseError
 from piecrust.uriutil import split_uri
 
 
@@ -78,7 +79,6 @@ class PageBaker(object):
 
             # Create the sub-entry for the bake record.
             cur_sub_entry = SubPagePipelineRecordEntry(sub_uri, out_path)
-            cur_entry.subs.append(cur_sub_entry)
 
             # Find a corresponding sub-entry in the previous bake record.
             prev_sub_entry = None
@@ -97,6 +97,7 @@ class PageBaker(object):
             if bake_status == STATUS_CLEAN:
                 cur_sub_entry.render_info = prev_sub_entry.copyRenderInfo()
                 cur_sub_entry.flags = SubPagePipelineRecordEntry.FLAG_NONE
+                cur_entry.subs.append(cur_sub_entry)
 
                 if prev_entry.num_subs >= cur_sub + 1:
                     cur_sub += 1
@@ -118,6 +119,8 @@ class PageBaker(object):
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 rp = self._bakeSingle(page, cur_sub, out_path)
+            except AbortedSourceUseError:
+                raise
             except Exception as ex:
                 logger.exception(ex)
                 raise BakingError("%s: error baking '%s'." %
@@ -126,6 +129,7 @@ class PageBaker(object):
             # Record what we did.
             cur_sub_entry.flags |= SubPagePipelineRecordEntry.FLAG_BAKED
             cur_sub_entry.render_info = rp.copyRenderInfo()
+            cur_entry.subs.append(cur_sub_entry)
 
             # Copy page assets.
             if (cur_sub == 1 and

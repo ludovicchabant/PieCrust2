@@ -2,8 +2,6 @@ import logging
 from piecrust.pipelines.base import ContentPipeline
 from piecrust.pipelines._pagebaker import PageBaker
 from piecrust.pipelines._pagerecords import PagePipelineRecordEntry
-from piecrust.rendering import (
-    RenderingContext, render_page_segments)
 from piecrust.sources.base import AbortedSourceUseError
 
 
@@ -35,11 +33,13 @@ class PagePipeline(ContentPipeline):
         existing.subs = record_entry.subs
 
     def run(self, job, ctx, result):
-        pass_name = job.data.get('pass', 0)
-        if pass_name == 0:
-            self._renderSegmentsOrPostpone(job.content_item, ctx, result)
-        elif pass_name == 1:
-            self._fullRender(job.content_item, ctx, result)
+        step_num = job.step_num
+        if step_num == 0:
+            self._loadPage(job.content_item, ctx, result)
+        elif step_num == 1:
+            self._renderOrPostpone(job.content_item, ctx, result)
+        elif step_num == 2:
+            self._renderAlways(job.content_item, ctx, result)
 
     def getDeletions(self, ctx):
         for prev, cur in ctx.record_history.diffs:
@@ -59,37 +59,35 @@ class PagePipeline(ContentPipeline):
     def shutdown(self):
         self._pagebaker.stopWriterQueue()
 
-    def _renderSegmentsOrPostpone(self, content_item, ctx, result):
+    def _loadPage(self, content_item, ctx, result):
+        logger.debug("Loading page: %s" % content_item.spec)
+        page = self.app.getPage(self.source, content_item)
+        record_entry = result.record_entry
+        record_entry.config = page.config.getAll()
+        record_entry.timestamp = page.datetime.timestamp()
+        result.next_step_job = self.createJob(content_item)
+
+    def _renderOrPostpone(self, content_item, ctx, result):
         # Here our job is to render the page's segments so that they're
         # cached in memory and on disk... unless we detect that the page
         # is using some other sources, in which case we abort and we'll try
         # again on the second pass.
-        logger.debug("Rendering segments for: %s" % content_item.spec)
-        record_entry = result.record_entry
-        stats = self.app.env.stats
-
+        logger.debug("Conditional render for: %s" % content_item.spec)
         page = self.app.getPage(self.source, content_item)
-        record_entry.config = page.config.getAll()
-        record_entry.timestamp = page.datetime.timestamp()
-
-        rdrctx = RenderingContext(page)
+        prev_entry = ctx.previous_entry
+        cur_entry = result.record_entry
         self.app.env.abort_source_use = True
         try:
-            render_page_segments(rdrctx)
+            self._pagebaker.bake(page, prev_entry, cur_entry)
         except AbortedSourceUseError:
             logger.debug("Page was aborted for using source: %s" %
                          content_item.spec)
-            stats.stepCounter("SourceUseAbortions")
+            self.app.env.stats.stepCounter("SourceUseAbortions")
+            result.next_step_job = self.createJob(content_item)
         finally:
             self.app.env.abort_source_use = False
 
-        result.next_pass_job = self.createJob(content_item)
-        result.next_pass_job.data.update({
-            'pass': 1,
-            'record_entry': record_entry
-        })
-
-    def _fullRender(self, content_item, ctx, result):
+    def _renderAlways(self, content_item, ctx, result):
         logger.debug("Full render for: %s" % content_item.spec)
         page = self.app.getPage(self.source, content_item)
         prev_entry = ctx.previous_entry

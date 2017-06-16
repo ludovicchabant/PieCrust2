@@ -145,7 +145,7 @@ class BlogArchivesPipelineRecordEntry(PagePipelineRecordEntry):
 
 class BlogArchivesPipeline(ContentPipeline):
     PIPELINE_NAME = 'blog_archives'
-    PASS_NUM = 1
+    PASS_NUM = 10
     RECORD_ENTRY_CLASS = BlogArchivesPipelineRecordEntry
 
     def __init__(self, source, ctx):

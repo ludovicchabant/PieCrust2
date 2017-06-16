@@ -6,6 +6,7 @@ from piecrust.data.builder import (
     DataBuildingContext, build_page_data, add_layout_data)
 from piecrust.fastpickle import _pickle_object, _unpickle_object
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
+from piecrust.sources.base import AbortedSourceUseError
 
 
 logger = logging.getLogger(__name__)
@@ -127,6 +128,10 @@ class RenderingContextStack(object):
         self._ctx_stack = []
 
     @property
+    def is_empty(self):
+        return len(self._ctx_stack) == 0
+
+    @property
     def current_ctx(self):
         if len(self._ctx_stack) == 0:
             return None
@@ -217,6 +222,8 @@ def render_page(ctx):
                 layout_result['pass_info'])
         return rp
 
+    except AbortedSourceUseError:
+        raise
     except Exception as ex:
         if ctx.app.debug:
             raise
@@ -234,6 +241,14 @@ def render_page_segments(ctx):
     stats = env.stats
 
     stack = env.render_ctx_stack
+
+    if env.abort_source_use and not stack.is_empty:
+        cur_spec = ctx.page.content_spec
+        from_spec = stack.current_ctx.page.content_spec
+        logger.debug("Aborting rendering of '%s' from: %s." %
+                     (cur_spec, from_spec))
+        raise AbortedSourceUseError()
+
     stack.pushCtx(ctx)
 
     page = ctx.page

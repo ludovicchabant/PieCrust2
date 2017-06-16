@@ -239,7 +239,7 @@ class TaxonomyPipelineRecordEntry(PagePipelineRecordEntry):
 
 class TaxonomyPipeline(ContentPipeline):
     PIPELINE_NAME = 'taxonomy'
-    PASS_NUM = 1
+    PASS_NUM = 10
     RECORD_ENTRY_CLASS = TaxonomyPipelineRecordEntry
 
     def __init__(self, source, ctx):

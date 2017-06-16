@@ -1,6 +1,7 @@
 import time
 import logging
 import collections.abc
+from piecrust.sources.base import AbortedSourceUseError
 
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ class LazyPageConfigData(collections.abc.Mapping):
         if loader is not None:
             try:
                 self._values[name] = loader(self, name)
-            except LazyPageConfigLoaderHasNoValue:
+            except (LazyPageConfigLoaderHasNoValue, AbortedSourceUseError):
                 raise
             except Exception as ex:
                 logger.exception(ex)
@@ -90,7 +91,7 @@ class LazyPageConfigData(collections.abc.Mapping):
         if loader is not None:
             try:
                 self._values[name] = loader(self, name)
-            except LazyPageConfigLoaderHasNoValue:
+            except (LazyPageConfigLoaderHasNoValue, AbortedSourceUseError):
                 raise
             except Exception as ex:
                 logger.exception(ex)

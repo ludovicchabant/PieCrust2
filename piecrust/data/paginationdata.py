@@ -1,6 +1,7 @@
 import time
 import logging
 from piecrust.data.pagedata import LazyPageConfigData
+from piecrust.sources.base import AbortedSourceUseError
 
 
 logger = logging.getLogger(__name__)
@@ -67,6 +68,8 @@ def _load_rendered_segment(data, name):
             ctx = RenderingContext(page)
             render_result = render_page_segments(ctx)
             segs = render_result.segments
+        except AbortedSourceUseError:
+            raise
         except Exception as ex:
             logger.exception(ex)
             raise Exception(

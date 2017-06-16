@@ -214,11 +214,11 @@ class Baker(object):
             return True
 
     def _bakeRealm(self, pool, record_histories, pp_pass_num, realm, pplist):
-        # Start with the first pass, where we iterate on the content sources'
+        # Start with the first step, where we iterate on the content sources'
         # items and run jobs on those.
-        pool.userdata.cur_pass = 0
-        next_pass_jobs = {}
-        pool.userdata.next_pass_jobs = next_pass_jobs
+        pool.userdata.cur_step = 0
+        next_step_jobs = {}
+        pool.userdata.next_step_jobs = next_step_jobs
 
         start_time = time.perf_counter()
         job_count = 0
@@ -231,10 +231,10 @@ class Baker(object):
 
             logger.debug(
                 "Queuing jobs for source '%s' using pipeline '%s' "
-                "(%s, pass 0)." %
+                "(%s, step 0)." %
                 (src.name, pp.PIPELINE_NAME, realm_name))
 
-            next_pass_jobs[src.name] = []
+            next_step_jobs[src.name] = []
             jcctx = PipelineJobCreateContext(pp_pass_num, record_histories)
             jobs = pp.createJobs(jcctx)
             if jobs is not None:
@@ -250,29 +250,29 @@ class Baker(object):
         pool.wait()
 
         logger.info(format_timed(
-            start_time, "%d pipeline jobs completed (%s, pass 0)." %
+            start_time, "%d pipeline jobs completed (%s, step 0)." %
             (job_count, realm_name)))
 
         # Now let's see if any job created a follow-up job. Let's keep
         # processing those jobs as long as they create new ones.
-        pool.userdata.cur_pass = 1
+        pool.userdata.cur_step = 1
         while True:
-            # Make a copy of out next pass jobs and reset the list, so
+            # Make a copy of out next step jobs and reset the list, so
             # the first jobs to be processed don't mess it up as we're
             # still iterating on it.
-            next_pass_jobs = pool.userdata.next_pass_jobs
-            pool.userdata.next_pass_jobs = {}
+            next_step_jobs = pool.userdata.next_step_jobs
+            pool.userdata.next_step_jobs = {}
 
             start_time = time.perf_counter()
             job_count = 0
 
-            for sn, jobs in next_pass_jobs.items():
+            for sn, jobs in next_step_jobs.items():
                 if jobs:
                     logger.debug(
-                        "Queuing jobs for source '%s' (%s, pass %d)." %
-                        (sn, realm_name, pool.userdata.cur_pass))
+                        "Queuing jobs for source '%s' (%s, step %d)." %
+                        (sn, realm_name, pool.userdata.cur_step))
                     job_count += len(jobs)
-                    pool.userdata.next_pass_jobs[sn] = []
+                    pool.userdata.next_step_jobs[sn] = []
                     pool.queueJobs(jobs)
 
             stats.stepTimer('WorkerTastPut', time.perf_counter() - start_time)
@@ -284,10 +284,10 @@ class Baker(object):
 
             logger.info(format_timed(
                 start_time,
-                "%d pipeline jobs completed (%s, pass %d)." %
-                (job_count, realm_name, pool.userdata.cur_pass)))
+                "%d pipeline jobs completed (%s, step %d)." %
+                (job_count, realm_name, pool.userdata.cur_step)))
 
-            pool.userdata.cur_pass += 1
+            pool.userdata.cur_step += 1
 
     def _logErrors(self, item_spec, errors):
         logger.error("Errors found in %s:" % item_spec)
@@ -319,21 +319,20 @@ class Baker(object):
         return pool
 
     def _handleWorkerResult(self, job, res, userdata):
-        cur_pass = userdata.cur_pass
+        cur_step = userdata.cur_step
         record = userdata.records.getRecord(job.record_name)
 
-        if cur_pass == 0:
+        if cur_step == 0:
             record.addEntry(res.record_entry)
         else:
             ppinfo = userdata.ppmngr.getPipeline(job.source_name)
-            ppmrctx = PipelineMergeRecordContext(
-                record, job, cur_pass)
+            ppmrctx = PipelineMergeRecordContext(record, job, cur_step)
             ppinfo.pipeline.mergeRecordEntry(res.record_entry, ppmrctx)
 
-        npj = res.next_pass_job
+        npj = res.next_step_job
         if npj is not None:
-            npj.data['pass'] = cur_pass + 1
-            userdata.next_pass_jobs[job.source_name].append(npj)
+            npj.step_num = cur_step + 1
+            userdata.next_step_jobs[job.source_name].append(npj)
 
         if not res.record_entry.success:
             record.success = False
@@ -341,18 +340,21 @@ class Baker(object):
             self._logErrors(job.content_item.spec, res.record_entry.errors)
 
     def _handleWorkerError(self, job, exc_data, userdata):
-        cur_pass = userdata.cur_pass
+        cur_step = userdata.cur_step
         record = userdata.records.getRecord(job.record_name)
 
-        if cur_pass == 0:
+        record_entry_spec = job.content_item.metadata.get(
+            'record_entry_spec', job.content_item.spec)
+
+        if cur_step == 0:
             ppinfo = userdata.ppmngr.getPipeline(job.source_name)
             entry_class = ppinfo.pipeline.RECORD_ENTRY_CLASS or RecordEntry
             e = entry_class()
-            e.item_spec = job.content_item.spec
+            e.item_spec = record_entry_spec
             e.errors.append(str(exc_data))
             record.addEntry(e)
         else:
-            e = record.getEntry(job.record_entry_spec)
+            e = record.getEntry(record_entry_spec)
             e.errors.append(str(exc_data))
 
         record.success = False
@@ -368,8 +370,8 @@ class _PoolUserData:
         self.baker = baker
         self.ppmngr = ppmngr
         self.records = ppmngr.record_histories.current
-        self.cur_pass = 0
-        self.next_pass_jobs = {}
+        self.cur_step = 0
+        self.next_step_jobs = {}
 
 
 def _get_pipeline_infos_by_pass_and_realm(pp_infos):

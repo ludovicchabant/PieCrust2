@@ -39,14 +39,15 @@ class PipelineJob:
         self.source_name = pipeline.source.name
         self.record_name = pipeline.record_name
         self.content_item = content_item
+        self.step_num = 0
         self.data = {}
 
 
 class PipelineJobCreateContext:
     """ Context for create pipeline baking jobs.
     """
-    def __init__(self, pass_num, record_histories):
-        self.pass_num = pass_num
+    def __init__(self, step_num, record_histories):
+        self.step_num = step_num
         self.record_histories = record_histories
 
 
@@ -82,17 +83,17 @@ class PipelineJobResult:
     """
     def __init__(self):
         self.record_entry = None
-        self.next_pass_job = None
+        self.next_step_job = None
 
 
 class PipelineMergeRecordContext:
     """ The context for merging a record entry for a second or higher pass
         into the bake record.
     """
-    def __init__(self, record, job, pass_num):
+    def __init__(self, record, job, step_num):
         self.record = record
         self.job = job
-        self.pass_num = pass_num
+        self.step_num = step_num
 
 
 class PipelinePostJobRunContext:
