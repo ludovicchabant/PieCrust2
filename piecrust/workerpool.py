@@ -13,7 +13,7 @@ from piecrust.environment import ExecutionStats
 
 logger = logging.getLogger(__name__)
 
-use_fastqueue = True
+use_fastqueue = False
 use_fastpickle = False
 
 
@@ -197,8 +197,8 @@ class WorkerPool:
         else:
             self._task_queue = multiprocessing.SimpleQueue()
             self._result_queue = multiprocessing.SimpleQueue()
-            self._quick_put = self._task_queue._writer.send
-            self._quick_get = self._result_queue._reader.recv
+            self._quick_put = self._task_queue.put
+            self._quick_get = self._result_queue.get
 
         self._callback = callback
         self._error_callback = error_callback
