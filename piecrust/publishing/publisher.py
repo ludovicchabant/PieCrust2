@@ -1,7 +1,6 @@
 import os.path
 import time
 import logging
-import urllib.parse
 from piecrust.chefutil import format_timed
 from piecrust.publishing.base import PublishingContext
 
@@ -30,7 +29,7 @@ class Publisher(object):
         pub = self.app.getPublisher(target)
         if pub is None:
             raise InvalidPublishTargetError(
-                    "No such publish target: %s" % target)
+                "No such publish target: %s" % target)
 
         # Will we need to bake first?
         bake_first = True
@@ -61,31 +60,31 @@ class Publisher(object):
 
                 from piecrust.baking.baker import Baker
                 baker = Baker(
-                        self.app, bake_out_dir,
-                        applied_config_variant=applied_config_variant,
-                        applied_config_values=applied_config_values)
+                    self.app, bake_out_dir,
+                    applied_config_variant=applied_config_variant,
+                    applied_config_values=applied_config_values)
                 rec1 = baker.bake()
 
                 from piecrust.processing.pipeline import ProcessorPipeline
                 proc = ProcessorPipeline(
-                        self.app, bake_out_dir,
-                        applied_config_variant=applied_config_variant,
-                        applied_config_values=applied_config_values)
+                    self.app, bake_out_dir,
+                    applied_config_variant=applied_config_variant,
+                    applied_config_values=applied_config_values)
                 rec2 = proc.run()
 
                 was_baked = True
 
                 if not rec1.success or not rec2.success:
                     raise Exception(
-                            "Error during baking, aborting publishing.")
+                        "Error during baking, aborting publishing.")
                 logger.info(format_timed(bake_start_time, "Baked website."))
             else:
                 logger.info("Would bake to: %s" % bake_out_dir)
 
         # Publish!
         logger.debug(
-                "Running publish target '%s' with publisher: %s" %
-                (target, pub.PUBLISHER_NAME))
+            "Running publish target '%s' with publisher: %s" %
+            (target, pub.PUBLISHER_NAME))
         pub_start_time = time.perf_counter()
 
         ctx = PublishingContext()
@@ -99,7 +98,7 @@ class Publisher(object):
             pub.run(ctx)
         except Exception as ex:
             raise PublishingError(
-                    "Error publishing to target: %s" % target) from ex
+                "Error publishing to target: %s" % target) from ex
         finally:
             if hdlr:
                 root_logger.removeHandler(hdlr)

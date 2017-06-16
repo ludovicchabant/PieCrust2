@@ -1,9 +1,6 @@
 import os.path
 import time
-import pprint
 import logging
-import fnmatch
-import textwrap
 import datetime
 from colorama import Fore
 from piecrust.commands.base import ChefCommand
@@ -166,6 +163,7 @@ class ShowRecordCommand(ChefCommand):
             help="Show manifest entries from the record.")
 
     def run(self, ctx):
+        import fnmatch
         from piecrust.baking.baker import get_bake_records_path
         from piecrust.pipelines.records import load_records
 
@@ -281,6 +279,9 @@ def _show_stats(stats, *, full=False):
 
 
 def _print_record_entry(e):
+    import pprint
+    import textwrap
+
     logger.info(" - %s" % e.item_spec)
     logger.info("   Outputs:")
     out_paths = list(e.getAllOutputPaths())

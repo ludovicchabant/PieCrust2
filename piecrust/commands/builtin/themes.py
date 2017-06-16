@@ -1,12 +1,8 @@
 import os
 import os.path
-import shutil
 import logging
-import yaml
-from piecrust import (
-        RESOURCES_DIR, THEME_DIR, THEME_CONFIG_PATH, THEME_INFO_PATH)
+from piecrust import THEME_DIR, THEME_CONFIG_PATH, THEME_INFO_PATH
 from piecrust.commands.base import ChefCommand
-from piecrust.pathutil import SiteNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -21,34 +17,36 @@ class ThemesCommand(ChefCommand):
     def setupParser(self, parser, app):
         subparsers = parser.add_subparsers()
         p = subparsers.add_parser(
-                'info',
-                help="Provides information about the current theme.")
+            'info',
+            help="Provides information about the current theme.")
         p.set_defaults(sub_func=self._info)
 
         p = subparsers.add_parser(
-                'override',
-                help="Copies the current theme to the website for "
-                     "customization.")
+            'override',
+            help="Copies the current theme to the website for "
+            "customization.")
         p.set_defaults(sub_func=self._overrideTheme)
 
         p = subparsers.add_parser(
-                'link',
-                help="Makes a given theme the active one for the current "
-                     "website by creating a symbolic link to it from the "
-                     "'theme' directory.")
+            'link',
+            help="Makes a given theme the active one for the current "
+            "website by creating a symbolic link to it from the "
+            "'theme' directory.")
         p.add_argument(
-                'theme_dir',
-                help="The directory of the theme to link.")
+            'theme_dir',
+            help="The directory of the theme to link.")
         p.set_defaults(sub_func=self._linkTheme)
 
         p = subparsers.add_parser(
-                'unlink',
-                help="Removes the currently active theme for the website. "
-                     "This removes the symbolic link to the theme, if any, or "
-                     "deletes the theme folder if it was copied locally.")
+            'unlink',
+            help="Removes the currently active theme for the website. "
+            "This removes the symbolic link to the theme, if any, or "
+            "deletes the theme folder if it was copied locally.")
         p.set_defaults(sub_func=self._unlinkTheme)
 
     def checkedRun(self, ctx):
+        from piecrust.pathutil import SiteNotFoundError
+
         if ctx.app.root_dir is None:
             raise SiteNotFoundError(theme=ctx.app.theme_site)
 
@@ -58,6 +56,8 @@ class ThemesCommand(ChefCommand):
         ctx.args.sub_func(ctx)
 
     def _info(self, ctx):
+        import yaml
+
         theme_dir = ctx.app.theme_dir
         if not os.path.exists(theme_dir):
             logger.info("Using default theme, from: %s" % ctx.app.theme_dir)
@@ -84,6 +84,8 @@ class ThemesCommand(ChefCommand):
                     logger.info("  - %s: %s" % (str(k), str(v)))
 
     def _overrideTheme(self, ctx):
+        import shutil
+
         theme_dir = ctx.app.theme_dir
         if not theme_dir:
             logger.error("There is no theme currently applied.")
@@ -126,7 +128,7 @@ class ThemesCommand(ChefCommand):
             return 1
 
         msg = ("A theme already exists, and will be deleted. "
-                "Are you sure? [Y/n]")
+               "Are you sure? [Y/n]")
         self._doUnlinkTheme(ctx.app.root_dir, msg)
 
         theme_dir = os.path.join(ctx.app.root_dir, THEME_DIR)
@@ -139,10 +141,12 @@ class ThemesCommand(ChefCommand):
 
     def _unlinkTheme(self, ctx):
         msg = ("The active theme is local. Are you sure you want "
-                "to delete the theme directory? [Y/n]")
+               "to delete the theme directory? [Y/n]")
         self._doUnlinkTheme(ctx.app.root_dir, msg)
 
     def _doUnlinkTheme(self, root_dir, delete_message):
+        import shutil
+
         theme_dir = os.path.join(root_dir, THEME_DIR)
 
         if os.path.islink(theme_dir):

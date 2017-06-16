@@ -1,9 +1,6 @@
 import os
 import os.path
-import shutil
-import codecs
 import logging
-import yaml
 from piecrust import CACHE_DIR, RESOURCES_DIR
 from piecrust.app import CONFIG_PATH, THEME_CONFIG_PATH
 from piecrust.commands.base import ChefCommand
@@ -21,8 +18,8 @@ class InitCommand(ChefCommand):
 
     def setupParser(self, parser, app):
         parser.add_argument(
-                'destination',
-                help="The destination directory in which to create the website.")
+            'destination',
+            help="The destination directory in which to create the website.")
 
     def run(self, ctx):
         destination = ctx.args.destination
@@ -41,7 +38,8 @@ class InitCommand(ChefCommand):
 
         tpl_path = os.path.join(RESOURCES_DIR, 'webinit', CONFIG_PATH)
         if ctx.args.theme:
-            tpl_path = os.path.join(RESOURCES_DIR, 'webinit', THEME_CONFIG_PATH)
+            tpl_path = os.path.join(RESOURCES_DIR, 'webinit',
+                                    THEME_CONFIG_PATH)
         with open(tpl_path, 'r', encoding='utf-8') as fp:
             config_text = fp.read()
 
@@ -59,6 +57,8 @@ class PurgeCommand(ChefCommand):
         pass
 
     def run(self, ctx):
+        import shutil
+
         cache_dir = os.path.join(ctx.app.root_dir, CACHE_DIR)
         if cache_dir and os.path.isdir(cache_dir):
             logger.info("Purging cache: %s" % cache_dir)

@@ -16,8 +16,8 @@ class BuiltInPlugin(PieCrustPlugin):
         from piecrust.commands.builtin.plugins import PluginsCommand
         from piecrust.commands.builtin.publishing import PublishCommand
         from piecrust.commands.builtin.scaffolding import PrepareCommand
-        from piecrust.commands.builtin.serving import (ServeCommand)
-        from piecrust.commands.builtin.themes import (ThemesCommand)
+        from piecrust.commands.builtin.serving import ServeCommand
+        from piecrust.commands.builtin.themes import ThemesCommand
         from piecrust.commands.builtin.util import (
             InitCommand, PurgeCommand, ImportCommand)
 

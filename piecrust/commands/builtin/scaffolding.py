@@ -1,15 +1,7 @@
 import os
 import os.path
-import io
-import time
-import glob
 import logging
-import textwrap
-from piecrust import RESOURCES_DIR
-from piecrust.chefutil import print_help_item
 from piecrust.commands.base import ExtendableChefCommand, ChefCommandExtension
-from piecrust.pathutil import SiteNotFoundError
-from piecrust.sources.fs import FSContentSourceBase
 
 
 logger = logging.getLogger(__name__)
@@ -56,6 +48,8 @@ class PrepareCommand(ExtendableChefCommand):
             p.set_defaults(sub_func=self._doRun)
 
     def checkedRun(self, ctx):
+        from piecrust.pathutil import SiteNotFoundError
+
         if ctx.app.root_dir is None:
             raise SiteNotFoundError(theme=ctx.app.theme_site)
 
@@ -65,7 +59,9 @@ class PrepareCommand(ExtendableChefCommand):
         ctx.args.sub_func(ctx)
 
     def _doRun(self, ctx):
+        import time
         from piecrust.uriutil import multi_replace
+        from piecrust.sources.fs import FSContentSourceBase
 
         if not hasattr(ctx.args, 'source'):
             raise Exception("No source specified. "
@@ -144,6 +140,8 @@ class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
         return descs[name]
 
     def getTemplate(self, app, name):
+        from piecrust import RESOURCES_DIR
+
         assert name in ['default', 'rss', 'atom']
         src_path = os.path.join(RESOURCES_DIR, 'prepare', '%s.html' % name)
         with open(src_path, 'r', encoding='utf8') as fp:
@@ -174,6 +172,8 @@ class UserDefinedPrepareTemplatesCommandExtension(ChefCommandExtension):
         return "User-defined template."
 
     def getTemplate(self, app, name):
+        import glob
+
         templates_dir = self._getTemplatesDir(app)
         pattern = os.path.join(templates_dir, '%s.*' % name)
         matches = glob.glob(pattern)
@@ -196,6 +196,10 @@ class DefaultPrepareTemplatesHelpTopic(ChefCommandExtension):
                  "Available templates for the 'prepare' command.")]
 
     def getHelpTopic(self, topic, app):
+        import io
+        import textwrap
+        from piecrust.chefutil import print_help_item
+
         with io.StringIO() as tplh:
             extensions = app.plugin_loader.getCommandExtensions()
             for e in extensions:

@@ -1,9 +1,6 @@
 import os.path
 import logging
-import fnmatch
 from piecrust.commands.base import ChefCommand
-from piecrust.configuration import ConfigurationDumper
-from piecrust.sources.fs import FSContentSourceBase
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +32,9 @@ class ShowConfigCommand(ChefCommand):
             nargs='?')
 
     def run(self, ctx):
+        import yaml
+        from piecrust.configuration import ConfigurationDumper
+
         if ctx.args.path:
             show = ctx.app.config.get(ctx.args.path)
         else:
@@ -42,7 +42,6 @@ class ShowConfigCommand(ChefCommand):
 
         if show is not None:
             if isinstance(show, (dict, list)):
-                import yaml
                 out = yaml.dump(show, default_flow_style=False,
                                 Dumper=ConfigurationDumper)
                 logger.info(out)
@@ -147,6 +146,9 @@ class FindCommand(ChefCommand):
             action='store_true')
 
     def run(self, ctx):
+        import fnmatch
+        from piecrust.sources.fs import FSContentSourceBase
+
         pattern = ctx.args.pattern
         sources = list(ctx.app.sources)
         if not ctx.args.exact and pattern is not None:
