@@ -182,7 +182,7 @@ class ShowRecordCommand(ChefCommand):
 
         out_pattern = None
         if ctx.args.out_path:
-            out_pattern = '*%s*' % ctx.args.out.strip('*')
+            out_pattern = '*%s*' % ctx.args.out_path.strip('*')
 
         pipelines = ctx.args.pipelines
         if not pipelines:
