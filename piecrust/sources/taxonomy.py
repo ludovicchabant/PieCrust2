@@ -1,4 +1,5 @@
 import re
+import copy
 import logging
 import unidecode
 from piecrust.configuration import ConfigurationError
@@ -309,6 +310,7 @@ class TaxonomyPipeline(ContentPipeline):
         # find any entry for those things, and figure that we need to delete
         # their outputs.
         analyzer = self._analyzer
+        record = ctx.record_history.current
         for prev, cur in ctx.record_history.diffs:
             # Only consider entries that don't have any current version
             # (i.e. they weren't baked just now).
@@ -317,9 +319,10 @@ class TaxonomyPipeline(ContentPipeline):
                 if analyzer.isKnownSlugifiedTerm(t):
                     logger.debug("Creating unbaked entry for '%s' term: %s" %
                                  (self.taxonomy.name, t))
-                    cur.term = t
-                    cur.out_paths = list(prev.out_paths)
-                    cur.errors = list(prev.errors)
+                    cur = copy.deepcopy(prev)
+                    cur.flags = \
+                        PagePipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN
+                    record.addEntry(cur)
                 else:
                     logger.debug("Term '%s' in '%s' isn't used anymore." %
                                  (t, self.taxonomy.name))
@@ -381,15 +384,16 @@ class _TaxonomyTermsAnalyzer(object):
                 entries.append(prev_entry)
 
             for e in entries:
-                entry_terms = e.config.get(taxonomy.setting_name)
-                if entry_terms:
-                    if not taxonomy.is_multiple:
-                        self._single_dirty_slugified_terms.add(
-                            slugifier.slugify(entry_terms))
-                    else:
-                        self._single_dirty_slugified_terms.update(
-                            (slugifier.slugify(t)
-                             for t in entry_terms))
+                if e.was_any_sub_baked:
+                    entry_terms = e.config.get(taxonomy.setting_name)
+                    if entry_terms:
+                        if not taxonomy.is_multiple:
+                            self._single_dirty_slugified_terms.add(
+                                slugifier.slugify(entry_terms))
+                        else:
+                            self._single_dirty_slugified_terms.update(
+                                (slugifier.slugify(t)
+                                 for t in entry_terms))
 
         self._all_dirty_slugified_terms = list(
             self._single_dirty_slugified_terms)
