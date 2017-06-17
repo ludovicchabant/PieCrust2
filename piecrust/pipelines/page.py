@@ -26,6 +26,54 @@ class PagePipeline(ContentPipeline):
                                     force=self.ctx.force)
         self._pagebaker.startWriterQueue()
 
+    def createJobs(self, ctx):
+        used_paths = {}
+        for rec in ctx.record_histories.current.records:
+            src_name = rec.name.split('@')[0]
+            for e in rec.getEntries():
+                paths = e.getAllOutputPaths()
+                if paths is not None:
+                    for p in paths:
+                        used_paths[p] = (src_name, e)
+
+        jobs = []
+        route = self.source.route
+        pretty_urls = self.app.config.get('site/pretty_urls')
+        record = ctx.record_histories.current.getRecord(self.record_name)
+
+        for item in self.source.getAllContents():
+            route_params = item.metadata['route_params']
+            uri = route.getUri(route_params)
+            path = self._pagebaker.getOutputPath(uri, pretty_urls)
+            override = used_paths.get(path)
+            if override is not None:
+                override_source_name, override_entry = override
+                override_source = self.app.getSource(override_source_name)
+                if override_source.config['realm'] == \
+                        self.source.config['realm']:
+                    logger.error(
+                        "Page '%s' would get baked to '%s' "
+                        "but is overriden by '%s'." %
+                        (item.spec, path, override_entry.item_spec))
+                else:
+                    logger.debug(
+                        "Page '%s' would get baked to '%s' "
+                        "but is overriden by '%s'." %
+                        (item.spec, path, override_entry.item_spec))
+
+                entry = PagePipelineRecordEntry()
+                entry.item_spec = item.spec
+                entry.flags |= PagePipelineRecordEntry.FLAG_OVERRIDEN
+                record.addEntry(entry)
+
+                continue
+
+            jobs.append(self.createJob(item))
+
+        if len(jobs) > 0:
+            return jobs
+        return None
+
     def mergeRecordEntry(self, record_entry, ctx):
         existing = ctx.record.getEntry(record_entry.item_spec)
         existing.errors += record_entry.errors
