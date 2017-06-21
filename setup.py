@@ -42,7 +42,7 @@ class PyTest(test):
 class GenerateVersionCommand(Command):
     description = 'generates a version file'
     user_options = [
-            ('force=', 'f', 'force a specific version number')]
+        ('force=', 'f', 'force a specific version number')]
 
     def initialize_options(self):
         self.force = None
@@ -146,8 +146,8 @@ try:
     version = APP_VERSION
 except ImportError:
     print(
-            "WARNING: Can't get version from version file. "
-            "Will use version `0.0`.")
+        "WARNING: Can't get version from version file. "
+        "Will use version `0.0`.")
     version = '0.0'
 
 
@@ -156,47 +156,47 @@ tests_require = readlines('dev-requirements.txt')
 
 
 setup(
-        name="PieCrust",
-        version=version,
-        description="A powerful static website generator and lightweight CMS.",
-        long_description=read('README.rst') + '\n\n' + read('CHANGELOG.rst'),
-        author="Ludovic Chabant",
-        author_email="ludovic@chabant.com",
-        license="Apache License 2.0",
-        url="http://bolt80.com/piecrust",
-        keywords=' '.join([
-            'python',
-            'website',
-            'generator',
-            'blog',
-            'portfolio',
-            'gallery',
-            'cms'
-            ]),
-        packages=find_packages(exclude=['garcon', 'tests']),
-        include_package_data=True,
-        zip_safe=False,
-        install_requires=install_requires,
-        tests_require=tests_require,
-        cmdclass={
-            'test': PyTest,
-            'version': GenerateVersionCommand
-            },
-        classifiers=[
-            'Development Status :: 4 - Beta',
-            'License :: OSI Approved :: Apache Software License',
-            'Environment :: Console',
-            'Intended Audience :: Developers',
-            'Intended Audience :: System Administrators',
-            'Natural Language :: English',
-            'Operating System :: MacOS :: MacOS X',
-            'Operating System :: POSIX :: Linux',
-            'Operating System :: Microsoft :: Windows',
-            'Programming Language :: Python :: 3 :: Only',
-            'Topic :: Internet :: WWW/HTTP :: Site Management'
-            ],
-        entry_points={'console_scripts': [
-            'chef = piecrust.main:main'
-            ]}
-        )
+    name="PieCrust",
+    version=version,
+    description="A powerful static website generator and lightweight CMS.",
+    long_description=read('README.rst') + '\n\n' + read('CHANGELOG.rst'),
+    author="Ludovic Chabant",
+    author_email="ludovic@chabant.com",
+    license="Apache License 2.0",
+    url="http://bolt80.com/piecrust",
+    keywords=' '.join([
+        'python',
+        'website',
+        'generator',
+        'blog',
+        'portfolio',
+        'gallery',
+        'cms'
+    ]),
+    packages=find_packages(exclude=['garcon', 'tests']),
+    include_package_data=True,
+    zip_safe=False,
+    install_requires=install_requires,
+    tests_require=tests_require,
+    cmdclass={
+        'test': PyTest,
+        'version': GenerateVersionCommand
+    },
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'License :: OSI Approved :: Apache Software License',
+        'Environment :: Console',
+        'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
+        'Natural Language :: English',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: POSIX :: Linux',
+        'Operating System :: Microsoft :: Windows',
+        'Programming Language :: Python :: 3 :: Only',
+        'Topic :: Internet :: WWW/HTTP :: Site Management'
+    ],
+    entry_points={'console_scripts': [
+        'chef = piecrust.main:main'
+    ]}
+)
 
