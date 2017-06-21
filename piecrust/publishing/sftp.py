@@ -1,6 +1,5 @@
 import os
 import os.path
-import socket
 import urllib.parse
 import getpass
 import logging
@@ -17,20 +16,21 @@ class SftpPublisher(Publisher):
 
     def setupPublishParser(self, parser, app):
         parser.add_argument(
-                '--force',
-                action='store_true',
-                help=("Upload the entire bake directory instead of only "
-                      "the files changed by the last bake."))
+            '--force',
+            action='store_true',
+            help=("Upload the entire bake directory instead of only "
+                  "the files changed by the last bake."))
+
+    def parseUrlTarget(self, url):
+        self.config = {'host': str(url)}
 
     def run(self, ctx):
-        remote = self.config
-        if not self.has_url_config:
-            host = self.getConfigValue('host')
-            if not host:
-                raise PublisherConfigurationError(
-                        "Publish target '%s' doesn't specify a 'host'." %
-                        self.target)
-            remote = urllib.parse.urlparse(host)
+        host = self.config.get('host')
+        if not host:
+            raise PublisherConfigurationError(
+                "Publish target '%s' doesn't specify a 'host'." %
+                self.target)
+        remote = urllib.parse.urlparse(host)
 
         hostname = remote.hostname
         port = remote.port or 22
@@ -39,16 +39,9 @@ class SftpPublisher(Publisher):
             hostname = path
             path = ''
 
-        username = remote.username
-        pkey_path = None
-
-        if not self.has_url_config:
-            if not username:
-                username = self.getConfigValue('username')
-            if not path:
-                path = self.getConfigValue('path')
-
-            pkey_path = self.getConfigValue('key')
+        username = self.config.get('username', remote.username)
+        path = self.config.get('path', path)
+        pkey_path = self.config.get('key')
 
         password = None
         if username and not ctx.preview:
@@ -65,10 +58,10 @@ class SftpPublisher(Publisher):
         sshc.load_system_host_keys()
         sshc.set_missing_host_key_policy(paramiko.WarningPolicy())
         sshc.connect(
-                hostname, port=port,
-                username=username, password=password,
-                key_filename=pkey_path,
-                look_for_keys=lfk)
+            hostname, port=port,
+            username=username, password=password,
+            key_filename=pkey_path,
+            look_for_keys=lfk)
         try:
             logger.info("Connected as %s" %
                         sshc.get_transport().get_username())
@@ -120,9 +113,11 @@ class SftpPublisher(Publisher):
                         except OSError:
                             pass
             else:
-                logger.info("Nothing to upload or delete on the remote server.")
-                logger.info("If you want to force uploading the entire website, "
-                            "use the `--force` flag.")
+                logger.info(
+                    "Nothing to upload or delete on the remote server.")
+                logger.info(
+                    "If you want to force uploading the entire website, "
+                    "use the `--force` flag.")
         else:
             logger.info("Uploading entire website...")
             for dirpath, dirnames, filenames in os.walk(ctx.bake_out_dir):
@@ -148,7 +143,7 @@ class SftpPublisher(Publisher):
             cur = os.path.join(cur, b)
             if cur not in known_dirs:
                 try:
-                    info = client.stat(cur)
+                    client.stat(cur)
                 except FileNotFoundError:
                     logger.debug("Creating remote dir: %s" % cur)
                     client.mkdir(cur)

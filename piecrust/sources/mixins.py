@@ -21,8 +21,8 @@ class SimpleAssetsSubDirMixin:
         spec_no_ext, _ = os.path.splitext(item.spec)
         assets_dir = spec_no_ext + assets_suffix
         try:
-            asset_files = osutil.listdir(assets_dir)
-        except OSError:
+            asset_files = list(osutil.listdir(assets_dir))
+        except (OSError, FileNotFoundError):
             return None
 
         assets = []

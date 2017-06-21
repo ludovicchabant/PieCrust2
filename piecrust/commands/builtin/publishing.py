@@ -55,14 +55,12 @@ class PublishCommand(ChefCommand):
         ctx.args.sub_func(ctx)
 
     def _doPublish(self, ctx):
-        from piecrust.publishing.publisher import Publisher
+        from piecrust.publishing.base import PublishingManager
 
-        pub = Publisher(ctx.app)
+        pub = PublishingManager(ctx.appfactory, ctx.app)
         pub.run(
             ctx.args.target,
             preview=ctx.args.preview,
             extra_args=ctx.args,
-            log_file=ctx.args.log_publisher,
-            applied_config_variant=ctx.config_variant,
-            applied_config_values=ctx.config_values)
+            log_file=ctx.args.log_publisher)
 

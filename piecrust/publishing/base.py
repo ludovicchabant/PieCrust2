@@ -1,10 +1,7 @@
 import os.path
-import shlex
-import urllib.parse
+import time
 import logging
-import threading
-import subprocess
-from piecrust.configuration import try_get_dict_value
+from piecrust.chefutil import format_timed
 
 
 logger = logging.getLogger(__name__)
@@ -18,17 +15,17 @@ class PublisherConfigurationError(Exception):
     pass
 
 
-class PublishingContext(object):
+class PublishingContext:
     def __init__(self):
         self.bake_out_dir = None
-        self.bake_record = None
+        self.bake_records = None
         self.processing_record = None
         self.was_baked = False
         self.preview = False
         self.args = None
 
 
-class Publisher(object):
+class Publisher:
     PUBLISHER_NAME = 'undefined'
     PUBLISHER_SCHEME = None
 
@@ -36,90 +33,129 @@ class Publisher(object):
         self.app = app
         self.target = target
         self.config = config
-        self.has_url_config = isinstance(config, urllib.parse.ParseResult)
         self.log_file_path = None
 
     def setupPublishParser(self, parser, app):
         return
 
-    def getConfigValue(self, name, default_value=None):
-        if self.has_url_config:
-            raise Exception("This publisher only has a URL configuration.")
-        return try_get_dict_value(self.config, name, default=default_value)
+    def parseUrlTarget(self, url):
+        raise NotImplementedError()
 
     def run(self, ctx):
         raise NotImplementedError()
 
     def getBakedFiles(self, ctx):
-        for e in ctx.bake_record.entries:
-            for sub in e.subs:
-                if sub.was_baked:
-                    yield sub.out_path
-        for e in ctx.processing_record.entries:
-            if e.was_processed:
-                yield from [os.path.join(ctx.processing_record.out_dir, p)
-                        for p in e.rel_outputs]
+        for rec in ctx.bake_records.records:
+            for e in rec.getEntries():
+                paths = e.getAllOutputPaths()
+                if paths is not None:
+                    yield from paths
 
     def getDeletedFiles(self, ctx):
-        yield from ctx.bake_record.deleted
-        yield from ctx.processing_record.deleted
+        for rec in ctx.bake_records.records:
+            yield from rec.deleted_out_paths
 
 
-class ShellCommandPublisherBase(Publisher):
-    def __init__(self, app, target, config):
-        super(ShellCommandPublisherBase, self).__init__(app, target, config)
-        self.expand_user_args = True
+class InvalidPublishTargetError(Exception):
+    pass
 
-    def run(self, ctx):
-        args = self._getCommandArgs(ctx)
-        if self.expand_user_args:
-            args = [os.path.expanduser(i) for i in args]
 
-        if ctx.preview:
-            preview_args = ' '.join([shlex.quote(i) for i in args])
-            logger.info(
-                    "Would run shell command: %s" % preview_args)
-            return True
+class PublishingError(Exception):
+    pass
 
-        logger.debug(
-                "Running shell command: %s" % args)
 
-        proc = subprocess.Popen(
-                args, cwd=self.app.root_dir, bufsize=0,
-                stdout=subprocess.PIPE)
+class PublishingManager:
+    def __init__(self, appfactory, app):
+        self.appfactory = appfactory
+        self.app = app
 
-        logger.debug("Running publishing monitor for PID %d" % proc.pid)
-        thread = _PublishThread(proc)
-        thread.start()
-        proc.wait()
-        thread.join()
+    def run(self, target,
+            force=False, preview=False, extra_args=None, log_file=None):
+        start_time = time.perf_counter()
 
-        if proc.returncode != 0:
-            logger.error(
-                    "Publish process returned code %d" % proc.returncode)
+        # Get publisher for this target.
+        pub = self.app.getPublisher(target)
+        if pub is None:
+            raise InvalidPublishTargetError(
+                "No such publish target: %s" % target)
+
+        # Will we need to bake first?
+        bake_first = pub.config.get('bake', True)
+
+        # Setup logging stuff.
+        hdlr = None
+        root_logger = logging.getLogger()
+        if log_file and not preview:
+            logger.debug("Adding file handler for: %s" % log_file)
+            hdlr = logging.FileHandler(log_file, mode='w', encoding='utf8')
+            root_logger.addHandler(hdlr)
+        if not preview:
+            logger.info("Deploying to %s" % target)
         else:
-            logger.debug("Publish process returned successfully.")
+            logger.info("Previewing deployment to %s" % target)
 
-        return proc.returncode == 0
+        # Bake first is necessary.
+        records = None
+        was_baked = False
+        bake_out_dir = os.path.join(self.app.root_dir, '_pub', target)
+        if bake_first:
+            if not preview:
+                bake_start_time = time.perf_counter()
+                logger.debug("Baking first to: %s" % bake_out_dir)
 
-    def _getCommandArgs(self, ctx):
-        raise NotImplementedError()
+                from piecrust.baking.baker import Baker
+                baker = Baker(
+                    self.appfactory, self.app, bake_out_dir, force=force)
+                records = baker.bake()
+                was_baked = True
+
+                if not records.success:
+                    raise Exception(
+                        "Error during baking, aborting publishing.")
+                logger.info(format_timed(bake_start_time, "Baked website."))
+            else:
+                logger.info("Would bake to: %s" % bake_out_dir)
+
+        # Publish!
+        logger.debug(
+            "Running publish target '%s' with publisher: %s" %
+            (target, pub.PUBLISHER_NAME))
+        pub_start_time = time.perf_counter()
+
+        ctx = PublishingContext()
+        ctx.bake_out_dir = bake_out_dir
+        ctx.bake_records = records
+        ctx.was_baked = was_baked
+        ctx.preview = preview
+        ctx.args = extra_args
+        try:
+            pub.run(ctx)
+        except Exception as ex:
+            raise PublishingError(
+                "Error publishing to target: %s" % target) from ex
+        finally:
+            if hdlr:
+                root_logger.removeHandler(hdlr)
+                hdlr.close()
+
+        logger.info(format_timed(
+            pub_start_time, "Ran publisher %s" % pub.PUBLISHER_NAME))
+
+        logger.info(format_timed(start_time, 'Deployed to %s' % target))
 
 
-class _PublishThread(threading.Thread):
-    def __init__(self, proc):
-        super(_PublishThread, self).__init__(
-                name='publish_monitor', daemon=True)
-        self.proc = proc
-        self.root_logger = logging.getLogger()
+def find_publisher_class(app, name, is_scheme=False):
+    attr_name = 'PUBLISHER_SCHEME' if is_scheme else 'PUBLISHER_NAME'
+    for pub_cls in app.plugin_loader.getPublishers():
+        pub_sch = getattr(pub_cls, attr_name, None)
+        if pub_sch == name:
+            return pub_cls
+    return None
 
-    def run(self):
-        for line in iter(self.proc.stdout.readline, b''):
-            line_str = line.decode('utf8')
-            logger.info(line_str.rstrip('\r\n'))
-            for h in self.root_logger.handlers:
-                h.flush()
 
-        self.proc.communicate()
-        logger.debug("Publish monitor exiting.")
+def find_publisher_name(app, scheme):
+    pub_cls = find_publisher_class(app, scheme, True)
+    if pub_cls:
+        return pub_cls.PUBLISHER_NAME
+    return None
 

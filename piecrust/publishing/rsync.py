@@ -1,21 +1,22 @@
-from piecrust.publishing.base import ShellCommandPublisherBase
+from piecrust.publishing.shell import ShellCommandPublisherBase
 
 
 class RsyncPublisher(ShellCommandPublisherBase):
     PUBLISHER_NAME = 'rsync'
     PUBLISHER_SCHEME = 'rsync'
 
-    def _getCommandArgs(self, ctx):
-        if self.has_url_config:
-            orig = ctx.bake_out_dir
-            dest = self.config.netloc + self.config.path
-        else:
-            orig = self.getConfigValue('source', ctx.bake_out_dir)
-            dest = self.getConfigValue('destination')
+    def parseUrlTarget(self, url):
+        self.config = {
+            'destination': (url.netloc + url.path)
+        }
 
-        rsync_options = None
-        if not self.has_url_config:
-            rsync_options = self.getConfigValue('options')
+    def _getCommandArgs(self, ctx):
+        orig = self.config.get('source', ctx.bake_out_dir)
+        dest = self.config.get('destination')
+        if not dest:
+            raise Exception("No destination specified.")
+
+        rsync_options = self.config.get('options')
         if rsync_options is None:
             rsync_options = ['-avc', '--delete']
 

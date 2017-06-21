@@ -178,20 +178,25 @@ class PieCrust(object):
         publish_config = self.config.get('publish')
         if publish_config is None:
             return tgts
+
         for n, t in publish_config.items():
-            pub_type = None
-            is_scheme = False
+            pub_class = None
             if isinstance(t, dict):
                 pub_type = t.get('type')
+                pub_class = defs_by_name[pub_type]
+                pub_cfg = t
             elif isinstance(t, str):
                 comps = urllib.parse.urlparse(t)
                 pub_type = comps.scheme
-                is_scheme = True
-            cls = (defs_by_scheme.get(pub_type) if is_scheme
-                   else defs_by_name.get(pub_type))
-            if cls is None:
+                pub_class = defs_by_scheme[pub_type]
+                pub_cfg = None
+            if pub_class is None:
                 raise ConfigurationError("No such publisher: %s" % pub_type)
-            tgt = cls(self, n, t)
+
+            tgt = pub_class(self, n, pub_cfg)
+            if pub_cfg is None:
+                tgt.parseUrlTarget(comps)
+
             tgts.append(tgt)
         return tgts
 

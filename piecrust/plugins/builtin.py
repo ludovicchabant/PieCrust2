@@ -152,11 +152,13 @@ class BuiltInPlugin(PieCrustPlugin):
             WordpressXmlImporter()]
 
     def getPublishers(self):
+        from piecrust.publishing.copy import CopyPublisher
         from piecrust.publishing.sftp import SftpPublisher
         from piecrust.publishing.shell import ShellCommandPublisher
         from piecrust.publishing.rsync import RsyncPublisher
 
         return [
+            CopyPublisher,
             ShellCommandPublisher,
             SftpPublisher,
             RsyncPublisher]
