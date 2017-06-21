@@ -216,7 +216,8 @@ class Paginator(object):
 
     def _onIteration(self, it):
         if not self._pgn_set_on_ctx:
-            rcs = self._page.app.env.render_ctx_stack
-            rcs.current_ctx.setPagination(self)
-            self._pgn_set_on_ctx = True
+            rcs = self._source.app.env.render_ctx_stack
+            if rcs.current_ctx is not None:
+                rcs.current_ctx.setPagination(self)
+                self._pgn_set_on_ctx = True
 

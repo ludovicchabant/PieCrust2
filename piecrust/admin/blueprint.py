@@ -1,9 +1,7 @@
 import time
 import logging
-from flask import Blueprint, current_app, g, request
-from .configuration import (
-    FoodTruckConfigNotFoundError, get_foodtruck_config)
-from .sites import FoodTruckSites, InvalidSiteError
+from flask import Blueprint, current_app, g
+from .siteinfo import SiteInfo
 
 
 logger = logging.getLogger(__name__)
@@ -33,9 +31,9 @@ login_manager.user_loader(load_user)
 
 
 def record_login_manager(state):
-    if state.app.secret_key == 'temp-key':
+    if state.app.config['SECRET_KEY'] == 'temp-key':
         def _handler():
-            raise FoodTruckConfigNotFoundError()
+            raise Exception("No secret key has been set!")
 
         logger.debug("No secret key found, disabling website login.")
         login_manager.unauthorized_handler(_handler)
@@ -92,31 +90,12 @@ class LazySomething(object):
 
 @foodtruck_bp.before_request
 def _setup_foodtruck_globals():
-    def _get_config():
-        admin_root = current_app.config['FOODTRUCK_ROOT']
-        procedural_config = current_app.config['FOODTRUCK_PROCEDURAL_CONFIG']
-        return get_foodtruck_config(admin_root, procedural_config)
+    def _get_site():
+        root_dir = current_app.config['FOODTRUCK_ROOT']
+        url_prefix = current_app.config['FOODTRUCK_URL_PREFIX']
+        return SiteInfo(root_dir, url_prefix, debug=current_app.debug)
 
-    def _get_sites():
-        names = g.config.get('sites')
-        if not names or not isinstance(names, dict):
-            raise InvalidSiteError(
-                "No sites are defined in the configuration file.")
-
-        current = request.cookies.get('foodtruck_site_name')
-        if current is not None and current not in names:
-            current = None
-        if current is None:
-            current = next(iter(names.keys()))
-        s = FoodTruckSites(g.config, current)
-        return s
-
-    def _get_current_site():
-        return g.sites.get()
-
-    g.config = LazySomething(_get_config)
-    g.sites = LazySomething(_get_sites)
-    g.site = LazySomething(_get_current_site)
+    g.site = LazySomething(_get_site)
 
 
 @foodtruck_bp.after_request

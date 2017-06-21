@@ -23,13 +23,14 @@ def publish():
     site = g.site
     pub_cfg = copy.deepcopy(site.piecrust_app.config.get('publish', {}))
     if not pub_cfg:
-        data = {'error': "There are not publish targets defined in your "
+        data = {'error': "There are no publish targets defined in your "
                          "configuration file."}
         return render_template('error.html', **data)
 
     data = {}
     data['url_run'] = url_for('.publish')
-    data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
+    data['site_title'] = site.piecrust_app.config.get('site/title',
+                                                      "Unnamed Website")
     data['targets'] = []
     for tn in sorted(pub_cfg.keys()):
         tc = pub_cfg[tn]

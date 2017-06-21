@@ -45,6 +45,10 @@ class Assetor(collections.abc.Sequence):
         self._cacheAssets()
         return len(self._cache_list)
 
+    def _getAssetNames(self):
+        self._cacheAssets()
+        return self._cache_map.keys()
+
     def _getAssetItems(self):
         self._cacheAssets()
         return map(lambda i: i.content_item, self._cache_map.values())

@@ -18,17 +18,16 @@ def list_source(source_name, page_num):
     default_author = site.config.get('site/author')
     data = {'title': "List %s" % source_name}
     data['pages'] = []
-    pgn = Paginator(None, source, page_num=page_num, items_per_page=20)
+    pgn = Paginator(source, None, sub_num=page_num, items_per_page=20)
     for p in pgn.items:
         page_data = {
             'title': p['title'],
             'author': p.get('author', default_author),
-            'slug': p['slug'],
             'timestamp': p['timestamp'],
             'tags': p.get('tags', []),
             'category': p.get('category'),
             'source': source_name,
-            'url': url_for('.edit_page', slug=p['slug'])
+            'url': url_for('.edit_page', uri=p['slug'])
         }
         data['pages'].append(page_data)
 

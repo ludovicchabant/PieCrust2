@@ -14,7 +14,12 @@
     <tbody>
         {% for p in pages %}
         <tr>
-            <td><time class="timeago" datetime="{{p.timestamp|iso8601}}">{{p.timestamp|datetime}}</time></td>
+            <td>{% if p.timestamp > 0 %}
+                <time class="timeago" datetime="{{p.timestamp|iso8601}}">{{p.timestamp|datetime}}</time>
+                {% else %}
+                <em>no date/time</em>
+                {% endif %}
+            </td>
             <td><a href="{{p.url}}">{{p.title}}</a></td>
             <td>{{p.author}}</td>
             <td>{{p.category}}</td>

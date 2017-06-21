@@ -1,5 +1,6 @@
 from flask import g, request, url_for
 from flask.ext.login import current_user
+from piecrust.sources.interfaces import IInteractiveSource
 
 
 def get_menu_context():
@@ -10,22 +11,29 @@ def get_menu_context():
         'icon': 'speedometer'})
 
     site = g.site.piecrust_app
-    for s in site.sources:
-        if s.is_theme_source:
+    for source in site.sources:
+        if source.is_theme_source:
+            continue
+        if not isinstance(source, IInteractiveSource):
             continue
 
-        source_icon = s.config.get('admin_icon', 'document')
-        if s.name == 'pages':
-            source_icon = 'document-text'
-        elif 'blog' in s.name:
-            source_icon = 'filing'
+        # Figure out the icon to use... we do some hard-coded stuff to
+        # have something vaguely pretty out of the box.
+        source_icon = source.config.get('admin_icon')
+        if source_icon is None:
+            if source.name == 'pages':
+                source_icon = 'document-text'
+            elif 'blog' in source.name or 'posts' in source.name:
+                source_icon = 'filing'
+            else:
+                source_icon = 'document'
 
-        url_write = url_for('.write_page', source_name=s.name)
-        url_listall = url_for('.list_source', source_name=s.name)
+        url_write = url_for('.write_page', source_name=source.name)
+        url_listall = url_for('.list_source', source_name=source.name)
 
         ctx = {
             'url': url_listall,
-            'title': s.name,
+            'title': source.name,
             'icon': source_icon,
             'quicklink': {
                 'icon': 'plus-round',
@@ -44,6 +52,7 @@ def get_menu_context():
         'title': "Publish",
         'icon': 'upload'})
 
+    # TODO: re-enable settings UI at some point.
     # entries.append({
     #     'url': url_for('.settings'),
     #     'title': "Settings",

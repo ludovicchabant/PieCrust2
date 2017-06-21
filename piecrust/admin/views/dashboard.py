@@ -6,7 +6,7 @@ from flask import (
     render_template, url_for, redirect)
 from flask.ext.login import login_user, logout_user, login_required
 from piecrust.configuration import parse_config_header
-from piecrust.rendering import QualifiedPage
+from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.uriutil import split_uri
 from ..textutil import text_preview
 from ..blueprint import foodtruck_bp, load_user, after_this_request
@@ -21,16 +21,22 @@ logger = logging.getLogger(__name__)
 def index():
     data = {}
     data['sources'] = []
-    site = g.site
+
     fs_endpoints = {}
-    for source in site.piecrust_app.sources:
+
+    site = g.site
+    pcapp = site.piecrust_app
+    for source in pcapp.sources:
         if source.is_theme_source:
             continue
-        facs = source.getPageFactories()
+        if not isinstance(source, IInteractiveSource):
+            continue
+
+        items = source.getAllContents()
         src_data = {
             'name': source.name,
             'list_url': url_for('.list_source', source_name=source.name),
-            'page_count': len(facs)}
+            'page_count': len(items)}
         data['sources'].append(src_data)
 
         fe = getattr(source, 'fs_endpoint', None)
@@ -55,20 +61,9 @@ def index():
             else:
                 data['misc_files'].append(p)
 
-    data['site_name'] = site.name
-    data['site_title'] = site.piecrust_app.config.get('site/title', site.name)
+    data['site_title'] = pcapp.config.get('site/title', "Unnamed Website")
     data['url_publish'] = url_for('.publish')
-    data['url_preview'] = url_for('.preview_site_root', sitename=site.name)
-
-    data['sites'] = []
-    for s in g.sites.getall():
-        data['sites'].append({
-            'name': s.name,
-            'display_name': s.piecrust_app.config.get('site/title'),
-            'url': url_for('.index', site_name=s.name)
-        })
-    data['needs_switch'] = len(g.config.get('sites')) > 1
-    data['url_switch'] = url_for('.switch_site')
+    data['url_preview'] = url_for('.preview_root_page')
 
     with_menu_context(data)
     return render_template('dashboard.html', **data)
