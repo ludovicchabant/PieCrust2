@@ -102,6 +102,8 @@ class PieCrustConfiguration(Configuration):
                 APP_VERSION, CACHE_VERSION)).encode('utf8'))
         for p in paths:
             cache_key_hash.update(("&path=%s" % p).encode('utf8'))
+        cache_key_hash.update(
+            ("&fixups=%d" % len(self._post_fixups)).encode('utf8'))
         cache_key = cache_key_hash.hexdigest()
 
         # Check the cache for a valid version.
