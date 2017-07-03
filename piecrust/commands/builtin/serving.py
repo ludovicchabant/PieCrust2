@@ -30,6 +30,10 @@ class ServeCommand(ChefCommand):
             help="Show the debugger when an error occurs",
             action='store_true')
         parser.add_argument(
+            '--admin',
+            help="Also serve the administration panel.",
+            action='store_true')
+        parser.add_argument(
             '--wsgi',
             help="The WSGI server implementation to use",
             choices=['werkzeug', 'gunicorn'],
@@ -45,6 +49,7 @@ class ServeCommand(ChefCommand):
             from piecrust.serving.wrappers import run_werkzeug_server
             run_werkzeug_server(
                 appfactory, host, port,
+                serve_admin=ctx.args.admin,
                 use_debugger=debug,
                 use_reloader=ctx.args.use_reloader)
 
