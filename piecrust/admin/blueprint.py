@@ -127,6 +127,7 @@ import piecrust.admin.views.create  # NOQA
 import piecrust.admin.views.dashboard  # NOQA
 import piecrust.admin.views.edit  # NOQA
 import piecrust.admin.views.menu  # NOQA
+import piecrust.admin.views.micropub  # NOQA
 import piecrust.admin.views.preview  # NOQA
 import piecrust.admin.views.publish  # NOQA
 import piecrust.admin.views.sources  # NOQA

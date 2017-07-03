@@ -1,4 +1,4 @@
-from flask import render_template
+from flask import render_template, current_app
 from flask.views import View
 from .menu import get_menu_context
 
@@ -24,5 +24,6 @@ def with_menu_context(context=None):
     if context is None:
         context = {}
     context['menu'] = get_menu_context()
+    context['base_url'] = current_app.config['FOODTRUCK_URL_PREFIX']
     return context
 
