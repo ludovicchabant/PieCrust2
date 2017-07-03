@@ -74,12 +74,3 @@ def _submit_page_form(pcapp, source):
     logger.debug("Redirecting to: %s" % uri)
     return redirect(url_for('.edit_page', uri=uri))
 
-
-class _DummyPage:
-    def __init__(self, fac):
-        self.source_metadata = fac.metadata
-
-    def getRouteMetadata(self):
-        return {}
-
-
