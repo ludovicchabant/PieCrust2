@@ -1,7 +1,7 @@
 import sys
 import os.path
 import yaml
-from piecrust import CONFIG_PATH, THEME_DIR, THEMES_DIR
+from piecrust import CONFIG_PATH, THEMES_DIR
 
 
 class Theme(object):
@@ -53,6 +53,6 @@ class ThemeLoader(object):
                 return theme_dir
 
         raise ThemeNotFoundError(
-                "Can't find theme '%s'. Looked in: %s" %
-                (theme, ', '.join(dirs)))
+            "Can't find theme '%s'. Looked in: %s" %
+            (theme, ', '.join(dirs)))
 
