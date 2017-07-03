@@ -154,30 +154,37 @@ class PostsSource(FSContentSource,
 
     def createContent(self, args):
         dt = datetime.date.today()
-        if args.date:
-            if args.date == 'today':
+        date = args.get('date')
+        if isinstance(date, str):
+            if date == 'today':
                 pass  # Keep the default we had.
-            elif args.date == 'tomorrow':
+            elif date == 'tomorrow':
                 dt += datetime.timedelta(days=1)
-            elif args.date.startswith('+'):
+            elif date.startswith('+'):
                 try:
-                    dt += datetime.timedelta(days=int(args.date.lstrip('+')))
+                    dt += datetime.timedelta(days=int(date.lstrip('+')))
                 except ValueError:
                     raise Exception("Date offsets must be numbers.")
             else:
                 try:
-                    year, month, day = [int(s) for s in args.date.split('/')]
+                    year, month, day = [int(s) for s in date.split('/')]
                 except ValueError:
                     raise Exception("Dates must be of the form: "
                                     "YEAR/MONTH/DAY.")
                 dt = datetime.date(year, month, day)
+        elif isinstance(date, datetime.datetime):
+            year = date.year
+            month = date.month
+            day = date.day
+        else:
+            raise Exception("Unknown date: %s" % date)
 
-        slug, ext = os.path.splitext(args.slug)
+        slug, ext = os.path.splitext(args.get('slug'))
         if not ext:
             ext = self.default_auto_format
         year, month, day = dt.year, dt.month, dt.day
         tokens = {
-            'slug': args.slug,
+            'slug': args.get('slug'),
             'ext': ext,
             'year': '%04d' % year,
             'month': '%02d' % month,
@@ -185,9 +192,8 @@ class PostsSource(FSContentSource,
         }
         rel_path = self.path_format % tokens
         path = os.path.join(self.fs_endpoint_path, rel_path)
-        metadata = {
-            'config': {'title': uri_to_title(slug)}
-        }
+        metadata = self._parseMetadataFromPath(path)
+        metadata['config'] = {'title': uri_to_title(slug)}
         return ContentItem(path, metadata)
 
     def getInteractiveFields(self):

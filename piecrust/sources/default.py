@@ -92,10 +92,7 @@ class DefaultContentSource(FSContentSource,
         parser.add_argument('uri', help='The URI for the new page.')
 
     def createContent(self, args):
-        if not hasattr(args, 'uri'):
-            uri = None
-        else:
-            uri = args.uri
+        uri = args.get('uri')
         if not uri:
             uri = '_index'
         path = os.path.join(self.fs_endpoint_path, uri)

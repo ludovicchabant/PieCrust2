@@ -82,7 +82,7 @@ class PrepareCommand(ExtendableChefCommand):
             raise Exception("Error loading template: %s" % tpl_name)
 
         source = ctx.args.source
-        content_item = source.createContent(ctx.args)
+        content_item = source.createContent(vars(ctx.args))
 
         config_tokens = {
             '%title%': "Untitled Content",
