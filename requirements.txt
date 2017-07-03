@@ -5,6 +5,7 @@ colorama==0.3.3
 compressinja==0.0.2
 cryptography==1.8.1
 Flask==0.10.1
+Flask-IndieAuth==0.0.3.2
 Flask-Login==0.3.2
 idna==2.5
 itsdangerous==0.24
