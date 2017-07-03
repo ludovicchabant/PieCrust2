@@ -103,24 +103,24 @@ class ThemesCommand(ChefCommand):
                 dst_path = os.path.join(app_dir, rel_dirpath, name)
                 copies.append((src_path, dst_path))
 
-        conflicts = []
+        conflicts = set()
         for c in copies:
             if os.path.exists(c[1]):
-                conflicts.append(c[1])
+                conflicts.add(c[1])
         if conflicts:
-            logger.warning("Some website files will be overwritten:")
+            logger.warning("Some website files override theme files:")
             for c in conflicts:
                 logger.warning(os.path.relpath(c, app_dir))
-            logger.warning("Are you sure? [Y/n]")
-            ans = input()
-            if len(ans) > 0 and ans.lower() not in ['y', 'yes']:
-                return 1
+            logger.warning("")
+            logger.warning("The local website files will be preserved, and "
+                           "the conflicting theme files won't be copied "
+                           "locally.")
 
         for c in copies:
-            logger.info(os.path.relpath(c[1], app_dir))
-            if not os.path.exists(os.path.dirname(c[1])):
-                os.makedirs(os.path.dirname(c[1]))
-            shutil.copy2(c[0], c[1])
+            if not c[1] in conflicts:
+                logger.info(os.path.relpath(c[1], app_dir))
+                os.makedirs(os.path.dirname(c[1]), exist_ok=True)
+                shutil.copy2(c[0], c[1])
 
     def _linkTheme(self, ctx):
         if not os.path.isdir(ctx.args.theme_dir):
