@@ -12,11 +12,14 @@ def create_foodtruck_app(extra_settings=None):
 
     app = Flask(__name__.split('.')[0], static_folder=None)
     app.config.from_object('piecrust.admin.settings')
-    app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
     if extra_settings:
         app.config.update(extra_settings)
 
     root_dir = app.config.setdefault('FOODTRUCK_ROOT', os.getcwd())
+
+    app.config.from_pyfile(os.path.join(root_dir, 'admin_app.cfg'),
+                           silent=True)
+    app.config.from_envvar('FOODTRUCK_SETTINGS', silent=True)
 
     # Add a special route for the `.well-known` directory.
     app.wsgi_app = SharedDataMiddleware(
