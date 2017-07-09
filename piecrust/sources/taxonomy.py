@@ -384,7 +384,7 @@ class _TaxonomyTermsAnalyzer(object):
                 entries.append(prev_entry)
 
             for e in entries:
-                if e.was_any_sub_baked:
+                if e and e.was_any_sub_baked:
                     entry_terms = e.config.get(taxonomy.setting_name)
                     if entry_terms:
                         if not taxonomy.is_multiple:
