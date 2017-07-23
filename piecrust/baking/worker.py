@@ -44,6 +44,7 @@ class BakeWorker(IWorker):
         stats = app.env.stats
         stats.registerTimer("BakeWorker_%d_Total" % self.wid)
         stats.registerTimer("BakeWorkerInit")
+        self.timerScope = stats.timerScope
 
         self.app = app
 
@@ -71,6 +72,9 @@ class BakeWorker(IWorker):
 
             self.ppmngr.createPipeline(src)
 
+            stats.registerTimer("PipelineJobs_%s" % pname,
+                                raise_if_registered=False)
+
         stats.stepTimerSince("BakeWorkerInit", self._work_start_time)
 
     def process(self, job):
@@ -80,16 +84,19 @@ class BakeWorker(IWorker):
         ppinfo = self.ppmngr.getPipeline(job.source_name)
         pp = ppinfo.pipeline
 
-        runctx = PipelineJobRunContext(job, pp.record_name,
-                                       self.record_histories)
+        with self.timerScope("PipelineJobs_%s" % pp.PIPELINE_NAME):
+            runctx = PipelineJobRunContext(job, pp.record_name,
+                                           self.record_histories)
 
-        ppres = PipelineJobResult()
-        # For subsequent pass jobs, there will be a record entry given. For
-        # first pass jobs, there's none so we get the pipeline to create it.
-        ppres.record_entry = job.data.get('record_entry')
-        if ppres.record_entry is None:
-            ppres.record_entry = pp.createRecordEntry(job, runctx)
-        pp.run(job, runctx, ppres)
+            ppres = PipelineJobResult()
+            # For subsequent pass jobs, there will be a record entry given.
+            # For first pass jobs, there's none so we get the pipeline to
+            # create it.
+            ppres.record_entry = job.data.get('record_entry')
+            if ppres.record_entry is None:
+                ppres.record_entry = pp.createRecordEntry(job, runctx)
+            pp.run(job, runctx, ppres)
+
         return ppres
 
     def getStats(self):
