@@ -15,8 +15,13 @@ class PieCrustFormatExtension(Extension):
         lineno = next(parser.stream).lineno
         args = [parser.parse_expression()]
         body = parser.parse_statements(['name:endpcformat'], drop_needle=True)
-        return CallBlock(self.call_method('_format', args),
+        return CallBlock(self.call_method('_formatTimed', args),
                          [], [], body).set_lineno(lineno)
+
+    def _formatTimed(self, format_name, caller=None):
+        with self.environment.app.env.stats.timerScope(
+                'JinjaTemplateEngine_extensions'):
+            return self._format(format_name, caller)
 
     def _format(self, format_name, caller=None):
         body = caller()
@@ -57,8 +62,15 @@ class PieCrustHighlightExtension(Extension):
         body = parser.parse_statements(['name:endhighlight', 'name:endgeshi'],
                                        drop_needle=True)
 
-        return CallBlock(self.call_method('_highlight', args, kwargs),
+        return CallBlock(self.call_method('_highlightTimed', args, kwargs),
                          [], [], body).set_lineno(lineno)
+
+    def _highlightTimed(self, lang, line_numbers=False, use_classes=False,
+                        css_class=None, css_id=None, caller=None):
+        with self.environment.app.env.stats.timerScope(
+                'JinjaTemplateEngine_extensions'):
+            return self._highlight(lang, line_numbers, use_classes,
+                                   css_class, css_id, caller)
 
     def _highlight(self, lang, line_numbers=False, use_classes=False,
                    css_class=None, css_id=None, caller=None):
@@ -120,12 +132,17 @@ class PieCrustCacheExtension(Extension):
         body = parser.parse_statements(['name:endpccache', 'name:endcache'],
                                        drop_needle=True)
 
-        # now return a `CallBlock` node that calls our _cache_support
+        # now return a `CallBlock` node that calls our _renderCache
         # helper method on this extension.
-        return CallBlock(self.call_method('_cache_support', args),
+        return CallBlock(self.call_method('_renderCacheTimed', args),
                          [], [], body).set_lineno(lineno)
 
-    def _cache_support(self, name, caller):
+    def _renderCacheTimed(self, name, caller):
+        with self.environment.app.env.stats.timerScope(
+                'JinjaTemplateEngine_extensions'):
+            return self._renderCache(name, caller)
+
+    def _renderCache(self, name, caller):
         key = self.environment.piecrust_cache_prefix + name
 
         rcs = self.environment.app.env.render_ctx_stack
@@ -134,11 +151,6 @@ class PieCrustCacheExtension(Extension):
         # try to load the block from the cache
         # if there is no fragment in the cache, render it and store
         # it in the cache.
-        pair = self.environment.piecrust_cache.get(key)
-        if pair is not None:
-            rdr_pass.used_source_names.update(pair[1])
-            return pair[0]
-
         pair = self.environment.piecrust_cache.get(key)
         if pair is not None:
             rdr_pass.used_source_names.update(pair[1])
