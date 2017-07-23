@@ -20,6 +20,7 @@ class PagePipeline(ContentPipeline):
     def initialize(self):
         stats = self.app.env.stats
         stats.registerCounter('SourceUseAbortions', raise_if_registered=False)
+        stats.registerManifest('SourceUseAbortions', raise_if_registered=False)
 
         self._pagebaker = PageBaker(self.app,
                                     self.ctx.out_dir,
@@ -131,6 +132,8 @@ class PagePipeline(ContentPipeline):
             logger.debug("Page was aborted for using source: %s" %
                          content_item.spec)
             self.app.env.stats.stepCounter("SourceUseAbortions")
+            self.app.env.stats.addManifestEntry("SourceUseAbortions",
+                                                content_item.spec)
             result.next_step_job = self.createJob(content_item)
         finally:
             self.app.env.abort_source_use = False
