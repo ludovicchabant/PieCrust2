@@ -203,7 +203,7 @@ class ShowRecordCommand(ChefCommand):
                                          records._record_version))
         logger.info("")
 
-        if not ctx.args.show_stats:
+        if not ctx.args.show_stats and not ctx.args.show_manifest:
             for rec in records.records:
                 if ctx.args.fails and rec.success:
                     continue
