@@ -45,7 +45,7 @@ class Baker(object):
         self.app.config.set('site/asset_url_format', '%page_uri%/%filename%')
 
         stats = self.app.env.stats
-        stats.registerTimer('WorkerTastPut')
+        stats.registerTimer('WorkerTaskPut')
 
         # Make sure the output directory exists.
         if not os.path.isdir(self.out_dir):
@@ -241,7 +241,7 @@ class Baker(object):
                 job_count += len(jobs)
                 pool.queueJobs(jobs)
 
-        stats.stepTimer('WorkerTastPut', time.perf_counter() - start_time)
+        stats.stepTimer('WorkerTaskPut', time.perf_counter() - start_time)
 
         if job_count == 0:
             logger.debug("No jobs queued! Bailing out of this bake pass.")
@@ -275,7 +275,7 @@ class Baker(object):
                     pool.userdata.next_step_jobs[sn] = []
                     pool.queueJobs(jobs)
 
-            stats.stepTimer('WorkerTastPut', time.perf_counter() - start_time)
+            stats.stepTimer('WorkerTaskPut', time.perf_counter() - start_time)
 
             if job_count == 0:
                 break
