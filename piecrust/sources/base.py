@@ -84,6 +84,7 @@ class ContentSource:
         self.name = name
         self.config = config or {}
         self._cache = None
+        self._page_cache = None
 
     @property
     def is_theme_source(self):
@@ -98,6 +99,14 @@ class ContentSource:
 
     def getItemMtime(self, item):
         raise NotImplementedError()
+
+    def getAllPages(self):
+        if self._page_cache is not None:
+            return self._page_cache
+
+        getter = self.app.getPage
+        self._page_cache = [getter(self, i) for i in self.getAllContents()]
+        return self._page_cache
 
     def getAllContents(self):
         if self._cache is not None:

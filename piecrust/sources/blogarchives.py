@@ -108,11 +108,7 @@ class _MonthlyArchiveData(collections.abc.Mapping):
             return
 
         month_index = {}
-        src = self._inner_source
-        app = src.app
-        for item in self._inner_source.getAllContents():
-            page = app.getPage(src, item)
-
+        for page in self._inner_source.getAllPages():
             if page.datetime.year != self._year:
                 continue
 

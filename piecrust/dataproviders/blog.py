@@ -87,12 +87,10 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
             taxonomies.append(Taxonomy(tn, tax_cfg))
             tax_index[tn] = {}
 
-        app = self._app
         page = self._page
         source = self._sources[0]
 
-        for item in source.getAllContents():
-            post = app.getPage(source, item)
+        for post in source.getAllPages():
             post_dt = post.datetime
 
             year = post_dt.year

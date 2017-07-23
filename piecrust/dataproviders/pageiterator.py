@@ -362,9 +362,7 @@ class PageContentSourceIterator:
 
     def __iter__(self):
         source = self.source
-        app = source.app
-        for item in source.getAllContents():
-            yield app.getPage(source, item)
+        yield from source.getAllPages()
 
 
 class PaginationDataBuilderIterator:
