@@ -15,7 +15,7 @@ class PieCrustData(object):
         self.version = APP_VERSION
         self.url = 'http://bolt80.com/piecrust/'
         self.branding = 'Baked with <em><a href="%s">PieCrust</a> %s</em>.' % (
-                'http://bolt80.com/piecrust/', APP_VERSION)
+            'http://bolt80.com/piecrust/', APP_VERSION)
         self._page = None
 
     @property
