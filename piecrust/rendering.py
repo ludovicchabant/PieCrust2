@@ -284,14 +284,13 @@ def render_page_segments(ctx):
 
 
 def _build_render_data(ctx):
-    with ctx.app.env.stats.timerScope("PageDataBuild"):
-        data_ctx = DataBuildingContext(ctx.page, ctx.sub_num)
-        data_ctx.pagination_source = ctx.pagination_source
-        data_ctx.pagination_filter = ctx.pagination_filter
-        page_data = build_page_data(data_ctx)
-        if ctx.custom_data:
-            page_data._appendMapping(ctx.custom_data)
-        return page_data
+    data_ctx = DataBuildingContext(ctx.page, ctx.sub_num)
+    data_ctx.pagination_source = ctx.pagination_source
+    data_ctx.pagination_filter = ctx.pagination_filter
+    page_data = build_page_data(data_ctx)
+    if ctx.custom_data:
+        page_data._appendMapping(ctx.custom_data)
+    return page_data
 
 
 def _do_render_page_segments_from_ctx(ctx):

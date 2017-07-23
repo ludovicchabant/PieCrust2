@@ -70,7 +70,8 @@ class LazyPageConfigData(collections.abc.Mapping):
         loader = self._loaders.get(name)
         if loader is not None:
             try:
-                self._values[name] = loader(self, name)
+                with self._page.app.env.stats.timerScope('BuildLazyPageData'):
+                    self._values[name] = loader(self, name)
             except (LazyPageConfigLoaderHasNoValue, AbortedSourceUseError):
                 raise
             except Exception as ex:
@@ -90,7 +91,8 @@ class LazyPageConfigData(collections.abc.Mapping):
         loader = self._loaders.get('*')
         if loader is not None:
             try:
-                self._values[name] = loader(self, name)
+                with self._page.app.env.stats.timerScope('BuildLazyPageData'):
+                    self._values[name] = loader(self, name)
             except (LazyPageConfigLoaderHasNoValue, AbortedSourceUseError):
                 raise
             except Exception as ex:
@@ -135,7 +137,8 @@ class LazyPageConfigData(collections.abc.Mapping):
 
         self._is_loaded = True
         try:
-            self._load()
+            with self._page.app.env.stats.timerScope('BuildLazyPageData'):
+                self._load()
         except Exception as ex:
             logger.exception(ex)
             raise Exception(

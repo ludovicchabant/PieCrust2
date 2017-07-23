@@ -42,8 +42,8 @@ class PieCrust(object):
         stats = env.stats
         stats.registerTimer('SiteConfigLoad')
         stats.registerTimer('PageLoad')
-        stats.registerTimer("PageDataBuild")
         stats.registerTimer("BuildRenderData")
+        stats.registerTimer("BuildLazyPageData")
         stats.registerTimer("PageRender")
         stats.registerTimer("PageRenderSegments")
         stats.registerTimer("PageRenderLayout")
