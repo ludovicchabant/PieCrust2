@@ -40,10 +40,10 @@ class MergedMapping(collections.abc.Mapping):
         for val in values:
             if not isinstance(val, (dict, collections.abc.Mapping)):
                 raise Exception(
-                        "Template data for '%s' contains an incompatible mix "
-                        "of data: %s" % (
-                            self._subp(name),
-                            ', '.join([str(type(v)) for v in values])))
+                    "Template data for '%s' contains an incompatible mix "
+                    "of data: %s" % (
+                        self._subp(name),
+                        ', '.join([str(type(v)) for v in values])))
 
         return MergedMapping(values, self._subp(name))
 
