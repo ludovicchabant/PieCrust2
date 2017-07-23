@@ -9,9 +9,8 @@ logger = logging.getLogger(__name__)
 
 
 class JinjaTemplateEngine(TemplateEngine):
-    # Name `twig` is for backwards compatibility with PieCrust 1.x.
-    ENGINE_NAMES = ['jinja', 'jinja2', 'j2', 'twig']
-    EXTENSIONS = ['html', 'jinja', 'jinja2', 'j2', 'twig']
+    ENGINE_NAMES = ['jinja', 'jinja2', 'j2']
+    EXTENSIONS = ['html', 'jinja', 'jinja2', 'j2']
 
     def __init__(self):
         self.env = None
@@ -19,10 +18,10 @@ class JinjaTemplateEngine(TemplateEngine):
         self._jinja_not_found = None
 
     def renderSegmentPart(self, path, seg_part, data):
-        self._ensureLoaded()
-
         if not _string_needs_render(seg_part.content):
             return seg_part.content
+
+        self._ensureLoaded()
 
         part_path = _make_segment_part_path(path, seg_part.offset)
         self.env.loader.segment_parts_cache[part_path] = (
@@ -49,20 +48,12 @@ class JinjaTemplateEngine(TemplateEngine):
 
     def renderFile(self, paths, data):
         self._ensureLoaded()
-        tpl = None
-        logger.debug("Looking for template: %s" % paths)
-        rendered_path = None
-        for p in paths:
-            try:
-                tpl = self.env.get_template(p)
-                rendered_path = p
-                break
-            except self._jinja_syntax_error as tse:
-                raise self._getTemplatingError(tse)
-            except self._jinja_not_found:
-                pass
 
-        if tpl is None:
+        try:
+            tpl = self.env.select_template(paths)
+        except self._jinja_syntax_error as tse:
+            raise self._getTemplatingError(tse)
+        except self._jinja_not_found:
             raise TemplateNotFoundError()
 
         try:
@@ -75,8 +66,8 @@ class JinjaTemplateEngine(TemplateEngine):
             if self.app.debug:
                 raise
             msg = "Error rendering Jinja markup"
-            rel_path = os.path.relpath(rendered_path, self.app.root_dir)
-            raise TemplatingError(msg, rel_path) from ex
+            name = getattr(tpl, 'name', '<unknown template>')
+            raise TemplatingError(msg, name) from ex
 
     def _getTemplatingError(self, tse, filename=None):
         filename = tse.filename or filename
@@ -90,9 +81,11 @@ class JinjaTemplateEngine(TemplateEngine):
             return
 
         stats = self.app.env.stats
-        stats.registerTimer('JinjaTemplateEngineEnvironmentSetup',
+        stats.registerTimer('JinjaTemplateEngine_setup',
                             raise_if_registered=False)
-        with stats.timerScope('JinjaTemplateEngineEnvironmentSetup'):
+        stats.registerTimer('JinjaTemplateEngine_extensions',
+                            raise_if_registered=False)
+        with stats.timerScope('JinjaTemplateEngine_setup'):
             self._load()
 
     def _load(self):
@@ -104,12 +97,7 @@ class JinjaTemplateEngine(TemplateEngine):
             ext_names = [ext_names]
 
         # Turn on autoescape by default.
-        autoescape = get_config('twig/auto_escape')
-        if autoescape is not None:
-            logger.warning("The `twig/auto_escape` setting is now called "
-                           "`jinja/auto_escape`.")
-        else:
-            autoescape = get_config('jinja/auto_escape', True)
+        autoescape = get_config('jinja/auto_escape', True)
         if autoescape:
             ext_names.append('autoescape')
 
@@ -159,5 +147,4 @@ def _string_needs_render(txt):
 
 def _make_segment_part_path(path, start):
     return '$part=%s:%d' % (path, start)
-
 

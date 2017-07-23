@@ -20,11 +20,13 @@ class PieCrustEnvironment(Environment):
 
         # Before we create the base Environement, let's figure out the options
         # we want to pass to it.
-        twig_compatibility_mode = app.config.get('jinja/twig_compatibility')
-
+        #
         # Disable auto-reload when we're baking.
         if app.config.get('baker/is_baking'):
             kwargs.setdefault('auto_reload', False)
+
+        # Don't unload templates from the cache.
+        kwargs.setdefault('cache_size', -1)
 
         # Let the user override most Jinja options via the site config.
         for name in ['block_start_string', 'block_end_string',
@@ -46,10 +48,6 @@ class PieCrustEnvironment(Environment):
         elif undef == 'strict':
             from jinja2 import StrictUndefined
             kwargs.setdefault('undefined', StrictUndefined)
-
-        # Twig trims blocks.
-        if twig_compatibility_mode is True:
-            kwargs['trim_blocks'] = True
 
         # All good! Create the Environment.
         super(PieCrustEnvironment, self).__init__(*args, **kwargs)
@@ -78,10 +76,7 @@ class PieCrustEnvironment(Environment):
             'emaildate': get_email_date,
             'date': get_date})
 
-        # Backwards compatibility with Twig.
-        if twig_compatibility_mode is True:
-            self.filters['raw'] = self.filters['safe']
-            self.globals['pcfail'] = raise_exception
+        self.filters['raw'] = self.filters['safe']
 
     def _paginate(self, value, items_per_page=5):
         ctx = self.app.env.render_ctx_stack.current_ctx
