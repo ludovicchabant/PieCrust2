@@ -117,7 +117,8 @@ class PluginLoader(object):
         if to_install:
             for name in to_install:
                 plugin = self._loadPlugin(name)
-                self._plugins.append(plugin)
+                if plugin is not None:
+                    self._plugins.append(plugin)
 
         for plugin in self._plugins:
             plugin.initialize(self.app)
@@ -130,7 +131,7 @@ class PluginLoader(object):
         except ImportError as ex:
             mod = None
 
-        if mod is None:
+        if mod is None and self.app.plugins_dir:
             # Import as a loose Python file from the plugins dir.
             pfile = os.path.join(self.app.plugins_dir, plugin_name + '.py')
             if os.path.isfile(pfile):
