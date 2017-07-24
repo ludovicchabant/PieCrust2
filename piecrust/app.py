@@ -253,12 +253,13 @@ class PieCrust(object):
         return dirs
 
 
-def apply_variant_and_values(app, config_variant=None, config_values=None):
-    if config_variant is not None:
-        logger.debug("Adding configuration variant '%s'." % config_variant)
-        variant_path = os.path.join(
-            app.root_dir, 'configs', '%s.yml' % config_variant)
-        app.config.addVariant(variant_path)
+def apply_variants_and_values(app, config_variants=None, config_values=None):
+    if config_variants is not None:
+        for value in config_variants:
+            logger.debug("Adding configuration variant '%s'." % value)
+            variant_path = os.path.join(
+                app.root_dir, 'configs', '%s.yml' % value)
+            app.config.addVariant(variant_path)
 
     if config_values is not None:
         for name, value in config_values:
@@ -273,12 +274,12 @@ class PieCrustFactory(object):
     def __init__(
             self, root_dir, *,
             cache=True, cache_key=None,
-            config_variant=None, config_values=None,
+            config_variants=None, config_values=None,
             debug=False, theme_site=False):
         self.root_dir = root_dir
         self.cache = cache
         self.cache_key = cache_key
-        self.config_variant = config_variant
+        self.config_variants = config_variants
         self.config_values = config_values
         self.debug = debug
         self.theme_site = theme_site
@@ -290,7 +291,7 @@ class PieCrustFactory(object):
             cache_key=self.cache_key,
             debug=self.debug,
             theme_site=self.theme_site)
-        apply_variant_and_values(
-            app, self.config_variant, self.config_values)
+        apply_variants_and_values(
+            app, self.config_variants, self.config_values)
         return app
 

@@ -91,8 +91,9 @@ def _setup_main_parser_arguments(parser):
         help="Makes the current command apply to a theme website.")
     parser.add_argument(
         '--config',
-        dest='config_variant',
-        help="The configuration variant to use for this command.")
+        action='append',
+        dest='config_variants',
+        help="The configuration variant(s) to use for this command.")
     parser.add_argument(
         '--config-set',
         nargs=2,
@@ -209,8 +210,9 @@ def _build_cache_key(pre_args):
         cmd_name = pre_args.extra_args[0]
         if cmd_name in _command_caches:
             cache_key_str = _command_caches[cmd_name]
-    if pre_args.config_variant is not None:
-        cache_key_str += ',variant=%s' % pre_args.config_variant
+    if pre_args.config_variants:
+        for value in pre_args.config_variants:
+            cache_key_str += ',variant=%s' % value
     if pre_args.config_values:
         for name, value in pre_args.config_values:
             cache_key_str += ',%s=%s' % (name, value)
@@ -233,7 +235,7 @@ def _run_chef(pre_args, argv):
             root = None
 
     # Can't apply custom configuration stuff if there's no website.
-    if (pre_args.config_variant or pre_args.config_values) and not root:
+    if (pre_args.config_variants or pre_args.config_values) and not root:
         raise SiteNotFoundError(
             "Can't apply any configuration variant or value overrides, "
             "there is no website here.")
@@ -248,7 +250,7 @@ def _run_chef(pre_args, argv):
             cache=(not pre_args.no_cache),
             cache_key=cache_key,
             debug=pre_args.debug,
-            config_variant=pre_args.config_variant,
+            config_variants=pre_args.config_variants,
             config_values=pre_args.config_values)
         app = appfactory.create()
     else:
