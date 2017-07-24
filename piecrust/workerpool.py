@@ -392,7 +392,7 @@ def _unpickle_fast(buf, bufsize):
 
 
 def _pickle_default(obj, buf):
-    pickle.dump(obj, buf)
+    pickle.dump(obj, buf, pickle.HIGHEST_PROTOCOL)
 
 
 def _unpickle_default(buf, bufsize):

@@ -4,7 +4,6 @@ import copy
 import logging
 from piecrust.data.builder import (
     DataBuildingContext, build_page_data, add_layout_data)
-from piecrust.fastpickle import _pickle_object, _unpickle_object
 from piecrust.templating.base import TemplateNotFoundError, TemplatingError
 from piecrust.sources.base import AbortedSourceUseError
 
@@ -202,24 +201,20 @@ def render_page(ctx):
         null_names = ['', 'none', 'nil']
         if layout_name not in null_names:
             with stats.timerScope("BuildRenderData"):
-                add_layout_data(page_data, render_result['segments'])
+                add_layout_data(page_data, render_result.segments)
 
             with stats.timerScope("PageRenderLayout"):
                 layout_result = _do_render_layout(
                     layout_name, page, page_data)
         else:
-            layout_result = {
-                'content': render_result['segments']['content'],
-                'pass_info': None}
+            layout_result = RenderedLayout(
+                render_result.segments['content'], None)
 
         rp = RenderedPage(page, ctx.sub_num)
         rp.data = page_data
-        rp.content = layout_result['content']
-        rp.render_info[PASS_FORMATTING] = _unpickle_object(
-            render_result['pass_info'])
-        if layout_result['pass_info'] is not None:
-            rp.render_info[PASS_RENDERING] = _unpickle_object(
-                layout_result['pass_info'])
+        rp.content = layout_result.content
+        rp.render_info[PASS_FORMATTING] = render_result.render_pass_info
+        rp.render_info[PASS_RENDERING] = layout_result.render_pass_info
         return rp
 
     except AbortedSourceUseError:
@@ -277,10 +272,7 @@ def render_page_segments(ctx):
         ctx.setCurrentPass(PASS_NONE)
         stack.popCtx()
 
-    rs = RenderedSegments(
-        render_result['segments'],
-        _unpickle_object(render_result['pass_info']))
-    return rs
+    return render_result
 
 
 def _build_render_data(ctx):
@@ -333,9 +325,7 @@ def _do_render_page_segments(ctx, page_data):
                 formatted_segments['content.abstract'] = content_abstract
 
     pass_info = ctx.render_passes[PASS_FORMATTING]
-    res = {
-        'segments': formatted_segments,
-        'pass_info': _pickle_object(pass_info)}
+    res = RenderedSegments(formatted_segments, pass_info)
 
     app.env.stats.stepCounter('PageRenderSegments')
 
@@ -371,7 +361,7 @@ def _do_render_layout(layout_name, page, layout_data):
         raise Exception(msg) from ex
 
     pass_info = cur_ctx.render_passes[PASS_RENDERING]
-    res = {'content': output, 'pass_info': _pickle_object(pass_info)}
+    res = RenderedLayout(output, pass_info)
 
     app.env.stats.stepCounter('PageRenderLayout')
 
@@ -394,6 +384,12 @@ def format_text(app, format_name, txt, exact_format=False):
 
     format_count = 0
     format_name = format_name or app.config.get('site/default_format')
+
+    auto_fmts = app.config.get('site/auto_formats')
+    redirect = auto_fmts.get(format_name)
+    if redirect is not None:
+        format_name = redirect
+
     for fmt in app.plugin_loader.getFormatters():
         if not fmt.enabled:
             continue

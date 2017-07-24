@@ -1,8 +1,7 @@
 import os
 import os.path
-import json
 import shutil
-import codecs
+import pickle
 import hashlib
 import logging
 import repoze.lru
@@ -84,19 +83,23 @@ class SimpleCache(object):
         return os.path.isfile(cache_path)
 
     def read(self, path):
-        cache_path = self.getCachePath(path)
-        logger.debug("Reading cache: %s" % cache_path)
-        with codecs.open(cache_path, 'r', 'utf-8') as fp:
+        with self.openRead(path, mode='r', encoding='utf8') as fp:
             return fp.read()
 
+    def openRead(self, path, mode='r', encoding=None):
+        cache_path = self.getCachePath(path)
+        return open(cache_path, mode=mode, encoding=encoding)
+
     def write(self, path, content):
+        with self.openWrite(path, mode='w', encoding='utf8') as fp:
+            fp.write(content)
+
+    def openWrite(self, path, mode='w', encoding=None):
         cache_path = self.getCachePath(path)
         cache_dir = os.path.dirname(cache_path)
         if not os.path.isdir(cache_dir):
             os.makedirs(cache_dir, 0o755)
-        logger.debug("Writing cache: %s" % cache_path)
-        with codecs.open(cache_path, 'w', 'utf-8') as fp:
-            fp.write(content)
+        return open(cache_path, mode=mode, encoding=encoding)
 
     def getCachePath(self, path):
         if path.startswith('.'):
@@ -154,7 +157,7 @@ def _make_fs_cache_key(key):
 
 class MemCache(object):
     """ Simple memory cache. It can be backed by a simple file-system
-        cache, but items need to be JSON-serializable to do this.
+        cache, but items need to be pickle-able to do this.
     """
     def __init__(self, size=2048):
         self.cache = repoze.lru.LRUCache(size)
@@ -181,8 +184,8 @@ class MemCache(object):
         self.cache.put(key, item)
         if self.fs_cache and save_to_fs:
             fs_key = _make_fs_cache_key(key)
-            item_raw = json.dumps(item)
-            self.fs_cache.write(fs_key, item_raw)
+            with self.fs_cache.openWrite(fs_key, mode='wb') as fp:
+                pickle.dump(item, fp, pickle.HIGHEST_PROTOCOL)
 
     def get(self, key, item_maker, fs_cache_time=None, save_to_fs=True):
         self._last_access_hit = True
@@ -201,10 +204,9 @@ class MemCache(object):
             fs_key = _make_fs_cache_key(key)
             if (fs_key not in self._invalidated_fs_items and
                     self.fs_cache.isValid(fs_key, fs_cache_time)):
-                logger.debug("'%s' found in file-system cache." %
-                             key)
-                item_raw = self.fs_cache.read(fs_key)
-                item = json.loads(item_raw)
+                logger.debug("'%s' found in file-system cache." % key)
+                with self.fs_cache.openRead(fs_key, mode='rb') as fp:
+                    item = pickle.load(fp)
                 self.cache.put(key, item)
                 self._hits += 1
                 return item
@@ -219,9 +221,8 @@ class MemCache(object):
 
         # Save to the file-system if needed.
         if self.fs_cache is not None and save_to_fs:
-            item_raw = json.dumps(item)
-            self.fs_cache.write(fs_key, item_raw)
+            with self.fs_cache.openWrite(fs_key, mode='wb') as fp:
+                pickle.dump(item, fp, pickle.HIGHEST_PROTOCOL)
 
         return item
-
 
