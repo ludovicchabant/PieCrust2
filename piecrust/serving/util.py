@@ -119,20 +119,20 @@ def make_wrapped_file_response(environ, request, path):
     response.set_etag(etag)
     response.last_modified = datetime.datetime.fromtimestamp(mtime)
     response.mimetype = mimetype_map.get(
-            ext.lstrip('.'), 'text/plain')
+        ext.lstrip('.'), 'text/plain')
     response.direct_passthrough = True
     return response
 
 
 mimetype_map = load_mimetype_map()
 content_type_map = {
-        'html': 'text/html',
-        'xml': 'text/xml',
-        'txt': 'text/plain',
-        'text': 'text/plain',
-        'css': 'text/css',
-        'xhtml': 'application/xhtml+xml',
-        'atom': 'application/atom+xml',  # or 'text/xml'?
-        'rss': 'application/rss+xml',    # or 'text/xml'?
-        'json': 'application/json'}
+    'html': 'text/html',
+    'xml': 'text/xml',
+    'txt': 'text/plain',
+    'text': 'text/plain',
+    'css': 'text/css',
+    'xhtml': 'application/xhtml+xml',
+    'atom': 'application/atom+xml',  # or 'text/xml'?
+    'rss': 'application/rss+xml',    # or 'text/xml'?
+    'json': 'application/json'}
 
