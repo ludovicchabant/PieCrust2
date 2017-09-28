@@ -1,7 +1,6 @@
 import os
 import os.path
 import logging
-import collections.abc
 from piecrust.sources.base import REL_ASSETS
 from piecrust.uriutil import multi_replace
 
@@ -19,7 +18,7 @@ class _AssetInfo:
         self.uri = uri
 
 
-class Assetor(collections.abc.Sequence):
+class Assetor:
     debug_render_doc = """Helps render URLs to files in the current page's
                           asset folder."""
     debug_render = []
@@ -37,13 +36,21 @@ class Assetor(collections.abc.Sequence):
         except KeyError:
             raise AttributeError()
 
-    def __getitem__(self, i):
+    def __getitem__(self, name):
         self._cacheAssets()
-        return self._cache_list[i]
+        return self._cache_map[name].uri
+
+    def __contains__(self, name):
+        self._cacheAssets()
+        return name in self._cache_map
+
+    def __iter__(self):
+        self._cacheAssets()
+        return iter(self._cache_list)
 
     def __len__(self):
         self._cacheAssets()
-        return len(self._cache_list)
+        return len(self._cache_map)
 
     def _getAssetNames(self):
         self._cacheAssets()
