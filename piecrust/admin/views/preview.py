@@ -1,6 +1,6 @@
 from flask import current_app, g, make_response
 from flask.ext.login import login_required
-from piecrust.serving.server import Server
+from piecrust.serving.server import PieCrustServer
 from ..blueprint import foodtruck_bp
 
 
@@ -15,7 +15,7 @@ def preview_root_page():
 def preview_page(url):
     pcappfac = g.site.piecrust_factory
     url_prefix = current_app.config['FOODTRUCK_URL_PREFIX']
-    server = Server(pcappfac,
-                    root_url='%s/preview/' % url_prefix)
-    return make_response(server._run_request)
+    server = PieCrustServer(pcappfac,
+                            root_url='%s/preview/' % url_prefix)
+    return make_response(server)
 
