@@ -4,7 +4,7 @@ from flask import request, g, url_for, render_template, Response
 from flask.ext.login import login_required
 from ..blueprint import foodtruck_bp
 from ..pubutil import PublishLogReader
-from ..views import with_menu_context
+from ..views import with_menu_context, with_base_data
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ def publish():
     if not pub_cfg:
         data = {'error': "There are no publish targets defined in your "
                          "configuration file."}
+        with_base_data(data)
         return render_template('error.html', **data)
 
     data = {}

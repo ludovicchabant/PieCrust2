@@ -24,6 +24,11 @@ def with_menu_context(context=None):
     if context is None:
         context = {}
     context['menu'] = get_menu_context()
-    context['base_url'] = current_app.config['FOODTRUCK_URL_PREFIX']
+    with_base_data(context)
     return context
 
+
+def with_base_data(context=None):
+    if context is None:
+        context = {}
+    context['base_url'] = current_app.config['FOODTRUCK_URL_PREFIX']
