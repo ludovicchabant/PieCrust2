@@ -56,7 +56,8 @@ var onPublishEvent = function(e) {
 };
 
 if (!!window.EventSource) {
-    var source = new EventSource('/publish-log');
+    // TODO: this only works when the Foodtruck blueprint is added under `/pc-admin`.
+    var source = new EventSource('/pc-admin/publish-log');
     source.onerror = function(e) {
         console.log("Error with SSE, closing.", e);
         source.close();
