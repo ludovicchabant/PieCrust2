@@ -25,15 +25,20 @@ def get_bake_records_path(app, out_dir, *, suffix=''):
 
 
 class Baker(object):
-    def __init__(self, appfactory, app, out_dir,
-                 force=False, allowed_pipelines=None,
-                 forbidden_pipelines=None):
+    def __init__(self, appfactory, app, out_dir, *,
+                 force=False,
+                 allowed_pipelines=None,
+                 forbidden_pipelines=None,
+                 allowed_sources=None,
+                 rotate_bake_records=True):
         self.appfactory = appfactory
         self.app = app
         self.out_dir = out_dir
         self.force = force
         self.allowed_pipelines = allowed_pipelines
         self.forbidden_pipelines = forbidden_pipelines
+        self.allowed_sources = allowed_sources
+        self.rotate_bake_records = rotate_bake_records
 
     def bake(self):
         start_time = time.perf_counter()
@@ -89,7 +94,11 @@ class Baker(object):
             self.app, self.out_dir, record_histories)
         ok_pp = self.allowed_pipelines
         nok_pp = self.forbidden_pipelines
+        ok_src = self.allowed_sources
         for source in self.app.sources:
+            if ok_src is not None and source.name not in ok_src:
+                continue
+
             pname = get_pipeline_name_for_source(source)
             if ok_pp is not None and pname not in ok_pp:
                 continue
@@ -144,20 +153,21 @@ class Baker(object):
         ppmngr.shutdownPipelines()
 
         # Backup previous records.
-        records_dir, records_fn = os.path.split(records_path)
-        records_id, _ = os.path.splitext(records_fn)
-        for i in range(8, -1, -1):
-            suffix = '' if i == 0 else '.%d' % i
-            records_path_i = os.path.join(
-                records_dir,
-                '%s%s.records' % (records_id, suffix))
-            if os.path.exists(records_path_i):
-                records_path_next = os.path.join(
+        if self.rotate_bake_records:
+            records_dir, records_fn = os.path.split(records_path)
+            records_id, _ = os.path.splitext(records_fn)
+            for i in range(8, -1, -1):
+                suffix = '' if i == 0 else '.%d' % i
+                records_path_i = os.path.join(
                     records_dir,
-                    '%s.%s.records' % (records_id, i + 1))
-                if os.path.exists(records_path_next):
-                    os.remove(records_path_next)
-                os.rename(records_path_i, records_path_next)
+                    '%s%s.records' % (records_id, suffix))
+                if os.path.exists(records_path_i):
+                    records_path_next = os.path.join(
+                        records_dir,
+                        '%s.%s.records' % (records_id, i + 1))
+                    if os.path.exists(records_path_next):
+                        os.remove(records_path_next)
+                    os.rename(records_path_i, records_path_next)
 
         # Save the bake records.
         with format_timed_scope(logger, "saved bake records.",
