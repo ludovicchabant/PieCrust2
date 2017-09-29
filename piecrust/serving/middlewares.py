@@ -12,7 +12,7 @@ from piecrust.serving.util import (
     make_wrapped_file_response, get_requested_page, get_app_for_server)
 
 
-class StaticResourcesMiddleware(object):
+class PieCrustStaticResourcesMiddleware(object):
     """ WSGI middleware that serves static files from the `resources/server`
         directory in the PieCrust package.
     """
@@ -38,7 +38,8 @@ class StaticResourcesMiddleware(object):
 
 
 class PieCrustDebugMiddleware(object):
-    """ WSGI middleware that handles debugging of PieCrust stuff.
+    """ WSGI middleware that handles debugging of PieCrust stuff, and runs
+        the asset pipeline in an SSE thread.
     """
     def __init__(self, app, appfactory,
                  run_sse_check=None):

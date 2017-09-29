@@ -40,28 +40,15 @@ class ServeCommand(ChefCommand):
             default='werkzeug')
 
     def run(self, ctx):
+        appfactory = ctx.appfactory
         host = ctx.args.address
         port = int(ctx.args.port)
-        debug = ctx.args.debug or ctx.args.use_debugger
-        appfactory = ctx.appfactory
+        use_debugger = ctx.args.debug or ctx.args.use_debugger
 
-        if ctx.args.wsgi == 'werkzeug':
-            from piecrust.serving.wrappers import run_werkzeug_server
-            run_werkzeug_server(
-                appfactory, host, port,
-                serve_admin=ctx.args.admin,
-                use_debugger=debug,
-                use_reloader=ctx.args.use_reloader)
-
-        elif ctx.args.wsgi == 'gunicorn':
-            from piecrust.serving.wrappers import run_gunicorn_server
-            options = {
-                'bind': '%s:%s' % (host, port),
-                'accesslog': '-',  # print access log to stderr
-            }
-            if debug:
-                options['loglevel'] = 'debug'
-            if ctx.args.use_reloader:
-                options['reload'] = True
-            run_gunicorn_server(appfactory, gunicorn_options=options)
-
+        from piecrust.serving.wrappers import run_piecrust_server
+        run_piecrust_server(
+            ctx.args.wsgi, appfactory, host, port,
+            is_cmdline_mode=True,
+            serve_admin=ctx.args.admin,
+            use_reloader=ctx.args.use_reloader,
+            use_debugger=use_debugger)

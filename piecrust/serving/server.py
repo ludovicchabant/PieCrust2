@@ -21,11 +21,11 @@ from piecrust.sources.base import SourceNotFoundError
 logger = logging.getLogger(__name__)
 
 
-class WsgiServer(object):
+class PieCrustServer(object):
     """ A WSGI application that serves a PieCrust website.
     """
     def __init__(self, appfactory, **kwargs):
-        self.server = Server(appfactory, **kwargs)
+        self.server = _ServerImpl(appfactory, **kwargs)
 
     def __call__(self, environ, start_response):
         return self.server._run_request(environ, start_response)
@@ -52,7 +52,7 @@ class MultipleNotFound(HTTPException):
         return desc
 
 
-class Server(object):
+class _ServerImpl(object):
     """ The PieCrust server.
     """
     def __init__(self, appfactory,
