@@ -1,9 +1,6 @@
 import os
 import os.path
-import urllib.parse
-import getpass
 import logging
-import paramiko
 from piecrust.publishing.base import Publisher, PublisherConfigurationError
 
 
@@ -30,6 +27,8 @@ class SftpPublisher(Publisher):
             raise PublisherConfigurationError(
                 "Publish target '%s' doesn't specify a 'host'." %
                 self.target)
+
+        import urllib.parse
         remote = urllib.parse.urlparse(host)
 
         hostname = remote.hostname
@@ -45,12 +44,15 @@ class SftpPublisher(Publisher):
 
         password = None
         if username and not ctx.preview:
+            import getpass
             password = getpass.getpass("Password for '%s': " % username)
 
         if ctx.preview:
             logger.info("Would connect to %s:%s..." % (hostname, port))
             self._previewUpload(ctx, path)
             return
+
+        import paramiko
 
         logger.debug("Connecting to %s:%s..." % (hostname, port))
         lfk = (not username and not pkey_path)
