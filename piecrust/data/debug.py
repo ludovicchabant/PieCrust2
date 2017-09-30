@@ -219,7 +219,7 @@ class DebugDataRenderer(object):
                 lambda d: sorted(iter(d.items()), key=lambda i: i[0]))
         if (rendered_count == 0 and
                 not hasattr(data.__class__, 'debug_render_not_empty')):
-            self._writeLine('<p class="%s %s">(empty dictionary)</p>' %
+            self._writeLine('<p class="%s">(empty dictionary)</p>' %
                             CSS_DOC)
         self._writeLine('</div>')
 

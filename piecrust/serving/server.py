@@ -129,7 +129,7 @@ class _ServerImpl(object):
         if request.path.startswith('/_cache/'):
             # Some stuff needs to be served directly from the cache directory,
             # like LESS CSS map files.
-            full_path = os.path.join(self.root_dir, rel_req_path)
+            full_path = os.path.join(self.appfactory.root_dir, rel_req_path)
         else:
             full_path = os.path.join(self._out_dir, rel_req_path)
 
