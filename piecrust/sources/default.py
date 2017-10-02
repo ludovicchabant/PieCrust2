@@ -88,6 +88,10 @@ class DefaultContentSource(FSContentSource,
                 return ContentItem(path, metadata)
         return None
 
+    def findContentFromPath(self, path):
+        metadata = self._doCreateItemMetadata(path)
+        return ContentItem(path, metadata)
+
     def setupPrepareParser(self, parser, app):
         parser.add_argument('uri', help='The URI for the new page.')
 

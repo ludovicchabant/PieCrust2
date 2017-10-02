@@ -29,3 +29,5 @@ class IInteractiveSource(object):
     def getInteractiveFields(self):
         raise NotImplementedError()
 
+    def findContentFromPath(self, path):
+        raise NotImplementedError()

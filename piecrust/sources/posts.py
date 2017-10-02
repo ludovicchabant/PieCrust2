@@ -109,6 +109,10 @@ class PostsSource(FSContentSource,
         metadata = self._parseMetadataFromPath(path)
         return ContentItem(path, metadata)
 
+    def findContentFromPath(self, path):
+        metadata = self._parseMetadataFromPath(path)
+        return ContentItem(path, metadata)
+
     def _parseMetadataFromPath(self, path):
         regex_repl = {
             'year': '(?P<year>\d{4})',
