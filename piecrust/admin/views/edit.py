@@ -45,8 +45,8 @@ def _edit_page_form(page, uri):
 
     assetor = Assetor(page)
     assets_data = []
-    for i, n in enumerate(assetor._getAssetNames()):
-        assets_data.append({'name': n, 'url': assetor[i]})
+    for n in assetor._getAssetNames():
+        assets_data.append({'name': n, 'url': assetor[n]})
     data['assets'] = assets_data
 
     data['has_scm'] = (g.site.scm is not None)
