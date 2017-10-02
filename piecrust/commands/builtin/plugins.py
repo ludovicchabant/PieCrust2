@@ -12,11 +12,6 @@ class PluginsCommand(ChefCommand):
         self.description = "Manage the plugins for the current website."
 
     def setupParser(self, parser, app):
-        # Don't setup anything if this is a null app
-        # (for when `chef` is run from outside a website)
-        if app.root_dir is None:
-            return
-
         subparsers = parser.add_subparsers()
         p = subparsers.add_parser(
             'list',
