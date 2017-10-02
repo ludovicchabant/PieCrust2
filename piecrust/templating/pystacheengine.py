@@ -16,10 +16,10 @@ class PystacheTemplateEngine(TemplateEngine):
         self._not_found_error = None
         self._pystache_error = None
 
-    def renderSegmentPart(self, path, seg_part, data):
+    def renderSegment(self, path, segment, data):
         self._ensureLoaded()
         try:
-            return self.renderer.render(seg_part.content, data)
+            return self.renderer.render(segment.content, data)
         except self._not_found_error as ex:
             raise TemplateNotFoundError() from ex
         except self._pystache_error as ex:

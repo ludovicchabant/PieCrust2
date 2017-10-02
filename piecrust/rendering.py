@@ -301,20 +301,17 @@ def _do_render_page_segments(ctx, page_data):
 
     formatted_segments = {}
     for seg_name, seg in page.segments.items():
-        seg_text = ''
-        for seg_part in seg.parts:
-            part_format = seg_part.fmt or format_name
-            try:
-                with app.env.stats.timerScope(
-                        engine.__class__.__name__ + '_segment'):
-                    part_text = engine.renderSegmentPart(
-                        page.content_spec, seg_part, page_data)
-            except TemplatingError as err:
-                err.lineno += seg_part.line
-                raise err
+        try:
+            with app.env.stats.timerScope(
+                    engine.__class__.__name__ + '_segment'):
+                seg_text = engine.renderSegment(
+                    page.content_spec, seg, page_data)
+        except TemplatingError as err:
+            err.lineno += seg.line
+            raise err
 
-            part_text = format_text(app, part_format, part_text)
-            seg_text += part_text
+        seg_format = seg.fmt or format_name
+        seg_text = format_text(app, seg_format, seg_text)
         formatted_segments[seg_name] = seg_text
 
         if seg_name == 'content':

@@ -5,11 +5,11 @@ from jinja2 import FileSystemLoader
 class PieCrustLoader(FileSystemLoader):
     def __init__(self, searchpath, encoding='utf-8'):
         super(PieCrustLoader, self).__init__(searchpath, encoding)
-        self.segment_parts_cache = {}
+        self.segments_cache = {}
 
     def get_source(self, environment, template):
-        if template.startswith('$part='):
-            filename, seg_part = self.segment_parts_cache[template]
+        if template.startswith('$seg='):
+            filename, seg_content = self.segments_cache[template]
 
             mtime = os.path.getmtime(filename)
 
@@ -19,6 +19,6 @@ class PieCrustLoader(FileSystemLoader):
                 except OSError:
                     return False
 
-            return seg_part, filename, uptodate
+            return seg_content, filename, uptodate
 
         return super(PieCrustLoader, self).get_source(environment, template)

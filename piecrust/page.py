@@ -222,32 +222,20 @@ class PageLoadingError(Exception):
 class ContentSegment(object):
     debug_render_func = 'debug_render'
 
-    def __init__(self):
-        self.parts = []
-
-    def debug_render(self):
-        return '\n'.join([p.content for p in self.parts])
-
-
-class ContentSegmentPart(object):
     def __init__(self, content, fmt=None, offset=-1, line=-1):
         self.content = content
         self.fmt = fmt
         self.offset = offset
         self.line = line
 
-    def __str__(self):
-        return '%s [%s]' % (self.content, self.fmt or '<default>')
+    def debug_render(self):
+        return '[%s] %s' % (self.fmt or '<none>', self.content)
 
 
 def json_load_segments(data):
     segments = {}
-    for key, seg_data in data.items():
-        seg = ContentSegment()
-        for p_data in seg_data:
-            part = ContentSegmentPart(p_data['c'], p_data['f'], p_data['o'],
-                                      p_data['l'])
-            seg.parts.append(part)
+    for key, sd in data.items():
+        seg = ContentSegment(sd['c'], sd['f'], sd['o'], sd['l'])
         segments[key] = seg
     return segments
 
@@ -255,11 +243,8 @@ def json_load_segments(data):
 def json_save_segments(segments):
     data = {}
     for key, seg in segments.items():
-        seg_data = []
-        for part in seg.parts:
-            p_data = {'c': part.content, 'f': part.fmt, 'o': part.offset,
-                      'l': part.line}
-            seg_data.append(p_data)
+        seg_data = {
+            'c': seg.content, 'f': seg.fmt, 'o': seg.offset, 'l': seg.line}
         data[key] = seg_data
     return data
 
@@ -314,24 +299,33 @@ def _do_load_page(source, content_item):
 segment_pattern = re.compile(
     r"""^\-\-\-\s*(?P<name>\w+)(\:(?P<fmt>\w+))?\s*\-\-\-\s*$""",
     re.M)
-part_pattern = re.compile(
-    r"""^<\-\-\s*(?P<fmt>\w+)\s*\-\->\s*$""",
-    re.M)
 
 
-def _count_lines(s):
-    return len(s.split('\n'))
+def _count_lines(txt, start=0, end=-1):
+    cur = start
+    line_count = 1
+    while True:
+        nex = txt.find('\n', cur)
+        if nex < 0:
+            break
+
+        cur = nex + 1
+        line_count += 1
+
+        if end >= 0 and cur >= end:
+            break
+
+    return line_count
 
 
 def _string_needs_parsing(txt, offset):
     txtlen = len(txt)
     index = txt.find('-', offset)
     while index >= 0 and index < txtlen - 8:
-        # Look for a potential `<--format-->`
-        if index > 0 and txt[index - 1] == '<' and txt[index + 1] == '-':
-            return True
         # Look for a potential `---segment---`
-        if txt[index + 1] == '-' and txt[index + 2] == '-':
+        if (index > 0 and
+                txt[index - 1] == '\n' and
+                txt[index + 1] == '-' and txt[index + 2] == '-'):
             return True
         index = txt.find('-', index + 1)
     return False
@@ -339,18 +333,16 @@ def _string_needs_parsing(txt, offset):
 
 def parse_segments(raw, offset=0):
     # Get the number of lines in the header.
-    header_lines = _count_lines(raw[:offset].rstrip())
+    header_lines = _count_lines(raw, 0, offset)
     current_line = header_lines
 
     # Figure out if we need any parsing.
     do_parse = _string_needs_parsing(raw, offset)
     if not do_parse:
-        seg = ContentSegment()
-        seg.parts = [
-            ContentSegmentPart(raw[offset:], None, offset, current_line)]
+        seg = ContentSegment(raw[offset:], None, offset, current_line)
         return {'content': seg}
 
-    # Start parsing segments and parts.
+    # Start parsing segments.
     matches = list(segment_pattern.finditer(raw, offset))
     num_matches = len(matches)
     if num_matches > 0:
@@ -359,70 +351,41 @@ def parse_segments(raw, offset=0):
         first_offset = matches[0].start()
         if first_offset > 0:
             # There's some default content segment at the beginning.
-            seg = ContentSegment()
-            seg.parts, current_line = parse_segment_parts(
-                raw, offset, first_offset, current_line)
+            seg = ContentSegment(
+                raw[offset:first_offset], None, offset, current_line)
+            current_line += _count_lines(seg.content)
             contents['content'] = seg
 
         for i in range(1, num_matches):
             m1 = matches[i - 1]
             m2 = matches[i]
-            seg = ContentSegment()
-            seg.parts, current_line = parse_segment_parts(
-                raw, m1.end() + 1, m2.start(), current_line,
-                m1.group('fmt'))
+
+            cur_seg_start = m1.end() + 1
+            cur_seg_end = m2.start()
+
+            seg = ContentSegment(
+                raw[cur_seg_start:cur_seg_end],
+                m1.group('fmt'),
+                cur_seg_start,
+                current_line)
+            current_line += _count_lines(seg.content)
             contents[m1.group('name')] = seg
 
         # Handle text past the last match.
         lastm = matches[-1]
-        seg = ContentSegment()
-        seg.parts, current_line = parse_segment_parts(
-            raw, lastm.end() + 1, len(raw), current_line,
-            lastm.group('fmt'))
+
+        last_seg_start = lastm.end()
+
+        seg = ContentSegment(
+            raw[last_seg_start:],
+            lastm.group('fmt'),
+            last_seg_start,
+            current_line)
         contents[lastm.group('name')] = seg
+        # No need to count lines for the last one.
 
         return contents
     else:
         # No segments, just content.
-        seg = ContentSegment()
-        seg.parts, current_line = parse_segment_parts(
-            raw, offset, len(raw), current_line)
+        seg = ContentSegment(raw[offset:], None, offset, current_line)
         return {'content': seg}
-
-
-def parse_segment_parts(raw, start, end, line_offset, first_part_fmt=None):
-    matches = list(part_pattern.finditer(raw, start, end))
-    num_matches = len(matches)
-    if num_matches > 0:
-        parts = []
-
-        # First part, before the first format change.
-        part_text = raw[start:matches[0].start()]
-        parts.append(
-            ContentSegmentPart(part_text, first_part_fmt, start,
-                               line_offset))
-        line_offset += _count_lines(part_text)
-
-        for i in range(1, num_matches):
-            m1 = matches[i - 1]
-            m2 = matches[i]
-            part_text = raw[m1.end() + 1:m2.start()]
-            parts.append(
-                ContentSegmentPart(
-                    part_text, m1.group('fmt'), m1.end() + 1,
-                    line_offset))
-            line_offset += _count_lines(part_text)
-
-        lastm = matches[-1]
-        part_text = raw[lastm.end() + 1:end]
-        parts.append(ContentSegmentPart(
-            part_text, lastm.group('fmt'), lastm.end() + 1,
-            line_offset))
-
-        return parts, line_offset
-    else:
-        part_text = raw[start:end]
-        parts = [ContentSegmentPart(part_text, first_part_fmt, start,
-                                    line_offset)]
-        return parts, line_offset
-

@@ -17,17 +17,17 @@ class JinjaTemplateEngine(TemplateEngine):
         self._jinja_syntax_error = None
         self._jinja_not_found = None
 
-    def renderSegmentPart(self, path, seg_part, data):
-        if not _string_needs_render(seg_part.content):
-            return seg_part.content
+    def renderSegment(self, path, segment, data):
+        if not _string_needs_render(segment.content):
+            return segment.content
 
         self._ensureLoaded()
 
-        part_path = _make_segment_part_path(path, seg_part.offset)
-        self.env.loader.segment_parts_cache[part_path] = (
-            path, seg_part.content)
+        seg_path = _make_segment_path(path, segment.offset)
+        self.env.loader.segments_cache[seg_path] = (
+            path, segment.content)
         try:
-            tpl = self.env.get_template(part_path)
+            tpl = self.env.get_template(seg_path)
         except self._jinja_syntax_error as tse:
             raise self._getTemplatingError(tse, filename=path)
         except self._jinja_not_found:
@@ -145,6 +145,6 @@ def _string_needs_render(txt):
     return False
 
 
-def _make_segment_part_path(path, start):
-    return '$part=%s:%d' % (path, start)
+def _make_segment_path(path, start):
+    return '$seg=%s:%d' % (path, start)
 
