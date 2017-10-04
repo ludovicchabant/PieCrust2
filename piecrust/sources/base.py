@@ -131,23 +131,29 @@ class ContentSource:
         return cache
 
     def getContents(self, group):
-        raise NotImplementedError("'%s' doesn't implement 'getContents'." %
-                                  self.__class__)
+        raise NotImplementedError(
+            "'%s' doesn't implement 'getContents'." % self.__class__)
 
     def getParentGroup(self, item):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "'%s' doesn't implement 'getParentGroup'." % self.__class__)
 
     def getRelatedContents(self, item, relationship):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "'%s' doesn't implement 'getRelatedContents'." % self.__class__)
 
     def findGroup(self, rel_spec):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "'%s' doesn't implement 'findGroup'." % self.__class__)
 
     def findContent(self, route_params):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "'%s' doesn't implement 'findContent'." % self.__class__)
 
     def getSupportedRouteParameters(self):
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "'%s' doesn't implement 'getSupportedRouteParameters'." %
+            self.__class__)
 
     def prepareRenderContext(self, ctx):
         pass
