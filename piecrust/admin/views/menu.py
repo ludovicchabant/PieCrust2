@@ -6,7 +6,7 @@ from piecrust.sources.interfaces import IInteractiveSource
 def get_menu_context():
     entries = []
     entries.append({
-        'url': '/',
+        'url': url_for('FoodTruck.index'),
         'title': "Dashboard",
         'icon': 'speedometer'})
 
