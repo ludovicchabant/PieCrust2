@@ -26,6 +26,16 @@ $(document).ready(function() {
     closePublogBtn.on('click', function() {
         publogEl.fadeOut(200);
     });
+
+    if (!!window.EventSource) {
+        // TODO: this only works when the Foodtruck blueprint is added under `/pc-admin`.
+        var source = new EventSource('/pc-admin/publish-log');
+        source.onerror = function(e) {
+            console.log("Error with SSE, closing.", e);
+            source.close();
+        };
+        source.addEventListener('message', onPublishEvent);
+    }
 });
 
 var onPublishEvent = function(e) {
@@ -54,15 +64,4 @@ var onPublishEvent = function(e) {
     }
     containerEl.append(msgEl);
 };
-
-if (!!window.EventSource) {
-    // TODO: this only works when the Foodtruck blueprint is added under `/pc-admin`.
-    var source = new EventSource('/pc-admin/publish-log');
-    source.onerror = function(e) {
-        console.log("Error with SSE, closing.", e);
-        source.close();
-    };
-    source.addEventListener('message', onPublishEvent);
-}
-
 
