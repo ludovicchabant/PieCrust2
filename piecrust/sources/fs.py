@@ -48,7 +48,7 @@ class FSContentSourceBase(ContentSource):
                                                  self.fs_endpoint_path)
         return True
 
-    def openItem(self, item, mode='r', encoding=None):
+    def openItem(self, item, mode='r', **kwargs):
         for m in 'wxa+':
             if m in mode:
                 # If opening the file for writing, let's make sure the
@@ -57,7 +57,7 @@ class FSContentSourceBase(ContentSource):
                 if not os.path.exists(dirname):
                     os.makedirs(dirname, 0o755)
                 break
-        return open(item.spec, mode, encoding=encoding)
+        return open(item.spec, mode, **kwargs)
 
     def getItemMtime(self, item):
         return os.path.getmtime(item.spec)
