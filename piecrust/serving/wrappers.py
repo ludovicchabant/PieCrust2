@@ -142,10 +142,27 @@ def _run_gunicorn_server(appfactory,
     app_wrapper.run()
 
 
+def get_piecrust_server(root_dir, *,
+                        debug=False,
+                        cache_key=None,
+                        serve_site=True,
+                        serve_admin=False,
+                        is_cmdline_mode=False):
+    from piecrust.app import PieCrustFactory
+    appfactory = PieCrustFactory(root_dir,
+                                 debug=debug,
+                                 cache_key=cache_key)
+    return _get_piecrust_server(appfactory,
+                                serve_site=serve_site,
+                                serve_admin=serve_admin,
+                                is_cmdline_mode=is_cmdline_mode)
+
+
 def _get_piecrust_server(appfactory, *,
                          serve_site=True,
                          serve_admin=False,
                          is_cmdline_mode=False,
+                         admin_root_url=None,
                          run_sse_check=None):
     app = None
 
@@ -164,11 +181,10 @@ def _get_piecrust_server(appfactory, *,
     if serve_admin:
         from piecrust.admin.web import create_foodtruck_app
 
-        admin_root_url = '/pc-admin'
         es = {
             'FOODTRUCK_CMDLINE_MODE': is_cmdline_mode,
-            'FOODTRUCK_ROOT': appfactory.root_dir,
-            'FOODTRUCK_URL_PREFIX': admin_root_url,
+            'FOODTRUCK_ROOT_DIR': appfactory.root_dir,
+            'FOODTRUCK_ROOT_URL': admin_root_url,
             'DEBUG': appfactory.debug}
         if is_cmdline_mode:
             es.update({
@@ -179,9 +195,11 @@ def _get_piecrust_server(appfactory, *,
             # Disable PIN protection with Werkzeug's debugger.
             os.environ['WERKZEUG_DEBUG_PIN'] = 'off'
 
-        admin_app = create_foodtruck_app(es)
-        admin_app.wsgi_app = _PieCrustSiteOrAdminMiddleware(
-            app, admin_app.wsgi_app, admin_root_url)
+        admin_app = create_foodtruck_app(es, url_prefix=admin_root_url)
+        if app is not None:
+            admin_app.wsgi_app = _PieCrustSiteOrAdminMiddleware(
+                app, admin_app.wsgi_app, admin_root_url)
+
         app = admin_app
 
     return app
@@ -203,3 +221,13 @@ class _PieCrustSiteOrAdminMiddleware:
         if path_info.startswith(self.admin_root_url):
             return self.admin_app(environ, start_response)
         return self.main_app(environ, start_response)
+
+
+class _PieCrustAdminScriptNamePatcherMiddleware:
+    def __init__(self, admin_app, admin_root_url):
+        self.admin_app = admin_app
+        self.admin_root_url = '/%s' % admin_root_url.strip('/')
+
+    def __call__(self, environ, start_response):
+        environ['SCRIPT_NAME'] = self.admin_root_url
+        return self.admin_app(environ, start_response)

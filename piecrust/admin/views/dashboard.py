@@ -10,7 +10,7 @@ from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.uriutil import split_uri
 from ..textutil import text_preview
 from ..blueprint import foodtruck_bp, load_user
-from ..views import with_menu_context
+from ..views import with_menu_context, with_base_data
 
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,8 @@ def _getWipData(path, fs_endpoints, auto_formats, pcapp):
     if source is None:
         return None
 
-    content_item = source.findContentFromPath(path)
+    full_path = os.path.join(pcapp.root_dir, path)
+    content_item = source.findContentFromPath(full_path)
     if content_item is None:
         return None
 
@@ -103,7 +104,7 @@ def _getWipData(path, fs_endpoints, auto_formats, pcapp):
     return {
         'title': page.config.get('title'),
         'slug': slug,
-        'url': url_for('.edit_page', uri=slug),
+        'url': url_for('.edit_page', url=slug),
         'text': extract
     }
 
@@ -126,6 +127,7 @@ def login():
             "User '%s' doesn't exist or password is incorrect." %
             username)
 
+    with_base_data(data)
     return render_template('login.html', **data)
 
 

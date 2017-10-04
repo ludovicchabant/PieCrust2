@@ -18,22 +18,24 @@ class User(UserMixin):
 
 
 def load_user(user_id):
-    admin_id = g.config.get('security/username')
+    admin_id = current_app.config.get('USERNAME')
     if admin_id == user_id:
-        admin_pwd = g.config.get('security/password')
+        admin_pwd = current_app.config.get('PASSWORD')
         return User(admin_id, admin_pwd)
     return None
 
 
-login_manager = LoginManager()
-login_manager.login_view = 'FoodTruck.login'
-login_manager.user_loader(load_user)
-
-
 def record_login_manager(state):
+    login_manager = LoginManager()
+    login_manager.login_view = 'FoodTruck.login'
+    login_manager.user_loader(load_user)
+
     if state.app.config['SECRET_KEY'] == 'temp-key':
         def _handler():
-            raise Exception("No secret key has been set!")
+            from flask import render_template
+            return render_template(
+                'error.html',
+                error="No secret key has been set!")
 
         logger.debug("No secret key found, disabling website login.")
         login_manager.unauthorized_handler(_handler)
@@ -91,9 +93,8 @@ class LazySomething(object):
 @foodtruck_bp.before_request
 def _setup_foodtruck_globals():
     def _get_site():
-        root_dir = current_app.config['FOODTRUCK_ROOT']
-        url_prefix = current_app.config['FOODTRUCK_URL_PREFIX']
-        return SiteInfo(root_dir, url_prefix, debug=current_app.debug)
+        root_dir = current_app.config['FOODTRUCK_ROOT_DIR']
+        return SiteInfo(root_dir, debug=current_app.debug)
 
     g.site = LazySomething(_get_site)
 
@@ -131,5 +132,3 @@ import piecrust.admin.views.micropub  # NOQA
 import piecrust.admin.views.preview  # NOQA
 import piecrust.admin.views.publish  # NOQA
 import piecrust.admin.views.sources  # NOQA
-
-

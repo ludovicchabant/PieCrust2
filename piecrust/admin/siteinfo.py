@@ -5,6 +5,7 @@ import copy
 import logging
 import threading
 import subprocess
+from flask import request
 from piecrust.app import PieCrustFactory
 
 
@@ -20,13 +21,19 @@ class InvalidSiteError(Exception):
 
 
 class SiteInfo:
-    def __init__(self, root_dir, url_prefix, *, debug=False):
+    def __init__(self, root_dir, *, debug=False):
         self.root_dir = root_dir
-        self.url_prefix = url_prefix
         self.debug = debug
         self._piecrust_factory = None
         self._piecrust_app = None
         self._scm = None
+
+    @property
+    def url_prefix(self):
+        return request.script_root
+
+    def make_url(self, rel_url):
+        return self.url_prefix + rel_url
 
     @property
     def piecrust_factory(self):
@@ -36,10 +43,10 @@ class SiteInfo:
                 cache_key='admin',
                 debug=self.debug,
                 config_values=[
-                    ('site/root', '%s/preview/' % self.url_prefix),
-                    ('site/asset_url_format',
-                     self.url_prefix + '/preview/_asset/%path%')
-                ])
+                    ('site/root', self.make_url('/preview/')),
+                    ('site/asset_url_format', self.make_url(
+                        '/preview/_asset/%path%'))]
+            )
         return self._piecrust_factory
 
     @property

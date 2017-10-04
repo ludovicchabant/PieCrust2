@@ -1,5 +1,5 @@
 import logging
-from piecrust.serving.server import WsgiServer
+from piecrust.serving.wrappers import get_piecrust_server
 
 
 def _setup_logging(log_file, log_level, max_log_bytes, log_backup_count):
@@ -13,29 +13,29 @@ def _setup_logging(log_file, log_level, max_log_bytes, log_backup_count):
 
 def get_app(root_dir, *,
             cache_key='prod',
-            enable_debug_info=False,
+            serve_admin=False,
             log_file=None,
             log_level=logging.INFO,
             log_backup_count=0,
             max_log_bytes=4096):
     _setup_logging(log_file, log_level, max_log_bytes, log_backup_count)
-    app = WsgiServer(root_dir,
-                     cache_key=cache_key,
-                     enable_debug_info=enable_debug_info)
+    app = get_piecrust_server(root_dir,
+                              serve_site=True,
+                              serve_admin=serve_admin,
+                              cache_key=cache_key)
     return app
 
 
 def get_admin_app(root_dir, *,
-                  url_prefix='pc-admin',
+                  cache_key='prod',
                   log_file=None,
                   log_level=logging.INFO,
                   log_backup_count=0,
                   max_log_bytes=4096):
     _setup_logging(log_file, log_level, max_log_bytes, log_backup_count)
-    es = {
-        'FOODTRUCK_ROOT': root_dir,
-        'FOODTRUCK_URL_PREFIX': url_prefix}
-    from piecrust.admin.web import create_foodtruck_app
-    app = create_foodtruck_app(es)
+    app = get_piecrust_server(root_dir,
+                              serve_site=False,
+                              serve_admin=True,
+                              cache_key=cache_key)
     return app
 

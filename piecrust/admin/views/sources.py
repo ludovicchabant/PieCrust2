@@ -27,7 +27,7 @@ def list_source(source_name, page_num):
             'tags': p.get('tags', []),
             'category': p.get('category'),
             'source': source_name,
-            'url': url_for('.edit_page', uri=p['slug'])
+            'url': url_for('.edit_page', url=p['rel_url'])
         }
         data['pages'].append(page_data)
 

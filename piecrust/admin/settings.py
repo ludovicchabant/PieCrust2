@@ -1,2 +1,1 @@
-FOODTRUCK_URL_PREFIX = '/pc-admin'
-
+FOODTRUCK_ROOT_URL = ''

@@ -4,6 +4,7 @@ from flask import (
 from flask.ext.login import login_required
 from piecrust.page import Page
 from piecrust.sources.interfaces import IInteractiveSource
+from piecrust.uriutil import split_uri
 from ..blueprint import foodtruck_bp
 from ..views import with_menu_context
 
@@ -72,5 +73,6 @@ def _submit_page_form(pcapp, source):
     page = Page(source, content_item)
     uri = page.getUri()
     logger.debug("Redirecting to: %s" % uri)
-    return redirect(url_for('.edit_page', uri=uri))
+    _, rel_url = split_uri(page.app, uri)
+    return redirect(url_for('.edit_page', url=rel_url))
 
