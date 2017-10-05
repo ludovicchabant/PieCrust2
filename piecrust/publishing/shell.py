@@ -30,7 +30,8 @@ class ShellCommandPublisherBase(Publisher):
 
         proc = subprocess.Popen(
             args, cwd=self.app.root_dir, bufsize=0,
-            stdout=subprocess.PIPE)
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT)
 
         logger.debug("Running publishing monitor for PID %d" % proc.pid)
         thread = _PublishThread(proc)
@@ -72,7 +73,7 @@ class ShellCommandPublisher(ShellCommandPublisherBase):
     PUBLISHER_NAME = 'shell'
 
     def _getCommandArgs(self, ctx):
-        target_cmd = self.getConfigValue('command')
+        target_cmd = self.config.get('command')
         if not target_cmd:
             raise Exception("No command specified for publish target: %s" %
                             self.target)
