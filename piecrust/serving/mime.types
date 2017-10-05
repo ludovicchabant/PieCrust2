@@ -590,6 +590,7 @@ video/fli					fli
 video/gl					gl
 video/mpeg					mpeg mpg mpe
 video/quicktime					qt mov
+video/mp4                   mp4 mkv
 video/mp4v-es
 video/parityfec
 video/pointer
