@@ -177,13 +177,21 @@ class PostsSource(FSContentSource,
                                     "YEAR/MONTH/DAY.")
                 dt = datetime.date(year, month, day)
         elif isinstance(date, datetime.datetime):
-            year = date.year
-            month = date.month
-            day = date.day
+            dt = datetime.date(date.year, date.month, date.day)
         else:
-            raise Exception("Unknown date: %s" % date)
+            try:
+                dt = datetime.date(
+                    int(args.get('year')),
+                    int(args.get('month')),
+                    int(args.get('day')))
+            except ValueError:
+                raise Exception("Incorrect year/month/day values: %s" %
+                                args)
 
-        slug, ext = os.path.splitext(args.get('slug'))
+        slug = args.get('slug')
+        if slug is None:
+            raise Exception("No slug in args: %s" % args)
+        slug, ext = os.path.splitext(slug)
         if not ext:
             ext = self.default_auto_format
         year, month, day = dt.year, dt.month, dt.day
