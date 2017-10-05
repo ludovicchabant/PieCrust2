@@ -21,19 +21,19 @@ class InvalidSiteError(Exception):
 
 
 class SiteInfo:
-    def __init__(self, root_dir, *, debug=False):
+    def __init__(self, root_dir, *, url_prefix='', debug=False):
         self.root_dir = root_dir
+        self.url_prefix = url_prefix
         self.debug = debug
         self._piecrust_factory = None
         self._piecrust_app = None
         self._scm = None
 
-    @property
-    def url_prefix(self):
-        return request.script_root
-
     def make_url(self, rel_url):
-        return self.url_prefix + rel_url
+        prefix = self.url_prefix
+        if not prefix:
+            return rel_url
+        return prefix + rel_url
 
     @property
     def piecrust_factory(self):
@@ -81,14 +81,21 @@ class SiteInfo:
         return os.path.join(self.piecrust_app.cache_dir, 'publish.log')
 
     def publish(self, target):
+        chef_path = os.path.realpath(os.path.join(
+            os.path.dirname(__file__),
+            '../../chef.py'))
         args = [
-            sys.executable, sys.argv[0],
+            sys.executable, chef_path,
             '--pid-file', self.publish_pid_file,
             'publish',
             '--log-publisher', self.publish_log_file,
             target]
-        logger.debug("Running publishing command: %s" % args)
-        proc = subprocess.Popen(args, cwd=self.root_dir)
+        env = {}
+        for k, v in os.environ.items():
+            env[k] = v
+        env['PYTHONHOME'] = sys.prefix
+        logger.info("Running publishing command: %s" % args)
+        proc = subprocess.Popen(args, cwd=self.root_dir, env=env)
 
         def _comm():
             proc.communicate()

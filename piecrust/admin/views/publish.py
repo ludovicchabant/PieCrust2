@@ -28,6 +28,12 @@ def publish():
         with_base_data(data)
         return render_template('error.html', **data)
 
+    try:
+        with open(site.publish_log_file, 'r') as fp:
+            last_pub_log = fp.read()
+    except OSError:
+        last_pub_log = None
+
     data = {}
     data['url_run'] = url_for('.publish')
     data['site_title'] = site.piecrust_app.config.get('site/title',
@@ -42,6 +48,8 @@ def publish():
             'name': tn,
             'description': desc
         })
+
+    data['last_log'] = last_pub_log
 
     with_menu_context(data)
 

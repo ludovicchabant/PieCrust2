@@ -14,5 +14,12 @@
 </div>
 {% endfor %}
 
+{% if last_log %}
+<h2>Last Publish Log</h2>
+<pre><code>
+{{last_log}}
+</code></pre>
+{% endif %}
+
 {% endblock %}
 

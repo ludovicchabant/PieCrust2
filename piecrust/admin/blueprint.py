@@ -94,7 +94,9 @@ class LazySomething(object):
 def _setup_foodtruck_globals():
     def _get_site():
         root_dir = current_app.config['FOODTRUCK_ROOT_DIR']
-        return SiteInfo(root_dir, debug=current_app.debug)
+        return SiteInfo(root_dir,
+                        url_prefix=foodtruck_bp.url_prefix,
+                        debug=current_app.debug)
 
     g.site = LazySomething(_get_site)
 

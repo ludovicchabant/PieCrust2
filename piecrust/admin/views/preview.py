@@ -13,7 +13,8 @@ def preview_root_page():
 @foodtruck_bp.route('/preview/<path:url>')
 @login_required
 def preview_page(url):
-    pcappfac = g.site.piecrust_factory
-    server = PieCrustServer(pcappfac, root_url=g.site.make_url('/preview/'))
+    site = g.site
+    pcappfac = site.piecrust_factory
+    server = PieCrustServer(pcappfac, root_url=site.make_url('/preview/'))
     return make_response(server)
 
