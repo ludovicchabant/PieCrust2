@@ -93,13 +93,13 @@ class DefaultContentSource(FSContentSource,
         return ContentItem(path, metadata)
 
     def setupPrepareParser(self, parser, app):
-        parser.add_argument('uri', help='The URI for the new page.')
+        parser.add_argument('slug', help='The slug for the new page.')
 
     def createContent(self, args):
-        uri = args.get('uri')
-        if not uri:
-            uri = '_index'
-        path = os.path.join(self.fs_endpoint_path, uri)
+        slug = args.get('slug')
+        if not slug:
+            slug = '_index'
+        path = os.path.join(self.fs_endpoint_path, slug)
         _, ext = os.path.splitext(path)
         if ext == '':
             path = '%s.%s' % (path, self.default_auto_format)
