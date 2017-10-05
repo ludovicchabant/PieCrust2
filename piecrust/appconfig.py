@@ -45,6 +45,7 @@ class PieCrustConfiguration(Configuration):
         self._path = path
         self._theme_path = theme_path
         self._cache = cache or NullCache()
+        self._cache_hash_mod = ''
         self._custom_paths = []
         self._post_fixups = []
         self.theme_config = theme_config
@@ -74,6 +75,7 @@ class PieCrustConfiguration(Configuration):
             set_dict_value(config, path, value)
 
         self._post_fixups.append(_fixup)
+        self._cache_hash_mod += '&val[%s=%s]' % (path, repr(value))
 
     def setAll(self, values, validate=False):
         # Override base class implementation
@@ -102,8 +104,8 @@ class PieCrustConfiguration(Configuration):
                 APP_VERSION, CACHE_VERSION)).encode('utf8'))
         for p in paths:
             cache_key_hash.update(("&path=%s" % p).encode('utf8'))
-        cache_key_hash.update(
-            ("&fixups=%d" % len(self._post_fixups)).encode('utf8'))
+        if self._cache_hash_mod:
+            cache_key_hash.update(self._cache_hash_mod.encode('utf8'))
         cache_key = cache_key_hash.hexdigest()
 
         # Check the cache for a valid version.
