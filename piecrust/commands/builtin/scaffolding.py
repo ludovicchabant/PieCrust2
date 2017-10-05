@@ -83,6 +83,8 @@ class PrepareCommand(ExtendableChefCommand):
 
         source = ctx.args.source
         content_item = source.createContent(vars(ctx.args))
+        if content_item is None:
+            raise Exception("Can't create item.")
 
         config_tokens = {
             '%title%': "Untitled Content",
@@ -97,7 +99,7 @@ class PrepareCommand(ExtendableChefCommand):
 
         logger.info("Creating content: %s" % content_item.spec)
         mode = 'w' if ctx.args.force else 'x'
-        with content_item.open(mode) as f:
+        with source.openItem(content_item, mode) as f:
             f.write(tpl_text)
 
         # If this was a file-system content item, see if we need to auto-open
