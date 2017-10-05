@@ -54,21 +54,20 @@ def _submit_page_form(pcapp, source):
         if fk.startswith('meta-'):
             metadata[fk[5:]] = fv
 
-    logger.debug("Searching for item with metadata: %s" % metadata)
-    content_item = source.findContent(metadata)
+    logger.debug("Creating item with metadata: %s" % metadata)
+    content_item = source.createContent(metadata)
     if content_item is None:
-        logger.error("Can't find item for: %s" % metadata)
+        logger.error("Can't create item for: %s" % metadata)
         abort(500)
 
-    logger.debug("Creating item: %s" % content_item.spec)
-    with source.openItem(content_item, mode='w') as fp:
-        fp.write('')
+    logger.debug("Creating content: %s" % content_item.spec)
+    with source.openItem(content_item, 'w') as fp:
+        fp.write('---\n')
+        fp.write('draft: true\n')
+        fp.write('---\n')
+        fp.write('\n')
+        fp.write("Start writing!\n")
     flash("'%s' was created." % content_item.spec)
-
-    route = pcapp.getSourceRoute(source.name)
-    if route is None:
-        logger.error("Can't find route for source: %s" % source.name)
-        abort(500)
 
     page = Page(source, content_item)
     uri = page.getUri()
