@@ -219,12 +219,20 @@ class PageIterator:
         if self._has_sorter:
             return
         if self._is_content_source:
+            # For content sources, the default sorting is reverse
+            # date/time sorting.
             self._it = DateSortIterator(self._it, reverse=True)
         self._has_sorter = True
 
     def _initIterator(self):
         if self._is_content_source:
             self._it = PageContentSourceIterator(self._source)
+            app = self._source.app
+            if app.config.get('baker/is_baking'):
+                # While baking, automatically exclude any page with
+                # the `draft` setting.
+                draft_setting = app.config['baker/no_bake_setting']
+                self._it = NoDraftsIterator(self._it, draft_setting)
         else:
             self._it = GenericSourceIterator(self._source)
 
@@ -363,6 +371,16 @@ class PageContentSourceIterator:
     def __iter__(self):
         source = self.source
         yield from source.getAllPages()
+
+
+class NoDraftsIterator:
+    def __init__(self, source, no_draft_setting):
+        self.it = source
+        self.no_draft_setting = no_draft_setting
+
+    def __iter__(self):
+        nds = self.no_draft_setting
+        yield from filter(lambda i: not i.config.get(nds), self.it)
 
 
 class PaginationDataBuilderIterator:

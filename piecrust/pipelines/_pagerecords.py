@@ -45,6 +45,7 @@ class PagePipelineRecordEntry(RecordEntry):
     FLAG_SOURCE_MODIFIED = 2**1
     FLAG_OVERRIDEN = 2**2
     FLAG_COLLAPSED_FROM_LAST_RUN = 2**3
+    FLAG_IS_DRAFT = 2**4
 
     def __init__(self):
         super().__init__()
@@ -122,7 +123,8 @@ flag_descriptions = {
     PagePipelineRecordEntry.FLAG_NEW: 'new',
     PagePipelineRecordEntry.FLAG_SOURCE_MODIFIED: 'touched',
     PagePipelineRecordEntry.FLAG_OVERRIDEN: 'overriden',
-    PagePipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run'}
+    PagePipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run',
+    PagePipelineRecordEntry.FLAG_IS_DRAFT: 'draft'}
 
 
 sub_flag_descriptions = {

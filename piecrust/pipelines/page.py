@@ -16,6 +16,7 @@ class PagePipeline(ContentPipeline):
         super().__init__(source, ppctx)
         self._pagebaker = None
         self._stats = source.app.env.stats
+        self._draft_setting = self.app.config['baker/no_bake_setting']
 
     def initialize(self):
         stats = self.app.env.stats
@@ -114,7 +115,11 @@ class PagePipeline(ContentPipeline):
         record_entry = result.record_entry
         record_entry.config = page.config.getAll()
         record_entry.timestamp = page.datetime.timestamp()
-        result.next_step_job = self.createJob(content_item)
+
+        if not page.config.get(self._draft_setting):
+            result.next_step_job = self.createJob(content_item)
+        else:
+            record_entry.flags |= PagePipelineRecordEntry.FLAG_IS_DRAFT
 
     def _renderOrPostpone(self, content_item, ctx, result):
         # Here our job is to render the page's segments so that they're
