@@ -3,6 +3,12 @@
 {% block content %}
 <h1>Publish {{site_title}}</h1>
 
+{% with messages = get_flashed_messages() %}
+{% for message in messages %}
+<p class="bg-info">{{message}}</p>
+{% endfor %}
+{% endwith %}
+
 {% for target in targets %}
 <div>
     <h3>{{target.name}}</h3>

@@ -3,6 +3,17 @@
 {% extends 'layouts/default.html' %}
 
 {% block content %}
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div>
+    {% for message in messages %}
+    <p class="bg-info">{{message}}</p>
+    {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+
+
 <form action="{{url_postback}}" method="POST" class="ft-write-form" id="ft-write-form">
     <div class="row">
         <div class="col-sm-10 col-sm-offset-1">
