@@ -19,6 +19,14 @@ class PublishCommand(ChefCommand):
             metavar='LOG_FILE',
             help="Log the publisher's output to a given file.")
         parser.add_argument(
+            '--log-debug-info',
+            action='store_true',
+            help="Add some debug info as a preamble to the log file.")
+        parser.add_argument(
+            '--append-log',
+            action='store_true',
+            help="Append to the log file if it exists.")
+        parser.add_argument(
             '--preview',
             action='store_true',
             help="Only preview what the publisher would do.")
@@ -62,5 +70,7 @@ class PublishCommand(ChefCommand):
             ctx.args.target,
             preview=ctx.args.preview,
             extra_args=ctx.args,
-            log_file=ctx.args.log_publisher)
+            log_file=ctx.args.log_publisher,
+            log_debug_info=ctx.args.log_debug_info,
+            append_log_file=ctx.args.append_log)
 
