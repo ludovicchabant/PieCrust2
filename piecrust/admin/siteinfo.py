@@ -5,7 +5,7 @@ import copy
 import logging
 import threading
 import subprocess
-from flask import request
+from flask import request, flash
 from piecrust.app import PieCrustFactory
 
 
@@ -80,15 +80,23 @@ class SiteInfo:
     def publish_log_file(self):
         return os.path.join(self.piecrust_app.cache_dir, 'publish.log')
 
+    def getPublishTargetLogFile(self, target):
+        target = target.replace(' ', '_').lower()
+        return os.path.join(self.piecrust_app.cache_dir,
+                            'publish.%s.log' % target)
+
     def publish(self, target):
         chef_path = os.path.realpath(os.path.join(
             os.path.dirname(__file__),
             '../../chef.py'))
         args = [
             sys.executable, chef_path,
+            '--no-color',
             '--pid-file', self.publish_pid_file,
+            '--log', self.publish_log_file,
             'publish',
-            '--log-publisher', self.publish_log_file,
+            '--log-publisher', self.getPublishTargetLogFile(target),
+            '--log-debug-info',
             target]
         env = {}
         for k, v in os.environ.items():
@@ -96,10 +104,14 @@ class SiteInfo:
         env['PYTHONHOME'] = sys.prefix
         logger.info("Running publishing command: %s" % args)
         proc = subprocess.Popen(args, cwd=self.root_dir, env=env)
-
-        def _comm():
-            proc.communicate()
-
-        t = threading.Thread(target=_comm, daemon=True)
-        t.start()
+        logger.info("Publishing process ID: %s" % proc.pid)
+        try:
+            proc.wait(timeout=2)
+            if proc.returncode == 0:
+                flash("Publish process ran successfully!")
+            else:
+                flash("Publish process returned '%s'... check the log." %
+                      proc.returncode)
+        except subprocess.TimeoutExpired:
+            flash("Publish process is still running... check the log later.")
 
