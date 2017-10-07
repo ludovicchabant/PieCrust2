@@ -3,10 +3,12 @@ import os
 import os.path
 import logging
 import datetime
+import yaml
 from werkzeug.utils import secure_filename
 from flask import g, request, abort, Response
 from flask_indieauth import requires_indieauth
 from ..blueprint import foodtruck_bp
+from piecrust.configuration import merge_dicts
 from piecrust.page import Page
 
 
@@ -32,9 +34,10 @@ def micropub():
 
 def _run_publisher():
     pcapp = g.site.piecrust_app
-    target = pcapp.config.get('micropub/publish_target', 'default')
-    logger.debug("Running pushing target '%s'." % target)
-    g.site.publish(target)
+    target = pcapp.config.get('micropub/publish_target')
+    if target:
+        logger.debug("Running pushing target '%s'." % target)
+        g.site.publish(target)
 
 
 def _get_location_response(uri):
@@ -47,6 +50,8 @@ def _get_location_response(uri):
 
 def _create_hentry():
     f = request.form
+    pcapp = g.site.piecrust_app
+
     summary = f.get('summary')
     categories = f.getlist('category[]')
     location = f.get('location')
@@ -137,22 +142,34 @@ def _create_hentry():
             fn_no_ext, _ = os.path.splitext(fn)
             photo_names.append(fn_no_ext)
 
+    # Build the config.
+    post_config = {}
+    if name:
+        post_config['title'] = name
+    if categories:
+        post_config['tags'] = categories
+    if location:
+        post_config['location'] = location
+    if reply_to:
+        post_config['reply_to'] = reply_to
+    if status:
+        post_config['status'] = status
+    if post_format:
+        post_config['format'] = post_format
+    post_config['time'] = '%02d:%02d:%02d' % (now.hour, now.minute, now.second)
+
+    # If there's no title, this is a "microblogging" post.
+    if not name:
+        micro_config = pcapp.config.get('micropub/microblogging')
+        if micro_config:
+            merge_dicts(post_config, micro_config)
+
     logger.debug("Writing to item: %s" % content_item.spec)
     with source.openItem(content_item, mode='w') as fp:
         fp.write('---\n')
-        if name:
-            fp.write('title: "%s"\n' % name)
-        if categories:
-            fp.write('tags: [%s]\n' % ','.join(categories))
-        if location:
-            fp.write('location: %s\n' % location)
-        if reply_to:
-            fp.write('reply_to: "%s"\n' % reply_to)
-        if status:
-            fp.write('status: %s\n' % status)
-        if post_format:
-            fp.write('format: %s\n' % post_format)
-        fp.write('time: %02d:%02d:%02d\n' % (now.hour, now.minute, now.second))
+        yaml.dump(post_config, fp,
+                  default_flow_style=False,
+                  allow_unicode=True)
         fp.write('---\n')
 
         if summary:
@@ -171,11 +188,6 @@ def _create_hentry():
             for pn in photo_names:
                 fp.write('<img src="{{assets.%s}}" alt="%s"/>\n\n' %
                          (pn, pn))
-
-    route = pcapp.getSourceRoute(source.name)
-    if route is None:
-        logger.error("Can't find route for source: %s" % source.name)
-        abort(500)
 
     page = Page(source, content_item)
     uri = page.getUri()
