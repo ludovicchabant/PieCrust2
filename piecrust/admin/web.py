@@ -34,32 +34,35 @@ def create_foodtruck_app(extra_settings=None, url_prefix=None):
     # Register extensions and blueprints.
     app.register_blueprint(foodtruck_bp, url_prefix=url_prefix)
 
-    # ---------------
     # Debugging stuff
-    @app.errorhandler(404)
-    def page_not_found(e):
-        from flask import request, url_for
-        output = []
-        for rule in app.url_map.iter_rules():
-            options = {}
-            for arg in rule.arguments:
-                options[arg] = "[{0}]".format(arg)
-                methods = ','.join(rule.methods)
-                try:
-                    url = url_for(rule.endpoint, **options)
-                except:
-                    url = '???'
-                line = ("{:50s} {:20s} {}".format(rule.endpoint, methods, url))
-                output.append(line)
-
-        resp = request.path + '<br/>\n'
-        resp += str(request.environ) + '<br/>\n'
-        resp += str(app.config['FOODTRUCK_ROOT_URL']) + '<br/>\n'
-        resp += '<br/>\n'.join(sorted(output))
-        return resp, 404
-    # ---------------
+    if app.config.get('FOODTRUCK_DEBUG_404'):
+        @app.errorhandler(404)
+        def page_not_found(e):
+            return _debug_page_not_found(e)
 
     logger.debug("Created FoodTruck app with admin root: %s" % root_dir)
 
     return app
 
+
+def _debug_page_not_found(e):
+    from flask import request, url_for
+    output = []
+    for rule in app.url_map.iter_rules():
+        options = {}
+        for arg in rule.arguments:
+            options[arg] = "[{0}]".format(arg)
+            methods = ','.join(rule.methods)
+            try:
+                url = url_for(rule.endpoint, **options)
+            except:
+                url = '???'
+            line = ("{:50s} {:20s} {}".format(rule.endpoint, methods, url))
+            output.append(line)
+
+    resp = 'FOODTRUCK_ROOT_URL=%s<br/>\n' % str(app.config['FOODTRUCK_ROOT_URL'])
+    resp += 'PATH=%s<br/>\n' % request.path
+    resp += 'ENVIRON=%s<br/>\n' % str(request.environ)
+    resp += 'URL RULES:<br/>\n'
+    resp += '<br/>\n'.join(sorted(output))
+    return resp, 404
