@@ -6,6 +6,7 @@ import logging
 import threading
 import subprocess
 from flask import request, flash
+from piecrust import CACHE_DIR
 from piecrust.app import PieCrustFactory
 
 
@@ -80,17 +81,35 @@ class SiteInfo:
     def publish_log_file(self):
         return os.path.join(self.piecrust_app.cache_dir, 'publish.log')
 
+    def rebakeAssets(self):
+        out_dir = os.path.join(
+            self.root_dir,
+            CACHE_DIR,
+            self.piecrust_factory.cache_key,
+            'server')
+        args = [
+            '--no-color',
+            'bake',
+            '-o', out_dir,
+            '--assets-only']
+        proc = self._runChef(args)
+        try:
+            proc.wait(timeout=2)
+            if proc.returncode == 0:
+                flash("Assets baked successfully!")
+            else:
+                flash("Asset baking process returned '%s'... check the log." %
+                      proc.returncode)
+        except subprocess.TimeoutExpired:
+            flash("Asset baking process is still running... check the log later.")
+
     def getPublishTargetLogFile(self, target):
         target = target.replace(' ', '_').lower()
         return os.path.join(self.piecrust_app.cache_dir,
                             'publish.%s.log' % target)
 
     def publish(self, target):
-        chef_path = os.path.realpath(os.path.join(
-            os.path.dirname(__file__),
-            '../../chef.py'))
         args = [
-            sys.executable, chef_path,
             '--no-color',
             '--pid-file', self.publish_pid_file,
             '--log', self.publish_log_file,
@@ -98,13 +117,7 @@ class SiteInfo:
             '--log-publisher', self.getPublishTargetLogFile(target),
             '--log-debug-info',
             target]
-        env = {}
-        for k, v in os.environ.items():
-            env[k] = v
-        env['PYTHONHOME'] = sys.prefix
-        logger.info("Running publishing command: %s" % args)
-        proc = subprocess.Popen(args, cwd=self.root_dir, env=env)
-        logger.info("Publishing process ID: %s" % proc.pid)
+        proc = self._runChef(args)
         try:
             proc.wait(timeout=2)
             if proc.returncode == 0:
@@ -115,3 +128,18 @@ class SiteInfo:
         except subprocess.TimeoutExpired:
             flash("Publish process is still running... check the log later.")
 
+    def _runChef(self, args):
+        chef_path = os.path.realpath(os.path.join(
+            os.path.dirname(__file__),
+            '../../chef.py'))
+        args = [sys.executable, chef_path] + args
+
+        env = {}
+        for k, v in os.environ.items():
+            env[k] = v
+        env['PYTHONHOME'] = sys.prefix
+
+        logger.info("Running chef command: %s" % args)
+        proc = subprocess.Popen(args, cwd=self.root_dir, env=env)
+        logger.info("Chef process ID: %s" % proc.pid)
+        return proc

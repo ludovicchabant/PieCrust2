@@ -63,6 +63,7 @@ def index():
     data['site_title'] = pcapp.config.get('site/title', "Unnamed Website")
     data['url_publish'] = url_for('.publish')
     data['url_preview'] = url_for('.preview_root_page')
+    data['url_bake_assets'] = url_for('.rebake_assets')
 
     pub_tgts = pcapp.config.get('publish', {})
     data['publish'] = {'targets': list(pub_tgts.keys())}
@@ -107,6 +108,13 @@ def _getWipData(path, fs_endpoints, auto_formats, pcapp):
         'url': url_for('.edit_page', url=slug),
         'text': extract
     }
+
+
+@foodtruck_bp.route('/rebake_assets', methods=['POST'])
+@login_required
+def rebake_assets():
+    g.site.rebakeAssets()
+    return redirect(url_for('.index'))
 
 
 @foodtruck_bp.route('/login', methods=['GET', 'POST'])

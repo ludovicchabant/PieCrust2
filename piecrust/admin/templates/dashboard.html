@@ -6,6 +6,15 @@
         <h1>{{site_title}} <a href="{{url_preview}}"><span class="icon ion-arrow-right-c"></span></a></h1>
     </div>
 </div>
+{% with messages = get_flashed_messages() %}
+{% if messages %}
+<div class="row">
+{% for message in messages %}
+<p class="bg-info">{{message}}</p>
+{% endfor %}
+</div>
+{% endif %}
+{% endwith %}
 <div class="row">
     <div class="col-md-6">
         <h2><span class="icon ion-stats-bars"></span> Site Summary</h2>
@@ -14,6 +23,11 @@
             <a href="{{s.list_url}}">{{s.page_count}} {{s.name}}</a>
         </div>
         {% endfor %}
+
+        <h2><span class="icon ion-wrench"></span> Site Management</h2>
+        <form action="{{url_bake_assets}}" method="POST">
+            <button type="submit" class="btn"><span class="icon ion-loop"></span> Rebake Preview Assets</button>
+        </form>
     </div>
     <div class="col-md-6">
         <h2><span class="icon ion-erlenmeyer-flask"></span> Work in Progress</h2>
