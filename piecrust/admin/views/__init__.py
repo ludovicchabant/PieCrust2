@@ -24,14 +24,4 @@ def with_menu_context(context=None):
     if context is None:
         context = {}
     context['menu'] = get_menu_context()
-    with_base_data(context)
     return context
-
-
-def with_base_data(context=None):
-    if context is None:
-        context = {}
-
-    script_root = request.script_root or ''
-    root_url = current_app.config.get('FOODTRUCK_ROOT_URL') or ''
-    context['base_url'] = script_root + root_url

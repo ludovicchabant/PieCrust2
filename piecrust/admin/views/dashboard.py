@@ -10,7 +10,7 @@ from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.uriutil import split_uri
 from ..textutil import text_preview
 from ..blueprint import foodtruck_bp, load_user
-from ..views import with_menu_context, with_base_data
+from ..views import with_menu_context
 
 
 logger = logging.getLogger(__name__)
@@ -135,7 +135,6 @@ def login():
             "User '%s' doesn't exist or password is incorrect." %
             username)
 
-    with_base_data(data)
     return render_template('login.html', **data)
 
 

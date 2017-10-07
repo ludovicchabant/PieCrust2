@@ -8,7 +8,7 @@
 </div>
 <nav class="ft-nav">
     <div class="ft-nav-title">
-        <img src="{{base_url}}/static/img/foodtruck.png" alt="Food Truck" />
+        <img src="{{url_for('.static', filename='img/foodtruck.png')}}" alt="Food Truck" />
         <div class="ft-nav-brand">FoodTruck</div>
     </div>
     {% include 'layouts/menu.html' %}
