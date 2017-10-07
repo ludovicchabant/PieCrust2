@@ -16,7 +16,6 @@ class PaginationData(LazyPageConfigData):
         from piecrust.uriutil import split_uri
 
         page = self._page
-        dt = page.datetime
         set_val = self._setValue
 
         page_url = page.getUri()
@@ -25,17 +24,16 @@ class PaginationData(LazyPageConfigData):
         set_val('rel_url', rel_url)
         set_val('slug', rel_url)  # For backwards compatibility
         set_val('route', copy.deepcopy(page.source_metadata['route_params']))
-        set_val('timestamp', time.mktime(page.datetime.timetuple()))
-        set_val('datetime', {
-            'year': dt.year, 'month': dt.month, 'day': dt.day,
-            'hour': dt.hour, 'minute': dt.minute, 'second': dt.second})
-        set_val('mtime', page.content_mtime)
 
         self._mapLoader('date', _load_date)
+        self._mapLoader('datetime', _load_datetime)
+        self._mapLoader('timestamp', _load_timestamp)
+        self._mapLoader('mtime', _load_content_mtime)
         self._mapLoader('assets', _load_assets)
 
         segment_names = page.config.get('segments')
         for name in segment_names:
+            self._mapLoader('raw_' + name, _load_raw_segment)
             self._mapLoader(name, _load_rendered_segment)
 
 
@@ -50,6 +48,27 @@ def _load_date(data, name):
     if date_format:
         return page.datetime.strftime(date_format)
     return None
+
+
+def _load_datetime(data, name):
+    dt = data_page.datetime
+    return {
+        'year': dt.year, 'month': dt.month, 'day': dt.day,
+        'hour': dt.hour, 'minute': dt.minute, 'second': dt.second}
+
+
+def _load_timestamp(data, name):
+    page = data._page
+    return time.mktime(page.datetime.timetuple())
+
+
+def _load_content_mtime(data, name):
+    return data._page.content_mtime
+
+
+def _load_raw_segment(data, name):
+    page = data._page
+    return page.getSegment(name[4:])
 
 
 def _load_rendered_segment(data, name):
