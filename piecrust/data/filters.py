@@ -4,79 +4,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class PaginationFilter(object):
-    def __init__(self):
-        self.root_clause = None
-
-    @property
-    def is_empty(self):
-        return self.root_clause is None
-
-    def addClause(self, clause):
-        self._ensureRootClause()
-        self.root_clause.addClause(clause)
-
-    def addClausesFromConfig(self, config):
-        self._ensureRootClause()
-        self._addClausesFromConfigRecursive(config, self.root_clause)
-
-    def pageMatches(self, page):
-        if self.root_clause is None:
-            return True
-        return self.root_clause.pageMatches(self, page)
-
-    def _ensureRootClause(self):
-        if self.root_clause is None:
-            self.root_clause = AndBooleanClause()
-
-    def _addClausesFromConfigRecursive(self, config, parent_clause):
-        for key, val in config.items():
-            if key == 'and':
-                if not isinstance(val, list) or len(val) == 0:
-                    raise Exception("The given boolean 'AND' filter clause "
-                                    "doesn't have an array of child clauses.")
-                subcl = AndBooleanClause()
-                parent_clause.addClause(subcl)
-                for c in val:
-                    self._addClausesFromConfigRecursive(c, subcl)
-
-            elif key == 'or':
-                if not isinstance(val, list) or len(val) == 0:
-                    raise Exception("The given boolean 'OR' filter clause "
-                                    "doesn't have an array of child clauses.")
-                subcl = OrBooleanClause()
-                parent_clause.addClause(subcl)
-                for c in val:
-                    self._addClausesFromConfigRecursive(c, subcl)
-
-            elif key == 'not':
-                if isinstance(val, list):
-                    if len(val) != 1:
-                        raise Exception("'NOT' filter clauses must have "
-                                        "exactly one child clause.")
-                    val = val[0]
-                subcl = NotClause()
-                parent_clause.addClause(subcl)
-                self._addClausesFromConfigRecursive(val, subcl)
-
-            elif key[:4] == 'has_':
-                setting_name = key[4:]
-                if isinstance(val, list):
-                    wrappercl = AndBooleanClause()
-                    for c in val:
-                        wrappercl.addClause(HasFilterClause(setting_name, c))
-                    parent_clause.addClause(wrappercl)
-                else:
-                    parent_clause.addClause(HasFilterClause(setting_name, val))
-
-            elif key[:3] == 'is_':
-                setting_name = key[3:]
-                parent_clause.addClause(IsFilterClause(setting_name, val))
-
-            else:
-                raise Exception("Unknown filter clause: %s" % key)
-
-
 class IFilterClause(object):
     def addClause(self, clause):
         raise NotImplementedError()
@@ -126,6 +53,22 @@ class OrBooleanClause(BooleanClause):
         return False
 
 
+class IsDefinedFilterClause(IFilterClause):
+    def __init__(self, name):
+        self.name = name
+
+    def pageMatches(self, fil, page):
+        return self.name in page.config
+
+
+class IsNotEmptyFilterClause(IFilterClause):
+    def __init__(self, name):
+        self.name = name
+
+    def pageMatches(self, fil, page):
+        return bool(page.config.get(self.name))
+
+
 class SettingFilterClause(IFilterClause):
     def __init__(self, name, value, coercer=None):
         self.name = name
@@ -156,3 +99,93 @@ class IsFilterClause(SettingFilterClause):
             actual_value = self.coercer(actual_value)
         return actual_value == self.value
 
+
+unary_ops = {'not': NotClause}
+binary_ops = {
+    'and': AndBooleanClause,
+    'or': OrBooleanClause}
+misc_ops = {
+    'defined': IsDefinedFilterClause,
+    'not_empty': IsNotEmptyFilterClause}
+
+
+class PaginationFilter(object):
+    def __init__(self):
+        self.root_clause = None
+
+    @property
+    def is_empty(self):
+        return self.root_clause is None
+
+    def addClause(self, clause):
+        self._ensureRootClause()
+        self.root_clause.addClause(clause)
+
+    def addClausesFromConfig(self, config):
+        self._ensureRootClause()
+        self._addClausesFromConfigRecursive(config, self.root_clause)
+
+    def pageMatches(self, page):
+        if self.root_clause is None:
+            return True
+        return self.root_clause.pageMatches(self, page)
+
+    def _ensureRootClause(self):
+        if self.root_clause is None:
+            self.root_clause = AndBooleanClause()
+
+    def _addClausesFromConfigRecursive(self, config, parent_clause):
+        for key, val in config.items():
+            clause_class = unary_ops.get(key)
+            if clause_class:
+                if isinstance(val, list):
+                    if len(val) != 1:
+                        raise Exception(
+                            "Unary filter '%s' must have exactly one child "
+                            "clause." % key)
+                    val = val[0]
+                subcl = clause_class()
+                parent_clause.addClause(subcl)
+                self._addClausesFromConfigRecursive(val, subcl)
+                continue
+
+            clause_class = binary_ops.get(key)
+            if clause_class:
+                if not isinstance(val, list) or len(val) == 0:
+                    raise Exception(
+                        "Binary filter clause '%s' doesn't have an array "
+                        "of child clauses." % key)
+                subcl = clause_class()
+                parent_clause.addClause(subcl)
+                for c in val:
+                    self._addClausesFromConfigRecursive(c, subcl)
+                continue
+
+            clause_class = misc_ops.get(key)
+            if clause_class:
+                if isinstance(val, list):
+                    wrappercl = AndBooleanClause()
+                    for c in val:
+                        wrappercl.addClause(clause_class(c))
+                    parent_clause.addClause(wrappercl)
+                else:
+                    parent_clause.addClause(clause_class(val))
+                continue
+
+            if key[:4] == 'has_':
+                setting_name = key[4:]
+                if isinstance(val, list):
+                    wrappercl = AndBooleanClause()
+                    for c in val:
+                        wrappercl.addClause(HasFilterClause(setting_name, c))
+                    parent_clause.addClause(wrappercl)
+                else:
+                    parent_clause.addClause(HasFilterClause(setting_name, val))
+                continue
+
+            if key[:3] == 'is_':
+                setting_name = key[3:]
+                parent_clause.addClause(IsFilterClause(setting_name, val))
+                continue
+
+            raise Exception("Unknown filter clause: %s" % key)
