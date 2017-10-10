@@ -30,55 +30,62 @@ def _patch_flask_indieauth():
         except ValueError:
             return None
 
-    _orig_check_auth = flask_indieauth.check_auth
-
-    def _patched_check_auth(access_token):
-        user_agent = request.headers.get('User-Agent') or ''
-        if user_agent.startswith('Micro.blog/'):
-            return None
-        return _orig_check_auth(access_token)
-
     flask_indieauth.get_access_token_from_json_request = \
         _patched_get_access_token_from_json_request
-    flask_indieauth.check_auth = _patched_check_auth
     logger.info("Patched Flask-IndieAuth.")
 
 
 _patch_flask_indieauth()
 
 
-_enable_debug_auth = False
+_enable_debug_req = False
 
 
-def _debug_auth():
-    if _enable_debug_auth:
+def _debug_req():
+    if _enable_debug_req:
         logger.warning("Headers: %s" % request.headers)
         logger.warning("Args: %s" % request.args)
         logger.warning("Form: %s" % request.form)
         logger.warning("Data: %s" % request.get_data(True))
+        try:
+            logger.warning("JSON: %s" % request.json)
+        except:
+            pass
 
 
 @foodtruck_bp.route('/micropub', methods=['POST'])
 @requires_indieauth
 def post_micropub():
-    _debug_auth()
+    _debug_req()
 
-    post_type = request.form.get('h')
+    if 'h' in request.form:
+        data = _get_mf2_from_form(request.form)
+    else:
+        try:
+            data = json.loads(request.get_data(as_text=True))
+        except:
+            data = None
 
-    if post_type == 'entry':
-        source_name, content_item = _create_hentry()
-        _run_publisher()
-        return _get_location_response(source_name, content_item)
+    if data:
+        entry_type = _mf2get(data, 'type')
+        if entry_type == 'h-entry':
+            source_name, content_item = _create_hentry(data['properties'])
+            _run_publisher()
+            return _get_location_response(source_name, content_item)
 
-    logger.debug("Unknown or unsupported update type.")
-    logger.debug(request.form)
+        else:
+            logger.error("Post type '%s' is not supported." % post_type)
+    else:
+        logger.error("Missing form or JSON data.")
+
     abort(400)
 
 
 @foodtruck_bp.route('/micropub/media', methods=['POST'])
 @requires_indieauth
 def post_micropub_media():
-    _debug_auth()
+    _debug_req()
+
     photo = request.files.get('file')
     if not photo:
         logger.error("Micropub media request without a file part.")
@@ -149,62 +156,75 @@ def _get_location_response(source_name, content_item):
     return r
 
 
-def _create_hentry():
-    f = request.form
+re_array_prop = re.compile(r'\[(?P<name>\w*)\]$')
 
-    summary = f.get('summary')
-    categories = f.getlist('category[]')
-    location = f.get('location')
-    reply_to = f.get('in-reply-to')
-    status = f.get('post-status')
-    # pubdate = f.get('published', 'now')
 
-    # Figure out the title of the post.
-    name = f.get('name')
-    if not name:
-        name = f.get('name[]')
+def _get_mf2_from_form(f):
+    post_type = 'h-' + f.get('h', '')
 
-    # Figure out the contents of the post.
+    properties = {}
+    for key, vals in f.lists():
+        m = re_array_prop.search(key)
+        if not m:
+            properties[key] = vals
+            continue
+
+        key_name_only = key[:m.start()]
+        inner_name = m.group('name')
+        if not inner_name:
+            properties[key_name_only] = vals
+            continue
+
+        properties[key_name_only] = [{inner_name: vals[0]}]
+
+    return {
+        'type': [post_type],
+        'properties': properties}
+
+
+def _mf2get(data, key):
+    val = data.get(key)
+    if val is not None:
+        return val[0]
+    return None
+
+
+def _create_hentry(data):
+    name = _mf2get(data, 'name')
+    summary = _mf2get(data, 'summary')
+    location = _mf2get(data, 'location')
+    reply_to = _mf2get(data, 'in-reply-to')
+    status = _mf2get(data, 'post-status')
+    # pubdate = _mf2get(data, 'published') or 'now'
+
+    categories = data.get('category')
+
+    # Get the content.
     post_format = None
-    content = f.get('content')
-    if not content:
-        content = f.get('content[]')
-    if not content:
-        content = f.get('content[html]')
+    content = _mf2get(data, 'content')
+    if isinstance(content, dict):
+        content = content.get('html')
         post_format = 'none'
-
     if not content:
         logger.error("No content specified!")
-        logger.error(dict(request.form))
+        logger.error(data)
         abort(400)
 
+    # Clean-up stuff.
     # TODO: setting to conserve Windows-type line endings?
     content = content.replace('\r\n', '\n')
     if summary:
         summary = summary.replace('\r\n', '\n')
 
-    # Figure out the slug of the post.
+    # Get the slug.
+    slug = _mf2get(data, 'slug') or _mf2get(data, 'mp-slug')
     now = datetime.datetime.now()
-    slug = f.get('slug')
-    if not slug:
-        slug = f.get('mp-slug')
     if not slug:
         slug = '%02d%02d%02d' % (now.hour, now.minute, now.second)
 
-    # Get the media to attach to the post.
-    photo_urls = None
-    if 'photo' in f:
-        photo_urls = [f['photo']]
-    elif 'photo[]' in f:
-        photo_urls = f.getlist('photo[]')
-
-    photos = None
-    if 'photo' in request.files:
-        photos = [request.files['photo']]
-    elif 'photo[]' in request.files:
-        photos = request.files.getlist('photo[]')
-
     # Create the post in the correct content source.
+    # Note that this won't actually write anything to disk yet, we're
+    # just creating it in memory.
     pcapp = g.site.piecrust_app
     source_name = pcapp.config.get('micropub/source', 'posts')
     source = pcapp.getSource(source_name)
@@ -219,19 +239,31 @@ def _create_hentry():
         logger.error("Can't create item for: %s" % metadata)
         abort(500)
 
+    # Get the media to attach to the post.
+    photos = None
+    if 'photo' in request.files:
+        photos = [request.files['photo']]
+    elif 'photo[]' in request.files:
+        photos = request.files.getlist('photo[]')
+    photo_urls = data.get('photo')
+
+    # Create the assets folder if we have anything to put there.
     # TODO: add proper APIs for creating related assets.
-    photo_names = []
     if photo_urls or photos:
         photo_dir, _ = os.path.splitext(content_item.spec)
         photo_dir += '-assets'
         try:
             os.makedirs(photo_dir, mode=0o775, exist_ok=True)
         except OSError:
+            # An `OSError` can still be raised in older versions of Python
+            # if the permissions don't match an existing folder.
+            # Let's ignore it.
             pass
 
     # Photo URLs come from files uploaded via the media endpoint...
     # They're waiting for us in the upload cache folder, so let's
     # move them to the post's assets folder.
+    photo_names = []
     if photo_urls:
         photo_cache_dir = os.path.join(
             g.site.root_dir,
@@ -244,7 +276,11 @@ def _create_hentry():
             p_uuid, p_fn = p_url.split('_', 1)
             p_asset = os.path.join(photo_dir, p_fn)
             logger.info("Moving upload '%s' to '%s'." % (p_path, p_asset))
-            os.rename(p_path, p_asset)
+            try:
+                os.rename(p_path, p_asset)
+            except OSError:
+                logger.error("Can't move '%s' to '%s'." % (p_path, p_asset))
+                raise
 
             p_fn_no_ext, _ = os.path.splitext(p_fn)
             photo_names.append(p_fn_no_ext)
@@ -276,8 +312,8 @@ def _create_hentry():
         post_config['location'] = location
     if reply_to:
         post_config['reply_to'] = reply_to
-    if status:
-        post_config['status'] = status
+    if status and status != 'published':
+        post_config['draft'] = True
     if post_format:
         post_config['format'] = post_format
     post_config['time'] = '%02d:%02d:%02d' % (now.hour, now.minute, now.second)
@@ -289,7 +325,7 @@ def _create_hentry():
             merge_dicts(post_config, micro_config)
 
     logger.debug("Writing to item: %s" % content_item.spec)
-    with source.openItem(content_item, mode='w') as fp:
+    with source.openItem(content_item, mode='w', encoding='utf8') as fp:
         fp.write('---\n')
         yaml.dump(post_config, fp,
                   default_flow_style=False,
