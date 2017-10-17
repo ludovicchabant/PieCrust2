@@ -81,6 +81,8 @@ class Assetor:
         app = source.app
         root_dir = app.root_dir
         asset_url_format = app.config.get('site/asset_url_format')
+        if not asset_url_format:
+            raise Exception("No asset URL format was specified.")
 
         page_uri = self._page.getUri()
         pretty_urls = app.config.get('site/pretty_urls')
