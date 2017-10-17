@@ -86,9 +86,10 @@ class Paginator(object):
         if self._items_per_page > 0:
             return self._items_per_page
 
-        ipp = self._page.config.get('items_per_page')
-        if ipp is not None:
-            return ipp
+        if self._page is not None:
+            ipp = self._page.config.get('items_per_page')
+            if ipp is not None:
+                return ipp
 
         from piecrust.sources.base import ContentSource
         if isinstance(self._source, ContentSource):
