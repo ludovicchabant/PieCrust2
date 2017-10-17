@@ -34,6 +34,7 @@ class PageBaker(object):
         self._writer_queue = queue.Queue()
         self._writer = threading.Thread(
             name='PageSerializer',
+            daemon=True,
             target=_text_writer,
             args=(self._writer_queue,))
         self._writer.start()
