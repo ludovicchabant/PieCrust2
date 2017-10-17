@@ -1,49 +1,32 @@
 import math
-import mock
 import pytest
 from piecrust.data.paginator import Paginator
-from piecrust.sources.interfaces import IPaginationSource
 
 
-class MockSource(list, IPaginationSource):
+class MockSource(list):
     def __init__(self, count):
         for i in range(count):
             self.append('item %d' % i)
 
-    def getItemsPerPage(self):
-        return 5
-
-    def getSourceIterator(self):
-        return None
-
-    def getSorterIterator(self, it):
-        return None
-
-    def getTailIterator(self, it):
-        return None
-
-    def getPaginationFilter(self, page):
-        return None
-
 
 @pytest.mark.parametrize('uri, page_num, count', [
-        ('', 1, 0),
-        ('', 1, 4),
-        ('', 1, 5),
-        ('', 1, 8),
-        ('', 1, 14),
-        ('', 2, 8),
-        ('', 2, 14),
-        ('', 3, 14),
-        ('blog', 1, 0),
-        ('blog', 1, 4),
-        ('blog', 1, 5),
-        ('blog', 1, 8),
-        ('blog', 1, 14),
-        ('blog', 2, 8),
-        ('blog', 2, 14),
-        ('blog', 3, 14)
-    ])
+    ('', 1, 0),
+    ('', 1, 4),
+    ('', 1, 5),
+    ('', 1, 8),
+    ('', 1, 14),
+    ('', 2, 8),
+    ('', 2, 14),
+    ('', 3, 14),
+    ('blog', 1, 0),
+    ('blog', 1, 4),
+    ('blog', 1, 5),
+    ('blog', 1, 8),
+    ('blog', 1, 14),
+    ('blog', 2, 8),
+    ('blog', 2, 14),
+    ('blog', 3, 14)
+])
 def test_paginator(uri, page_num, count):
     def _get_mock_uri(sub_num):
         res = uri
@@ -54,7 +37,8 @@ def test_paginator(uri, page_num, count):
         return res
 
     source = MockSource(count)
-    p = Paginator(None, source, page_num=page_num)
+    p = Paginator(source, None, page_num)
+    p._items_per_page = 5
     p._getPageUri = _get_mock_uri
 
     if count <= 5:
@@ -81,12 +65,12 @@ def test_paginator(uri, page_num, count):
             assert p.prev_page == uri
         else:
             pp = str(page_num - 1) if uri == '' else (
-                    '%s/%d' % (uri, page_num - 1))
+                '%s/%d' % (uri, page_num - 1))
             assert p.prev_page == pp
 
         assert p.this_page_number == page_num
         tp = str(page_num) if uri == '' else (
-                '%s/%d' % (uri, page_num))
+            '%s/%d' % (uri, page_num))
         assert p.this_page == tp
 
         if page_num * 5 > count:
@@ -95,7 +79,7 @@ def test_paginator(uri, page_num, count):
         else:
             assert p.next_page_number == page_num + 1
             np = str(page_num + 1) if uri == '' else (
-                    '%s/%d' % (uri, page_num + 1))
+                '%s/%d' % (uri, page_num + 1))
             assert p.next_page == np
 
     assert p.total_post_count == count
@@ -118,7 +102,8 @@ def test_paginator(uri, page_num, count):
                     nums = list(range(1, to_add + 1)) + nums
                 else:
                     to_add = min(to_add, page_count - nums[-1])
-                    nums = nums + list(range(nums[-1] + 1, nums[-1] + to_add + 1))
+                    nums = nums + list(range(nums[-1] + 1,
+                                             nums[-1] + to_add + 1))
         assert nums == p.all_page_numbers(radius)
 
     itp = count
@@ -130,7 +115,7 @@ def test_paginator(uri, page_num, count):
     assert p.items_this_page == itp
 
     indices = list(range(count))
-    indices = indices[(page_num - 1) * 5 : (page_num - 1) * 5 + itp]
+    indices = indices[(page_num - 1) * 5:(page_num - 1) * 5 + itp]
     expected = list(['item %d' % i for i in indices])
     items = list(p.items)
     assert items == expected

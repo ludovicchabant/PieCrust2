@@ -1,7 +1,7 @@
 ---
 config:
     what: not good
-config_variant: test
+config_variants: [test]
 in:
     pages/_index.md: 'This is {{what}}.'
     configs/test.yml: 'what: awesome'

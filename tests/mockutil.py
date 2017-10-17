@@ -1,8 +1,6 @@
-import os.path
 import mock
-from piecrust.app import PieCrust, PieCrustConfiguration
-from piecrust.page import Page
-from piecrust.rendering import QualifiedPage, PageRenderingContext, render_page
+from piecrust.app import PieCrust
+from piecrust.appconfig import PieCrustConfiguration
 
 
 def get_mock_app(config=None):
@@ -11,20 +9,21 @@ def get_mock_app(config=None):
     return app
 
 
-def get_simple_page(app, rel_path):
-    source = app.getSource('pages')
-    metadata = {'slug': os.path.splitext(rel_path)[0]}
-    return Page(source, metadata, rel_path)
+def get_simple_content_item(app, slug):
+    src = app.getSource('pages')
+    assert src is not None
+
+    item = src.findContent({'slug': slug})
+    assert item is not None
+    return item
 
 
-def render_simple_page(page, route, route_metadata):
-    qp = QualifiedPage(page, route, route_metadata)
-    ctx = PageRenderingContext(qp)
-    rp = render_page(ctx)
-    return rp.content
+def get_simple_page(app, slug):
+    src = app.getSource('pages')
+    item = get_simple_content_item(app, slug)
+    return app.getPage(src, item)
 
 
-from .tmpfs import (
-        TempDirFileSystem as mock_fs,
-        TempDirScope as mock_fs_scope)
-
+from .tmpfs import (  # NOQA
+    TempDirFileSystem as mock_fs,
+    TempDirScope as mock_fs_scope)

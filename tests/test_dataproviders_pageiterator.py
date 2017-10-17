@@ -1,5 +1,5 @@
 import mock
-from piecrust.data.iterators import PageIterator
+from piecrust.dataproviders.pageiterator import PageIterator
 from piecrust.page import Page, PageConfiguration
 
 

@@ -1,6 +1,8 @@
 import os.path
 import yaml
 from piecrust.app import PieCrust
+from piecrust.main import _pre_parse_chef_args, _run_chef
+from piecrust.sources.base import ContentItem
 
 
 class TestFileSystemBase(object):
@@ -47,13 +49,13 @@ class TestFileSystemBase(object):
         if config is None:
             config = {}
         return self.withFile(
-                'kitchen/config.yml',
-                yaml.dump(config))
+            'kitchen/config.yml',
+            yaml.dump(config))
 
     def withThemeConfig(self, config):
         return self.withFile(
-                'kitchen/theme_config.yml',
-                yaml.dump(config))
+            'kitchen/theme_config.yml',
+            yaml.dump(config))
 
     def withPage(self, url, config=None, contents=None):
         config = config or {}
@@ -74,7 +76,7 @@ class TestFileSystemBase(object):
         url_base, ext = os.path.splitext(page_url)
         dirname = url_base + '-assets'
         return self.withAsset(
-                '%s/%s' % (dirname, name), contents)
+            '%s/%s' % (dirname, name), contents)
 
     def withPages(self, num, url_factory, config_factory=None,
                   contents_factory=None):
@@ -94,4 +96,21 @@ class TestFileSystemBase(object):
 
             self.withPage(url, config, contents)
         return self
+
+    def runChef(self, *args):
+        root_dir = self.path('/kitchen')
+        chef_args = ['--root', root_dir] + args
+
+        pre_args = _pre_parse_chef_args(chef_args)
+        exit_code = _run_chef(pre_args, chef_args)
+        assert exit_code == 0
+
+    def getSimplePage(self, rel_path):
+        app = self.getApp()
+        source = app.getSource('pages')
+        content_item = ContentItem(
+            os.path.join(source.fs_endpoint_path, rel_path),
+            {'route_params': {
+                'slug': os.path.splitext(rel_path)[0]}})
+        return app.getPage(source, content_item)
 

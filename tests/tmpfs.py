@@ -9,9 +9,9 @@ from .basefs import TestFileSystemBase
 class TempDirFileSystem(TestFileSystemBase):
     def __init__(self):
         self._root = os.path.join(
-                os.path.dirname(__file__),
-                '__tmpfs__',
-                '%d' % random.randrange(1000))
+            os.path.dirname(__file__),
+            '__tmpfs__',
+            '%d' % random.randrange(1000))
         self._done = False
 
     def path(self, p):

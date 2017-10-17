@@ -1,5 +1,7 @@
-from piecrust.processing.base import CopyFileProcessor, SimpleFileProcessor
-from piecrust.processing.tree import ProcessingTreeBuilder, ProcessingTreeNode
+from piecrust.processing.base import SimpleFileProcessor
+from piecrust.processing.copy import CopyFileProcessor
+from piecrust.pipelines._proctree import (
+    ProcessingTreeBuilder, ProcessingTreeNode)
 
 
 class MockProcessor(SimpleFileProcessor):

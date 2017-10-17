@@ -8,7 +8,7 @@ import pytest
 import yaml
 import colorama
 from werkzeug.exceptions import HTTPException
-from piecrust.app import apply_variant_and_values
+from piecrust.app import PieCrustFactory, apply_variants_and_values
 from piecrust.configuration import merge_dicts
 from .mockutil import mock_fs, mock_fs_scope
 
@@ -19,13 +19,16 @@ def pytest_runtest_setup(item):
 
 def pytest_addoption(parser):
     parser.addoption(
-            '--log-debug',
-            action='store_true',
-            help="Sets the PieCrust logger to output debug info to stdout.")
+        '--log-debug',
+        action='store_true',
+        help="Sets the PieCrust logger to output debug info to stdout.")
     parser.addoption(
-            '--mock-debug',
-            action='store_true',
-            help="Prints contents of the mock file-system.")
+        '--log-file',
+        help="Sets the PieCrust logger to write to a file.")
+    parser.addoption(
+        '--mock-debug',
+        action='store_true',
+        help="Prints contents of the mock file-system.")
 
 
 def pytest_configure(config):
@@ -33,6 +36,12 @@ def pytest_configure(config):
         hdl = logging.StreamHandler(stream=sys.stdout)
         logging.getLogger('piecrust').addHandler(hdl)
         logging.getLogger('piecrust').setLevel(logging.DEBUG)
+
+    log_file = config.getoption('--log-file')
+    if log_file:
+        hdl = logging.StreamHandler(
+            stream=open(log_file, 'w', encoding='utf8'))
+        logging.getLogger().addHandler(hdl)
 
 
 def pytest_collect_file(parent, path):
@@ -55,8 +64,8 @@ def repr_nested_failure(excinfo):
         import traceback
         ex = excinfo.value
         return '\n'.join(
-                traceback.format_exception(
-                    type(ex), ex, ex.__traceback__))
+            traceback.format_exception(
+                type(ex), ex, ex.__traceback__))
     return ''
 
 
@@ -89,11 +98,11 @@ class YamlTestItemBase(pytest.Item):
         # Suppress any formatting or layout so we can compare
         # much simpler strings.
         config = {
-                'site': {
-                    'default_format': 'none',
-                    'default_page_layout': 'none',
-                    'default_post_layout': 'none'}
-                }
+            'site': {
+                'default_format': 'none',
+                'default_page_layout': 'none',
+                'default_post_layout': 'none'}
+        }
 
         # Website or theme config.
         test_theme_config = self.spec.get('theme_config')
@@ -251,21 +260,25 @@ class BakeTestItem(YamlTestItemBase):
             out_dir = fs.path('kitchen/_counter')
             app = fs.getApp(theme_site=self.is_theme_site)
 
-            variant = self.spec.get('config_variant')
             values = self.spec.get('config_values')
             if values is not None:
                 values = list(values.items())
-            apply_variant_and_values(app, variant, values)
+            variants = self.spec.get('config_variants')
+            if variants is not None:
+                variants = list(variants.items())
+            apply_variants_and_values(app, variants, values)
 
-            baker = Baker(app, out_dir,
-                          applied_config_variant=variant,
-                          applied_config_values=values)
-            record = baker.bake()
+            appfactory = PieCrustFactory(app.root_dir,
+                                         config_variants=variants,
+                                         config_values=values)
+            baker = Baker(appfactory, app, out_dir)
+            records = baker.bake()
 
-            if not record.success:
+            if not records.success:
                 errors = []
-                for e in record.entries:
-                    errors += e.getAllErrors()
+                for r in records.records:
+                    for e in r.getEntries():
+                        errors += e.getAllErrors()
                 raise BakeError(errors)
 
             check_expected_outputs(self.spec, fs, ExpectedBakeOutputError)
@@ -382,16 +395,16 @@ class ServeTestItem(YamlTestItemBase):
             if is_admin_test:
                 from piecrust.admin.web import create_foodtruck_app
                 s = {
-                        'FOODTRUCK_CMDLINE_MODE': True,
-                        'FOODTRUCK_ROOT': fs.path('/kitchen')
-                        }
+                    'FOODTRUCK_CMDLINE_MODE': True,
+                    'FOODTRUCK_ROOT': fs.path('/kitchen')
+                }
                 test_app = create_foodtruck_app(s)
             else:
                 from piecrust.app import PieCrustFactory
                 from piecrust.serving.server import Server
                 appfactory = PieCrustFactory(
-                        fs.path('/kitchen'),
-                        theme_site=self.is_theme_site)
+                    fs.path('/kitchen'),
+                    theme_site=self.is_theme_site)
                 server = Server(appfactory)
                 test_app = self._TestApp(server)
 
@@ -417,15 +430,15 @@ class ServeTestItem(YamlTestItemBase):
         from piecrust.serving.server import MultipleNotFound
         if isinstance(excinfo.value, MultipleNotFound):
             res = '\n'.join(
-                    ["HTTP error 404 returned:",
-                     str(excinfo.value)] +
-                    [str(e) for e in excinfo.value._nfes])
+                ["HTTP error 404 returned:",
+                 str(excinfo.value)] +
+                [str(e) for e in excinfo.value._nfes])
             res += repr_nested_failure(excinfo)
             return res
         elif isinstance(excinfo.value, HTTPException):
             res = '\n'.join(
-                    ["HTTP error %s returned:" % excinfo.value.code,
-                     excinfo.value.description])
+                ["HTTP error %s returned:" % excinfo.value.code,
+                 excinfo.value.description])
             res += repr_nested_failure(excinfo)
             return res
         return super(ServeTestItem, self).repr_failure(excinfo)
@@ -451,8 +464,8 @@ class CompareContext(object):
 
     def createChildContext(self, name):
         ctx = CompareContext(
-                path='%s/%s' % (self.path, name),
-                t=self.time)
+            path='%s/%s' % (self.path, name),
+            t=self.time)
         return ctx
 
 

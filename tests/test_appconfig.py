@@ -7,7 +7,9 @@ def test_config_default():
     values = {}
     config = PieCrustConfiguration(values=values)
     assert config.get('site/root') == '/'
-    assert len(config.get('site/sources')) == 3  # pages, posts, theme_pages
+    assert len(config.get('site/sources').keys()) == \
+        len(['theme_assets', 'assets', 'theme_pages', 'pages', 'posts',
+             'tags', 'categories', 'archives'])
 
 
 def test_config_site_override_title():
@@ -29,11 +31,11 @@ def test_config_override_default_model_settings():
         assert app.config.get('site/default_post_layout') == 'bar'
         assert app.config.get('site/sources/pages/default_layout') == 'foo'
         assert app.config.get('site/sources/pages/items_per_page') == 5
+        assert app.config.get('site/sources/posts/default_layout') == 'bar'
+        assert app.config.get('site/sources/posts/items_per_page') == 2
         assert app.config.get(
             'site/sources/theme_pages/default_layout') == 'default'
         assert app.config.get('site/sources/theme_pages/items_per_page') == 5
-        assert app.config.get('site/sources/posts/default_layout') == 'bar'
-        assert app.config.get('site/sources/posts/items_per_page') == 2
 
 
 def test_config_site_add_source():
@@ -53,13 +55,16 @@ def test_config_site_add_source():
                     'notes', 'posts', 'posts_archives', 'posts_tags',
                     'posts_categories', 'pages', 'theme_pages'])
         assert set(app.config.get('site/sources').keys()) == set([
-            'theme_pages', 'pages', 'posts', 'notes'])
+            'theme_pages', 'theme_assets', 'pages', 'posts', 'assets',
+            'posts_tags', 'posts_categories', 'posts_archives',
+            'notes'])
 
 
 def test_config_site_add_source_in_both_site_and_theme():
     theme_config = {'site': {
         'sources': {'theme_notes': {}},
-        'routes': [{'url': '/theme_notes/%path:slug%', 'source': 'theme_notes'}]
+        'routes': [{'url': '/theme_notes/%path:slug%',
+                    'source': 'theme_notes'}]
     }}
     config = {'site': {
         'sources': {'notes': {}},
@@ -81,7 +86,9 @@ def test_config_site_add_source_in_both_site_and_theme():
                     'posts_categories', 'pages', 'theme_notes',
                     'theme_pages'])
         assert set(app.config.get('site/sources').keys()) == set([
-            'theme_pages', 'theme_notes', 'pages', 'posts', 'notes'])
+            'theme_pages', 'theme_assets', 'theme_notes',
+            'pages', 'posts', 'assets', 'posts_tags', 'posts_categories',
+            'posts_archives', 'notes'])
 
 
 def test_multiple_blogs():
@@ -99,7 +106,10 @@ def test_multiple_blogs():
                     'bbb', 'bbb_archives', 'bbb_tags', 'bbb_categories',
                     'pages', 'theme_pages'])
         assert set(app.config.get('site/sources').keys()) == set([
-            'aaa', 'bbb', 'pages', 'theme_pages'])
+            'aaa', 'aaa_tags', 'aaa_categories', 'aaa_archives',
+            'bbb', 'bbb_tags', 'bbb_categories', 'bbb_archives',
+            'pages', 'assets',
+            'theme_pages', 'theme_assets'])
 
 
 def test_custom_list_setting():
