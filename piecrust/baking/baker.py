@@ -83,57 +83,15 @@ class Baker(object):
         for cache_name in ['app', 'baker', 'pages', 'renders']:
             self.app.cache.getCache(cache_name)
 
-        # Gather all sources by realm -- we're going to bake each realm
-        # separately so we can handle "overriding" (i.e. one realm overrides
-        # another realm's pages, like the user realm overriding the theme
-        # realm).
-        #
-        # Also, create and initialize each pipeline for each source.
-        has_any_pp = False
-        ppmngr = PipelineManager(
-            self.app, self.out_dir, record_histories)
-        ok_pp = self.allowed_pipelines
-        nok_pp = self.forbidden_pipelines
-        ok_src = self.allowed_sources
-        for source in self.app.sources:
-            if ok_src is not None and source.name not in ok_src:
-                continue
-
-            pname = get_pipeline_name_for_source(source)
-            if ok_pp is not None and pname not in ok_pp:
-                continue
-            if nok_pp is not None and pname in nok_pp:
-                continue
-
-            ppinfo = ppmngr.createPipeline(source)
-            logger.debug(
-                "Created pipeline '%s' for source: %s" %
-                (ppinfo.pipeline.PIPELINE_NAME, source.name))
-            has_any_pp = True
-        if not has_any_pp:
-            raise Exception("The website has no content sources, or the bake "
-                            "command was invoked with all pipelines filtered "
-                            "out. There's nothing to do.")
+        # Create the pipelines.
+        ppmngr = self._createPipelineManager(record_histories)
 
         # Create the worker processes.
         pool_userdata = _PoolUserData(self, ppmngr)
         pool = self._createWorkerPool(records_path, pool_userdata)
-        realm_list = [REALM_USER, REALM_THEME]
 
-        # Bake the realms -- user first, theme second, so that a user item
-        # can override a theme item.
-        # Do this for as many times as we have pipeline passes left to do.
-        pp_by_pass_and_realm = _get_pipeline_infos_by_pass_and_realm(
-            ppmngr.getPipelines())
-
-        for pp_pass_num in sorted(pp_by_pass_and_realm.keys()):
-            logger.debug("Pipelines pass %d" % pp_pass_num)
-            pp_by_realm = pp_by_pass_and_realm[pp_pass_num]
-            for realm in realm_list:
-                pplist = pp_by_realm.get(realm)
-                if pplist is not None:
-                    self._bakeRealm(
-                        pool, record_histories, pp_pass_num, realm, pplist)
+        # Bake the realms.
+        self._bakeRealms(pool, ppmngr, record_histories)
 
         # Handle deletions, collapse records, etc.
         ppmngr.postJobRun()
@@ -142,39 +100,16 @@ class Baker(object):
 
         # All done with the workers. Close the pool and get reports.
         pool_stats = pool.close()
-        total_stats = ExecutionStats()
-        total_stats.mergeStats(stats)
-        for ps in pool_stats:
-            if ps is not None:
-                total_stats.mergeStats(ps)
-        current_records.stats = total_stats
+        current_records.stats = _merge_execution_stats(stats, *pool_stats)
 
         # Shutdown the pipelines.
         ppmngr.shutdownPipelines()
 
-        # Backup previous records.
-        if self.rotate_bake_records:
-            records_dir, records_fn = os.path.split(records_path)
-            records_id, _ = os.path.splitext(records_fn)
-            for i in range(8, -1, -1):
-                suffix = '' if i == 0 else '.%d' % i
-                records_path_i = os.path.join(
-                    records_dir,
-                    '%s%s.records' % (records_id, suffix))
-                if os.path.exists(records_path_i):
-                    records_path_next = os.path.join(
-                        records_dir,
-                        '%s.%s.records' % (records_id, i + 1))
-                    if os.path.exists(records_path_next):
-                        os.remove(records_path_next)
-                    os.rename(records_path_i, records_path_next)
-
-        # Save the bake records.
-        with format_timed_scope(logger, "saved bake records.",
-                                level=logging.DEBUG, colored=False):
-            current_records.bake_time = time.time()
-            current_records.out_dir = self.out_dir
-            current_records.save(records_path)
+        # Backup previous records, save the current ones.
+        current_records.bake_time = time.time()
+        current_records.out_dir = self.out_dir
+        _save_bake_records(current_records, records_path,
+                           rotate_previous=self.rotate_bake_records)
 
         # All done.
         self.app.config.set('baker/is_baking', False)
@@ -222,6 +157,57 @@ class Baker(object):
             logger.debug(format_timed(
                 start_time, "cache is assumed valid", colored=False))
             return True
+
+    def _createPipelineManager(self, record_histories):
+        # Gather all sources by realm -- we're going to bake each realm
+        # separately so we can handle "overriding" (i.e. one realm overrides
+        # another realm's pages, like the user realm overriding the theme
+        # realm).
+        #
+        # Also, create and initialize each pipeline for each source.
+        has_any_pp = False
+        ppmngr = PipelineManager(
+            self.app, self.out_dir, record_histories)
+        ok_pp = self.allowed_pipelines
+        nok_pp = self.forbidden_pipelines
+        ok_src = self.allowed_sources
+        for source in self.app.sources:
+            if ok_src is not None and source.name not in ok_src:
+                continue
+
+            pname = get_pipeline_name_for_source(source)
+            if ok_pp is not None and pname not in ok_pp:
+                continue
+            if nok_pp is not None and pname in nok_pp:
+                continue
+
+            ppinfo = ppmngr.createPipeline(source)
+            logger.debug(
+                "Created pipeline '%s' for source: %s" %
+                (ppinfo.pipeline.PIPELINE_NAME, source.name))
+            has_any_pp = True
+        if not has_any_pp:
+            raise Exception("The website has no content sources, or the bake "
+                            "command was invoked with all pipelines filtered "
+                            "out. There's nothing to do.")
+        return ppmngr
+
+    def _bakeRealms(self, pool, ppmngr, record_histories):
+        # Bake the realms -- user first, theme second, so that a user item
+        # can override a theme item.
+        # Do this for as many times as we have pipeline passes left to do.
+        realm_list = [REALM_USER, REALM_THEME]
+        pp_by_pass_and_realm = _get_pipeline_infos_by_pass_and_realm(
+            ppmngr.getPipelines())
+
+        for pp_pass_num in sorted(pp_by_pass_and_realm.keys()):
+            logger.debug("Pipelines pass %d" % pp_pass_num)
+            pp_by_realm = pp_by_pass_and_realm[pp_pass_num]
+            for realm in realm_list:
+                pplist = pp_by_realm.get(realm)
+                if pplist is not None:
+                    self._bakeRealm(
+                        pool, record_histories, pp_pass_num, realm, pplist)
 
     def _bakeRealm(self, pool, record_histories, pp_pass_num, realm, pplist):
         # Start with the first step, where we iterate on the content sources'
@@ -405,3 +391,33 @@ def _add_pipeline_info_to_pass_and_realm_dict(pp_pass_num, pp_info,
         pp_info.pipeline.source.config['realm'], [])
     pplist.append(pp_info)
 
+
+def _merge_execution_stats(base_stats, *other_stats):
+    total_stats = ExecutionStats()
+    total_stats.mergeStats(base_stats)
+    for ps in other_stats:
+        if ps is not None:
+            total_stats.mergeStats(ps)
+    return total_stats
+
+
+def _save_bake_records(records, records_path, *, rotate_previous):
+    if rotate_previous:
+        records_dir, records_fn = os.path.split(records_path)
+        records_id, _ = os.path.splitext(records_fn)
+        for i in range(8, -1, -1):
+            suffix = '' if i == 0 else '.%d' % i
+            records_path_i = os.path.join(
+                records_dir,
+                '%s%s.records' % (records_id, suffix))
+            if os.path.exists(records_path_i):
+                records_path_next = os.path.join(
+                    records_dir,
+                    '%s.%s.records' % (records_id, i + 1))
+                if os.path.exists(records_path_next):
+                    os.remove(records_path_next)
+                os.rename(records_path_i, records_path_next)
+
+    with format_timed_scope(logger, "saved bake records.",
+                            level=logging.DEBUG, colored=False):
+        records.save(records_path)
