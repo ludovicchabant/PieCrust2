@@ -7,7 +7,7 @@ from piecrust import osutil
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import (
     ContentItem, ContentGroup, ContentSource,
-    REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
+    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
 
 
 logger = logging.getLogger(__name__)
@@ -110,16 +110,6 @@ class FSContentSource(FSContentSourceBase):
         self._finalizeContent(group, items, groups)
         return items + groups
 
-    def getParentGroup(self, item):
-        parent_dir = os.path.dirname(item.spec)
-        if len(parent_dir) >= len(self.fs_endpoint_path):
-            metadata = self._createGroupMetadata(parent_dir)
-            return ContentGroup(parent_dir, metadata)
-
-        # Don't return a group for paths that are outside of our
-        # endpoint directory.
-        return None
-
     def _filterIgnored(self, path):
         rel_path = os.path.relpath(path, self.fs_endpoint_path)
         for g in self._ignore_globs:
@@ -147,6 +137,16 @@ class FSContentSource(FSContentSourceBase):
         return None
 
     def getRelatedContents(self, item, relationship):
+        if relationship == REL_PARENT_GROUP:
+            parent_dir = os.path.dirname(item.spec)
+            if len(parent_dir) >= len(self.fs_endpoint_path):
+                metadata = self._createGroupMetadata(parent_dir)
+                return ContentGroup(parent_dir, metadata)
+
+            # Don't return a group for paths that are outside of our
+            # endpoint directory.
+            return None
+
         if relationship == REL_LOGICAL_PARENT_ITEM:
             # If we want the logical parent item of a folder, we find a
             # page file with the same name as the folder.
@@ -167,7 +167,7 @@ class FSContentSource(FSContentSourceBase):
             dir_path, _ = os.path.splitext(item.spec)
             if os.path.isdir(dir_path):
                 metadata = self._createGroupMetadata(dir_path)
-                return [ContentGroup(dir_path, metadata)]
+                return ContentGroup(dir_path, metadata)
             return None
 
         return None

@@ -5,7 +5,7 @@ import logging
 import datetime
 from piecrust import osutil
 from piecrust.routing import RouteParameter
-from piecrust.sources.base import REL_ASSETS, ContentItem
+from piecrust.sources.base import REL_PARENT_GROUP, REL_ASSETS, ContentItem
 from piecrust.sources.fs import (
     FSContentSource, InvalidFileSystemEndpointError)
 from piecrust.sources.interfaces import (
@@ -39,13 +39,15 @@ class PostsSource(FSContentSource,
     def _finalizeContent(self, groups):
         SimpleAssetsSubDirMixin._removeAssetGroups(self, groups)
 
-    def getParentGroup(self, item):
-        return None
-
     def getRelatedContents(self, item, relationship):
+        if relationship == REL_PARENT_GROUP:
+            # Logically speaking, all posts are always flattened.
+            return None
+
         if relationship == REL_ASSETS:
             return SimpleAssetsSubDirMixin._getRelatedAssetsContents(
                 self, item)
+
         return FSContentSource.getRelatedContents(self, item, relationship)
 
     def findGroup(self, spec):
