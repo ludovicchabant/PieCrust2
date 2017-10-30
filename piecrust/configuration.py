@@ -83,6 +83,7 @@ class Configuration(collections.abc.MutableMapping):
                 "Unsupported value type to merge: %s" % type(other))
 
         merge_dicts(self._values, other_values,
+                    mode=mode,
                     validator=self._validateValue)
 
     def validateTypes(self, allowed_types=default_allowed_types):

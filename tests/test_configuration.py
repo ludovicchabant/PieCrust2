@@ -1,16 +1,16 @@
 import copy
-import datetime
 import yaml
 import pytest
 from collections import OrderedDict
-from piecrust.configuration import (Configuration, ConfigurationLoader,
-        merge_dicts)
+from piecrust.configuration import (
+    Configuration, ConfigurationLoader, merge_dicts,
+    MERGE_APPEND_LISTS, MERGE_PREPEND_LISTS, MERGE_OVERWRITE_VALUES)
 
 
 @pytest.mark.parametrize('values, expected', [
-        (None, {}),
-        ({'foo': 'bar'}, {'foo': 'bar'})
-    ])
+    (None, {}),
+    ({'foo': 'bar'}, {'foo': 'bar'})
+])
 def test_config_init(values, expected):
     config = Configuration(values)
     assert config.getAll() == expected
@@ -33,12 +33,12 @@ def test_config_get_and_set():
 
 def test_config_get_and_set_nested():
     config = Configuration({
-            'foo': [4, 2],
-            'bar': {
-                    'child1': 'one',
-                    'child2': 'two'
-                }
-        })
+        'foo': [4, 2],
+        'bar': {
+            'child1': 'one',
+            'child2': 'two'
+        }
+    })
     assert config.get('foo') == [4, 2]
     assert config.get('bar/child1') == 'one'
     assert config.get('bar/child2') == 'two'
@@ -81,16 +81,18 @@ def test_config_deep_set_existing():
 
 
 @pytest.mark.parametrize('local, incoming, expected', [
-        ({}, {}, {}),
-        ({'foo': 'bar'}, {}, {'foo': 'bar'}),
-        ({}, {'foo': 'bar'}, {'foo': 'bar'}),
-        ({'foo': 'bar'}, {'foo': 'other'}, {'foo': 'other'}),
-        ({'foo': [1, 2]}, {'foo': [3]}, {'foo': [3, 1, 2]}),
-        ({'foo': [1, 2]}, {'foo': 'bar'}, {'foo': 'bar'}),
-        ({'foo': {'bar': 1, 'baz': 2}}, {'foo': 'bar'}, {'foo': 'bar'}),
-        ({'foo': {'bar': 1, 'baz': 2}}, {'foo': {'other': 3}}, {'foo': {'bar': 1, 'baz': 2, 'other': 3}}),
-        ({'foo': {'bar': 1, 'baz': 2}}, {'foo': {'baz': 10}}, {'foo': {'bar': 1, 'baz': 10}})
-    ])
+    ({}, {}, {}),
+    ({'foo': 'bar'}, {}, {'foo': 'bar'}),
+    ({}, {'foo': 'bar'}, {'foo': 'bar'}),
+    ({'foo': 'bar'}, {'foo': 'other'}, {'foo': 'other'}),
+    ({'foo': [1, 2]}, {'foo': [3]}, {'foo': [3, 1, 2]}),
+    ({'foo': [1, 2]}, {'foo': 'bar'}, {'foo': 'bar'}),
+    ({'foo': {'bar': 1, 'baz': 2}}, {'foo': 'bar'}, {'foo': 'bar'}),
+    ({'foo': {'bar': 1, 'baz': 2}}, {'foo': {'other': 3}},
+     {'foo': {'bar': 1, 'baz': 2, 'other': 3}}),
+    ({'foo': {'bar': 1, 'baz': 2}}, {'foo': {'baz': 10}},
+     {'foo': {'bar': 1, 'baz': 10}})
+])
 def test_merge_dicts(local, incoming, expected):
     local2 = copy.deepcopy(local)
     merge_dicts(local2, incoming)
@@ -99,32 +101,50 @@ def test_merge_dicts(local, incoming, expected):
 
 def test_config_merge():
     config = Configuration({
-            'foo': [4, 2],
-            'bar': {
-                    'child1': 'one',
-                    'child2': 'two'
-                }
-        })
+        'foo': [4, 2],
+        'bar': {
+            'child1': 'one',
+            'child2': 'two'
+        }
+    })
     other = Configuration({
-            'baz': True,
-            'blah': 'blah blah',
-            'bar': {
-                    'child1': 'other one',
-                    'child10': 'ten'
-                }
-        })
+        'baz': True,
+        'blah': 'blah blah',
+        'bar': {
+            'child1': 'other one',
+            'child10': 'ten'
+        }
+    })
     config.merge(other)
 
     expected = {
-            'foo': [4, 2],
-            'baz': True,
-            'blah': 'blah blah',
-            'bar': {
-                'child1': 'other one',
-                'child2': 'two',
-                'child10': 'ten'
-                }
-            }
+        'foo': [4, 2],
+        'baz': True,
+        'blah': 'blah blah',
+        'bar': {
+            'child1': 'other one',
+            'child2': 'two',
+            'child10': 'ten'
+        }
+    }
+    assert config.getAll() == expected
+
+
+@pytest.mark.parametrize('mode, expected', [
+    (MERGE_APPEND_LISTS,
+     {'foo': [4, 2, 1, 0], 'bar': 'something'}),
+    (MERGE_PREPEND_LISTS,
+     {'foo': [1, 0, 4, 2], 'bar': 'something'}),
+    (MERGE_OVERWRITE_VALUES,
+     {'foo': [4, 2], 'bar': 'other thing'})
+])
+def test_config_merge_with_mode(mode, expected):
+    config = Configuration({
+        'foo': [4, 2],
+        'bar': 'something'
+    })
+    other = {'foo': [1, 0], 'bar': 'other thing'}
+    config.merge(other, mode=mode)
     assert config.getAll() == expected
 
 
