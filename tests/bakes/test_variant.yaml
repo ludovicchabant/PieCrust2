@@ -3,7 +3,7 @@ config:
     what: not good
 config_variants: [test]
 in:
-    pages/_index.md: 'This is {{what}}.'
+    pages/_index.html: 'This is {{what}}.'
     configs/test.yml: 'what: awesome'
 out:
     index.html: 'This is awesome.'
@@ -13,7 +13,7 @@ config:
 config_values:
     what: awesome
 in:
-    pages/_index.md: 'This is {{what}}.'
+    pages/_index.html: 'This is {{what}}.'
 out:
     index.html: 'This is awesome.'
 

@@ -88,6 +88,30 @@ def _real_worker_func(params):
             _CRITICAL_WORKER_ERROR, None, False, params.wid, msg))
 
 
+def _pre_parse_pytest_args():
+    # If we are unit-testing, we need to translate our test logging
+    # arguments into something Chef can understand.
+    import argparse
+    parser = argparse.ArgumentParser()
+    # This is adapted from our `conftest.py`.
+    parser.add_argument('--log-debug', action='store_true')
+    parser.add_argument('--log-file')
+    res, _ = parser.parse_known_args(sys.argv[1:])
+
+    chef_args = []
+    if res.log_debug:
+        chef_args.append('--debug')
+    if res.log_file:
+        chef_args += ['--log', res.log_file]
+
+    root_logger = logging.getLogger()
+    while len(root_logger.handlers) > 0:
+        root_logger.removeHandler(root_logger.handlers[0])
+
+    from piecrust.main import _pre_parse_chef_args
+    _pre_parse_chef_args(chef_args)
+
+
 def _real_worker_func_unsafe(params):
     wid = params.wid
 
@@ -95,33 +119,18 @@ def _real_worker_func_unsafe(params):
     stats.registerTimer('WorkerInit')
     init_start_time = time.perf_counter()
 
-    # If we are unit-testing, we didn't setup all the logging environment
-    # yet, since the executable is `py.test`. We need to translate our
-    # test logging arguments into something Chef can understand.
-    if params.is_unit_testing:
-        import argparse
-        parser = argparse.ArgumentParser()
-        # This is adapted from our `conftest.py`.
-        parser.add_argument('--log-debug', action='store_true')
-        parser.add_argument('--log-file')
-        res, _ = parser.parse_known_args(sys.argv[1:])
-
-        chef_args = []
-        if res.log_debug:
-            chef_args.append('--debug')
-        if res.log_file:
-            chef_args += ['--log', res.log_file]
-
-        from piecrust.main import _pre_parse_chef_args
-        _pre_parse_chef_args(chef_args)
-
     # In a context where `multiprocessing` is using the `spawn` forking model,
     # the new process doesn't inherit anything, so we lost all our logging
     # configuration here. Let's set it up again.
-    elif (hasattr(multiprocessing, 'get_start_method') and
+    if (hasattr(multiprocessing, 'get_start_method') and
             multiprocessing.get_start_method() == 'spawn'):
-        from piecrust.main import _pre_parse_chef_args
-        _pre_parse_chef_args(sys.argv[1:])
+        if not params.is_unit_testing:
+            from piecrust.main import _pre_parse_chef_args
+            _pre_parse_chef_args(sys.argv[1:])
+        else:
+            _pre_parse_pytest_args()
+    elif params.is_unit_testing:
+        _pre_parse_pytest_args()
 
     from piecrust.main import ColoredFormatter
     root_logger = logging.getLogger()
@@ -295,6 +304,11 @@ class WorkerPool:
             self._event.clear()
             for job in jobs:
                 self._quick_put((TASK_JOB, job))
+        else:
+            with self._lock_jobs_left:
+                done = (self._jobs_left == 0)
+            if done:
+                self._event.set()
 
     def wait(self, timeout=None):
         if self._closed:
@@ -308,8 +322,10 @@ class WorkerPool:
     def close(self):
         if self._closed:
             raise Exception("This worker pool has been closed.")
-        if self._jobs_left > 0 or not self._event.is_set():
+        if self._jobs_left > 0:
             raise Exception("A previous job queue has not finished yet.")
+        if not self._event.is_set():
+            raise Exception("A previous job queue hasn't been cleared.")
 
         logger.debug("Closing worker pool...")
         live_workers = list(filter(lambda w: w is not None, self._pool))

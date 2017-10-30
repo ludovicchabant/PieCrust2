@@ -6,18 +6,18 @@ test_parse_segments_data1 = ("", {'content': ''})
 test_parse_segments_data2 = ("Foo bar", {'content': 'Foo bar'})
 test_parse_segments_data3 = (
     """Something that spans
-    several lines
-    like this""",
+several lines
+like this""",
     {'content': """Something that spans
 several lines
 like this"""})
 test_parse_segments_data4 = (
     """Blah blah
-    ---foo---
-    Something else
-    ---bar---
-    Last thing
-    """,
+---foo---
+Something else
+---bar---
+Last thing
+""",
     {
         'content': "Blah blah\n",
         'foo': "Something else\n",
@@ -46,7 +46,7 @@ def test_parse_segments(text, expected):
     ('blah foo\n', 2),
     ('blah foo\nmore here', 2),
     ('blah foo\nmore here\n', 3),
-    ('\nblah foo\nmore here\n', 3),
+    ('\nblah foo\nmore here\n', 4),
 ])
 def test_count_lines(text, expected):
     actual = _count_lines(text)
@@ -63,5 +63,5 @@ def test_count_lines(text, expected):
     ('\nblah foo\nmore here\n', 2, -1, 3),
 ])
 def test_count_lines_with_offsets(text, start, end, expected):
-    actual = _count_lines(text)
+    actual = _count_lines(text, start, end)
     assert actual == expected

@@ -8,7 +8,8 @@ class SubPagePipelineRecordEntry:
     FLAG_FORCED_BY_SOURCE = 2**1
     FLAG_FORCED_BY_NO_PREVIOUS = 2**2
     FLAG_FORCED_BY_PREVIOUS_ERRORS = 2**3
-    FLAG_FORMATTING_INVALIDATED = 2**4
+    FLAG_FORCED_BY_GENERAL_FORCE = 2**4
+    FLAG_FORMATTING_INVALIDATED = 2**5
 
     def __init__(self, out_uri, out_path):
         self.out_uri = out_uri
@@ -133,6 +134,8 @@ sub_flag_descriptions = {
     SubPagePipelineRecordEntry.FLAG_FORCED_BY_NO_PREVIOUS: 'forced b/c new',
     SubPagePipelineRecordEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS:
     'forced by errors',
+    SubPagePipelineRecordEntry.FLAG_FORCED_BY_GENERAL_FORCE:
+    'manually forced',
     SubPagePipelineRecordEntry.FLAG_FORMATTING_INVALIDATED:
     'formatting invalidated'
 }

@@ -113,10 +113,17 @@ def _are_records_valid(multi_record):
             multi_record._record_version == MultiRecord.RECORD_VERSION)
 
 
-def load_records(path):
+def load_records(path, raise_errors=False):
     try:
         multi_record = MultiRecord.load(path)
+    except FileNotFoundError:
+        if raise_errors:
+            raise
+        logger.debug("No existing records found at: %s" % path)
+        multi_record = None
     except Exception as ex:
+        if raise_errors:
+            raise
         logger.debug("Error loading records from: %s" % path)
         logger.debug(ex)
         logger.debug("Will use empty records.")

@@ -5,50 +5,43 @@ from .pathutil import slashfix
 
 
 @pytest.mark.parametrize(
-    'fs_fac, src_config, expected_paths, expected_metadata',
+    'fs_fac, src_config, expected_path, expected_slug, expected_foos',
     [
-        (lambda: mock_fs(), {}, [], []),
+        (lambda: mock_fs(),
+         {},
+         None, '', []),
         (lambda: mock_fs().withPage('test/_index.md'),
          {},
-         ['_index.md'],
-         [{'slug': '', 'config': {'foo': []}}]),
+         '_index.md', '', []),
         (lambda: mock_fs().withPage('test/something.md'),
          {},
-         ['something.md'],
-         [{'slug': 'something', 'config': {'foo': []}}]),
+         'something.md', 'something', []),
         (lambda: mock_fs().withPage('test/bar/something.md'),
          {},
-         ['bar/something.md'],
-         [{'slug': 'something', 'config': {'foo': ['bar']}}]),
+         'bar/something.md', 'something', ['bar']),
         (lambda: mock_fs().withPage('test/bar1/bar2/something.md'),
          {},
-         ['bar1/bar2/something.md'],
-         [{'slug': 'something', 'config': {'foo': ['bar1', 'bar2']}}]),
+         'bar1/bar2/something.md', 'something', ['bar1', 'bar2']),
 
         (lambda: mock_fs().withPage('test/something.md'),
          {'collapse_single_values': True},
-         ['something.md'],
-         [{'slug': 'something', 'config': {'foo': None}}]),
+         'something.md', 'something', None),
         (lambda: mock_fs().withPage('test/bar/something.md'),
          {'collapse_single_values': True},
-         ['bar/something.md'],
-         [{'slug': 'something', 'config': {'foo': 'bar'}}]),
+         'bar/something.md', 'something', 'bar'),
         (lambda: mock_fs().withPage('test/bar1/bar2/something.md'),
          {'collapse_single_values': True},
-         ['bar1/bar2/something.md'],
-         [{'slug': 'something', 'config': {'foo': ['bar1', 'bar2']}}]),
+         'bar1/bar2/something.md', 'something', ['bar1', 'bar2']),
 
         (lambda: mock_fs().withPage('test/something.md'),
          {'only_single_values': True},
-         ['something.md'],
-         [{'slug': 'something', 'config': {'foo': None}}]),
+         'something.md', 'something', None),
         (lambda: mock_fs().withPage('test/bar/something.md'),
          {'only_single_values': True},
-         ['bar/something.md'],
-         [{'slug': 'something', 'config': {'foo': 'bar'}}]),
+         'bar/something.md', 'something', 'bar')
     ])
-def test_autoconfig_source_factories(fs_fac, src_config, expected_paths,
-                                     expected_metadata):
+def test_autoconfig_source_items(
+        fs_fac, src_config, expected_path, expected_slug, expected_foos):
     site_config = {
         'sources': {
             'test': {'type': 'autoconfig',
@@ -65,10 +58,17 @@ def test_autoconfig_source_factories(fs_fac, src_config, expected_paths,
         app = fs.getApp()
         s = app.getSource('test')
         items = list(s.getAllContents())
-        paths = [os.path.relpath(i.spec, s.fs_endpoint_path) for i in items]
-        assert paths == slashfix(expected_paths)
-        metadata = [i.metadata['route_params'] for i in items]
-        assert metadata == expected_metadata
+
+        if expected_path is None:
+            assert len(items) == 0
+        else:
+            assert len(items) == 1
+            path = os.path.relpath(items[0].spec, s.fs_endpoint_path)
+            assert path == slashfix(expected_path)
+            slug = items[0].metadata['route_params']['slug']
+            assert slug == expected_slug
+            foos = items[0].metadata['config']['foo']
+            assert foos == expected_foos
 
 
 def test_autoconfig_fails_if_multiple_folders():
@@ -89,27 +89,28 @@ def test_autoconfig_fails_if_multiple_folders():
 
 
 @pytest.mark.parametrize(
-    'fs_fac, expected_paths, expected_metadata',
+    'fs_fac, expected_paths, expected_route_params, expected_configs',
     [
-        (lambda: mock_fs(), [], []),
+        (lambda: mock_fs(), [], [], []),
         (lambda: mock_fs().withPage('test/_index.md'),
          ['_index.md'],
-         [{'slug': '',
-           'config': {'foo': 0, 'foo_trail': [0]}}]),
+         [{'slug': ''}],
+         [{'foo': 0, 'foo_trail': [0]}]),
         (lambda: mock_fs().withPage('test/something.md'),
          ['something.md'],
-         [{'slug': 'something',
-           'config': {'foo': 0, 'foo_trail': [0]}}]),
+         [{'slug': 'something'}],
+         [{'foo': 0, 'foo_trail': [0]}]),
         (lambda: mock_fs().withPage('test/08_something.md'),
          ['08_something.md'],
-         [{'slug': 'something',
-           'config': {'foo': 8, 'foo_trail': [8]}}]),
+         [{'slug': 'something'}],
+         [{'foo': 8, 'foo_trail': [8]}]),
         (lambda: mock_fs().withPage('test/02_there/08_something.md'),
          ['02_there/08_something.md'],
-         [{'slug': 'there/something',
-           'config': {'foo': 8, 'foo_trail': [2, 8]}}]),
+         [{'slug': 'there/something'}],
+         [{'foo': 8, 'foo_trail': [2, 8]}]),
     ])
-def test_ordered_source_factories(fs_fac, expected_paths, expected_metadata):
+def test_ordered_source_items(fs_fac, expected_paths, expected_route_params,
+                              expected_configs):
     site_config = {
         'sources': {
             'test': {'type': 'ordered',
@@ -124,11 +125,16 @@ def test_ordered_source_factories(fs_fac, expected_paths, expected_metadata):
     with mock_fs_scope(fs):
         app = fs.getApp()
         s = app.getSource('test')
-        facs = list(s.buildPageFactories())
-        paths = [f.rel_path for f in facs]
+        items = list(s.getAllContents())
+
+        paths = [os.path.relpath(f.spec, s.fs_endpoint_path) for f in items]
         assert paths == slashfix(expected_paths)
-        metadata = [f.metadata for f in facs]
-        assert metadata == expected_metadata
+        metadata = [f.metadata['route_params'] for f in items]
+        assert metadata == expected_route_params
+        configs = [f.metadata['config'] for f in items]
+        for c in configs:
+            c.pop('format')
+        assert configs == expected_configs
 
 
 @pytest.mark.parametrize(
@@ -176,10 +182,11 @@ def test_ordered_source_find(fs_fac, route_path, expected_path,
         app = fs.getApp()
         s = app.getSource('test')
         route_metadata = {'slug': route_path}
-        factory = s.findContent(route_metadata)
-        if factory is None:
+        item = s.findContent(route_metadata)
+        if item is None:
             assert expected_path is None and expected_metadata is None
-            return
-        assert factory.rel_path == slashfix(expected_path)
-        assert factory.metadata == expected_metadata
+        else:
+            assert os.path.relpath(item.spec, s.fs_endpoint_path) == \
+                slashfix(expected_path)
+            assert item.metadata == expected_metadata
 

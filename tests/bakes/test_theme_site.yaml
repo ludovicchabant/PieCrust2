@@ -3,7 +3,7 @@ theme_config:
     site:
         title: "Some Test Theme"
 in:
-    pages/foo.md: "This is: {{site.title}}"
+    pages/foo.html: "This is: {{site.title}}"
 outfiles:
     foo.html: "This is: Some Test Theme"
 ---
@@ -11,7 +11,7 @@ theme_config:
     site:
         title: "Some Test Theme"
 in:
-    pages/foo.md: "This is: {{foo}}"
+    pages/foo.html: "This is: {{foo}}"
     configs/theme_preview.yml: "foo: bar"
 outfiles:
     foo.html: "This is: bar"

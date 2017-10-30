@@ -152,7 +152,7 @@ class FSContentSource(FSContentSourceBase):
             # page file with the same name as the folder.
             if not item.is_group:
                 raise ValueError()
-            parent_glob = os.path.join(item.spec, '*')
+            parent_glob = item.spec.rstrip('/\\') + '.*'
             for n in glob.iglob(parent_glob):
                 if os.path.isfile(n):
                     metadata = self._createItemMetadata(n)

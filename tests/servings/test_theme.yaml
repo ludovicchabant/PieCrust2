@@ -5,7 +5,7 @@ config:
         title: "Some Test"
 in:
     theme/theme_config.yml: "name: testtheme"
-    theme/pages/_index.md: "This is {{site.title}} by {{name}}"
+    theme/pages/_index.html: "This is {{site.title}} by {{name}}"
     theme/templates/default.html: "THEME: {{content}}"
 out: "THEME: This is Some Test by testtheme"
 ---
@@ -15,7 +15,7 @@ config:
         title: "Some Test"
     foo: bar
 in:
-    pages/foo.md: "This is: {{foo}} by {{name}}"
+    pages/foo.html: "This is: {{foo}} by {{name}}"
     theme/theme_config.yml: "name: testtheme"
 out: "This is: bar by testtheme"
 

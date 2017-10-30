@@ -1,7 +1,7 @@
 ---
 url: /archives/2016.html
 in:
-    pages/_year.html: |
+    templates/_year.html: |
         Posts in {{year}}
         {% for post in pagination.posts -%}
         {{post.url}}

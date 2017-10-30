@@ -65,9 +65,12 @@ class Linker:
         src = self._source
         app = src.app
         for i in self._getAllSiblings():
-            if not i.is_group and i.spec != self._content_item.spec:
+            if not i.is_group:
                 ipage = app.getPage(src, i)
-                yield PaginationData(ipage)
+                ipage_data = PaginationData(ipage)
+                ipage_data._setValue('is_self',
+                                     i.spec == self._content_item.spec)
+                yield ipage_data
 
     @property
     def children(self):

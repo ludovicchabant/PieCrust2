@@ -78,6 +78,7 @@ class ContentGroup:
 class ContentSource:
     """ A source for content.
     """
+    SOURCE_NAME = None
     DEFAULT_PIPELINE_NAME = None
 
     def __init__(self, app, name, config):

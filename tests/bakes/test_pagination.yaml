@@ -4,15 +4,15 @@ config:
         posts_per_page: 3
         pagination_suffix: /page%num%
 in:
-    posts/2015-03-01_post01.md: "---\ntitle: Post 01\n---\n"
-    posts/2015-03-02_post02.md: "---\ntitle: Post 02\n---\n"
-    posts/2015-03-03_post03.md: "---\ntitle: Post 03\n---\n"
-    posts/2015-03-04_post04.md: "---\ntitle: Post 04\n---\n"
-    posts/2015-03-05_post05.md: "---\ntitle: Post 05\n---\n"
-    posts/2015-03-06_post06.md: "---\ntitle: Post 06\n---\n"
-    posts/2015-03-07_post07.md: "---\ntitle: Post 07\n---\n"
-    pages/_index.md: ''
-    pages/foo.md: |
+    posts/2015-03-01_post01.html: "---\ntitle: Post 01\n---\n"
+    posts/2015-03-02_post02.html: "---\ntitle: Post 02\n---\n"
+    posts/2015-03-03_post03.html: "---\ntitle: Post 03\n---\n"
+    posts/2015-03-04_post04.html: "---\ntitle: Post 04\n---\n"
+    posts/2015-03-05_post05.html: "---\ntitle: Post 05\n---\n"
+    posts/2015-03-06_post06.html: "---\ntitle: Post 06\n---\n"
+    posts/2015-03-07_post07.html: "---\ntitle: Post 07\n---\n"
+    pages/_index.html: ''
+    pages/foo.html: |
         {%- for p in pagination.items -%}
         {{p.url}} {{p.title}}
         {% endfor -%}
@@ -44,33 +44,33 @@ config:
     site:
         posts_per_page: 3
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
         ---
         title: Post 01
         tags: [foo]
         ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
         ---
         title: Post 02
         tags: [foo]
         ---
-    posts/2015-03-03_post03.md: |
+    posts/2015-03-03_post03.html: |
         ---
         title: Post 03
         tags: [foo]
         ---
-    posts/2015-03-04_post04.md: |
+    posts/2015-03-04_post04.html: |
         ---
         title: Post 04
         tags: [foo]
         ---
-    posts/2015-03-05_post05.md: |
+    posts/2015-03-05_post05.html: |
         ---
         title: Post 05
         tags: [foo]
         ---
-    pages/_index.md: ''
-    pages/_tag.md: |
+    pages/_index.html: ''
+    templates/_tag.html: |
         Posts with {{tag}}
         {% for p in pagination.items -%}
         {{p.url}} {{p.title}}

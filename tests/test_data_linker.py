@@ -7,12 +7,12 @@ from .mockutil import mock_fs, mock_fs_scope, get_simple_content_item
     'fs_fac, page_path, expected',
     [
         (lambda: mock_fs().withPage('pages/foo'), 'foo',
-         []),
+         ['/foo']),
         ((lambda: mock_fs()
           .withPage('pages/foo')
           .withPage('pages/bar')),
          'foo',
-         ['/bar']),
+         ['/bar', '/foo']),
         ((lambda: mock_fs()
           .withPage('pages/baz')
           .withPage('pages/something')
@@ -20,14 +20,14 @@ from .mockutil import mock_fs, mock_fs_scope, get_simple_content_item
           .withPage('pages/foo')
           .withPage('pages/bar')),
          'foo',
-         ['/bar', '/baz', '/something']),
+         ['/bar', '/baz', '/foo', '/something']),
         ((lambda: mock_fs()
           .withPage('pages/something/else')
           .withPage('pages/foo')
           .withPage('pages/something/good')
           .withPage('pages/bar')),
          'something/else',
-         ['/something/good'])
+         ['/something/else', '/something/good'])
     ])
 def test_linker_siblings(fs_fac, page_path, expected):
     fs = fs_fac()

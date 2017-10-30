@@ -3,7 +3,7 @@ import os.path
 import urllib.parse
 import pytest
 from piecrust.pipelines.records import MultiRecord
-from piecrust.pipelines._pagebaker import PageBaker
+from piecrust.pipelines._pagebaker import get_output_path
 from .mockutil import get_mock_app, mock_fs, mock_fs_scope
 
 
@@ -41,17 +41,16 @@ def test_get_output_path(uri, pretty, expected):
         app.config.set('site/pretty_urls', True)
     assert app.config.get('site/pretty_urls') == pretty
 
+    out_dir = '/destination'
+
     for site_root in ['/', '/whatever/', '/~johndoe/']:
         app.config.set('site/root', urllib.parse.quote(site_root))
-        baker = PageBaker(app, '/destination')
-        try:
-            path = baker.getOutputPath(urllib.parse.quote(site_root) + uri,
-                                       pretty)
-            expected = os.path.normpath(
-                os.path.join('/destination', expected))
-            assert expected == path
-        finally:
-            baker.shutdown()
+        path = get_output_path(app, out_dir,
+                               urllib.parse.quote(site_root) + uri,
+                               pretty)
+        expected = os.path.normpath(
+            os.path.join('/destination', expected))
+        assert expected == path
 
 
 def test_removed():
@@ -81,18 +80,22 @@ def test_record_version_change():
           .withPage('pages/foo.md', {'layout': 'none', 'format': 'none'},
                     'a foo page'))
     with mock_fs_scope(fs):
-        fs.runChef('bake')
-        mtime = os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
         time.sleep(1)
+        fs.runChef('bake', '-o', fs.path('counter'))
+        time.sleep(0.1)
+        mtime = os.path.getmtime(fs.path('counter/foo.html'))
 
-        fs.runChef('bake')
-        assert mtime == os.path.getmtime(fs.path('kitchen/_counter/foo.html'))
+        time.sleep(1)
+        fs.runChef('bake', '-o', fs.path('counter'))
+        time.sleep(0.1)
+        assert mtime == os.path.getmtime(fs.path('counter/foo.html'))
 
         MultiRecord.RECORD_VERSION += 1
         try:
-            fs.runChef('bake')
-            assert mtime < os.path.getmtime(fs.path(
-                'kitchen/_counter/foo.html'))
+            time.sleep(1)
+            fs.runChef('bake', '-o', fs.path('counter'))
+            time.sleep(0.1)
+            assert mtime < os.path.getmtime(fs.path('counter/foo.html'))
         finally:
             MultiRecord.RECORD_VERSION -= 1
 

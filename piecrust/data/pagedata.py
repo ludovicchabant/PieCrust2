@@ -1,3 +1,4 @@
+import copy
 import time
 import logging
 import collections.abc
@@ -165,13 +166,21 @@ class PageData(LazyPageConfigData):
         self._ctx = ctx
 
     def _load(self):
+        from piecrust.uriutil import split_uri
+
         page = self._page
         set_val = self._setValue
+
+        page_url = page.getUri(self._ctx.sub_num)
+        _, rel_url = split_uri(page.app, page_url)
 
         dt = page.datetime
         for k, v in page.source_metadata.items():
             set_val(k, v)
-        set_val('url', page.getUri(self._ctx.sub_num))
+        set_val('url', page_url)
+        set_val('rel_url', rel_url)
+        set_val('route', copy.deepcopy(page.source_metadata['route_params']))
+
         set_val('timestamp', time.mktime(dt.timetuple()))
         set_val('datetime', {
             'year': dt.year, 'month': dt.month, 'day': dt.day,

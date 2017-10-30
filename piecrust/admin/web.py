@@ -1,7 +1,6 @@
 import os.path
 import logging
 from flask import Flask
-from werkzeug import SharedDataMiddleware
 
 
 logger = logging.getLogger(__name__)
@@ -38,14 +37,14 @@ def create_foodtruck_app(extra_settings=None, url_prefix=None):
     if app.config.get('FOODTRUCK_DEBUG_404'):
         @app.errorhandler(404)
         def page_not_found(e):
-            return _debug_page_not_found(e)
+            return _debug_page_not_found(app, e)
 
     logger.debug("Created FoodTruck app with admin root: %s" % root_dir)
 
     return app
 
 
-def _debug_page_not_found(e):
+def _debug_page_not_found(app, e):
     from flask import request, url_for
     output = []
     for rule in app.url_map.iter_rules():
@@ -60,7 +59,8 @@ def _debug_page_not_found(e):
             line = ("{:50s} {:20s} {}".format(rule.endpoint, methods, url))
             output.append(line)
 
-    resp = 'FOODTRUCK_ROOT_URL=%s<br/>\n' % str(app.config['FOODTRUCK_ROOT_URL'])
+    resp = 'FOODTRUCK_ROOT_URL=%s<br/>\n' % str(
+        app.config['FOODTRUCK_ROOT_URL'])
     resp += 'PATH=%s<br/>\n' % request.path
     resp += 'ENVIRON=%s<br/>\n' % str(request.environ)
     resp += 'URL RULES:<br/>\n'

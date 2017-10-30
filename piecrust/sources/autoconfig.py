@@ -26,17 +26,19 @@ class AutoConfigContentSourceBase(DefaultContentSource):
                                      name)
 
     def _finalizeContent(self, parent_group, items, groups):
-        DefaultContentSource._finalizeContent(parent_group, items, groups)
+        super()._finalizeContent(parent_group, items, groups)
 
         # If `capture_mode` is `dirname`, we don't need to recompute it
         # for each filename, so we do it here.
         if self.capture_mode == 'dirname':
-            rel_dirpath = os.path.relpath(parent_group.spec,
-                                          self.fs_endpoint_path)
+            rel_dirpath = '.'
+            if parent_group is not None:
+                rel_dirpath = os.path.relpath(parent_group.spec,
+                                              self.fs_endpoint_path)
             config = self._extractConfigFragment(rel_dirpath)
 
         for i in items:
-            # Compute the confif for the other capture modes.
+            # Compute the config for the other capture modes.
             if self.capture_mode == 'path':
                 rel_path = os.path.relpath(i.spec, self.fs_endpoint_path)
                 config = self._extractConfigFragment(rel_path)
@@ -60,7 +62,7 @@ class AutoConfigContentSource(AutoConfigContentSourceBase):
 
     def __init__(self, app, name, config):
         config['capture_mode'] = 'dirname'
-        AutoConfigContentSourceBase.__init__(app, name, config)
+        super().__init__(app, name, config)
 
         self.setting_name = config.get('setting_name', name)
         self.only_single_values = config.get('only_single_values', False)
@@ -108,6 +110,10 @@ class AutoConfigContentSource(AutoConfigContentSourceBase):
                     return ContentItem(path, metadata)
         return None
 
+    def _makeSlug(self, path):
+        slug = super()._makeSlug(path)
+        return os.path.basename(slug)
+
 
 class OrderedContentSource(AutoConfigContentSourceBase):
     """ A content source that assigns an "order" to its pages based on a
@@ -120,7 +126,7 @@ class OrderedContentSource(AutoConfigContentSourceBase):
 
     def __init__(self, app, name, config):
         config['capture_mode'] = 'path'
-        AutoConfigContentSourceBase.__init__(app, name, config)
+        super().__init__(app, name, config)
 
         self.setting_name = config.get('setting_name', 'order')
         self.default_value = config.get('default_value', 0)

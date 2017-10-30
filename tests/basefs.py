@@ -1,11 +1,14 @@
 import os.path
 import yaml
 from piecrust.app import PieCrust
-from piecrust.main import _pre_parse_chef_args, _run_chef
 from piecrust.sources.base import ContentItem
 
 
 class TestFileSystemBase(object):
+    _use_chef_debug = False
+    _pytest_log_handler = None
+    _leave_mockfs = False
+
     def __init__(self):
         pass
 
@@ -99,10 +102,31 @@ class TestFileSystemBase(object):
 
     def runChef(self, *args):
         root_dir = self.path('/kitchen')
-        chef_args = ['--root', root_dir] + args
+        chef_args = ['--root', root_dir]
+        if self._use_chef_debug:
+            chef_args += ['--debug']
+        chef_args += list(args)
 
-        pre_args = _pre_parse_chef_args(chef_args)
+        import logging
+        from piecrust.main import (
+            _make_chef_state, _recover_pre_chef_state,
+            _pre_parse_chef_args, _run_chef)
+
+        # If py.test added a log handler, remove it because Chef will
+        # add its own logger.
+        if self._pytest_log_handler:
+            logging.getLogger().removeHandler(
+                self._pytest_log_handler)
+
+        state = _make_chef_state()
+        pre_args = _pre_parse_chef_args(chef_args, state=state)
         exit_code = _run_chef(pre_args, chef_args)
+        _recover_pre_chef_state(state)
+
+        if self._pytest_log_handler:
+            logging.getLogger().addHandler(
+                self._pytest_log_handler)
+
         assert exit_code == 0
 
     def getSimplePage(self, rel_path):

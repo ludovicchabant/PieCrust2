@@ -102,7 +102,7 @@ class _ServerImpl(object):
         # Create the app for this request.
         app = get_app_for_server(self.appfactory,
                                  root_url=self.root_url)
-        if (app.config.get('site/enable_debug_info') and
+        if (app.config.get('server/enable_debug_info') and
                 self.enable_debug_info and
                 '!debug' in request.args):
             app.config.set('site/show_debug_info', True)

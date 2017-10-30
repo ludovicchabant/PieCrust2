@@ -18,7 +18,7 @@ class TempDirFileSystem(TestFileSystemBase):
         p = p.lstrip('/\\')
         return os.path.join(self._root, p)
 
-    def getStructure(self, path=None):
+    def getStructure(self, path=''):
         path = self.path(path)
         if not os.path.exists(path):
             raise Exception("No such path: %s" % path)
@@ -44,8 +44,11 @@ class TempDirFileSystem(TestFileSystemBase):
                 self._getStructureRecursive(e, full_cur, item)
             target[cur] = e
         else:
-            with open(full_cur, 'r', encoding='utf8') as fp:
-                target[cur] = fp.read()
+            try:
+                with open(full_cur, 'r', encoding='utf8') as fp:
+                    target[cur] = fp.read()
+            except Exception as ex:
+                target[cur] = "ERROR: CAN'T READ '%s': %s" % (full_cur, ex)
 
     def _createDir(self, path):
         if not os.path.exists(path):
@@ -69,7 +72,7 @@ class TempDirScope(object):
     def __init__(self, fs, open_patches=None, keep=False):
         self._fs = fs
         self._open = open
-        self._keep = keep
+        self._keep = keep or TestFileSystemBase._leave_mockfs
 
     @property
     def root(self):

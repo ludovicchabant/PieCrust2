@@ -161,9 +161,11 @@ class TaxonomySource(GeneratorSourceBase):
 
     def onRouteFunctionUsed(self, route_params):
         # Get the values, and slugify them appropriately.
+        # If this is a "multiple" taxonomy, `values` will be a tuple of
+        # terms. If not, `values` will just be a term.
         values = route_params[self.taxonomy.term_name]
-        if self.taxonomy.is_multiple:
-            # TODO: here we assume the route has been properly configured.
+        tax_is_multiple = self.taxonomy.is_multiple
+        if tax_is_multiple:
             slugified_values = self.slugifyMultiple((str(v) for v in values))
             route_val = self.taxonomy.separator.join(slugified_values)
         else:
@@ -174,8 +176,13 @@ class TaxonomySource(GeneratorSourceBase):
         rcs = self.app.env.render_ctx_stack
         cpi = rcs.current_ctx.current_pass_info
         if cpi:
-            utt = cpi.getCustomInfo('used_taxonomy_terms', [], True)
-            utt.append(slugified_values)
+            utt = cpi.getCustomInfo('used_taxonomy_terms')
+            if utt is None:
+                utt = set()
+                utt.add(slugified_values)
+                cpi.setCustomInfo('used_taxonomy_terms', utt)
+            else:
+                utt.add(slugified_values)
 
         # Put the slugified values in the route metadata so they're used to
         # generate the URL.
@@ -407,14 +414,25 @@ class _TaxonomyTermsAnalyzer(object):
         #
         # Add the combinations to that list. We get those combinations from
         # wherever combinations were used, so they're coming from the
-        # `onRouteFunctionUsed` method.
+        # `onRouteFunctionUsed` method. And because combinations can be used
+        # by any page in the website (anywhere someone can ask for an URL
+        # to the combination page), it means we check all the records, not
+        # just the record for our source.
         if taxonomy.is_multiple:
             known_combinations = set()
-            for cur_entry in cur_rec.getEntries():
-                used_terms = _get_all_entry_taxonomy_terms(cur_entry)
-                for terms in used_terms:
-                    if len(terms) > 1:
-                        known_combinations.add(terms)
+            for rec in current_records.records:
+                # Cheap way to test if a record contains entries that
+                # are sub-types of a page entry: test the first one.
+                first_entry = next(iter(rec.getEntries()), None)
+                if (first_entry is None or
+                        not isinstance(first_entry, PagePipelineRecordEntry)):
+                    continue
+
+                for cur_entry in rec.getEntries():
+                    used_terms = _get_all_entry_taxonomy_terms(cur_entry)
+                    for terms in used_terms:
+                        if len(terms) > 1:
+                            known_combinations.add(terms)
 
             dcc = 0
             for terms in known_combinations:

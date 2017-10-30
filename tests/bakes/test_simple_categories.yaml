@@ -3,45 +3,39 @@ config:
     site:
         category_url: cat/%category%
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       category: foo
       ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
       ---
       title: Post 02
       category: bar
       ---
-    posts/2015-03-03_post03.md: |
+    posts/2015-03-03_post03.html: |
       ---
       title: Post 03
       category: foo
       ---
-    pages/_category.md: |
+    templates/_category.html: |
       Pages in {{category}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/link.md: 'Link: {{pccaturl("bar")}}'
-    pages/_index.md: ''
-out:
+    pages/link.html: 'Link: {{pccaturl("bar")}}'
+    pages/_index.html: ''
+outfiles:
     index.html: ''
-    '2015':
-        '03':
-            '01':
-                post01.html: ''
-            '02':
-                post02.html: ''
-            '03':
-                post03.html: ''
+    '2015/03/01/post01.html': ''
+    '2015/03/02/post02.html': ''
+    '2015/03/03/post03.html': ''
     link.html: 'Link: /cat/bar.html'
-    cat:
-        foo.html: |
-          Pages in foo
-          Post 03
-          Post 01
-        bar.html: |
-          Pages in bar
-          Post 02
+    'cat/foo.html': |
+        Pages in foo
+        Post 03
+        Post 01
+    'cat/bar.html': |
+        Pages in bar
+        Post 02
 

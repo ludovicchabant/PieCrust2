@@ -26,11 +26,8 @@ def test_simple(contents, expected):
           .withConfig(app_config)
           .withPage('pages/foo', config=page_config, contents=contents))
     with mock_fs_scope(fs, open_patches=open_patches):
-        app = fs.getApp()
         page = fs.getSimplePage('foo.md')
-        route = app.getSourceRoute('pages')
-        route_metadata = {'slug': 'foo'}
-        output = render_simple_page(page, route, route_metadata)
+        output = render_simple_page(page)
         assert output == expected
 
 
@@ -41,30 +38,24 @@ def test_layout():
     fs = (mock_fs()
           .withConfig(app_config)
           .withAsset('templates/blah.jinja', layout)
-          .withPage('pages/foo', config={'layout': 'blah'},
+          .withPage('pages/foo', config={'layout': 'blah.jinja'},
                     contents=contents))
     with mock_fs_scope(fs, open_patches=open_patches):
-        app = fs.getApp()
         page = fs.getSimplePage('foo.md')
-        route = app.getSourceRoute('pages', None)
-        route_metadata = {'slug': 'foo'}
-        output = render_simple_page(page, route, route_metadata)
+        output = render_simple_page(page)
         assert output == expected
 
 
 def test_partial():
     contents = "Info:\n{% include 'page_info.jinja' %}\n"
-    partial = "- URL: {{page.url}}\n- SLUG: {{page.slug}}\n"
+    partial = "- URL: {{page.url}}\n- SLUG: {{page.route.slug}}\n"
     expected = "Info:\n- URL: /foo.html\n- SLUG: foo"
     fs = (mock_fs()
           .withConfig(app_config)
           .withAsset('templates/page_info.jinja', partial)
           .withPage('pages/foo', config=page_config, contents=contents))
     with mock_fs_scope(fs, open_patches=open_patches):
-        app = fs.getApp()
         page = fs.getSimplePage('foo.md')
-        route = app.getSourceRoute('pages', None)
-        route_metadata = {'slug': 'foo'}
-        output = render_simple_page(page, route, route_metadata)
+        output = render_simple_page(page)
         assert output == expected
 

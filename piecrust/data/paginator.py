@@ -208,6 +208,7 @@ class Paginator(object):
         self._iterator.slice(offset, limit)
 
         self._iterator._lockIterator()
+        self._iterator._load()
 
         if isinstance(self._source, ContentSource):
             self._onIteration(self._iterator)

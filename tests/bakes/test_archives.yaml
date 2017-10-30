@@ -1,6 +1,6 @@
 ---
 in:
-    pages/_year.html: |
+    templates/_year.html: |
         Posts in {{year}}
         {% for post in pagination.posts -%}
         {{post.url}}
@@ -27,7 +27,7 @@ outfiles:
         /2016/01/01/post1.html
 ---
 in:
-    pages/_year.html: |
+    templates/_year.html: |
         Posts in {{year}}
         {% for post in archives -%}
         {{post.url}}

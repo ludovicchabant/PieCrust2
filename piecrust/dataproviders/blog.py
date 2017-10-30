@@ -56,7 +56,8 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     def __iter__(self):
         self._buildPosts()
         self._buildArchives()
-        return ['posts', 'years', 'months'] + list(self._taxonomies.keys())
+        return ['posts', 'years', 'months'] + list(
+            sorted(self._taxonomies.keys()))
 
     def __len__(self):
         self._buildPosts()
@@ -111,7 +112,7 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
                     (post_dt.year, post_dt.month, 1,
                      0, 0, 0, 0, 0, -1))
                 posts_this_month = BlogArchiveEntry(
-                    source, page, month, timestamp)
+                    source, page, month[0], timestamp)
                 monthly_index[month] = posts_this_month
             posts_this_month._items.append(post.content_item)
 
@@ -144,7 +145,8 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
 
         self._taxonomies = {}
         for tax_name, entries in tax_index.items():
-            self._taxonomies[tax_name] = list(entries.values())
+            self._taxonomies[tax_name] = list(
+                sorted(entries.values(), key=lambda i: i.term))
 
         self._onIteration(None)
 
@@ -171,7 +173,7 @@ class BlogArchiveEntry:
         self._iterator = None
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
     def __int__(self):
         return int(self.name)

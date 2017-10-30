@@ -70,9 +70,7 @@ class RenderPassInfo(object):
     def setCustomInfo(self, key, info):
         self._custom_info[key] = info
 
-    def getCustomInfo(self, key, default=None, create_if_missing=False):
-        if create_if_missing:
-            return self._custom_info.setdefault(key, default)
+    def getCustomInfo(self, key, default=None):
         return self._custom_info.get(key, default)
 
 

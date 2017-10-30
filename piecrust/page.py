@@ -3,7 +3,6 @@ import json
 import hashlib
 import logging
 import datetime
-import dateutil.parser
 import collections
 from werkzeug.utils import cached_property
 from piecrust.configuration import (
@@ -176,6 +175,7 @@ def _parse_config_date(page_date):
         return None
 
     if isinstance(page_date, str):
+        import dateutil.parser
         try:
             parsed_d = dateutil.parser.parse(page_date)
         except Exception as ex:
@@ -197,6 +197,7 @@ def _parse_config_time(page_time):
         return page_time
 
     if isinstance(page_time, str):
+        import dateutil.parser
         try:
             parsed_t = dateutil.parser.parse(page_time)
         except Exception as ex:
@@ -306,7 +307,7 @@ def _count_lines(txt, start=0, end=-1):
     line_count = 1
     while True:
         nex = txt.find('\n', cur)
-        if nex < 0:
+        if nex < 0 or (end >= 0 and nex >= end):
             break
 
         cur = nex + 1
@@ -374,7 +375,7 @@ def parse_segments(raw, offset=0):
         # Handle text past the last match.
         lastm = matches[-1]
 
-        last_seg_start = lastm.end()
+        last_seg_start = lastm.end() + 1
 
         seg = ContentSegment(
             raw[last_seg_start:],

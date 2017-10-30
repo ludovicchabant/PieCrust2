@@ -46,7 +46,7 @@ class Route(object):
 
         self.source_name = cfg['source']
         self.uri_pattern = cfg['url'].lstrip('/')
-        self.pass_num = cfg['pass']
+        self.pass_num = cfg.get('pass', 1)
 
         self.supported_params = self.source.getSupportedRouteParameters()
 

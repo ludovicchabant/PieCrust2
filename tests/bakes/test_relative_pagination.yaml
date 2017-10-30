@@ -3,9 +3,9 @@ config:
     site:
         default_post_layout: post
 in:
-    posts/2015-03-01_post01.md: "---\ntitle: Post 01\n---\nContent 01"
-    posts/2015-03-02_post02.md: "---\ntitle: Post 02\n---\nContent 02"
-    posts/2015-03-03_post03.md: "---\ntitle: Post 03\n---\nContent 03"
+    posts/2015-03-01_post01.html: "---\ntitle: Post 01\n---\nContent 01"
+    posts/2015-03-02_post02.html: "---\ntitle: Post 02\n---\nContent 02"
+    posts/2015-03-03_post03.html: "---\ntitle: Post 03\n---\nContent 03"
     templates/post.html: |
         BLAH {{content|safe}}
         {{pagination.prev_item.url}} {{pagination.prev_item.title}}

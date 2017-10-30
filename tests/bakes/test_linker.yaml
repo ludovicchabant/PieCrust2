@@ -1,6 +1,6 @@
 ---
 in:
-    pages/foo.md: |
+    pages/foo.html: |
         {%for c in family.children%}
         {{c.title}}
         {%endfor%}
@@ -8,15 +8,15 @@ outfiles:
     foo.html: ''
 ---
 in:
-    pages/foo.md: |
+    pages/foo.html: |
         {%for c in family.children-%}
         {{c.title}}
         {%endfor%}
-    pages/foo/one.md: |
+    pages/foo/one.html: |
         ---
         title: One
         ---
-    pages/foo/two.md: |
+    pages/foo/two.html: |
         ---
         title: Two
         ---
@@ -26,18 +26,18 @@ outfiles:
         Two
 ---
 in:
-    pages/foo.md: |
+    pages/foo.html: |
         ---
         title: Foo
         ---
         {%for c in family.siblings-%}
         {{c.title}}{%if c.is_self%} SELFIE!{%endif%}
         {%endfor%}
-    pages/bar.md: |
+    pages/bar.html: |
         ---
         title: Bar
         ---
-    pages/other.md: |
+    pages/other.html: |
         ---
         title: Other
         ---
@@ -48,27 +48,27 @@ outfiles:
         Other
 ---
 in:
-    pages/foo.md: "---\ntitle: Foo\n---\n"
-    pages/foo/one.md: |
+    pages/foo.html: "---\ntitle: Foo\n---\n"
+    pages/foo/one.html: |
         {{family.parent.url}} {{family.parent.title}}
 outfiles:
     foo/one.html: /foo.html Foo
 ---
 in:
-    pages/foo.md: "---\ntitle: Foo\n---\n"
-    pages/foo/bar.md: "---\ntitle: Bar\n---\n"
-    pages/foo/bar/one.md: |
+    pages/foo.html: "---\ntitle: Foo\n---\n"
+    pages/foo/bar.html: "---\ntitle: Bar\n---\n"
+    pages/foo/bar/one.html: |
         {{family.parent.url}} {{family.parent.title}}
-        {{family.parent.parent.url}} {{family.parent.parent.title}}
+        {{family.ancestors[1].url}} {{family.ancestors[1].title}}
 outfiles:
     foo/bar/one.html: |
         /foo/bar.html Bar
         /foo.html Foo
 ---
 in:
-    pages/foo.md: "---\ntitle: Foo\n---\n"
-    pages/foo/bar.md: "---\ntitle: Bar\n---\n"
-    pages/foo/bar/one.md: |
+    pages/foo.html: "---\ntitle: Foo\n---\n"
+    pages/foo/bar.html: "---\ntitle: Bar\n---\n"
+    pages/foo/bar/one.html: |
         {% for p in family.ancestors -%}
         {{p.url}} {{p.title}}
         {% endfor %}

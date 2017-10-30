@@ -95,11 +95,17 @@ class BakeCommand(ChefCommand):
                 raise Exception(
                     "Can't specify `--html-only` or `--assets-only` with "
                     "`--pipelines`.")
+            allowed_pipelines = []
+            forbidden_pipelines = []
             for p in ctx.args.pipelines:
                 if p[0] == '-':
                     forbidden_pipelines.append(p)
                 else:
                     allowed_pipelines.append(p)
+            if not allowed_pipelines:
+                allowed_pipelines = None
+            if not forbidden_pipelines:
+                forbidden_pipelines = None
 
         baker = Baker(
             ctx.appfactory, ctx.app, out_dir,
@@ -114,14 +120,14 @@ class BakeCommand(ChefCommand):
 class ShowRecordCommand(ChefCommand):
     def __init__(self):
         super(ShowRecordCommand, self).__init__()
-        self.name = 'showrecord'
-        self.description = ("Shows the bake record for a given output "
+        self.name = 'showrecords'
+        self.description = ("Shows the bake records for a given output "
                             "directory.")
 
     def setupParser(self, parser, app):
         parser.add_argument(
             '-o', '--output',
-            help="The output directory for which to show the bake record "
+            help="The output directory for which to show the bake records "
             "(defaults to `_counter`)",
             nargs='?')
         parser.add_argument(
@@ -140,7 +146,10 @@ class ShowRecordCommand(ChefCommand):
             '--last',
             type=int,
             default=0,
-            help="Show the last Nth bake record.")
+            help="Show the last Nth bake records.")
+        parser.add_argument(
+            '--records',
+            help="Load the specified records file.")
         parser.add_argument(
             '--html-only',
             action='store_true',
@@ -157,23 +166,31 @@ class ShowRecordCommand(ChefCommand):
         parser.add_argument(
             '--show-stats',
             action='store_true',
-            help="Show stats from the record.")
+            help="Show stats from the records.")
         parser.add_argument(
             '--show-manifest',
-            help="Show manifest entries from the record.")
+            help="Show manifest entries from the records.")
 
     def run(self, ctx):
         import fnmatch
         from piecrust.baking.baker import get_bake_records_path
         from piecrust.pipelines.records import load_records
 
-        out_dir = ctx.args.output or os.path.join(ctx.app.root_dir, '_counter')
-        suffix = '' if ctx.args.last == 0 else '.%d' % ctx.args.last
-        records_path = get_bake_records_path(ctx.app, out_dir, suffix=suffix)
-        records = load_records(records_path)
+        records_path = ctx.args.records
+        if records_path is None:
+            out_dir = ctx.args.output or os.path.join(ctx.app.root_dir,
+                                                      '_counter')
+            suffix = '' if ctx.args.last == 0 else '.%d' % ctx.args.last
+            records_path = get_bake_records_path(ctx.app, out_dir,
+                                                 suffix=suffix)
+            logger.info("Bake records for output: %s" % out_dir)
+        else:
+            logger.info("Bake records from: %s" % records_path)
+
+        records = load_records(records_path, True)
         if records.invalidated:
             raise Exception(
-                "The bake record was saved by a previous version of "
+                "The bake records were saved by a previous version of "
                 "PieCrust and can't be shown.")
 
         in_pattern = None
@@ -185,15 +202,12 @@ class ShowRecordCommand(ChefCommand):
             out_pattern = '*%s*' % ctx.args.out_path.strip('*')
 
         pipelines = ctx.args.pipelines
-        if not pipelines:
-            pipelines = [p.PIPELINE_NAME
-                         for p in ctx.app.plugin_loader.getPipelines()]
-        if ctx.args.assets_only:
-            pipelines = ['asset']
-        if ctx.args.html_only:
-            pipelines = ['page']
+        if pipelines is None:
+            if ctx.args.assets_only:
+                pipelines = ['asset']
+            if ctx.args.html_only:
+                pipelines = ['page']
 
-        logger.info("Bake record for: %s" % out_dir)
         logger.info("Status: %s" % ('SUCCESS' if records.success
                                     else 'FAILURE'))
         logger.info("Date/time: %s" %
@@ -206,10 +220,17 @@ class ShowRecordCommand(ChefCommand):
         if not ctx.args.show_stats and not ctx.args.show_manifest:
             for rec in records.records:
                 if ctx.args.fails and rec.success:
+                    logger.debug(
+                        "Ignoring record '%s' because it was successful, "
+                        "and `--fail` was passed." % rec.name)
                     continue
 
                 ppname = rec.name[rec.name.index('@') + 1:]
-                if ppname not in pipelines:
+                if pipelines is not None and ppname not in pipelines:
+                    logging.debug(
+                        "Ignoring record '%s' because it was created by "
+                        "pipeline '%s', which isn't listed in "
+                        "`--pipelines`." % (rec.name, ppname))
                     continue
 
                 entries_to_show = []

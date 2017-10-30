@@ -27,25 +27,21 @@ def _getMockSource(name, params):
 
 
 @pytest.mark.parametrize(
-    'config, metadata, params, expected',
+    'config, params, uri_params, expected',
     [
-        ({'url': '/%foo%'},
-         {'foo': 'bar'}, ['foo'], True),
-        ({'url': '/%foo%'},
-         {'zoo': 'zar', 'foo': 'bar'}, ['foo'], True),
-        ({'url': '/%foo%'},
-         {'zoo': 'zar'}, ['foo'], False),
-        ({'url': '/%foo%/%zoo%'},
-         {'zoo': 'zar'}, ['foo', 'zoo'], False)
+        ({'url': '/%foo%'}, ['foo'], {'foo': 'bar'}, True),
+        ({'url': '/%foo%'}, ['foo'], {'zoo': 'zar', 'foo': 'bar'}, True),
+        ({'url': '/%foo%'}, ['foo'], {'zoo': 'zar'}, False),
+        ({'url': '/%foo%/%zoo%'}, ['foo', 'zoo'], {'zoo': 'zar'}, False)
     ])
-def test_matches_metadata(config, metadata, params, expected):
+def test_matches_parameters(config, params, uri_params, expected):
     app = get_mock_app()
     app.config.set('site/root', '/')
     app.sources = [_getMockSource('blah', params)]
 
     config.setdefault('source', 'blah')
     route = Route(app, config)
-    m = route.matchesMetadata(metadata)
+    m = route.matchesParameters(uri_params)
     assert m == expected
 
 

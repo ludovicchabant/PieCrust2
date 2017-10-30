@@ -1,22 +1,22 @@
 ---
 url: /tag/%C3%A9trange.html
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [étrange]
       ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
       ---
       title: Post 02
       tags: [étrange, sévère]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{pctagurl(tag)}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
+    pages/_index.html: ''
 out: |
     Pages in /tag/%C3%A9trange.html
     Post 02
@@ -24,39 +24,39 @@ out: |
 ---
 url: /tag/s%C3%A9v%C3%A8re.html
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [étrange]
       ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
       ---
       title: Post 02
       tags: [étrange, sévère]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{pctagurl(tag)}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
+    pages/_index.html: ''
 out: |
     Pages in /tag/s%C3%A9v%C3%A8re.html
     Post 02
 ---
 url: /tag/%D0%AD%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [Это тэг]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{pctagurl(tag)}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
+    pages/_index.html: ''
 out: |
     Pages in /tag/%D0%AD%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html
     Post 01
@@ -66,22 +66,22 @@ config:
         slugify_mode: lowercase,transliterate
 url: /tag/etrange.html
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [étrange]
       ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
       ---
       title: Post 02
       tags: [étrange, sévère]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{pctagurl(tag)}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
+    pages/_index.html: ''
 out: |
     Pages in /tag/etrange.html
     Post 02
@@ -92,22 +92,22 @@ config:
         slugify_mode: lowercase,transliterate
 url: /tag/severe.html
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [étrange]
       ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
       ---
       title: Post 02
       tags: [étrange, sévère]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{pctagurl(tag)}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
+    pages/_index.html: ''
 out: |
     Pages in /tag/severe.html
     Post 02
@@ -117,17 +117,17 @@ config:
         slugify_mode: lowercase,transliterate,space_to_dash
 url: /tag/eto-teg.html
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [Это тэг]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{pctagurl(tag)}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
+    pages/_index.html: ''
 out: |
     Pages in /tag/eto-teg.html
     Post 01

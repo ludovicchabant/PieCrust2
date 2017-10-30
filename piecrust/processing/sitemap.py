@@ -11,17 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 SITEMAP_HEADER = \
-    """<?xml version="1.0" encoding="utf-8"?>
-    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-    """
+"""<?xml version="1.0" encoding="utf-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+"""
 SITEMAP_FOOTER = "</urlset>\n"
 
-SITEURL_HEADER =     "  <url>\n"
-SITEURL_LOC =        "    <loc>%s</loc>\n"
-SITEURL_LASTMOD =    "    <lastmod>%s</lastmod>\n"
-SITEURL_CHANGEFREQ = "    <changefreq>%s</changefreq>\n"
-SITEURL_PRIORITY =   "    <priority>%0.1f</priority>\n"
-SITEURL_FOOTER =     "  </url>\n"
+SITEURL_HEADER =     "  <url>\n"  # NOQA: E222
+SITEURL_LOC =        "    <loc>%s</loc>\n"  # NOQA: E222
+SITEURL_LASTMOD =    "    <lastmod>%s</lastmod>\n"  # NOQA: E222
+SITEURL_CHANGEFREQ = "    <changefreq>%s</changefreq>\n"  # NOQA: E222
+SITEURL_PRIORITY =   "    <priority>%0.1f</priority>\n"  # NOQA: E222
+SITEURL_FOOTER =     "  </url>\n"  # NOQA: E222
 
 
 class SitemapProcessor(SimpleFileProcessor):

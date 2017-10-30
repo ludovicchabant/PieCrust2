@@ -30,9 +30,14 @@ class RequestedPage(object):
         self.not_found_errors = []
 
 
-def find_routes(routes, uri, uri_no_sub, sub_num=1):
+def find_routes(routes, uri, decomposed_uri=None):
     """ Returns routes matching the given URL.
     """
+    sub_num = 0
+    uri_no_sub = None
+    if decomposed_uri is not None:
+        uri_no_sub, sub_num = decomposed_uri
+
     res = []
     for route in routes:
         route_params = route.matchUri(uri)
@@ -56,7 +61,7 @@ def get_requested_page(app, req_path):
     # It could also be a sub-page (i.e. the URL ends with a page number), so
     # we try to also match the base URL (without the number).
     req_path_no_sub, sub_num = split_sub_uri(app, req_path)
-    routes = find_routes(app.routes, req_path, req_path_no_sub, sub_num)
+    routes = find_routes(app.routes, req_path, (req_path_no_sub, sub_num))
     if len(routes) == 0:
         raise RouteNotFoundError("Can't find route for: %s" % req_path)
 

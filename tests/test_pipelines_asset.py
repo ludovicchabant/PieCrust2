@@ -1,6 +1,6 @@
 import time
 import os.path
-import shutil
+import random
 import inspect
 import pytest
 from piecrust.pipelines.asset import get_filtered_processors
@@ -10,10 +10,10 @@ from .mockutil import mock_fs, mock_fs_scope
 
 
 class FooProcessor(SimpleFileProcessor):
-    def __init__(self, exts=None, open_func=None):
-        exts = exts or {'foo', 'foo'}
-        super(FooProcessor, self).__init__({exts[0]: exts[1]})
-        self.PROCESSOR_NAME = exts[0]
+    def __init__(self, name=None, exts=None, open_func=None):
+        self.PROCESSOR_NAME = name or 'foo'
+        exts = exts or {'foo': 'foo'}
+        super().__init__(exts)
         self.open_func = open_func or open
 
     def _doProcess(self, in_path, out_path):
@@ -24,24 +24,20 @@ class FooProcessor(SimpleFileProcessor):
         return True
 
 
-class NoopProcessor(SimpleFileProcessor):
-    def __init__(self, exts):
-        super(NoopProcessor, self).__init__({exts[0]: exts[1]})
-        self.PROCESSOR_NAME = exts[0]
-        self.processed = []
-
-    def _doProcess(self, in_path, out_path):
-        self.processed.append(in_path)
-        shutil.copyfile(in_path, out_path)
-        return True
+def _get_test_plugin_name():
+    return 'foo_%d' % random.randrange(1000)
 
 
-def _get_test_fs(processors=None):
-    if processors is None:
-        processors = 'copy'
+def _get_test_fs(*, plugins=None, processors=None):
+    plugins = plugins or []
+    processors = processors or []
+    processors.append('copy')
     return (mock_fs()
             .withDir('counter')
             .withConfig({
+                'site': {
+                    'plugins': plugins
+                },
                 'pipelines': {
                     'asset': {
                         'processors': processors
@@ -50,7 +46,7 @@ def _get_test_fs(processors=None):
             }))
 
 
-def _create_test_plugin(fs, *, foo_exts=None, noop_exts=None):
+def _create_test_plugin(fs, plugname, *, foo_name=None, foo_exts=None):
     src = [
         'from piecrust.plugins.base import PieCrustPlugin',
         'from piecrust.processing.base import SimpleFileProcessor']
@@ -59,24 +55,21 @@ def _create_test_plugin(fs, *, foo_exts=None, noop_exts=None):
     src += ['']
     src += map(lambda l: l.rstrip('\n'), foo_lines[0])
 
-    noop_lines = inspect.getsourcelines(NoopProcessor)
-    src += ['']
-    src += map(lambda l: l.rstrip('\n'), noop_lines[0])
-
     src += [
         '',
-        'class FooNoopPlugin(PieCrustPlugin):',
+        'class FooPlugin(PieCrustPlugin):',
         '    def getProcessors(self):',
-        '        yield FooProcessor(%s)' % repr(foo_exts),
-        '        yield NoopProcessor(%s)' % repr(noop_exts),
+        '        yield FooProcessor(%s, %s)' % (repr(foo_name),
+                                                repr(foo_exts)),
         '',
-        '__piecrust_plugin__ = FooNoopPlugin']
+        '__piecrust_plugin__ = FooPlugin']
 
-    fs.withFile('kitchen/plugins/foonoop.py', src)
+    print("Creating plugin with source:\n%s" % '\n'.join(src))
+    fs.withFile('kitchen/plugins/%s.py' % plugname, '\n'.join(src))
 
 
 def _bake_assets(fs):
-    fs.runChef('bake', '-p', 'asset')
+    fs.runChef('bake', '-p', 'asset', '-o', fs.path('counter'))
 
 
 def test_empty():
@@ -91,12 +84,12 @@ def test_empty():
 
 def test_one_file():
     fs = (_get_test_fs()
-          .withFile('kitchen/assets/something.html', 'A test file.'))
+          .withFile('kitchen/assets/something.foo', 'A test file.'))
     with mock_fs_scope(fs):
         expected = {}
         assert expected == fs.getStructure('counter')
         _bake_assets(fs)
-        expected = {'something.html': 'A test file.'}
+        expected = {'something.foo': 'A test file.'}
         assert expected == fs.getStructure('counter')
 
 
@@ -124,9 +117,10 @@ def test_one_level_dirtyness():
 
 
 def test_two_levels_dirtyness():
-    fs = (_get_test_fs()
+    plugname = _get_test_plugin_name()
+    fs = (_get_test_fs(plugins=[plugname], processors=['foo'])
           .withFile('kitchen/assets/blah.foo', 'A test file.'))
-    _create_test_plugin(fs, foo_exts=('foo', 'bar'))
+    _create_test_plugin(fs, plugname, foo_exts={'foo': 'bar'})
     with mock_fs_scope(fs):
         _bake_assets(fs)
         expected = {'blah.bar': 'FOO: A test file.'}
@@ -164,28 +158,32 @@ def test_removed():
         expected = {
             'blah1.foo': 'A test file.'}
         assert expected == fs.getStructure('kitchen/assets')
-        _bake_assets(1)
+        _bake_assets(fs)
         assert expected == fs.getStructure('counter')
 
 
 def test_record_version_change():
-    fs = (_get_test_fs()
+    plugname = _get_test_plugin_name()
+    fs = (_get_test_fs(plugins=[plugname], processors=['foo'])
           .withFile('kitchen/assets/blah.foo', 'A test file.'))
-    _create_test_plugin(fs, foo_exts=('foo', 'foo'))
+    _create_test_plugin(fs, plugname)
     with mock_fs_scope(fs):
+        time.sleep(1)
         _bake_assets(fs)
-        assert os.path.exists(fs.path('/counter/blah.foo')) is True
-        mtime = os.path.getmtime(fs.path('/counter/blah.foo'))
+        time.sleep(0.1)
+        mtime = os.path.getmtime(fs.path('counter/blah.foo'))
 
         time.sleep(1)
         _bake_assets(fs)
-        assert mtime == os.path.getmtime(fs.path('/counter/blah.foo'))
+        time.sleep(0.1)
+        assert mtime == os.path.getmtime(fs.path('counter/blah.foo'))
 
-        time.sleep(1)
         MultiRecord.RECORD_VERSION += 1
         try:
+            time.sleep(1)
             _bake_assets(fs)
-            assert mtime < os.path.getmtime(fs.path('/counter/blah.foo'))
+            time.sleep(0.1)
+            assert mtime < os.path.getmtime(fs.path('counter/blah.foo'))
         finally:
             MultiRecord.RECORD_VERSION -= 1
 

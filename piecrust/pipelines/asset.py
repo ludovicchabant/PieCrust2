@@ -25,19 +25,18 @@ class AssetPipeline(ContentPipeline):
                 "The asset pipeline only support file-system sources.")
 
         super().__init__(source, ppctx)
-        self.enabled_processors = None
-        self.ignore_patterns = []
+        self._ignore_patterns = []
         self._processors = None
         self._base_dir = source.fs_endpoint_path
 
     def initialize(self):
         # Get the list of processors for this run.
         processors = self.app.plugin_loader.getProcessors()
-        if self.enabled_processors is not None:
-            logger.debug("Filtering processors to: %s" %
-                         self.enabled_processors)
+        enabled_processors = self.app.config.get('pipelines/asset/processors')
+        if enabled_processors is not None:
+            logger.debug("Filtering processors to: %s" % enabled_processors)
             processors = get_filtered_processors(processors,
-                                                 self.enabled_processors)
+                                                 enabled_processors)
 
         # Invoke pre-processors.
         proc_ctx = ProcessorContext(self)
@@ -55,7 +54,9 @@ class AssetPipeline(ContentPipeline):
 
         # Pre-processors can define additional ignore patterns so let's
         # add them to what we had already.
-        self.ignore_patterns += make_re(proc_ctx.ignore_patterns)
+        ignores = self.app.config.get('pipelines/asset/ignore', [])
+        ignores += proc_ctx.ignore_patterns
+        self._ignore_patterns += make_re(ignores)
 
         # Register timers.
         stats = self.app.env.stats
@@ -65,7 +66,7 @@ class AssetPipeline(ContentPipeline):
     def run(self, job, ctx, result):
         # See if we need to ignore this item.
         rel_path = os.path.relpath(job.content_item.spec, self._base_dir)
-        if re_matchany(rel_path, self.ignore_patterns):
+        if re_matchany(rel_path, self._ignore_patterns):
             return
 
         record_entry = result.record_entry

@@ -189,6 +189,7 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
         data_endpoint = 'blog'
         item_name = 'post'
         tpl_func_prefix = 'pc'
+        year_archive_tpl = '_year.html'
 
         if theme_site:
             # If this is a theme site, show posts from a `sample` directory
@@ -208,6 +209,7 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
             (site_values, '%s/func_prefix' % blog_name),
             (values, '%s/func_prefix' % blog_name),
             default=('pc%s' % blog_name))
+        year_archive_tpl = '%s_year.html,_year.html' % page_prefix
 
     # Figure out the settings values for this blog, specifically.
     # The value could be set on the blog config itself, globally, or left at
@@ -224,7 +226,6 @@ def get_default_content_model_for_blog(blog_name, is_only_blog,
     default_layout = blog_values['default_post_layout']
     post_url = '/' + url_prefix + blog_values['post_url'].lstrip('/')
     year_url = '/' + url_prefix + blog_values['year_url'].lstrip('/')
-    year_archive_tpl = '%s_year.html' % page_prefix
 
     cfg = collections.OrderedDict({
         'site': collections.OrderedDict({

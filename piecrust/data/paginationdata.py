@@ -51,7 +51,7 @@ def _load_date(data, name):
 
 
 def _load_datetime(data, name):
-    dt = data_page.datetime
+    dt = data._page.datetime
     return {
         'year': dt.year, 'month': dt.month, 'day': dt.day,
         'hour': dt.hour, 'minute': dt.minute, 'second': dt.second}

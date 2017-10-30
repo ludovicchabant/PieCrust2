@@ -1,14 +1,14 @@
 ---
 url: /foo
 in: 
-    pages/foo.md: |
+    pages/foo.html: |
         BLAH
         {{piecrust.debug_info}}
 out: BLAH
 ---
 url: /foo?!debug
 in:
-    pages/foo.md: |
+    pages/foo.html: |
         BLAH
         {{piecrust.debug_info}}
 out_contains: |
@@ -17,12 +17,12 @@ out_contains: |
 ---
 url: /foo
 in:
-    pages/foo.md: BLAH {{pcurl('bar')}}
+    pages/foo.html: BLAH {{pcurl('bar')}}
 out: BLAH /bar.html
 ---
 url: /foo?!debug
 in:
-    pages/foo.md: BLAH {{pcurl('bar')}}
+    pages/foo.html: BLAH {{pcurl('bar')}}
 out: BLAH /bar.html?!debug
 ---
 url: /foo
@@ -30,7 +30,7 @@ config:
     site:
         pretty_urls: true
 in:
-    pages/foo.md: BLAH {{pcurl('bar')}}
+    pages/foo.html: BLAH {{pcurl('bar')}}
 out: BLAH /bar
 ---
 url: /foo?!debug
@@ -38,6 +38,6 @@ config:
     site:
         pretty_urls: true
 in:
-    pages/foo.md: BLAH {{pcurl('bar')}}
+    pages/foo.html: BLAH {{pcurl('bar')}}
 out: BLAH /bar?!debug
 

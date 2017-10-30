@@ -3,8 +3,8 @@ config:
     site:
         root: /~john/public/
 in:
-    pages/about.md: 'URL: {{page.url}}, LINK: {{pcurl("missing")}}'
-    pages/_index.md: 'URL: {{page.url}}'
-out:
+    pages/about.html: 'URL: {{page.url}}, LINK: {{pcurl("missing")}}'
+    pages/_index.html: 'URL: {{page.url}}'
+outfiles:
     about.html: 'URL: /%7Ejohn/public/about.html, LINK: /%7Ejohn/public/missing.html'
     index.html: 'URL: /%7Ejohn/public/'

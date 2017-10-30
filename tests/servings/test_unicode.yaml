@@ -1,16 +1,16 @@
 ---
 url: /pr%C3%A9sentation.html
 in:
-    pages/présentation.md: 'PAGE URL: {{page.url}}'
+    pages/présentation.html: 'PAGE URL: {{page.url}}'
 out: 'PAGE URL: /pr%C3%A9sentation.html'
 ---
 url: /2010/01/01/d%C3%A9j%C3%A0-des-accents.html
 in:
-    posts/2010-01-01_déjà-des-accents.md: 'POST URL: {{page.url}}'
+    posts/2010-01-01_déjà-des-accents.html: 'POST URL: {{page.url}}'
 out: 'POST URL: /2010/01/01/d%C3%A9j%C3%A0-des-accents.html'
 ---
 url: /special/%D0%AD%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html
 in:
-    pages/special/Это тэг.md: 'PAGE URL: {{page.url}}'
+    pages/special/Это тэг.html: 'PAGE URL: {{page.url}}'
 out: 'PAGE URL: /special/%D0%AD%D1%82%D0%BE%20%D1%82%D1%8D%D0%B3.html'
 

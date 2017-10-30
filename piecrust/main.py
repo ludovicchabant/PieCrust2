@@ -143,7 +143,16 @@ _command_caches = {
     'serve': 'server'}
 
 
-def _pre_parse_chef_args(argv):
+def _make_chef_state():
+    return []
+
+
+def _recover_pre_chef_state(state):
+    for s in state:
+        s()
+
+
+def _pre_parse_chef_args(argv, *, bypass_setup=False, state=None):
     # We need to parse some arguments before we can build the actual argument
     # parser, because it can affect which plugins will be loaded. Also, log-
     # related arguments must be parsed first because we want to log everything
@@ -152,6 +161,8 @@ def _pre_parse_chef_args(argv):
     _setup_main_parser_arguments(parser)
     parser.add_argument('extra_args', nargs=argparse.REMAINDER)
     res, _ = parser.parse_known_args(argv)
+    if bypass_setup:
+        return res
 
     # Setup the logger.
     if res.debug and res.quiet:
@@ -163,13 +174,20 @@ def _pre_parse_chef_args(argv):
 
     colorama.init(strip=strip_colors)
     root_logger = logging.getLogger()
+    previous_level = root_logger.level
     root_logger.setLevel(logging.INFO)
     if res.debug or res.log_debug:
         root_logger.setLevel(logging.DEBUG)
+    if state is not None:
+        state.append(lambda: root_logger.setLevel(previous_level))
 
     if res.debug_only:
         for n in res.debug_only:
-            logging.getLogger(n).setLevel(logging.DEBUG)
+            sub_logger = logging.getLogger(n)
+            previous_level = sub_logger.level
+            sub_logger.setLevel(logging.DEBUG)
+            if state is not None:
+                state.append(lambda: sub_logger.setLevel(previous_level))
 
     log_handler = logging.StreamHandler(sys.stdout)
     if res.debug or res.debug_only:
@@ -182,12 +200,16 @@ def _pre_parse_chef_args(argv):
             log_handler.setLevel(logging.INFO)
         log_handler.setFormatter(ColoredFormatter("%(message)s"))
     root_logger.addHandler(log_handler)
+    if state is not None:
+        state.append(lambda: root_logger.removeHandler(log_handler))
 
     if res.log_file:
         file_handler = logging.FileHandler(res.log_file, mode='w')
         root_logger.addHandler(file_handler)
         if res.log_debug:
             file_handler.setLevel(logging.DEBUG)
+        if state is not None:
+            state.append(lambda: root_logger.removeHandler(file_handler))
 
     # PID file.
     if res.pid_file:

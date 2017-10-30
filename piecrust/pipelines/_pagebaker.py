@@ -13,6 +13,22 @@ from piecrust.uriutil import split_uri
 logger = logging.getLogger(__name__)
 
 
+def get_output_path(app, out_dir, uri, pretty_urls):
+    uri_root, uri_path = split_uri(app, uri)
+
+    bake_path = [out_dir]
+    decoded_uri = urllib.parse.unquote(uri_path)
+    if pretty_urls:
+        bake_path.append(decoded_uri)
+        bake_path.append('index.html')
+    elif decoded_uri == '':
+        bake_path.append('index.html')
+    else:
+        bake_path.append(decoded_uri)
+
+    return os.path.normpath(os.path.join(*bake_path))
+
+
 class BakingError(Exception):
     pass
 
@@ -51,24 +67,11 @@ class PageBaker(object):
         with open(out_path, 'w', encoding='utf8') as fp:
             fp.write(content)
 
-    def getOutputPath(self, uri, pretty_urls):
-        uri_root, uri_path = split_uri(self.app, uri)
-
-        bake_path = [self.out_dir]
-        decoded_uri = urllib.parse.unquote(uri_path)
-        if pretty_urls:
-            bake_path.append(decoded_uri)
-            bake_path.append('index.html')
-        elif decoded_uri == '':
-            bake_path.append('index.html')
-        else:
-            bake_path.append(decoded_uri)
-
-        return os.path.normpath(os.path.join(*bake_path))
-
     def bake(self, page, prev_entry, cur_entry):
         cur_sub = 1
         has_more_subs = True
+        app = self.app
+        out_dir = self.out_dir
         pretty_urls = page.config.get('pretty_urls', self.pretty_urls)
 
         # Start baking the sub-pages.
@@ -76,7 +79,7 @@ class PageBaker(object):
             sub_uri = page.getUri(sub_num=cur_sub)
             logger.debug("Baking '%s' [%d]..." % (sub_uri, cur_sub))
 
-            out_path = self.getOutputPath(sub_uri, pretty_urls)
+            out_path = get_output_path(app, out_dir, sub_uri, pretty_urls)
 
             # Create the sub-entry for the bake record.
             cur_sub_entry = SubPagePipelineRecordEntry(sub_uri, out_path)
@@ -204,6 +207,8 @@ def _get_bake_status(page, out_path, force, prev_sub_entry, cur_sub_entry):
 
     # Easy test.
     if force:
+        cur_sub_entry.flags |= \
+            SubPagePipelineRecordEntry.FLAG_FORCED_BY_GENERAL_FORCE
         return STATUS_BAKE
 
     # Check for up-to-date outputs.
@@ -212,6 +217,8 @@ def _get_bake_status(page, out_path, force, prev_sub_entry, cur_sub_entry):
         out_path_time = os.path.getmtime(out_path)
     except OSError:
         # File doesn't exist, we'll need to bake.
+        cur_sub_entry.flags |= \
+            SubPagePipelineRecordEntry.FLAG_FORCED_BY_NO_PREVIOUS
         return STATUS_BAKE
 
     if out_path_time <= in_path_time:

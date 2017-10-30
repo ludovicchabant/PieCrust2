@@ -171,6 +171,8 @@ class PluginLoader(object):
         all_components = []
         for plugin in self.plugins:
             plugin_components = getattr(plugin, name)(*args)
+            # Make sure it's a list in case it was an iterator.
+            plugin_components = list(plugin_components)
             all_components += plugin_components
 
             if initialize:

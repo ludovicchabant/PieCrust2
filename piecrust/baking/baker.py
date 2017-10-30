@@ -225,17 +225,20 @@ class Baker(object):
             src = ppinfo.source
             pp = ppinfo.pipeline
 
-            logger.debug(
-                "Queuing jobs for source '%s' using pipeline '%s' "
-                "(%s, step 0)." %
-                (src.name, pp.PIPELINE_NAME, realm_name))
-
             next_step_jobs[src.name] = []
             jcctx = PipelineJobCreateContext(pp_pass_num, record_histories)
             jobs = pp.createJobs(jcctx)
             if jobs is not None:
-                job_count += len(jobs)
+                new_job_count = len(jobs)
+                job_count += new_job_count
                 pool.queueJobs(jobs)
+            else:
+                new_job_count = 0
+
+            logger.debug(
+                "Queued %d jobs for source '%s' using pipeline '%s' "
+                "(%s, step 0)." %
+                (new_job_count, src.name, pp.PIPELINE_NAME, realm_name))
 
         stats.stepTimer('WorkerTaskPut', time.perf_counter() - start_time)
 

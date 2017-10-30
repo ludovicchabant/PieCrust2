@@ -1,7 +1,7 @@
 ---
 in:
-    posts/2015-03-01_post01.md: "---\ntitle: Post 01\n---\nContent 01"
-    pages/_index.md: |
+    posts/2015-03-01_post01.html: "---\ntitle: Post 01\n---\nContent 01"
+    pages/_index.html: |
         {%for p in pagination.items -%}
         {{p.content|safe}}
         {%if p.tags%}{{p.tags}}{%else%}No tags{%endif%}
@@ -12,67 +12,61 @@ outfiles:
         No tags
 ---
 in:
-    posts/2015-03-01_post01.md: |
+    posts/2015-03-01_post01.html: |
       ---
       title: Post 01
       tags: [foo]
       ---
-    posts/2015-03-02_post02.md: |
+    posts/2015-03-02_post02.html: |
       ---
       title: Post 02
       tags: [bar, whatever]
       ---
-    posts/2015-03-03_post03.md: |
+    posts/2015-03-03_post03.html: |
       ---
       title: Post 03
       tags: [foo, bar]
       ---
-    pages/_tag.md: |
+    templates/_tag.html: |
       Pages in {{tag}}
       {% for p in pagination.posts -%}
       {{p.title}}
       {% endfor %}
-    pages/_index.md: ''
-out:
+    pages/_index.html: ''
+outfiles:
     index.html: ''
-    '2015':
-        '03':
-            '01':
-                post01.html: ''
-            '02':
-                post02.html: ''
-            '03':
-                post03.html: ''
-    tag:
-        foo.html: |
-          Pages in foo
-          Post 03
-          Post 01
-        bar.html: |
-          Pages in bar
-          Post 03
-          Post 02
-        whatever.html: |
-          Pages in whatever
-          Post 02
+    2015/03/01/post01.html: ''
+    2015/03/02/post02.html: ''
+    2015/03/03/post03.html: ''
+    tag/foo.html: |
+        Pages in foo
+        Post 03
+        Post 01
+    tag/bar.html: |
+        Pages in bar
+        Post 03
+        Post 02
+    tag/whatever.html: |
+        Pages in whatever
+        Post 02
 ---
 in:
-    posts/2016-06-01_post01.md: |
+    posts/2016-06-01_post01.html: |
         ---
         title: Post 01
         tags: [foo, bar]
         ---
-    posts/2016-06-02_post02.md: |
+    posts/2016-06-02_post02.html: |
         ---
         title: Post 02
         tags: [bar, foo]
         ---
-    pages/_tag.md: |
+    templates/_tag.html: |
         Pages in {{tags|join(', ')}}
         {% for p in pagination.posts -%}
         {{p.title}}
         {% endfor %}
-    pages/blah.md: |
+    pages/blah.html: |
         Link to: {{pctagurl('foo', 'bar')}}
 outfiles:
     blah.html: |
@@ -94,17 +88,17 @@ config:
     site:
         slugify_mode: space_to_dash
 in:
-    posts/2016-09-01_post01.md: |
+    posts/2016-09-01_post01.html: |
         ---
         title: Post 01
         tags: [foo bar]
         ---
-    posts/2016-09-02_post2.md: |
+    posts/2016-09-02_post2.html: |
         ---
         title: Post 02
         tags: ['foo-bar']
         ---
-    pages/_tag.md: |
+    templates/_tag.html: |
         Pages in {{pctagurl(tag)}}
         {% for p in pagination.posts -%}
         {{p.title}}

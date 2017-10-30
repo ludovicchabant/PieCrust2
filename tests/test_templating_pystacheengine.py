@@ -26,11 +26,8 @@ def test_simple(contents, expected):
           .withConfig(app_config)
           .withPage('pages/foo', config=page_config, contents=contents))
     with mock_fs_scope(fs, open_patches=open_patches):
-        app = fs.getApp()
         page = fs.getSimplePage('foo.md')
-        route = app.getSourceRoute('pages', None)
-        route_metadata = {'slug': 'foo'}
-        output = render_simple_page(page, route, route_metadata)
+        output = render_simple_page(page)
         assert output == expected
 
 
@@ -41,14 +38,11 @@ def test_layout():
     fs = (mock_fs()
           .withConfig(app_config)
           .withAsset('templates/blah.mustache', layout)
-          .withPage('pages/foo', config={'layout': 'blah'},
+          .withPage('pages/foo', config={'layout': 'blah.mustache'},
                     contents=contents))
     with mock_fs_scope(fs, open_patches=open_patches):
-        app = fs.getApp()
         page = fs.getSimplePage('foo.md')
-        route = app.getSourceRoute('pages', None)
-        route_metadata = {'slug': 'foo'}
-        output = render_simple_page(page, route, route_metadata)
+        output = render_simple_page(page)
         # On Windows, pystache unexplicably adds `\r` to some newlines... wtf.
         output = output.replace('\r', '')
         assert output == expected
@@ -56,18 +50,15 @@ def test_layout():
 
 def test_partial():
     contents = "Info:\n{{#page}}\n{{> page_info}}\n{{/page}}\n"
-    partial = "- URL: {{url}}\n- SLUG: {{slug}}\n"
+    partial = "- URL: {{url}}\n- SLUG: {{route.slug}}\n"
     expected = "Info:\n- URL: /foo.html\n- SLUG: foo\n"
     fs = (mock_fs()
           .withConfig(app_config)
           .withAsset('templates/page_info.mustache', partial)
           .withPage('pages/foo', config=page_config, contents=contents))
     with mock_fs_scope(fs, open_patches=open_patches):
-        app = fs.getApp()
         page = fs.getSimplePage('foo.md')
-        route = app.getSourceRoute('pages', None)
-        route_metadata = {'slug': 'foo'}
-        output = render_simple_page(page, route, route_metadata)
+        output = render_simple_page(page)
         # On Windows, pystache unexplicably adds `\r` to some newlines... wtf.
         output = output.replace('\r', '')
         assert output == expected

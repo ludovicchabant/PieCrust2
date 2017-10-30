@@ -29,13 +29,22 @@ def pytest_addoption(parser):
         '--mock-debug',
         action='store_true',
         help="Prints contents of the mock file-system.")
+    parser.addoption(
+        '--leave-mockfs',
+        action='store_true',
+        help="Leave the contents of the mock file-system on disk.")
 
 
 def pytest_configure(config):
     if config.getoption('--log-debug'):
+        root_logger = logging.getLogger()
         hdl = logging.StreamHandler(stream=sys.stdout)
-        logging.getLogger('piecrust').addHandler(hdl)
-        logging.getLogger('piecrust').setLevel(logging.DEBUG)
+        root_logger.addHandler(hdl)
+        root_logger.setLevel(logging.DEBUG)
+
+        from .basefs import TestFileSystemBase
+        TestFileSystemBase._use_chef_debug = True
+        TestFileSystemBase._pytest_log_handler = hdl
 
     log_file = config.getoption('--log-file')
     if log_file:
@@ -43,14 +52,16 @@ def pytest_configure(config):
             stream=open(log_file, 'w', encoding='utf8'))
         logging.getLogger().addHandler(hdl)
 
+    if config.getoption('--leave-mockfs'):
+        from .basefs import TestFileSystemBase
+        TestFileSystemBase._leave_mockfs = True
+
 
 def pytest_collect_file(parent, path):
     if path.ext == '.yaml' and path.basename.startswith("test"):
         category = os.path.basename(path.dirname)
         if category == 'bakes':
             return BakeTestFile(path, parent)
-        elif category == 'procs':
-            return PipelineTestFile(path, parent)
         elif category == 'cli':
             return ChefTestFile(path, parent)
         elif category == 'servings':
@@ -264,11 +275,10 @@ class BakeTestItem(YamlTestItemBase):
             if values is not None:
                 values = list(values.items())
             variants = self.spec.get('config_variants')
-            if variants is not None:
-                variants = list(variants.items())
             apply_variants_and_values(app, variants, values)
 
             appfactory = PieCrustFactory(app.root_dir,
+                                         theme_site=self.is_theme_site,
                                          config_variants=variants,
                                          config_values=values)
             baker = Baker(appfactory, app, out_dir)
@@ -313,69 +323,7 @@ class BakeTestFile(YamlTestFileBase):
     __item_class__ = BakeTestItem
 
 
-class PipelineTestItem(YamlTestItemBase):
-    def runtest(self):
-        fs = self._prepareMockFs()
-
-        from piecrust.processing.pipeline import ProcessorPipeline
-        with mock_fs_scope(fs, keep=self.mock_debug):
-            out_dir = fs.path('kitchen/_counter')
-            app = fs.getApp(theme_site=self.is_theme_site)
-            pipeline = ProcessorPipeline(app, out_dir)
-
-            proc_names = self.spec.get('processors')
-            if proc_names:
-                pipeline.enabled_processors = proc_names
-
-            record = pipeline.run()
-
-            if not record.success:
-                errors = []
-                for e in record.entries:
-                    errors += e.errors
-                raise PipelineError(errors)
-
-            check_expected_outputs(self.spec, fs, ExpectedPipelineOutputError)
-
-    def reportinfo(self):
-        return self.fspath, 0, "pipeline: %s" % self.name
-
-    def repr_failure(self, excinfo):
-        if isinstance(excinfo.value, ExpectedPipelineOutputError):
-            return ('\n'.join(
-                ['Unexpected pipeline output. Left is expected output, '
-                    'right is actual output'] +
-                excinfo.value.args[0]))
-        elif isinstance(excinfo.value, PipelineError):
-            res = ('\n'.join(
-                ['Errors occured during processing:'] +
-                excinfo.value.args[0]))
-            res += repr_nested_failure(excinfo)
-            return res
-        return super(PipelineTestItem, self).repr_failure(excinfo)
-
-
-class PipelineError(Exception):
-    pass
-
-
-class ExpectedPipelineOutputError(Exception):
-    pass
-
-
-class PipelineTestFile(YamlTestFileBase):
-    __item_class__ = PipelineTestItem
-
-
 class ServeTestItem(YamlTestItemBase):
-    class _TestApp(object):
-        def __init__(self, server):
-            self.server = server
-
-        def __call__(self, environ, start_response):
-            response = self.server._try_run_request(environ)
-            return response(environ, start_response)
-
     def runtest(self):
         fs = self._prepareMockFs()
 
@@ -387,28 +335,19 @@ class ServeTestItem(YamlTestItemBase):
         expected_headers = self.spec.get('headers')
         expected_output = self.spec.get('out')
         expected_contains = self.spec.get('out_contains')
-        is_admin_test = self.spec.get('admin') is True
 
         from werkzeug.test import Client
         from werkzeug.wrappers import BaseResponse
-        with mock_fs_scope(fs, keep=self.mock_debug):
-            if is_admin_test:
-                from piecrust.admin.web import create_foodtruck_app
-                s = {
-                    'FOODTRUCK_CMDLINE_MODE': True,
-                    'FOODTRUCK_ROOT': fs.path('/kitchen')
-                }
-                test_app = create_foodtruck_app(s)
-            else:
-                from piecrust.app import PieCrustFactory
-                from piecrust.serving.server import Server
-                appfactory = PieCrustFactory(
-                    fs.path('/kitchen'),
-                    theme_site=self.is_theme_site)
-                server = Server(appfactory)
-                test_app = self._TestApp(server)
+        from piecrust.app import PieCrustFactory
+        from piecrust.serving.server import PieCrustServer
 
-            client = Client(test_app, BaseResponse)
+        with mock_fs_scope(fs, keep=self.mock_debug):
+            appfactory = PieCrustFactory(
+                fs.path('/kitchen'),
+                theme_site=self.is_theme_site)
+            server = PieCrustServer(appfactory)
+
+            client = Client(server, BaseResponse)
             resp = client.get(url)
             assert expected_status == resp.status_code
 
@@ -560,9 +499,15 @@ def _compare_str(left, right, ctx):
             right_time_str = right[i:i + len(test_time_iso8601)]
             right_time = time.strptime(right_time_str, '%Y-%m-%dT%H:%M:%SZ')
             left_time = time.gmtime(ctx.time)
+            # Need to patch the daylist-savings-time flag because it can
+            # mess up the computation of the time difference.
+            right_time = (right_time[0], right_time[1], right_time[2],
+                          right_time[3], right_time[4], right_time[5],
+                          right_time[6], right_time[7],
+                          left_time.tm_isdst)
             difference = time.mktime(left_time) - time.mktime(right_time)
             print("Got time difference: %d" % difference)
-            if abs(difference) <= 2:
+            if abs(difference) <= 1:
                 print("(good enough, moving to end of timestamp)")
                 skip_for = len(test_time_iso8601) - 1
 

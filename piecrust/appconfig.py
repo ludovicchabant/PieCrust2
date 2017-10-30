@@ -391,6 +391,7 @@ def _validate_site_sources(v, values, cache):
         sc.setdefault('ignore_missing_dir', False)
         sc.setdefault('data_endpoint', None)
         sc.setdefault('data_type', None)
+        sc.setdefault('default_layout', 'default')
         sc.setdefault('item_name', sn)
         sc.setdefault('items_per_page', 5)
         sc.setdefault('date_format', DEFAULT_DATE_FORMAT)
