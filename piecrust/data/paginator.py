@@ -1,6 +1,7 @@
 import math
 import logging
 from werkzeug.utils import cached_property
+from piecrust.sources.base import ContentSource
 
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ class Paginator(object):
         self._pgn_filter = pgn_filter
         self._items_per_page = items_per_page
         self._pgn_set_on_ctx = False
+        self._is_content_source = isinstance(source, ContentSource)
 
     @property
     def is_loaded(self):
@@ -91,8 +93,7 @@ class Paginator(object):
             if ipp is not None:
                 return ipp
 
-        from piecrust.sources.base import ContentSource
-        if isinstance(self._source, ContentSource):
+        if self._is_content_source:
             ipp = self._source.config.get('items_per_page')
             if ipp is not None:
                 return ipp
@@ -191,7 +192,6 @@ class Paginator(object):
         from piecrust.data.filters import PaginationFilter
         from piecrust.dataproviders.pageiterator import (
             PageIterator, HardCodedFilterIterator)
-        from piecrust.sources.base import ContentSource
 
         self._iterator = PageIterator(
             self._source,
@@ -207,11 +207,10 @@ class Paginator(object):
         limit = self.items_per_page
         self._iterator.slice(offset, limit)
 
-        self._iterator._lockIterator()
-        self._iterator._load()
+        if self._is_content_source:
+            self._iterator._iter_event += self._onIteration
 
-        if isinstance(self._source, ContentSource):
-            self._onIteration(self._iterator)
+        self._iterator._lockIterator()
 
     def _getPageUri(self, index):
         return self._page.getUri(index)

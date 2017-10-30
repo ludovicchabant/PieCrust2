@@ -77,7 +77,7 @@ class PageIteratorDataProvider(DataProvider):
 
         combined_source = _CombinedSource(list(reversed(self._sources)))
         self._it = PageIterator(combined_source, current_page=self._page)
-        self._it._iter_event += self._onIteration
+        self._it._load_event += self._onIteration
 
     def _onIteration(self, it):
         if not self._iterated:
@@ -106,6 +106,7 @@ class PageIterator:
         self._next_page = None
         self._prev_page = None
         self._locked = False
+        self._load_event = Event()
         self._iter_event = Event()
         self._current_page = current_page
         self._initIterator()
@@ -137,6 +138,7 @@ class PageIterator:
 
     def __iter__(self):
         self._load()
+        self._iter_event.fire(self)
         return iter(self._cache)
 
     def __getattr__(self, name):
@@ -202,10 +204,6 @@ class PageIterator:
         if self._pagination_slicer:
             return self._pagination_slicer.has_more
         return False
-
-    @property
-    def _is_loaded_and_has_more(self):
-        return self._is_loaded and self._has_more
 
     def _simpleWrap(self, it_class, *args, **kwargs):
         self._ensureUnlocked()
@@ -296,7 +294,7 @@ class PageIterator:
             pn_it = PaginationDataBuilderIterator(iter(pn))
             self._prev_page, self._next_page = (list(pn_it))
 
-        self._iter_event.fire(self)
+        self._load_event.fire(self)
 
     def _debugRenderDoc(self):
         return "Contains %d items" % len(self)

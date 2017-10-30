@@ -70,7 +70,7 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     def _buildPosts(self):
         if self._posts is None:
             it = PageIterator(self._sources[0], current_page=self._page)
-            it._iter_event += self._onIteration
+            it._load_event += self._onIteration
             self._posts = it
 
     def _buildArchives(self):
