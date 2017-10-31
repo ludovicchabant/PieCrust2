@@ -29,6 +29,7 @@ in:
     pages/foo.html: |
         ---
         title: Foo
+        date: '2010/01/07'
         ---
         {%for c in family.siblings-%}
         {{c.title}}{%if c.is_self%} SELFIE!{%endif%}
@@ -36,10 +37,12 @@ in:
     pages/bar.html: |
         ---
         title: Bar
+        date: '2010/01/08'
         ---
     pages/other.html: |
         ---
         title: Other
+        date: '2010/01/06'
         ---
 outfiles:
     foo.html: |
