@@ -154,8 +154,10 @@ class PostsSource(FSContentSource,
 
     def setupPrepareParser(self, parser, app):
         parser.add_argument(
-            '-d', '--date', help="The date of the post, "
-            "in `year/month/day` format (defaults to today).")
+            '-d', '--date',
+            default='today',
+            help=("The date of the post, in `year/month/day` format "
+                  "(defaults to today)."))
         parser.add_argument('slug', help="The URL slug for the new post.")
 
     def createContent(self, args):
