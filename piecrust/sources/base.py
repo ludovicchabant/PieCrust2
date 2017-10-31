@@ -106,6 +106,9 @@ class ContentSource:
         if self._page_cache is not None:
             return self._page_cache
 
+        if self.app.env.abort_source_use:
+            raise AbortedSourceUseError()
+
         getter = self.app.getPage
         self._page_cache = [getter(self, i) for i in self.getAllContents()]
         return self._page_cache
