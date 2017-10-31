@@ -64,7 +64,11 @@ def build_page_data(ctx):
 
     site_data = app.config.getAll()
     providers_data = DataProvidersData(page)
-    data = MergedMapping([data, providers_data, site_data])
+
+    # Put the site data first so that `MergedMapping` doesn't load stuff
+    # for nothing just to find a value that was in the YAML config all
+    # along.
+    data = MergedMapping([site_data, data, providers_data])
 
     # Do this at the end because we want all the data to be ready to be
     # displayed in the debugger window.
