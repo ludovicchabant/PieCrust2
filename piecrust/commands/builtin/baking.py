@@ -218,7 +218,7 @@ class ShowRecordCommand(ChefCommand):
         logger.info("")
 
         if not ctx.args.show_stats and not ctx.args.show_manifest:
-            for rec in records.records:
+            for rec in sorted(records.records, key=lambda r: r.name):
                 if ctx.args.fails and rec.success:
                     logger.debug(
                         "Ignoring record '%s' because it was successful, "
