@@ -1,6 +1,5 @@
 import re
 import os.path
-import copy
 import logging
 from piecrust.data.builder import (
     DataBuildingContext, build_page_data, add_layout_data)
@@ -24,15 +23,14 @@ class TemplateEngineNotFound(Exception):
 
 
 class RenderedSegments(object):
-    def __init__(self, segments, render_pass_info):
+    def __init__(self, segments, used_templating=False):
         self.segments = segments
-        self.render_pass_info = render_pass_info
+        self.used_templating = used_templating
 
 
 class RenderedLayout(object):
-    def __init__(self, content, render_pass_info):
+    def __init__(self, content):
         self.content = content
-        self.render_pass_info = render_pass_info
 
 
 class RenderedPage(object):
@@ -41,37 +39,24 @@ class RenderedPage(object):
         self.sub_num = sub_num
         self.data = None
         self.content = None
-        self.render_info = [None, None]
+        self.render_info = {}
 
     @property
     def app(self):
         return self.page.app
 
-    def copyRenderInfo(self):
-        return copy.deepcopy(self.render_info)
 
-
-PASS_NONE = -1
-PASS_FORMATTING = 0
-PASS_RENDERING = 1
-
-
-RENDER_PASSES = [PASS_FORMATTING, PASS_RENDERING]
-
-
-class RenderPassInfo(object):
-    def __init__(self):
-        self.used_source_names = set()
-        self.used_pagination = False
-        self.pagination_has_more = False
-        self.used_assets = False
-        self._custom_info = {}
-
-    def setCustomInfo(self, key, info):
-        self._custom_info[key] = info
-
-    def getCustomInfo(self, key, default=None):
-        return self._custom_info.get(key, default)
+def create_render_info():
+    """ Creates a bag of rendering properties. It's a dictionary because
+        it will be passed between workers during the bake process, and
+        saved to records.
+    """
+    return {
+        'used_source_names': set(),
+        'used_pagination': False,
+        'pagination_has_more': False,
+        'used_assets': False,
+    }
 
 
 class RenderingContext(object):
@@ -81,43 +66,25 @@ class RenderingContext(object):
         self.force_render = force_render
         self.pagination_source = None
         self.pagination_filter = None
+        self.render_info = create_render_info()
         self.custom_data = {}
-        self.render_passes = [None, None]  # Same length as RENDER_PASSES
-        self._current_pass = PASS_NONE
 
     @property
     def app(self):
         return self.page.app
 
-    @property
-    def current_pass_info(self):
-        if self._current_pass != PASS_NONE:
-            return self.render_passes[self._current_pass]
-        return None
-
-    def setCurrentPass(self, rdr_pass):
-        if rdr_pass != PASS_NONE:
-            self.render_passes[rdr_pass] = RenderPassInfo()
-        self._current_pass = rdr_pass
-
     def setPagination(self, paginator):
-        self._raiseIfNoCurrentPass()
-        pass_info = self.current_pass_info
-        if pass_info.used_pagination:
+        ri = self.render_info
+        if ri.get('used_pagination'):
             raise Exception("Pagination has already been used.")
         assert paginator.is_loaded
-        pass_info.used_pagination = True
-        pass_info.pagination_has_more = paginator.has_more
+        ri['used_pagination'] = True
+        ri['pagination_has_more'] = paginator.has_more
         self.addUsedSource(paginator._source)
 
     def addUsedSource(self, source):
-        self._raiseIfNoCurrentPass()
-        pass_info = self.current_pass_info
-        pass_info.used_source_names.add(source.name)
-
-    def _raiseIfNoCurrentPass(self):
-        if self._current_pass == PASS_NONE:
-            raise Exception("No rendering pass is currently active.")
+        ri = self.render_info
+        ri['used_source_names'].add(source.name)
 
 
 class RenderingContextStack(object):
@@ -173,7 +140,6 @@ def render_page(ctx):
             page_data = _build_render_data(ctx)
 
         # Render content segments.
-        ctx.setCurrentPass(PASS_FORMATTING)
         repo = env.rendered_segments_repository
         save_to_fs = True
         if env.fs_cache_only_for_main_page and not stack.is_main_ctx:
@@ -191,7 +157,6 @@ def render_page(ctx):
                     repo.put(page_uri, render_result, save_to_fs)
 
         # Render layout.
-        ctx.setCurrentPass(PASS_RENDERING)
         layout_name = page.config.get('layout')
         if layout_name is None:
             layout_name = page.source.config.get(
@@ -206,13 +171,12 @@ def render_page(ctx):
                     layout_name, page, page_data)
         else:
             layout_result = RenderedLayout(
-                render_result.segments['content'], None)
+                render_result.segments['content'])
 
         rp = RenderedPage(page, ctx.sub_num)
         rp.data = page_data
         rp.content = layout_result.content
-        rp.render_info[PASS_FORMATTING] = render_result.render_pass_info
-        rp.render_info[PASS_RENDERING] = layout_result.render_pass_info
+        rp.render_info = ctx.render_info
         return rp
 
     except AbortedSourceUseError:
@@ -225,7 +189,6 @@ def render_page(ctx):
                         ctx.page.content_spec) from ex
 
     finally:
-        ctx.setCurrentPass(PASS_NONE)
         stack.popCtx()
 
 
@@ -248,7 +211,6 @@ def render_page_segments(ctx):
     page_uri = page.getUri(ctx.sub_num)
 
     try:
-        ctx.setCurrentPass(PASS_FORMATTING)
         repo = env.rendered_segments_repository
 
         save_to_fs = True
@@ -267,7 +229,6 @@ def render_page_segments(ctx):
                 if repo:
                     repo.put(page_uri, render_result, save_to_fs)
     finally:
-        ctx.setCurrentPass(PASS_NONE)
         stack.popCtx()
 
     return render_result
@@ -297,13 +258,16 @@ def _do_render_page_segments(ctx, page_data):
 
     engine = get_template_engine(app, engine_name)
 
+    used_templating = False
     formatted_segments = {}
     for seg_name, seg in page.segments.items():
         try:
             with app.env.stats.timerScope(
                     engine.__class__.__name__ + '_segment'):
-                seg_text = engine.renderSegment(
+                seg_text, was_rendered = engine.renderSegment(
                     page.content_spec, seg, page_data)
+                if was_rendered:
+                    used_templating = True
         except TemplatingError as err:
             err.lineno += seg.line
             raise err
@@ -319,8 +283,7 @@ def _do_render_page_segments(ctx, page_data):
                 content_abstract = seg_text[:offset]
                 formatted_segments['content.abstract'] = content_abstract
 
-    pass_info = ctx.render_passes[PASS_FORMATTING]
-    res = RenderedSegments(formatted_segments, pass_info)
+    res = RenderedSegments(formatted_segments, used_templating)
 
     app.env.stats.stepCounter('PageRenderSegments')
 
@@ -355,8 +318,7 @@ def _do_render_layout(layout_name, page, layout_data):
         msg += "Looked for: %s" % ', '.join(full_names)
         raise Exception(msg) from ex
 
-    pass_info = cur_ctx.render_passes[PASS_RENDERING]
-    res = RenderedLayout(output, pass_info)
+    res = RenderedLayout(output)
 
     app.env.stats.stepCounter('PageRenderLayout')
 

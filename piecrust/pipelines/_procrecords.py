@@ -43,6 +43,22 @@ class AssetPipelineRecordEntry(RecordEntry):
         return self.out_paths
 
 
+def add_asset_job_result(result):
+    result.update({
+        'item_spec': None,
+        'flags': AssetPipelineRecordEntry.FLAG_NONE,
+        'proc_tree': None,
+        'out_paths': [],
+    })
+
+
+def merge_job_result_into_record_entry(record_entry, result):
+    record_entry.item_spec = result['item_spec']
+    record_entry.flags |= result['flags']
+    record_entry.proc_tree = result['proc_tree']
+    record_entry.out_paths = result['out_paths']
+
+
 flag_descriptions = {
     AssetPipelineRecordEntry.FLAG_PREPARED: 'prepared',
     AssetPipelineRecordEntry.FLAG_PROCESSED: 'processed',

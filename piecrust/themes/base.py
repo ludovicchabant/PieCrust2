@@ -26,6 +26,8 @@ class ThemeLoader(object):
         config_path = os.path.join(self.root_dir, CONFIG_PATH)
         with open(config_path, 'r', encoding='utf8') as fp:
             config = yaml.load(fp.read())
+        if not config:
+            return None
         site_config = config.get('site', {})
         theme = site_config.get('theme', None)
         if theme is None:

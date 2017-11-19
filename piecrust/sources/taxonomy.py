@@ -7,9 +7,12 @@ from piecrust.data.filters import (
     PaginationFilter, SettingFilterClause)
 from piecrust.page import Page
 from piecrust.pipelines._pagebaker import PageBaker
-from piecrust.pipelines._pagerecords import PagePipelineRecordEntry
+from piecrust.pipelines._pagerecords import (
+    PagePipelineRecordEntry,
+    add_page_job_result, merge_job_result_into_record_entry)
 from piecrust.pipelines.base import (
-    ContentPipeline, get_record_name_for_source)
+    ContentPipeline, get_record_name_for_source,
+    create_job, content_item_from_job)
 from piecrust.pipelines.records import RecordHistory
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentItem
@@ -83,11 +86,10 @@ class TaxonomySource(GeneratorSourceBase):
         return [RouteParameter(name, param_type,
                                variadic=self.taxonomy.is_multiple)]
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         slugified_term = route_params[self.taxonomy.term_name]
         spec = '_index'
         metadata = {'term': slugified_term,
-                    'record_entry_spec': '_index[%s]' % slugified_term,
                     'route_params': {
                         self.taxonomy.term_name: slugified_term}
                     }
@@ -174,15 +176,14 @@ class TaxonomySource(GeneratorSourceBase):
 
         # We need to register this use of a taxonomy term.
         rcs = self.app.env.render_ctx_stack
-        cpi = rcs.current_ctx.current_pass_info
-        if cpi:
-            utt = cpi.getCustomInfo('used_taxonomy_terms')
-            if utt is None:
-                utt = set()
-                utt.add(slugified_values)
-                cpi.setCustomInfo('used_taxonomy_terms', utt)
-            else:
-                utt.add(slugified_values)
+        ri = rcs.current_ctx.render_info
+        utt = ri.get('used_taxonomy_terms')
+        if utt is None:
+            utt = set()
+            utt.add(slugified_values)
+            ri['used_taxonomy_terms'] = utt
+        else:
+            utt.add(slugified_values)
 
         # Put the slugified values in the route metadata so they're used to
         # generate the URL.
@@ -287,29 +288,46 @@ class TaxonomyPipeline(ContentPipeline):
                      (len(self._analyzer.dirty_slugified_terms),
                       self.taxonomy.name))
         jobs = []
+        rec_fac = self.createRecordEntry
+        current_record = ctx.current_record
+
         for slugified_term in self._analyzer.dirty_slugified_terms:
-            item = ContentItem(
-                '_index',
-                {'term': slugified_term,
-                 'record_entry_spec': '_index[%s]' % slugified_term,
-                 'route_params': {
-                     self.taxonomy.term_name: slugified_term}
-                 })
-            jobs.append(self.createJob(item))
+            item_spec = '_index'
+            record_entry_spec = '_index[%s]' % slugified_term
+
+            jobs.append(create_job(self, item_spec,
+                                   term=slugified_term,
+                                   record_entry_spec=record_entry_spec))
+
+            entry = rec_fac(record_entry_spec)
+            current_record.addEntry(entry)
+
         if len(jobs) > 0:
             return jobs
         return None
 
     def run(self, job, ctx, result):
-        content_item = job.content_item
-        logger.debug("Rendering '%s' page: %s" %
-                     (self.taxonomy.name, content_item.metadata['term']))
+        term = job['term']
+        content_item = ContentItem('_index',
+                                   {'term': term,
+                                    'route_params': {
+                                        self.taxonomy.term_name: term}
+                                    })
+        page = Page(self.source, content_item)
 
-        page = Page(self.source, job.content_item)
+        logger.debug("Rendering '%s' page: %s" %
+                     (self.taxonomy.name, page.source_metadata['term']))
         prev_entry = ctx.previous_entry
-        cur_entry = result.record_entry
-        cur_entry.term = content_item.metadata['term']
-        self._pagebaker.bake(page, prev_entry, cur_entry)
+        rdr_subs = self._pagebaker.bake(page, prev_entry)
+
+        add_page_job_result(result)
+        result['subs'] = rdr_subs
+        result['term'] = page.source_metadata['term']
+
+    def handleJobResult(self, result, ctx):
+        existing = ctx.record_entry
+        merge_job_result_into_record_entry(existing, result)
+        existing.term = result['term']
 
     def postJobRun(self, ctx):
         # We create bake entries for all the terms that were *not* dirty.
@@ -381,9 +399,7 @@ class _TaxonomyTermsAnalyzer(object):
 
         # Re-bake all taxonomy terms that include new or changed pages, by
         # marking them as 'dirty'.
-        previous_records = self.record_histories.previous
-        prev_rec = previous_records.getRecord(record_name)
-        history = RecordHistory(prev_rec, cur_rec)
+        history = self.record_histories.getHistory(record_name).copy()
         history.build()
         for prev_entry, cur_entry in history.diffs:
             entries = [cur_entry]
@@ -462,11 +478,10 @@ class _TaxonomyTermsAnalyzer(object):
 def _get_all_entry_taxonomy_terms(entry):
     res = set()
     for o in entry.subs:
-        for pinfo in o.render_info:
-            if pinfo:
-                terms = pinfo.getCustomInfo('used_taxonomy_terms')
-                if terms:
-                    res |= set(terms)
+        pinfo = o['render_info']
+        terms = pinfo.get('used_taxonomy_terms')
+        if terms:
+            res |= set(terms)
     return res
 
 

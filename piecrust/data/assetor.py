@@ -115,5 +115,5 @@ class Assetor:
         stack = app.env.render_ctx_stack
         cur_ctx = stack.current_ctx
         if cur_ctx is not None:
-            cur_ctx.current_pass_info.used_assets = True
+            cur_ctx.render_info['used_assets'] = True
 

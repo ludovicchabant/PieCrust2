@@ -27,13 +27,10 @@ class DefaultContentSource(FSContentSource,
         self.default_auto_format = app.config.get('site/default_auto_format')
         self.supported_extensions = list(self.auto_formats)
 
-    def _createItemMetadata(self, path):
-        return self._doCreateItemMetadata(path)
-
     def _finalizeContent(self, parent_group, items, groups):
         SimpleAssetsSubDirMixin._removeAssetGroups(self, groups)
 
-    def _doCreateItemMetadata(self, path):
+    def _createItemMetadata(self, path):
         slug = self._makeSlug(path)
         metadata = {
             'route_params': {
@@ -69,7 +66,7 @@ class DefaultContentSource(FSContentSource,
         return [
             RouteParameter('slug', RouteParameter.TYPE_PATH)]
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         uri_path = route_params.get('slug', '')
         if not uri_path:
             uri_path = '_index'
@@ -84,13 +81,9 @@ class DefaultContentSource(FSContentSource,
             paths_to_check = [path]
         for path in paths_to_check:
             if os.path.isfile(path):
-                metadata = self._doCreateItemMetadata(path)
+                metadata = self._createItemMetadata(path)
                 return ContentItem(path, metadata)
         return None
-
-    def findContentFromPath(self, path):
-        metadata = self._doCreateItemMetadata(path)
-        return ContentItem(path, metadata)
 
     def setupPrepareParser(self, parser, app):
         parser.add_argument('slug', help='The slug for the new page.')
@@ -104,7 +97,7 @@ class DefaultContentSource(FSContentSource,
         if ext == '':
             path = '%s.%s' % (path, self.default_auto_format)
 
-        metadata = self._doCreateItemMetadata(path)
+        metadata = self._createItemMetadata(path)
         config = metadata.setdefault('config', {})
         config.update({'title': uri_to_title(
             os.path.basename(metadata['slug']))})

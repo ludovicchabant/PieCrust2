@@ -13,7 +13,7 @@ def get_simple_content_item(app, slug):
     src = app.getSource('pages')
     assert src is not None
 
-    item = src.findContent({'slug': slug})
+    item = src.findContentFromRoute({'slug': slug})
     assert item is not None
     return item
 

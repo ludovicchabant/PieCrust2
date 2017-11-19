@@ -1,10 +1,12 @@
 import os.path
+import copy
 import queue
 import shutil
 import logging
 import threading
 import urllib.parse
-from piecrust.pipelines._pagerecords import SubPagePipelineRecordEntry
+from piecrust.pipelines._pagerecords import (
+    SubPageFlags, create_subpage_job_result)
 from piecrust.rendering import RenderingContext, render_page
 from piecrust.sources.base import AbortedSourceUseError
 from piecrust.uriutil import split_uri
@@ -67,12 +69,15 @@ class PageBaker(object):
         with open(out_path, 'w', encoding='utf8') as fp:
             fp.write(content)
 
-    def bake(self, page, prev_entry, cur_entry):
+    def bake(self, page, prev_entry, force=False):
         cur_sub = 1
         has_more_subs = True
         app = self.app
         out_dir = self.out_dir
+        force_bake = self.force or force
         pretty_urls = page.config.get('pretty_urls', self.pretty_urls)
+
+        rendered_subs = []
 
         # Start baking the sub-pages.
         while has_more_subs:
@@ -82,7 +87,8 @@ class PageBaker(object):
             out_path = get_output_path(app, out_dir, sub_uri, pretty_urls)
 
             # Create the sub-entry for the bake record.
-            cur_sub_entry = SubPagePipelineRecordEntry(sub_uri, out_path)
+            cur_sub_entry = create_subpage_job_result(sub_uri, out_path)
+            rendered_subs.append(cur_sub_entry)
 
             # Find a corresponding sub-entry in the previous bake record.
             prev_sub_entry = None
@@ -93,15 +99,15 @@ class PageBaker(object):
                     pass
 
             # Figure out if we need to bake this page.
-            bake_status = _get_bake_status(page, out_path, self.force,
+            bake_status = _get_bake_status(page, out_path, force_bake,
                                            prev_sub_entry, cur_sub_entry)
 
             # If this page didn't bake because it's already up-to-date.
             # Keep trying for as many subs as we know this page has.
             if bake_status == STATUS_CLEAN:
-                cur_sub_entry.render_info = prev_sub_entry.copyRenderInfo()
-                cur_sub_entry.flags = SubPagePipelineRecordEntry.FLAG_NONE
-                cur_entry.subs.append(cur_sub_entry)
+                cur_sub_entry['render_info'] = copy.deepcopy(
+                    prev_sub_entry['render_info'])
+                cur_sub_entry['flags'] = SubPageFlags.FLAG_NONE
 
                 if prev_entry.num_subs >= cur_sub + 1:
                     cur_sub += 1
@@ -118,8 +124,8 @@ class PageBaker(object):
                 if bake_status == STATUS_INVALIDATE_AND_BAKE:
                     cache_key = sub_uri
                     self._rsr.invalidate(cache_key)
-                    cur_sub_entry.flags |= \
-                        SubPagePipelineRecordEntry.FLAG_FORMATTING_INVALIDATED
+                    cur_sub_entry['flags'] |= \
+                        SubPageFlags.FLAG_RENDER_CACHE_INVALIDATED
 
                 logger.debug("  p%d -> %s" % (cur_sub, out_path))
                 rp = self._bakeSingle(page, cur_sub, out_path)
@@ -131,13 +137,12 @@ class PageBaker(object):
                                   (page.content_spec, sub_uri)) from ex
 
             # Record what we did.
-            cur_sub_entry.flags |= SubPagePipelineRecordEntry.FLAG_BAKED
-            cur_sub_entry.render_info = rp.copyRenderInfo()
-            cur_entry.subs.append(cur_sub_entry)
+            cur_sub_entry['flags'] |= SubPageFlags.FLAG_BAKED
+            cur_sub_entry['render_info'] = copy.deepcopy(rp.render_info)
 
             # Copy page assets.
             if (cur_sub == 1 and
-                    cur_sub_entry.anyPass(lambda p: p.used_assets)):
+                    cur_sub_entry['render_info']['used_assets']):
                 if pretty_urls:
                     out_assets_dir = os.path.dirname(out_path)
                 else:
@@ -159,9 +164,11 @@ class PageBaker(object):
 
             # Figure out if we have more work.
             has_more_subs = False
-            if cur_sub_entry.anyPass(lambda p: p.pagination_has_more):
+            if cur_sub_entry['render_info']['pagination_has_more']:
                 cur_sub += 1
                 has_more_subs = True
+
+        return rendered_subs
 
     def _bakeSingle(self, page, sub_num, out_path):
         ctx = RenderingContext(page, sub_num=sub_num)
@@ -207,9 +214,11 @@ def _get_bake_status(page, out_path, force, prev_sub_entry, cur_sub_entry):
 
     # Easy test.
     if force:
-        cur_sub_entry.flags |= \
-            SubPagePipelineRecordEntry.FLAG_FORCED_BY_GENERAL_FORCE
-        return STATUS_BAKE
+        cur_sub_entry['flags'] |= \
+            SubPageFlags.FLAG_FORCED_BY_GENERAL_FORCE
+        # We need to invalidate any cache we have on this page because
+        # it's being forced, so something important has changed somehow.
+        return STATUS_INVALIDATE_AND_BAKE
 
     # Check for up-to-date outputs.
     in_path_time = page.content_mtime
@@ -217,8 +226,8 @@ def _get_bake_status(page, out_path, force, prev_sub_entry, cur_sub_entry):
         out_path_time = os.path.getmtime(out_path)
     except OSError:
         # File doesn't exist, we'll need to bake.
-        cur_sub_entry.flags |= \
-            SubPagePipelineRecordEntry.FLAG_FORCED_BY_NO_PREVIOUS
+        cur_sub_entry['flags'] |= \
+            SubPageFlags.FLAG_FORCED_BY_NO_PREVIOUS
         return STATUS_BAKE
 
     if out_path_time <= in_path_time:
@@ -229,15 +238,16 @@ def _get_bake_status(page, out_path, force, prev_sub_entry, cur_sub_entry):
 
 
 def _compute_force_flags(prev_sub_entry, cur_sub_entry):
-    if prev_sub_entry and prev_sub_entry.errors:
+    if prev_sub_entry and len(prev_sub_entry['errors']) > 0:
         # Previous bake failed. We'll have to bake it again.
-        cur_sub_entry.flags |= \
-            SubPagePipelineRecordEntry.FLAG_FORCED_BY_PREVIOUS_ERRORS
+        cur_sub_entry['flags'] |= \
+            SubPageFlags.FLAG_FORCED_BY_PREVIOUS_ERRORS
         return STATUS_BAKE
 
     if not prev_sub_entry:
-        cur_sub_entry.flags |= \
-            SubPagePipelineRecordEntry.FLAG_FORCED_BY_NO_PREVIOUS
+        # No previous record, so most probably was never baked. Bake it.
+        cur_sub_entry['flags'] |= \
+            SubPageFlags.FLAG_FORCED_BY_NO_PREVIOUS
         return STATUS_BAKE
 
     return STATUS_CLEAN

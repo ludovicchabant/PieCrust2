@@ -21,7 +21,7 @@ class ListSource(ContentSource):
     def getRelatedContents(self, item, relationship):
         return self.inner_source.getRelatedContents(item, relationship)
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         # Can't find items... we could find stuff that's not in our list?
         raise NotImplementedError(
             "The list source doesn't support finding items.")

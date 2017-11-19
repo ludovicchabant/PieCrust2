@@ -19,6 +19,8 @@ from piecrust.plugins.base import PluginLoader
 
 logger = logging.getLogger(__name__)
 
+_chef_start_time = time.perf_counter()
+
 
 class ColoredFormatter(logging.Formatter):
     COLORS = {
@@ -246,7 +248,6 @@ def _build_cache_key(pre_args):
 
 def _run_chef(pre_args, argv):
     # Setup the app.
-    start_time = time.perf_counter()
     root = None
     if pre_args.root:
         root = os.path.expanduser(pre_args.root)
@@ -306,13 +307,17 @@ def _run_chef(pre_args, argv):
 
     # Parse the command line.
     result = parser.parse_args(argv)
-    logger.debug(format_timed(start_time, 'initialized PieCrust',
+    logger.debug(format_timed(_chef_start_time, 'initialized PieCrust',
                               colored=False))
 
     # Print the help if no command was specified.
     if not hasattr(result, 'func'):
         parser.print_help()
         return 0
+
+    # Add some timing information.
+    app.env.stats.registerTimer('ChefStartup')
+    app.env.stats.stepTimerSince('ChefStartup', _chef_start_time)
 
     # Run the command!
     ctx = CommandContext(appfactory, app, parser, result)

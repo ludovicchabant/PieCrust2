@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class HoedownFormatter(Formatter):
-    FORMAT_NAMES = ['hoedown']
+    FORMAT_NAMES = ['markdown', 'mdown', 'md']
     OUTPUT_FORMAT = 'html'
 
     def __init__(self):

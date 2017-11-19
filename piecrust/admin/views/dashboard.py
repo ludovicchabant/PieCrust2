@@ -88,8 +88,9 @@ def _getWipData(path, fs_endpoints, auto_formats, pcapp):
     if source is None:
         return None
 
+    # TODO: this assumes FS sources, but this comes from the disk anyway.
     full_path = os.path.join(pcapp.root_dir, path)
-    content_item = source.findContentFromPath(full_path)
+    content_item = source.findContentFromSpec(full_path)
     if content_item is None:
         return None
 

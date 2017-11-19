@@ -83,15 +83,17 @@ class Linker:
 
     def forpath(self, path):
         # TODO: generalize this for sources that aren't file-system based.
-        item = self._source.findContent({'slug': path})
+        item = self._source.findContentFromSpec({'slug': path})
         return Linker(self._source, item)
 
     def childrenof(self, path):
         # TODO: generalize this for sources that aren't file-system based.
         src = self._source
         app = src.app
-        group = src.findGroup(path)
+        group = src.findContentFromSpec(path)
         if group is not None:
+            if not group.is_group:
+                raise Exception("'%s' is not a folder/group." % path)
             for i in src.getContents(group):
                 if not i.is_group:
                     ipage = app.getPage(src, i)

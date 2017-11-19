@@ -1,52 +1,83 @@
+import io
 import sys
-import json
 import codecs
 import datetime
 import collections
 
 
+use_msgpack = False
+use_marshall = False
+
+
+if use_msgpack:
+    import msgpack
+
+    def _dumps_msgpack(obj, buf):
+        msgpack.pack(obj, buf)
+
+    def _loads_msgpack(buf, bufsize):
+        return msgpack.unpack(buf)
+
+    _dumps = _dumps_msgpack
+    _loads = _loads_msgpack
+
+elif use_marshall:
+    import marshal
+
+    def _dumps_marshal(obj, buf):
+        marshal.dump(obj, buf)
+
+    def _loads_marshal(buf, bufsize):
+        return marshal.load(buf)
+
+    _dumps = _dumps_marshal
+    _loads = _loads_marshal
+
+else:
+    import json
+
+    class _BufferWrapper:
+        def __init__(self, buf):
+            self._buf = buf
+
+        def write(self, data):
+            self._buf.write(data.encode('utf8'))
+
+        def read(self):
+            return self._buf.read().decode('utf8')
+
+    def _dumps_json(obj, buf):
+        buf = _BufferWrapper(buf)
+        json.dump(obj, buf, indent=None, separators=(',', ':'))
+
+    def _loads_json(buf, bufsize):
+        buf = _BufferWrapper(buf)
+        return json.load(buf)
+
+    _dumps = _dumps_json
+    _loads = _loads_json
+
+
 def pickle(obj):
-    data = _pickle_object(obj)
-    data = json.dumps(data, indent=None, separators=(',', ':'))
-    return data.encode('utf8')
-
-
-def pickle_obj(obj):
-    if obj is not None:
-        return _pickle_object(obj)
-    return None
+    with io.BytesIO() as buf:
+        pickle_intob(obj, buf)
+        return buf.getvalue()
 
 
 def pickle_intob(obj, buf):
     data = _pickle_object(obj)
-    buf = _WriteWrapper(buf)
-    json.dump(data, buf, indent=None, separators=(',', ':'))
+    _dumps(data, buf)
 
 
 def unpickle(data):
-    data = json.loads(data.decode('utf8'))
+    with io.BytesIO(data) as buf:
+        data = _loads(buf, len(data))
     return _unpickle_object(data)
-
-
-def unpickle_obj(data):
-    if data is not None:
-        return _unpickle_object(data)
-    return None
 
 
 def unpickle_fromb(buf, bufsize):
-    with buf.getbuffer() as innerbuf:
-        data = codecs.decode(innerbuf[:bufsize], 'utf8')
-    data = json.loads(data)
+    data = _loads(buf, bufsize)
     return _unpickle_object(data)
-
-
-class _WriteWrapper(object):
-    def __init__(self, buf):
-        self._buf = buf
-
-    def write(self, data):
-        self._buf.write(data.encode('utf8'))
 
 
 _PICKLING = 0

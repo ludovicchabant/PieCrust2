@@ -182,7 +182,7 @@ def test_ordered_source_find(fs_fac, route_path, expected_path,
         app = fs.getApp()
         s = app.getSource('test')
         route_metadata = {'slug': route_path}
-        item = s.findContent(route_metadata)
+        item = s.findContentFromRoute(route_metadata)
         if item is None:
             assert expected_path is None and expected_metadata is None
         else:

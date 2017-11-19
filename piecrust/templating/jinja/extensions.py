@@ -146,19 +146,19 @@ class PieCrustCacheExtension(Extension):
         key = self.environment.piecrust_cache_prefix + name
 
         rcs = self.environment.app.env.render_ctx_stack
-        rdr_pass = rcs.current_ctx.current_pass_info
+        ri = rcs.current_ctx.render_info
 
         # try to load the block from the cache
         # if there is no fragment in the cache, render it and store
         # it in the cache.
         pair = self.environment.piecrust_cache.get(key)
         if pair is not None:
-            rdr_pass.used_source_names.update(pair[1])
+            ri['used_source_names'].update(pair[1])
             return pair[0]
 
-        prev_used = rdr_pass.used_source_names.copy()
+        prev_used = ri['used_source_names'].copy()
         rv = caller()
-        after_used = rdr_pass.used_source_names.copy()
+        after_used = ri['used_source_names'].copy()
         used_delta = after_used.difference(prev_used)
         self.environment.piecrust_cache[key] = (rv, used_delta)
         return rv

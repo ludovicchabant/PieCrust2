@@ -19,7 +19,7 @@ class PystacheTemplateEngine(TemplateEngine):
     def renderSegment(self, path, segment, data):
         self._ensureLoaded()
         try:
-            return self.renderer.render(segment.content, data)
+            return self.renderer.render(segment.content, data), True
         except self._not_found_error as ex:
             raise TemplateNotFoundError() from ex
         except self._pystache_error as ex:

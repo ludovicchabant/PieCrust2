@@ -87,7 +87,7 @@ def get_requested_page(app, req_path):
 
 def _get_requested_page_for_route(app, route, route_params):
     source = app.getSource(route.source_name)
-    item = source.findContent(route_params)
+    item = source.findContentFromRoute(route_params)
     if item is not None:
         return app.getPage(source, item)
     return None

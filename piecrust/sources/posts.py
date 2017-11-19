@@ -50,10 +50,11 @@ class PostsSource(FSContentSource,
 
         return FSContentSource.getRelatedContents(self, item, relationship)
 
-    def findGroup(self, spec):
-        return None
+    def findContentFromSpec(self, spec):
+        metadata = self._parseMetadataFromPath(spec)
+        return ContentItem(spec, metadata)
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         year = route_params.get('year')
         month = route_params.get('month')
         day = route_params.get('day')
@@ -108,10 +109,6 @@ class PostsSource(FSContentSource,
         elif not os.path.isfile(path):
             return None
 
-        metadata = self._parseMetadataFromPath(path)
-        return ContentItem(path, metadata)
-
-    def findContentFromPath(self, path):
         metadata = self._parseMetadataFromPath(path)
         return ContentItem(path, metadata)
 

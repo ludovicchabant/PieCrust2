@@ -1,6 +1,7 @@
+import io
 import datetime
 import pytest
-from piecrust.fastpickle import pickle, unpickle, pickle_obj, unpickle_obj
+from piecrust.fastpickle import pickle, unpickle, pickle_intob, unpickle_fromb
 
 
 class Foo(object):
@@ -36,6 +37,13 @@ def test_pickle_unpickle(obj, expected):
     actual = unpickle(data)
     assert actual == expected
 
+    with io.BytesIO() as buf:
+        pickle_intob(obj, buf)
+        size = buf.tell()
+        buf.seek(0)
+        actual = unpickle_fromb(buf, size)
+    assert actual == expected
+
 
 def test_objects():
     f = Foo('foo')
@@ -54,11 +62,10 @@ def test_objects():
 
 def test_reentrance():
     a = {'test_ints': 42, 'test_set': set([1, 2])}
-    data = pickle_obj(a)
-    b = unpickle_obj(data)
+    data = pickle(a)
+    b = unpickle(data)
     assert a == b
-    other_b = unpickle_obj(data)
+    other_b = unpickle(data)
     assert a == other_b
-    c = unpickle_obj(data)
+    c = unpickle(data)
     assert a == c
-

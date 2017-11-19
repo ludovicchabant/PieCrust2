@@ -19,7 +19,7 @@ class JinjaTemplateEngine(TemplateEngine):
 
     def renderSegment(self, path, segment, data):
         if not _string_needs_render(segment.content):
-            return segment.content
+            return segment.content, False
 
         self._ensureLoaded()
 
@@ -34,7 +34,7 @@ class JinjaTemplateEngine(TemplateEngine):
             raise TemplateNotFoundError()
 
         try:
-            return tpl.render(data)
+            return tpl.render(data), True
         except self._jinja_syntax_error as tse:
             raise self._getTemplatingError(tse)
         except AbortedSourceUseError:

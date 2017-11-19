@@ -106,9 +106,6 @@ class ContentSource:
         if self._page_cache is not None:
             return self._page_cache
 
-        if self.app.env.abort_source_use:
-            raise AbortedSourceUseError()
-
         getter = self.app.getPage
         self._page_cache = [getter(self, i) for i in self.getAllContents()]
         return self._page_cache
@@ -143,13 +140,13 @@ class ContentSource:
         raise NotImplementedError(
             "'%s' doesn't implement 'getRelatedContents'." % self.__class__)
 
-    def findGroup(self, rel_spec):
+    def findContentFromSpec(self, spec):
         raise NotImplementedError(
-            "'%s' doesn't implement 'findGroup'." % self.__class__)
+            "'%s' doesn't implement 'findContentFromSpec'." % self.__class__)
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         raise NotImplementedError(
-            "'%s' doesn't implement 'findContent'." % self.__class__)
+            "'%s' doesn't implement 'findContentFromRoute'." % self.__class__)
 
     def getSupportedRouteParameters(self):
         raise NotImplementedError(

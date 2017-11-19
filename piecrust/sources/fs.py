@@ -129,11 +129,13 @@ class FSContentSource(FSContentSourceBase):
     def _finalizeContent(self, parent_group, items, groups):
         pass
 
-    def findGroup(self, rel_spec):
-        path = os.path.join(self.fs_endpoint_path, rel_spec)
-        if os.path.isdir(path):
-            metadata = self._createGroupMetadata(path)
-            return ContentGroup(path, metadata)
+    def findContentFromSpec(self, spec):
+        if os.path.isdir(spec):
+            metadata = self._createGroupMetadata(spec)
+            return ContentGroup(spec, metadata)
+        elif os.path.isfile(spec):
+            metadata = self._createItemMetadata(spec)
+            return ContentItem(spec, metadata)
         return None
 
     def getRelatedContents(self, item, relationship):

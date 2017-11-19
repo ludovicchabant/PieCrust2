@@ -2,7 +2,9 @@ import os
 import os.path
 import re
 import logging
-from piecrust.pipelines._procrecords import AssetPipelineRecordEntry
+from piecrust.pipelines._procrecords import (
+    AssetPipelineRecordEntry,
+    add_asset_job_result, merge_job_result_into_record_entry)
 from piecrust.pipelines._proctree import (
     ProcessingTreeBuilder, ProcessingTreeRunner,
     get_node_name_tree, print_node,
@@ -64,29 +66,32 @@ class AssetPipeline(ContentPipeline):
         stats.registerTimer('RunProcessingTree', raise_if_registered=False)
 
     def run(self, job, ctx, result):
+        # Create the result stuff.
+        item_spec = job['job_spec'][1]
+        add_asset_job_result(result)
+        result['item_spec'] = item_spec
+
         # See if we need to ignore this item.
-        rel_path = os.path.relpath(job.content_item.spec, self._base_dir)
+        rel_path = os.path.relpath(item_spec, self._base_dir)
         if re_matchany(rel_path, self._ignore_patterns):
             return
 
-        record_entry = result.record_entry
-        stats = self.app.env.stats
-        out_dir = self.ctx.out_dir
-
         # Build the processing tree for this job.
+        stats = self.app.env.stats
         with stats.timerScope('BuildProcessingTree'):
             builder = ProcessingTreeBuilder(self._processors)
             tree_root = builder.build(rel_path)
-            record_entry.flags |= AssetPipelineRecordEntry.FLAG_PREPARED
+            result['flags'] |= AssetPipelineRecordEntry.FLAG_PREPARED
 
         # Prepare and run the tree.
+        out_dir = self.ctx.out_dir
         print_node(tree_root, recursive=True)
         leaves = tree_root.getLeaves()
-        record_entry.out_paths = [os.path.join(out_dir, l.path)
-                                  for l in leaves]
-        record_entry.proc_tree = get_node_name_tree(tree_root)
+        result['out_paths'] = [os.path.join(out_dir, l.path)
+                               for l in leaves]
+        result['proc_tree'] = get_node_name_tree(tree_root)
         if tree_root.getProcessor().is_bypassing_structured_processing:
-            record_entry.flags |= (
+            result['flags'] |= (
                 AssetPipelineRecordEntry.FLAG_BYPASSED_STRUCTURED_PROCESSING)
 
         if self.ctx.force:
@@ -96,8 +101,13 @@ class AssetPipeline(ContentPipeline):
             runner = ProcessingTreeRunner(
                 self._base_dir, self.tmp_dir, out_dir)
             if runner.processSubTree(tree_root):
-                record_entry.flags |= (
+                result['flags'] |= (
                     AssetPipelineRecordEntry.FLAG_PROCESSED)
+
+    def handleJobResult(self, result, ctx):
+        entry = self.createRecordEntry(result['item_spec'])
+        merge_job_result_into_record_entry(entry, result)
+        ctx.record.addEntry(entry)
 
     def getDeletions(self, ctx):
         for prev, cur in ctx.record_history.diffs:

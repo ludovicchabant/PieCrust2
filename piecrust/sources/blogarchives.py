@@ -7,9 +7,12 @@ from piecrust.dataproviders.pageiterator import (
     PageIterator, HardCodedFilterIterator, DateSortIterator)
 from piecrust.page import Page
 from piecrust.pipelines._pagebaker import PageBaker
-from piecrust.pipelines._pagerecords import PagePipelineRecordEntry
+from piecrust.pipelines._pagerecords import (
+    PagePipelineRecordEntry,
+    add_page_job_result, merge_job_result_into_record_entry)
 from piecrust.pipelines.base import (
-    ContentPipeline, get_record_name_for_source)
+    ContentPipeline,
+    create_job, get_record_name_for_source, content_item_from_job)
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentItem
 from piecrust.sources.generator import GeneratorSourceBase
@@ -38,14 +41,11 @@ class BlogArchivesSource(GeneratorSourceBase):
     def getSupportedRouteParameters(self):
         return [RouteParameter('year', RouteParameter.TYPE_INT4)]
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         year = route_params['year']
-        spec = '_index'
-        metadata = {
-            'record_entry_spec': '_index[%04d]' % year,
-            'route_params': {'year': year}
-        }
-        return ContentItem(spec, metadata)
+        return ContentItem(
+            '_index',
+            {'route_params': {'year': year}})
 
     def prepareRenderContext(self, ctx):
         ctx.pagination_source = self.inner_source
@@ -178,24 +178,41 @@ class BlogArchivesPipeline(ContentPipeline):
                      (len(self._dirty_years), len(self._all_years)))
 
         jobs = []
+        rec_fac = self.createRecordEntry
+        current_record = ctx.current_record
+
         for y in self._dirty_years:
-            item = ContentItem(
-                '_index',
-                {
-                    'record_entry_spec': '_index[%04d]' % y,
-                    'route_params': {'year': y}
-                })
-            jobs.append(self.createJob(item))
+            record_entry_spec = '_index[%04d]' % y
+
+            jobs.append(create_job(self, '_index',
+                                   year=y,
+                                   record_entry_spec=record_entry_spec))
+
+            entry = rec_fac(record_entry_spec)
+            current_record.addEntry(entry)
+
         if len(jobs) > 0:
             return jobs
         return None
 
     def run(self, job, ctx, result):
-        page = Page(self.source, job.content_item)
+        year = job['year']
+        content_item = ContentItem('_index',
+                                   {'year': year,
+                                    'route_params': {'year': year}})
+        page = Page(self.source, content_item)
+
         prev_entry = ctx.previous_entry
-        cur_entry = result.record_entry
-        cur_entry.year = job.content_item.metadata['route_params']['year']
-        self._pagebaker.bake(page, prev_entry, cur_entry)
+        rdr_subs = self._pagebaker.bake(page, prev_entry)
+
+        add_page_job_result(result)
+        result['subs'] = rdr_subs
+        result['year'] = page.source_metadata['year']
+
+    def handleJobResult(self, result, ctx):
+        existing = ctx.record_entry
+        merge_job_result_into_record_entry(existing, result)
+        existing.year = result['year']
 
     def postJobRun(self, ctx):
         # Create bake entries for the years that were *not* dirty.

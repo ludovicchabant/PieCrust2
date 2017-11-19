@@ -48,33 +48,60 @@ class BakeCommand(ChefCommand):
             '--show-stats',
             help="Show detailed information about the bake.",
             action='store_true')
+        parser.add_argument(
+            '--profile',
+            help="Run the bake several times, for profiling.",
+            type=int, default=-1)
 
     def run(self, ctx):
         from piecrust.chefutil import format_timed
+        from piecrust.environment import ExecutionStats
 
         out_dir = (ctx.args.output or
                    os.path.join(ctx.app.root_dir, '_counter'))
 
+        success = True
+        avg_stats = ExecutionStats()
+        avg_stats.registerTimer('Total')
         start_time = time.perf_counter()
-        try:
-            records = self._doBake(ctx, out_dir)
 
-            # Show merged stats.
-            if ctx.args.show_stats:
-                logger.info("-------------------")
-                logger.info("Timing information:")
-                _show_stats(records.stats)
+        num_iter = 1
+        if ctx.args.profile > 0:
+            num_iter = ctx.args.profile
 
-            # All done.
-            logger.info('-------------------------')
-            logger.info(format_timed(start_time, 'done baking'))
-            return 0 if records.success else 1
-        except Exception as ex:
-            if ctx.app.debug:
-                logger.exception(ex)
-            else:
-                logger.error(str(ex))
-            return 1
+        for i in range(num_iter):
+            iter_start_time = time.perf_counter()
+            if num_iter > 1:
+                import gc
+                gc.collect()
+                logger.info("---- %d/%d ----" % (i + 1, num_iter))
+
+            try:
+                records = self._doBake(ctx, out_dir)
+            except Exception as ex:
+                if ctx.app.debug:
+                    logger.exception(ex)
+                else:
+                    logger.error(str(ex))
+                return 1
+
+            success = success and records.success
+            avg_stats.mergeStats(records.stats)
+            avg_stats.stepTimerSince('Total', iter_start_time)
+
+        # Show merged stats.
+        if ctx.args.show_stats:
+            if num_iter > 1:
+                _average_stats(avg_stats, num_iter)
+
+            logger.info("-------------------")
+            logger.info("Timing information:")
+            _show_stats(avg_stats)
+
+        # All done.
+        logger.info('-------------------------')
+        logger.info(format_timed(start_time, 'done baking'))
+        return 0 if success else 1
 
     def _doBake(self, ctx, out_dir):
         from piecrust.baking.baker import Baker
@@ -251,6 +278,13 @@ class ShowRecordCommand(ChefCommand):
                     logger.info("Record: %s" % rec.name)
                     logger.info("Status: %s" % ('SUCCESS' if rec.success
                                                 else 'FAILURE'))
+                    logger.info("User Data:")
+                    if not rec.user_data:
+                        logger.info("  <empty>")
+                    else:
+                        for k, v in rec.user_data.items():
+                            logger.info("  %s: %s" % (k, v))
+
                     for e in entries_to_show:
                         _print_record_entry(e)
                     logger.info("")
@@ -268,6 +302,13 @@ class ShowRecordCommand(ChefCommand):
                         (Fore.CYAN, name, Fore.RESET, len(val)))
                     for v in val:
                         logger.info("      - %s" % v)
+
+
+def _average_stats(stats, cnt):
+    for name in stats.timers:
+        stats.timers[name] /= cnt
+    for name in stats.counters:
+        stats.counters[name] /= cnt
 
 
 def _show_stats(stats, *, full=False):

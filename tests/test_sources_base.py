@@ -66,7 +66,7 @@ def test_default_source_find_item(fs_fac, ref_path, expected_path,
     with mock_fs_scope(fs):
         app = fs.getApp()
         s = app.getSource('test')
-        item = s.findContent({'slug': ref_path})
+        item = s.findContentFromRoute({'slug': ref_path})
         assert item is not None
         assert os.path.relpath(item.spec, app.root_dir) == \
             slashfix(expected_path)

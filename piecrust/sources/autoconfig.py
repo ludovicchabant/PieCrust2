@@ -92,7 +92,7 @@ class AutoConfigContentSource(AutoConfigContentSourceBase):
 
         return {self.setting_name: values}
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         # Pages from this source are effectively flattened, so we need to
         # find pages using a brute-force kinda way.
         route_slug = route_params.get('slug', '')
@@ -131,7 +131,7 @@ class OrderedContentSource(AutoConfigContentSourceBase):
         self.setting_name = config.get('setting_name', 'order')
         self.default_value = config.get('default_value', 0)
 
-    def findContent(self, route_params):
+    def findContentFromRoute(self, route_params):
         uri_path = route_params.get('slug', '')
         if uri_path == '':
             uri_path = '_index'

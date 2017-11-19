@@ -37,6 +37,7 @@ class Record:
     def __init__(self, name):
         self.name = name
         self.deleted_out_paths = []
+        self.user_data = {}
         self.success = True
         self._entries = {}
 
@@ -61,7 +62,7 @@ class MultiRecord:
     """ A container that includes multiple `Record` instances -- one for
         each content source that was baked.
     """
-    RECORD_VERSION = 12
+    RECORD_VERSION = 13
 
     def __init__(self):
         self.records = []
@@ -207,6 +208,9 @@ class RecordHistory:
                     raise Exception(
                         "A current record entry already exists for '%s' "
                         "(%s)" % (key, diff[1].item_spec))
+
+    def copy(self):
+        return RecordHistory(self._previous, self._current)
 
 
 class MultiRecordHistory:

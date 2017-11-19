@@ -5,9 +5,10 @@ class MergedMapping(collections.abc.Mapping):
     """ Provides a dictionary-like object that's really the aggregation of
         multiple dictionary-like objects.
     """
-    def __init__(self, dicts, path=''):
+    def __init__(self, dicts, path='', *, stats=None):
         self._dicts = dicts
         self._path = path
+        self._stats = stats
 
     def __getattr__(self, name):
         try:
