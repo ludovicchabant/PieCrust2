@@ -73,6 +73,11 @@ class PieCrustBechmarkSiteGenerator(BenchmarkSiteGenerator):
         if not os.path.isdir(posts_dir):
             os.makedirs(posts_dir)
 
+        config_path = os.path.join(self.out_dir, 'config.yml')
+        if not os.path.exists(config_path):
+            with open(config_path, 'w') as fp:
+                fp.write('\n')
+
     def writePost(self, post_info):
         out_dir = os.path.join(self.out_dir, 'posts')
         slug = post_info['slug']
@@ -220,7 +225,7 @@ else:
     from invoke import task
 
     @task
-    def genbenchsite(engine, out_dir, post_count=100, tag_count=10):
+    def genbenchsite(ctx, engine, out_dir, post_count=100, tag_count=10):
         generate(engine, out_dir,
                  post_count=post_count,
                  tag_count=tag_count)

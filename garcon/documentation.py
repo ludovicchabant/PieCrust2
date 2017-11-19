@@ -16,7 +16,7 @@ pyver_re = re.compile('^Python (?P<maj>\d)\.(?P<min>\d)\.(?P<pat>\d)$')
     'venv_dir': "The directory of the virtual environment to use to run "
                 "PieCrust."
     })
-def gendocs(tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
+def gendocs(ctx, tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
     base_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), '..'))
     os.chdir(base_dir)

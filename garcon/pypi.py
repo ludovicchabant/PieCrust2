@@ -2,7 +2,7 @@ from invoke import task, run
 
 
 @task
-def makerelease(version, local_only=False):
+def makerelease(ctx, version, local_only=False):
     if not version:
         raise Exception("You must specify a version!")
 

@@ -195,6 +195,6 @@ else:
     from invoke import task
 
     @task
-    def genchangelog(out_file='CHANGELOG.rst', last=None):
+    def genchangelog(ctx, out_file='CHANGELOG.rst', last=None):
         generate(out_file, last)
 
