@@ -175,15 +175,19 @@ class TaxonomySource(GeneratorSourceBase):
             route_val = slugified_values
 
         # We need to register this use of a taxonomy term.
+        # Because the render info gets serialized across bake worker
+        # processes, we can only use basic JSON-able structures, which
+        # excludes `set`... hence the awkward use of `list`.
+        # Also, note that the tuples we're putting in there will be
+        # transformed into lists so we'll have to convert back.
         rcs = self.app.env.render_ctx_stack
         ri = rcs.current_ctx.render_info
         utt = ri.get('used_taxonomy_terms')
         if utt is None:
-            utt = set()
-            utt.add(slugified_values)
-            ri['used_taxonomy_terms'] = utt
+            ri['used_taxonomy_terms'] = [slugified_values]
         else:
-            utt.add(slugified_values)
+            if slugified_values not in utt:
+                utt.append(slugified_values)
 
         # Put the slugified values in the route metadata so they're used to
         # generate the URL.
@@ -481,7 +485,7 @@ def _get_all_entry_taxonomy_terms(entry):
         pinfo = o['render_info']
         terms = pinfo.get('used_taxonomy_terms')
         if terms:
-            res |= set(terms)
+            res |= set([tuple(t) for t in terms])
     return res
 
 

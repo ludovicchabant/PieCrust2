@@ -60,6 +60,17 @@ class ExecutionStats:
             v = self.manifests.setdefault(oc, [])
             self.manifests[oc] = v + ov
 
+    def toData(self):
+        return {
+            'timers': self.timers.copy(),
+            'counters': self.counters.copy(),
+            'manifests': self.manifests.copy()}
+
+    def fromData(self, data):
+        self.timers = data['timers']
+        self.counters = data['counters']
+        self.manifests = data['manifests']
+
 
 class Environment:
     def __init__(self):

@@ -89,12 +89,15 @@ class PagePipelineRecordEntry(RecordEntry):
             yield from o['errors']
 
     def getAllUsedSourceNames(self):
-        res = set()
+        res_segments = set()
+        res_layout = set()
         for o in self.subs:
             pinfo = o.get('render_info')
             if pinfo:
-                res |= pinfo['used_source_names']
-        return res
+                usn = pinfo['used_source_names']
+                res_segments |= set(usn['segments'])
+                res_layout |= set(usn['layout'])
+        return res_segments, res_layout
 
     def getAllOutputPaths(self):
         for o in self.subs:

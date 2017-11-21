@@ -1,3 +1,4 @@
+import copy
 import time
 import logging
 from piecrust.pipelines.base import (
@@ -48,6 +49,8 @@ class PagePipeline(ContentPipeline):
             cur_entry.route_params = item.metadata['route_params']
             cur_entry.timestamp = page.datetime.timestamp()
 
+            if page.was_modified:
+                cur_entry.flags |= PagePipelineRecordEntry.FLAG_SOURCE_MODIFIED
             if page.config.get(self._draft_setting):
                 cur_entry.flags |= PagePipelineRecordEntry.FLAG_IS_DRAFT
 
@@ -85,8 +88,10 @@ class PagePipeline(ContentPipeline):
 
             # Skip pages that are known to use other sources... we'll
             # schedule them in the second pass.
-            if prev and prev.getAllUsedSourceNames():
-                continue
+            if prev:
+                usn1, usn2 = prev.getAllUsedSourceNames()
+                if usn1 or usn2:
+                    continue
 
             # Check if this item has been overriden by a previous pipeline
             # run... for instance, we could be the pipeline for a "theme pages"
@@ -94,7 +99,6 @@ class PagePipeline(ContentPipeline):
             # page that writes out to the same URL.
             uri = uri_getter(cur.route_params)
             path = get_output_path(app, out_dir, uri, pretty_urls)
-
             override = used_paths.get(path)
             if override is not None:
                 override_source_name, override_entry = override
@@ -143,14 +147,25 @@ class PagePipeline(ContentPipeline):
         history = ctx.record_histories.getHistory(ctx.record_name).copy()
         history.build()
         for prev, cur in history.diffs:
-            if cur and cur.was_any_sub_baked:
+            if not cur:
                 continue
-            if prev and any(map(
-                    lambda usn: usn in dirty_source_names,
-                    prev.getAllUsedSourceNames())):
-                jobs.append(create_job(self, prev.item_spec,
-                                       pass_num=pass_num,
-                                       force_bake=True))
+            if cur.was_any_sub_baked:
+                continue
+            if prev:
+                if any(map(
+                        lambda usn: usn in dirty_source_names,
+                        prev.getAllUsedSourceNames()[0])):
+                    jobs.append(create_job(self, prev.item_spec,
+                                           pass_num=pass_num,
+                                           force_bake=True))
+                else:
+                    # This page uses other sources, but no source was dirty
+                    # this time around (it was a null build, maybe). We
+                    # don't have any work to do, but we need to carry over
+                    # any information we have, otherwise the post bake step
+                    # will think we need to delete last bake's outputs.
+                    cur.subs = copy.deepcopy(prev.subs)
+
         if len(jobs) > 0:
             return jobs
         return None

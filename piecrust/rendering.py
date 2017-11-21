@@ -52,7 +52,7 @@ def create_render_info():
         saved to records.
     """
     return {
-        'used_source_names': set(),
+        'used_source_names': {'segments': [], 'layout': []},
         'used_pagination': False,
         'pagination_has_more': False,
         'used_assets': False,
@@ -68,10 +68,26 @@ class RenderingContext(object):
         self.pagination_filter = None
         self.render_info = create_render_info()
         self.custom_data = {}
+        self._current_used_source_names = None
 
     @property
     def app(self):
         return self.page.app
+
+    @property
+    def current_used_source_names(self):
+        usn = self._current_used_source_names
+        if usn is not None:
+            return usn
+        else:
+            raise Exception("No render pass specified.")
+
+    def setRenderPass(self, name):
+        if name is not None:
+            self._current_used_source_names = \
+                self.render_info['used_source_names'][name]
+        else:
+            self._current_used_source_names = None
 
     def setPagination(self, paginator):
         ri = self.render_info
@@ -83,8 +99,9 @@ class RenderingContext(object):
         self.addUsedSource(paginator._source)
 
     def addUsedSource(self, source):
-        ri = self.render_info
-        ri['used_source_names'].add(source.name)
+        usn = self.current_used_source_names
+        if source.name not in usn:
+            usn.append(source.name)
 
 
 class RenderingContextStack(object):
@@ -253,6 +270,8 @@ def _do_render_page_segments(ctx, page_data):
     page = ctx.page
     app = page.app
 
+    ctx.setRenderPass('segments')
+
     engine_name = page.config.get('template_engine')
     format_name = page.config.get('format')
 
@@ -295,6 +314,8 @@ def _do_render_layout(layout_name, page, layout_data):
     cur_ctx = app.env.render_ctx_stack.current_ctx
     assert cur_ctx is not None
     assert cur_ctx.page == page
+
+    cur_ctx.setRenderPass('layout')
 
     names = layout_name.split(',')
     full_names = []

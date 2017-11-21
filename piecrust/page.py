@@ -106,6 +106,10 @@ class Page:
     def datetime(self, value):
         self._datetime = value
 
+    @property
+    def was_modified(self):
+        return (self._flags & FLAG_RAW_CACHE_VALID) == 0
+
     def getUri(self, sub_num=1):
         route_params = self.source_metadata['route_params']
         return self.route.getUri(route_params, sub_num=sub_num)
