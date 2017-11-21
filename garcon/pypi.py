@@ -31,8 +31,12 @@ def makerelease(version, local_only=False):
 
     if not local_only:
         if commit_assets:
-            run('hg commit piecrust/admin/static '
-                '-m "admin: Regenerate FoodTruck assets."')
+            res = run('hg status piecrust/admin/static')
+            if not res:
+                return
+            if res.stdout.strip() != '':
+                run('hg commit piecrust/admin/static '
+                    '-m "admin: Regenerate FoodTruck assets."')
 
         # Submit the CHANGELOG.
         run('hg commit CHANGELOG.rst docs/pages/support/changelog.md '
