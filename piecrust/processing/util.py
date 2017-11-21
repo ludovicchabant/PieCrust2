@@ -74,8 +74,7 @@ class ConcatProcessor(Processor):
             dirname, _ = os.path.split(path)
             info.files = [os.path.join(dirname, f) for f in info.files]
         elif path_mode == 'absolute':
-            info.files = [os.path.join(self.app.root_dir, f)
-                          for f in info.files]
+            info.files = [self.app.resolvePath(f) for f in info.files]
         else:
             raise Exception("Unknown path mode: %s" % path_mode)
 

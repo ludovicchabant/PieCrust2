@@ -117,7 +117,8 @@ class PluginLoader(object):
         if to_install:
             for name in to_install:
                 plugin = self._loadPlugin(name)
-                self._plugins.append(plugin)
+                if plugin is not None:
+                    self._plugins.append(plugin)
 
         for plugin in self._plugins:
             plugin.initialize(self.app)
@@ -131,18 +132,20 @@ class PluginLoader(object):
             mod = None
 
         if mod is None:
-            # Import as a loose Python file from the plugins dir.
-            pfile = os.path.join(self.app.plugins_dir, plugin_name + '.py')
-            if os.path.isfile(pfile):
-                spec = importlib.util.spec_from_file_location(plugin_name,
-                                                              pfile)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                sys.modules[mod_name] = mod
+            # Import as a loose Python file from the plugins dirs.
+            for plugins_dir in self.app.plugins_dirs:
+                pfile = os.path.join(plugins_dir, plugin_name + '.py')
+                if os.path.isfile(pfile):
+                    spec = importlib.util.spec_from_file_location(plugin_name,
+                                                                  pfile)
+                    mod = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(mod)
+                    sys.modules[mod_name] = mod
+                    break
 
         if mod is None:
             logger.error("Failed to load plugin '%s'." % plugin_name)
-            logger.error(ex)
+            logger.error("Looking in: %s" % self.app.plugins_dirs)
             return
 
         plugin_class = getattr(mod, '__piecrust_plugin__', None)
