@@ -170,6 +170,8 @@ class PageBaker(object):
                 try:
                     qualified_page.source.buildAssetor(qualified_page, sub_uri).copyAssets(out_assets_dir)
                 except Exception as ex:
+                    page_rel_path = os.path.relpath(qualified_page.path,
+                                                    self.app.root_dir)
                     raise BakingError("%s: error deploying page assets." %
                                       page_rel_path) from ex
 
