@@ -7,6 +7,7 @@ cryptography==1.8.1
 Flask==0.10.1
 Flask-IndieAuth==0.0.3.2
 Flask-Login==0.3.2
+hoedown==0.2.3
 idna==2.5
 itsdangerous==0.24
 Jinja2==2.9.6

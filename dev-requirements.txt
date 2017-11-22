@@ -1,6 +1,6 @@
 cov-core==1.15.0
 coverage==4.0.3
-invoke==0.12.2
+invoke==0.21.0
 mock==1.0.1
 pytest==2.8.7
 pytest-cov==2.2.1
