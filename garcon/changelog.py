@@ -2,6 +2,7 @@ import os
 import os.path
 import re
 import time
+import codecs
 import argparse
 import subprocess
 
@@ -50,9 +51,9 @@ def generate(out_file, last=None):
                         "Mercurial clone of the PieCrust repository.")
     hglog = subprocess.check_output([
         'hg', 'log',
-        '--rev', 'reverse(::master)',
+        '--rev', 'reverse(::.)',
         '--template', hg_log_template])
-    hglog = hglog.decode('utf8')
+    hglog = codecs.decode(hglog, encoding='utf-8', errors='replace')
 
     _, out_ext = os.path.splitext(out_file)
     templates = _get_templates(out_ext)

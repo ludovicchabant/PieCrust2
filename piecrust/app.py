@@ -15,6 +15,8 @@ from piecrust.environment import StandardEnvironment
 from piecrust.page import Page
 from piecrust.plugins.base import PluginLoader
 from piecrust.routing import Route
+from piecrust.sources.base import REALM_THEME
+from piecrust.uriutil import multi_replace
 
 
 logger = logging.getLogger(__name__)
@@ -118,8 +120,8 @@ class PieCrust(object):
             return None
 
         # See if there's a theme we absolutely want.
-        td = self._get_dir(THEME_DIR)
-        if td is not None:
+        td = os.path.join(self.root_dir, THEME_DIR)
+        if os.path.isdir(td):
             return td
 
         # Try to load a theme specified in the configuration.
@@ -133,8 +135,8 @@ class PieCrust(object):
         return os.path.join(RESOURCES_DIR, 'theme')
 
     @cached_property
-    def plugins_dir(self):
-        return self._get_dir(PLUGINS_DIR)
+    def plugins_dirs(self):
+        return self._get_configurable_dirs(PLUGINS_DIR, 'site/plugins_dirs')
 
     @cached_property
     def cache_dir(self):
@@ -229,11 +231,9 @@ class PieCrust(object):
             cache_key,
             lambda: Page(source, content_item))
 
-    def _get_dir(self, default_rel_dir):
-        abs_dir = os.path.join(self.root_dir, default_rel_dir)
-        if os.path.isdir(abs_dir):
-            return abs_dir
-        return None
+    def resolvePath(self, path):
+        path = multi_replace(path, {'%theme_dir%': self.theme_dir})
+        return os.path.join(self.root_dir, path)
 
     def _get_configurable_dirs(self, default_rel_dir, conf_name):
         dirs = []
@@ -242,9 +242,9 @@ class PieCrust(object):
         conf_dirs = self.config.get(conf_name)
         if conf_dirs is not None:
             if isinstance(conf_dirs, str):
-                dirs.append(os.path.join(self.root_dir, conf_dirs))
+                dirs.append(self.resolvePath(conf_dirs))
             else:
-                dirs += [os.path.join(self.root_dir, p) for p in conf_dirs]
+                dirs += [self.resolvePath(p) for p in conf_dirs]
 
         # Add the default directory if it exists.
         default_dir = os.path.join(self.root_dir, default_rel_dir)

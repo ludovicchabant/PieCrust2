@@ -171,7 +171,7 @@ def _compute_datetime(source_metadata, config):
         return dt
 
     # No idea what the date/time for this page is.
-    return datetime.datetime.fromtimestamp(0)
+    return None
 
 
 def _parse_config_date(page_date):

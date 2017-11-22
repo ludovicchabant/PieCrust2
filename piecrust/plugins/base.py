@@ -130,24 +130,25 @@ class PluginLoader(object):
         except ImportError as ex:
             mod = None
 
-        if mod is None and self.app.plugins_dir:
+        if mod is None:
             # Import as a loose Python file from the plugins dir.
-            pfile = os.path.join(self.app.plugins_dir, plugin_name + '.py')
-            if os.path.isfile(pfile):
-                if sys.version_info[1] >= 5:
-                    # Python 3.5+
-                    from importlib.util import (spec_from_file_location,
-                                                module_from_spec)
-                    spec = spec_from_file_location(plugin_name, pfile)
-                    mod = module_from_spec(spec)
-                    spec.loader.exec_module(mod)
-                    sys.modules[mod_name] = mod
-                else:
-                    # Python 3.4, 3.3.
-                    from importlib.machinery import SourceFileLoader
-                    mod = SourceFileLoader(
-                        plugin_name, pfile).load_module()
-                    sys.modules[mod_name] = mod
+            for plugins_dir in self.app.plugins_dirs:
+                pfile = os.path.join(plugins_dir, plugin_name + '.py')
+                if os.path.isfile(pfile):
+                    if sys.version_info[1] >= 5:
+                        # Python 3.5+
+                        from importlib.util import (spec_from_file_location,
+                                                    module_from_spec)
+                        spec = spec_from_file_location(plugin_name, pfile)
+                        mod = module_from_spec(spec)
+                        spec.loader.exec_module(mod)
+                        sys.modules[mod_name] = mod
+                    else:
+                        # Python 3.4, 3.3.
+                        from importlib.machinery import SourceFileLoader
+                        mod = SourceFileLoader(
+                            plugin_name, pfile).load_module()
+                        sys.modules[mod_name] = mod
 
         if mod is None:
             logger.error("Failed to load plugin '%s'." % plugin_name)
