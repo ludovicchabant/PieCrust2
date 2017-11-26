@@ -249,6 +249,7 @@ class Baker(object):
         job_count = 0
         stats = self.app.env.stats
         realm_name = REALM_NAMES[realm].lower()
+        participating_source_names = []
 
         for ppinfo in pplist:
             src = ppinfo.source
@@ -262,6 +263,7 @@ class Baker(object):
                 new_job_count = len(jobs)
                 job_count += new_job_count
                 pool.queueJobs(jobs)
+                participating_source_names.append(src.name)
             else:
                 new_job_count = 0
 
@@ -279,8 +281,8 @@ class Baker(object):
         pool.wait()
 
         logger.info(format_timed(
-            start_time, "%d pipeline jobs completed (%s, step 0)." %
-            (job_count, realm_name)))
+            start_time, "%d jobs completed (%s)." %
+            (job_count, ', '.join(participating_source_names))))
 
         # Now let's see if any job created a follow-up job. Let's keep
         # processing those jobs as long as they create new ones.
@@ -294,6 +296,7 @@ class Baker(object):
 
             start_time = time.perf_counter()
             job_count = 0
+            participating_source_names = []
 
             for sn, jobs in next_step_jobs.items():
                 if jobs:
@@ -310,6 +313,7 @@ class Baker(object):
                     job_count += len(jobs)
                     pool.userdata.next_step_jobs[sn] = []
                     pool.queueJobs(jobs)
+                    participating_source_names.append(sn)
 
             stats.stepTimer('MasterTaskPut_2+', time.perf_counter() - start_time)
 
@@ -320,8 +324,8 @@ class Baker(object):
 
             logger.info(format_timed(
                 start_time,
-                "%d pipeline jobs completed (%s, step %d)." %
-                (job_count, realm_name, pool.userdata.cur_step)))
+                "%d jobs completed (%s)." %
+                (job_count, ', '.join(participating_source_names))))
 
             pool.userdata.cur_step += 1
 
