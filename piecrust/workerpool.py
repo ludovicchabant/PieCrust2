@@ -178,15 +178,15 @@ def _real_worker_func_unsafe(params):
 
             for td in task_data_list:
                 try:
-                    res = w.process(td)
-                    result_list.append((td, res, True))
+                    worker_res = w.process(td)
+                    result_list.append((td, worker_res, True))
                 except Exception as e:
                     logger.debug(
                         "Error processing job, sending exception to main process:")
                     logger.debug(traceback.format_exc())
                     we = _get_worker_exception_data(wid)
-                    res = (td, we, False)
-                    result_list.append((td, res, False))
+                    error_res = (td, we, False)
+                    result_list.append((td, error_res, False))
 
             res = (task_type, wid, result_list)
             put_start_time = time.perf_counter()
@@ -384,9 +384,9 @@ class WorkerPool:
 
         return True
 
-    def _onTaskDone(self):
+    def _onTaskDone(self, done_count):
         with self._lock_jobs_left:
-            left = self._jobs_left - 1
+            left = self._jobs_left - done_count
             self._jobs_left = left
 
         if left == 0:
@@ -431,8 +431,8 @@ class WorkerPool:
                 except Exception as ex:
                     logger.exception(ex)
 
-            if task_type == TASK_JOB:
-                pool._onTaskDone()
+            if task_type == TASK_JOB or task_type == TASK_JOB_BATCH:
+                pool._onTaskDone(len(res_data_list))
 
 
 class _ReportHandler:
