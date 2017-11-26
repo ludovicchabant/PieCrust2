@@ -16,13 +16,13 @@ class HoedownFormatter(Formatter):
     def render(self, format_name, txt):
         assert format_name in self.FORMAT_NAMES
         self._ensureInitialized()
-        return self._formatter.render(txt)
+        return self._formatter(txt)
 
     def _ensureInitialized(self):
         if self._formatter is not None:
             return
 
-        import hoedown
+        import misaka
 
         # Don't show warnings once for each worker when baking, so only
         # show them for the first. If the variable is not set, we're not
@@ -55,18 +55,18 @@ class HoedownFormatter(Formatter):
         other = 0
         for n in extensions:
             # Try an extension?
-            e = getattr(hoedown, 'EXT_' + n.upper(), None)
+            e = getattr(misaka, 'EXT_' + n.upper(), None)
             if e is not None:
                 exts |= e
                 continue
 
             # Try a render flag?
-            f = getattr(hoedown, 'HTML_' + n.upper(), None)
+            f = getattr(misaka, 'HTML_' + n.upper(), None)
             if f is not None:
                 rdrf |= f
 
             # Other flag?
-            f = getattr(hoedown, 'TABLE_' + n.upper(), None)
+            f = getattr(misaka, 'TABLE_' + n.upper(), None)
             if f is not None:
                 other |= f
 
@@ -81,9 +81,9 @@ class HoedownFormatter(Formatter):
                 t = [t]
             for i in t:
                 if i.startswith('EXT_'):
-                    exts |= getattr(hoedown, i)
+                    exts |= getattr(misaka, i)
                 elif i.startswith('HTML_'):
-                    rdrf |= getattr(hoedown, i)
+                    rdrf |= getattr(misaka, i)
                 elif show_warnings:
                     logger.warning("Unknown Hoedown Markdown extension or flag:"
                                    "%s" % n)
@@ -97,11 +97,10 @@ class HoedownFormatter(Formatter):
                     "specific extensions.")
 
         # Enable a few things by default.
-        exts |= hoedown.EXT_NO_INTRA_EMPHASIS
+        exts |= misaka.EXT_NO_INTRA_EMPHASIS
 
-        renderer = hoedown.HtmlRenderer(flags=rdrf)
-        self._formatter = hoedown.Markdown(
-                renderer, extensions=(exts | other))
+        renderer = misaka.HtmlRenderer(flags=rdrf)
+        self._formatter = misaka.Markdown(renderer, extensions=(exts | other))
 
 
 ext_translate = {
