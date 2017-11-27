@@ -68,8 +68,7 @@ def build_page_data(ctx):
     # Put the site data first so that `MergedMapping` doesn't load stuff
     # for nothing just to find a value that was in the YAML config all
     # along.
-    data = MergedMapping([site_data, data, providers_data],
-                         stats=app.env.stats)
+    data = MergedMapping([site_data, data, providers_data])
 
     # Do this at the end because we want all the data to be ready to be
     # displayed in the debugger window.
