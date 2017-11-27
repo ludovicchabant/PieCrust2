@@ -204,7 +204,6 @@ class MemCache(object):
             fs_key = _make_fs_cache_key(key)
             if (fs_key not in self._invalidated_fs_items and
                     self.fs_cache.isValid(fs_key, fs_cache_time)):
-                logger.debug("'%s' found in file-system cache." % key)
                 with self.fs_cache.openRead(fs_key, mode='rb') as fp:
                     item = pickle.load(fp)
                 self.cache.put(key, item)
@@ -212,7 +211,6 @@ class MemCache(object):
                 return item
 
         # Look into the mem-cache.
-        logger.debug("'%s' not found in cache, must build." % key)
         item = item_maker()
         self.cache.put(key, item)
         self._last_access_hit = False
