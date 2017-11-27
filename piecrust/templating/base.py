@@ -27,6 +27,9 @@ class TemplateEngine(object):
     def initialize(self, app):
         self.app = app
 
+    def populateCache(self):
+        pass
+
     def renderSegment(self, path, segment, data):
         raise NotImplementedError()
 

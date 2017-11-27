@@ -54,8 +54,7 @@ class Baker(object):
 
         stats = self.app.env.stats
         stats.registerTimer('LoadSourceContents', raise_if_registered=False)
-        stats.registerTimer('MasterTaskPut_1', raise_if_registered=False)
-        stats.registerTimer('MasterTaskPut_2+', raise_if_registered=False)
+        stats.registerTimer('CacheTemplates', raise_if_registered=False)
 
         # Make sure the output directory exists.
         if not os.path.isdir(self.out_dir):
@@ -98,8 +97,9 @@ class Baker(object):
         # Done with all the setup, let's start the actual work.
         logger.info(format_timed(start_time, "setup baker"))
 
-        # Load all sources.
+        # Load all sources, pre-cache templates.
         self._loadSources(ppmngr)
+        self._populateTemplateCaches()
 
         # Bake the realms.
         self._bakeRealms(pool, ppmngr, record_histories)
@@ -216,9 +216,18 @@ class Baker(object):
                     rec.addEntry(e)
 
         stats = self.app.env.stats
-        stats.stepTimer('LoadSourceContents',
-                        time.perf_counter() - start_time)
+        stats.stepTimer('LoadSourceContents', time.perf_counter() - start_time)
         logger.info(format_timed(start_time, "loaded site content"))
+
+    def _populateTemplateCaches(self):
+        start_time = time.perf_counter()
+
+        for eng in self.app.plugin_loader.getTemplateEngines():
+            eng.populateCache()
+
+        stats = self.app.env.stats
+        stats.stepTimer('CacheTemplates', time.perf_counter() - start_time)
+        logger.info(format_timed(start_time, "cache templates"))
 
     def _bakeRealms(self, pool, ppmngr, record_histories):
         # Bake the realms -- user first, theme second, so that a user item
@@ -272,8 +281,6 @@ class Baker(object):
                 "(%s, step 0)." %
                 (new_job_count, src.name, pp.PIPELINE_NAME, realm_name))
 
-        stats.stepTimer('MasterTaskPut_1', time.perf_counter() - start_time)
-
         if job_count == 0:
             logger.debug("No jobs queued! Bailing out of this bake pass.")
             return
@@ -314,8 +321,6 @@ class Baker(object):
                     pool.userdata.next_step_jobs[sn] = []
                     pool.queueJobs(jobs)
                     participating_source_names.append(sn)
-
-            stats.stepTimer('MasterTaskPut_2+', time.perf_counter() - start_time)
 
             if job_count == 0:
                 break

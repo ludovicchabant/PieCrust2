@@ -50,7 +50,6 @@ class PieCrust(object):
         stats.registerTimer("PageRenderSegments")
         stats.registerTimer("PageRenderLayout")
         stats.registerTimer("PageSerialize")
-        stats.registerTimer("MergedMapping_get")
         stats.registerCounter('PageLoads')
         stats.registerCounter('PageRenderSegments')
         stats.registerCounter('PageRenderLayout')
