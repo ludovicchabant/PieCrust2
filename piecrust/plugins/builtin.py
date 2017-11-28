@@ -97,10 +97,12 @@ class BuiltInPlugin(PieCrustPlugin):
             BlogDataProvider]
 
     def getTemplateEngines(self):
+        from piecrust.templating.inukshukengine import InukshukTemplateEngine
         from piecrust.templating.jinjaengine import JinjaTemplateEngine
         from piecrust.templating.pystacheengine import PystacheTemplateEngine
 
         return [
+            InukshukTemplateEngine(),
             JinjaTemplateEngine(),
             PystacheTemplateEngine()]
 
