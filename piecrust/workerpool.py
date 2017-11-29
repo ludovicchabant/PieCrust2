@@ -310,6 +310,10 @@ class WorkerPool:
 
         stats.stepTimerSince('MasterInit', init_start_time)
 
+    @property
+    def pool_size(self):
+        return len(self._pool)
+
     def queueJobs(self, jobs):
         if self._closed:
             if self._error_on_join:

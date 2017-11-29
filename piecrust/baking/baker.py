@@ -98,8 +98,11 @@ class Baker(object):
         logger.info(format_timed(start_time, "setup baker"))
 
         # Load all sources, pre-cache templates.
+        load_start_time = time.perf_counter()
+        self._startPopulateTemplateCaches(pool)
         self._loadSources(ppmngr)
-        self._populateTemplateCaches()
+        self._endPopulateTemplateCache(pool)
+        logger.info(format_timed(load_start_time, "loaded site content"))
 
         # Bake the realms.
         self._bakeRealms(pool, ppmngr, record_histories)
@@ -206,8 +209,6 @@ class Baker(object):
         return ppmngr
 
     def _loadSources(self, ppmngr):
-        start_time = time.perf_counter()
-
         for ppinfo in ppmngr.getPipelineInfos():
             rec = ppinfo.record_history.current
             rec_entries = ppinfo.pipeline.loadAllContents()
@@ -215,19 +216,29 @@ class Baker(object):
                 for e in rec_entries:
                     rec.addEntry(e)
 
-        stats = self.app.env.stats
-        stats.stepTimer('LoadSourceContents', time.perf_counter() - start_time)
-        logger.info(format_timed(start_time, "loaded site content"))
+    def _startPopulateTemplateCaches(self, pool):
+        # If we can, cache templates in a worker process, so we can load
+        # the sources' pages in the main process in the meantime.
+        # But if we don't have any workers, well, we'll have to make do
+        # in the `_endPopulateTemplateCache` method.
+        if pool.pool_size == 0:
+            return
 
-    def _populateTemplateCaches(self):
-        start_time = time.perf_counter()
+        pool._callback = None
+        pool._error_callback = None
+        job = {'job_spec': ('__special__', 'populate_template_cache')}
+        pool.queueJobs([job])
 
-        for eng in self.app.plugin_loader.getTemplateEngines():
-            eng.populateCache()
-
-        stats = self.app.env.stats
-        stats.stepTimer('CacheTemplates', time.perf_counter() - start_time)
-        logger.info(format_timed(start_time, "cache templates"))
+    def _endPopulateTemplateCache(self, pool):
+        if pool.pool_size == 0:
+            # No workers... load the templates synchronously.
+            for eng in self.app.plugin_loader.getTemplateEngines():
+                eng.populateCache()
+        else:
+            # Wait for the job to finish.
+            pool.wait()
+            pool._callback = self._handleWorkerResult
+            pool._error_callback = self._handleWorkerError
 
     def _bakeRealms(self, pool, ppmngr, record_histories):
         # Bake the realms -- user first, theme second, so that a user item
