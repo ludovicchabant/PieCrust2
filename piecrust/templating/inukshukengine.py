@@ -9,7 +9,7 @@ from piecrust.templating.base import (
 
 logger = logging.getLogger(__name__)
 
-_profile = True
+_profile = False
 
 
 class InukshukTemplateEngine(TemplateEngine):
