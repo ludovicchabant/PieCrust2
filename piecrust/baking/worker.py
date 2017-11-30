@@ -80,15 +80,6 @@ class BakeWorker(IWorker):
         source_name, item_spec = job['job_spec']
         logger.debug("Received job: %s@%s" % (source_name, item_spec))
 
-        # Check for special jobs.
-        if source_name == '__special__':
-            if item_spec == 'populate_template_cache':
-                for eng in self.app.plugin_loader.getTemplateEngines():
-                    eng.populateCache()
-            else:
-                raise Exception("Unknown special job: %s" % item_spec)
-            return {}
-
         # Run the job!
         job_start = time.perf_counter()
         pp = self.ppmngr.getPipeline(source_name)

@@ -103,9 +103,10 @@ class PipelineJobResultHandleContext:
         This is run on the master process, so it can access the current
         record.
     """
-    def __init__(self, record, job, step_num):
+    def __init__(self, record, job, pass_num, step_num):
         self.record = record
         self.job = job
+        self.pass_num = pass_num
         self.step_num = step_num
 
     @cached_property
@@ -155,9 +156,6 @@ class ContentPipeline:
 
     def initialize(self):
         pass
-
-    def loadAllContents(self):
-        return None
 
     def createJobs(self, ctx):
         return [

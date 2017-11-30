@@ -90,19 +90,17 @@ class Baker(object):
         # Create the pipelines.
         ppmngr = self._createPipelineManager(record_histories)
 
-        # Create the worker processes.
-        pool_userdata = _PoolUserData(self, ppmngr)
-        pool = self._createWorkerPool(records_path, pool_userdata)
-
         # Done with all the setup, let's start the actual work.
         logger.info(format_timed(start_time, "setup baker"))
 
         # Load all sources, pre-cache templates.
         load_start_time = time.perf_counter()
-        self._startPopulateTemplateCaches(pool)
-        self._loadSources(ppmngr)
-        self._endPopulateTemplateCache(pool)
-        logger.info(format_timed(load_start_time, "loaded site content"))
+        self._populateTemplateCaches()
+        logger.info(format_timed(load_start_time, "cache templates"))
+
+        # Create the worker processes.
+        pool_userdata = _PoolUserData(self, ppmngr)
+        pool = self._createWorkerPool(records_path, pool_userdata)
 
         # Bake the realms.
         self._bakeRealms(pool, ppmngr, record_histories)
@@ -208,37 +206,9 @@ class Baker(object):
                             "out. There's nothing to do.")
         return ppmngr
 
-    def _loadSources(self, ppmngr):
-        for ppinfo in ppmngr.getPipelineInfos():
-            rec = ppinfo.record_history.current
-            rec_entries = ppinfo.pipeline.loadAllContents()
-            if rec_entries is not None:
-                for e in rec_entries:
-                    rec.addEntry(e)
-
-    def _startPopulateTemplateCaches(self, pool):
-        # If we can, cache templates in a worker process, so we can load
-        # the sources' pages in the main process in the meantime.
-        # But if we don't have any workers, well, we'll have to make do
-        # in the `_endPopulateTemplateCache` method.
-        if pool.pool_size == 0:
-            return
-
-        pool._callback = None
-        pool._error_callback = None
-        job = {'job_spec': ('__special__', 'populate_template_cache')}
-        pool.queueJobs([job])
-
-    def _endPopulateTemplateCache(self, pool):
-        if pool.pool_size == 0:
-            # No workers... load the templates synchronously.
-            for eng in self.app.plugin_loader.getTemplateEngines():
-                eng.populateCache()
-        else:
-            # Wait for the job to finish.
-            pool.wait()
-            pool._callback = self._handleWorkerResult
-            pool._error_callback = self._handleWorkerError
+    def _populateTemplateCaches(self):
+        for eng in self.app.plugin_loader.getTemplateEngines():
+            eng.populateCache()
 
     def _bakeRealms(self, pool, ppmngr, record_histories):
         # Bake the realms -- user first, theme second, so that a user item
@@ -261,6 +231,7 @@ class Baker(object):
                    pp_pass_num, realm, pplist):
         # Start with the first step, where we iterate on the content sources'
         # items and run jobs on those.
+        pool.userdata.cur_pass = pp_pass_num
         pool.userdata.cur_step = 0
         next_step_jobs = {}
         pool.userdata.next_step_jobs = next_step_jobs
@@ -381,6 +352,7 @@ class Baker(object):
         return pool
 
     def _handleWorkerResult(self, job, res, userdata):
+        cur_pass = userdata.cur_pass
         cur_step = userdata.cur_step
         source_name, item_spec = job['job_spec']
 
@@ -394,7 +366,8 @@ class Baker(object):
         ppinfo = userdata.ppmngr.getPipelineInfo(source_name)
         pipeline = ppinfo.pipeline
         record = ppinfo.current_record
-        ppmrctx = PipelineJobResultHandleContext(record, job, cur_step)
+        ppmrctx = PipelineJobResultHandleContext(record, job, cur_pass,
+                                                 cur_step)
         pipeline.handleJobResult(res, ppmrctx)
 
         # Set the overall success flags if there was an error.
@@ -430,6 +403,7 @@ class _PoolUserData:
         self.baker = baker
         self.ppmngr = ppmngr
         self.records = ppmngr.record_histories.current
+        self.cur_pass = 0
         self.cur_step = 0
         self.next_step_jobs = {}
 
