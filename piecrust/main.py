@@ -316,8 +316,9 @@ def _run_chef(pre_args, argv):
         return 0
 
     # Add some timing information.
-    app.env.stats.registerTimer('ChefStartup')
-    app.env.stats.stepTimerSince('ChefStartup', _chef_start_time)
+    if app.env:
+        app.env.stats.registerTimer('ChefStartup')
+        app.env.stats.stepTimerSince('ChefStartup', _chef_start_time)
 
     # Run the command!
     ctx = CommandContext(appfactory, app, parser, result)
