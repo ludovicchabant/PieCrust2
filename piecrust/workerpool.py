@@ -158,13 +158,17 @@ def _real_worker_func_unsafe(params):
     completed = 0
     time_in_get = 0
     time_in_put = 0
+    is_first_get = True
     get = params.inqueue.get
     put = params.outqueue.put
 
     while True:
         get_start_time = time.perf_counter()
         task = get()
-        time_in_get += (time.perf_counter() - get_start_time)
+        if not is_first_get:
+            time_in_get += (time.perf_counter() - get_start_time)
+        else:
+            is_first_get = False
 
         task_type, task_data = task
 
@@ -185,8 +189,7 @@ def _real_worker_func_unsafe(params):
                     logger.debug(
                         "Error processing job, sending exception to main process:")
                     logger.debug(traceback.format_exc())
-                    we = _get_worker_exception_data(wid)
-                    error_res = (td, we, False)
+                    error_res = _get_worker_exception_data(wid)
                     result_list.append((td, error_res, False))
 
             res = (task_type, wid, result_list)
@@ -199,8 +202,10 @@ def _real_worker_func_unsafe(params):
         # End task... gather stats to send back to the main process.
         elif task_type == TASK_END:
             logger.debug("Worker %d got end task, exiting." % wid)
-            stats.registerTimer('WorkerTaskGet', time=time_in_get)
-            stats.registerTimer('WorkerResultPut', time=time_in_put)
+            stats.registerTimer('Worker_%d_TaskGet' % wid, time=time_in_get)
+            stats.registerTimer('Worker_all_TaskGet', time=time_in_get)
+            stats.registerTimer('Worker_%d_ResultPut' % wid, time=time_in_put)
+            stats.registerTimer('Worker_all_ResultPut', time=time_in_put)
             try:
                 stats.mergeStats(w.getStats())
                 stats_data = stats.toData()
@@ -490,7 +495,7 @@ class _ReportHandler:
                 self._event.set()
 
     def _handleError(self, job, res, _):
-        logger.error("Worker %d failed to send its report." % res.wid)
+        logger.error("Worker %d failed to send its report." % res[0])
         logger.error(res)
 
 

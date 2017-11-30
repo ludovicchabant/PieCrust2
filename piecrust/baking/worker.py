@@ -43,8 +43,8 @@ class BakeWorker(IWorker):
         app.env.fs_cache_only_for_main_page = True
 
         stats = app.env.stats
-        stats.registerTimer("BakeWorker_%d_Total" % self.wid)
-        stats.registerTimer("BakeWorkerInit")
+        stats.registerTimer("Worker_%d_Total" % self.wid)
+        stats.registerTimer("Worker_%d_Init" % self.wid)
 
         self.app = app
         self.stats = stats
@@ -74,7 +74,8 @@ class BakeWorker(IWorker):
             stats.registerTimer("PipelineJobs_%s" % pname,
                                 raise_if_registered=False)
 
-        stats.stepTimerSince("BakeWorkerInit", self._work_start_time)
+        stats.stepTimerSince(
+            "Worker_%d_Init" % self.wid, self._work_start_time)
 
     def process(self, job):
         source_name, item_spec = job['job_spec']
@@ -98,7 +99,7 @@ class BakeWorker(IWorker):
 
     def getStats(self):
         stats = self.app.env.stats
-        stats.stepTimerSince("BakeWorker_%d_Total" % self.wid,
+        stats.stepTimerSince("Worker_%d_Total" % self.wid,
                              self._work_start_time)
         return stats
 
