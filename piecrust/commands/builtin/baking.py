@@ -75,6 +75,9 @@ class BakeCommand(ChefCommand):
                 import gc
                 gc.collect()
                 logger.info("---- %d/%d ----" % (i + 1, num_iter))
+                # Don't cheat -- the app instance caches a bunch of stuff
+                # so we need to create a fresh one.
+                ctx.app = ctx.appfactory.create()
 
             try:
                 records = self._doBake(ctx, out_dir)
