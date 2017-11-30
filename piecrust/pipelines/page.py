@@ -64,6 +64,7 @@ class PagePipeline(ContentPipeline):
         history = ctx.record_histories.getHistory(ctx.record_name).copy()
         history.build()
 
+        pass_num = ctx.pass_num
         record = ctx.current_record
         record.user_data['dirty_source_names'] = set()
 
@@ -98,7 +99,7 @@ class PagePipeline(ContentPipeline):
                     logger.error(
                         "Page '%s' would get baked to '%s' "
                         "but is overriden by '%s'." %
-                        (enrty.item_spec, path, override_entry.item_spec))
+                        (cur.item_spec, path, override_entry.item_spec))
                 else:
                     logger.debug(
                         "Page '%s' would get baked to '%s' "
@@ -109,7 +110,8 @@ class PagePipeline(ContentPipeline):
                 continue
 
             # Nope, all good, let's create a job for this item.
-            jobs.append(create_job(self, cur.item_spec))
+            jobs.append(create_job(self, cur.item_spec,
+                                   pass_num=pass_num))
 
         if len(jobs) > 0:
             return jobs
@@ -161,11 +163,12 @@ class PagePipeline(ContentPipeline):
         return None
 
     def handleJobResult(self, result, ctx):
+        pass_num = ctx.pass_num
         step_num = ctx.step_num
 
-        if step_num == 0:
-            print(result)
+        if pass_num == 0:
             new_entry = self.createRecordEntry(result['item_spec'])
+            new_entry.flags = result['flags']
             new_entry.config = result['config']
             new_entry.route_params = result['route_params']
             new_entry.timestamp = result['timestamp']
@@ -180,19 +183,23 @@ class PagePipeline(ContentPipeline):
     def run(self, job, ctx, result):
         pass_num = job.get('pass_num', 0)
         step_num = job.get('step_num', 0)
+
         if pass_num == 0:
             if step_num == 0:
-                self._loadPage(job, ctx, result)
-            elif step_num == 1:
-                self._renderOrPostpone(job, ctx, result)
-            elif step_num == 2:
-                self._renderAlways(job, ctx, result)
-            else:
-                raise Exception("Unexpected pipeline step: %d" % step_num)
+                return self._loadPage(job, ctx, result)
+
         elif pass_num == 1:
-            self._renderAlways(job, ctx, result)
-        else:
-            raise Exception("Unexpected pipeline pass: %d" % pass_num)
+            if step_num == 0:
+                return self._renderOrPostpone(job, ctx, result)
+            elif step_num == 1:
+                return self._renderAlways(job, ctx, result)
+
+        elif pass_num == 2:
+            if step_num == 0:
+                return self._renderAlways(job, ctx, result)
+
+        raise Exception("Unexpected pipeline pass/step: %d/%d" %
+                        (pass_num, step_num))
 
     def getDeletions(self, ctx):
         for prev, cur in ctx.record_history.diffs:
@@ -216,20 +223,15 @@ class PagePipeline(ContentPipeline):
         content_item = content_item_from_job(self, job)
         page = self.app.getPage(self.source, content_item)
 
-        trigger_next_job = True
         result['flags'] = PagePipelineRecordEntry.FLAG_NONE
         result['config'] = page.config.getAll()
-        result['route_params'] = item.metadata['route_params']
+        result['route_params'] = content_item.metadata['route_params']
         result['timestamp'] = page.datetime.timestamp()
 
         if page.was_modified:
             result['flags'] |= PagePipelineRecordEntry.FLAG_SOURCE_MODIFIED
         if page.config.get(self._draft_setting):
             result['flags'] |= PagePipelineRecordEntry.FLAG_IS_DRAFT
-            trigger_next_job = False
-
-        if trigger_next_job:
-            result['next_step_job'] = create_job(self, content_item.spec)
 
     def _renderOrPostpone(self, job, ctx, result):
         # Here our job is to render the page's segments so that they're
@@ -240,7 +242,7 @@ class PagePipeline(ContentPipeline):
         logger.debug("Conditional render for: %s" % content_item.spec)
         page = self.app.getPage(self.source, content_item)
         if page.config.get(self._draft_setting):
-            return
+            raise Exception("Shouldn't have a draft page in a render job!")
 
         prev_entry = ctx.previous_entry
 

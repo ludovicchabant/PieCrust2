@@ -359,6 +359,7 @@ class Baker(object):
         # See if there's a next step to take.
         npj = res.get('next_step_job')
         if npj is not None:
+            npj['pass_num'] = cur_pass
             npj['step_num'] = cur_step + 1
             userdata.next_step_jobs[source_name].append(npj)
 
