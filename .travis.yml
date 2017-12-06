@@ -3,6 +3,7 @@ language: python
 python:
   - "3.4"
   - "3.5"
+  - "3.6"
 install:
   - "python setup.py version -f 2.0"
   - "python setup.py sdist --formats=zip"
