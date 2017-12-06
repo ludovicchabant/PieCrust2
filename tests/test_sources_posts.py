@@ -1,6 +1,7 @@
 import os.path
 import pytest
 from .mockutil import mock_fs, mock_fs_scope
+from .pathutil import slashfix
 
 
 @pytest.mark.parametrize(
@@ -39,7 +40,7 @@ def test_post_source_items(fs_fac, src_type, expected_paths,
         s = app.getSource('test')
         items = list(s.getAllContents())
         paths = [os.path.relpath(f.spec, s.fs_endpoint_path) for f in items]
-        assert paths == expected_paths
+        assert paths == slashfix(expected_paths)
         metadata = [
             (f.metadata['route_params']['year'],
              f.metadata['route_params']['month'],
