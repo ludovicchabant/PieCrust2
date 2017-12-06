@@ -35,11 +35,14 @@ class PagePipeline(ContentPipeline):
         self._pagebaker.startWriterQueue()
 
     def createJobs(self, ctx):
-        if ctx.pass_num == 0:
+        pass_num = ctx.pass_num
+        if pass_num == 0:
             return self._createLoadJobs(ctx)
-        if ctx.pass_num == 1:
+        if pass_num == 1:
             return self._createSecondPassJobs(ctx)
-        return self._createThirdPassJobs(ctx)
+        if pass_num == 2:
+            return self._createThirdPassJobs(ctx)
+        raise Exception("Unexpected pipeline pass: %d" % pass_num)
 
     def _createLoadJobs(self, ctx):
         # Here we load all the pages in the source, making sure they all
@@ -77,11 +80,15 @@ class PagePipeline(ContentPipeline):
             if cur.flags & PagePipelineRecordEntry.FLAG_IS_DRAFT:
                 continue
 
-            # Skip pages that are known to use other sources... we'll
-            # schedule them in the second pass.
+            # For pages that are known to use other sources, we make a dummy
+            # job that will effectively get directly passed on to the next
+            # step.
             if prev:
                 usn1, usn2 = prev.getAllUsedSourceNames()
                 if usn1 or usn2:
+                    jobs.append(create_job(self, cur.item_spec,
+                                           pass_num=pass_num,
+                                           uses_sources=True))
                     continue
 
             # Check if this item has been overriden by a previous pipeline
@@ -167,6 +174,8 @@ class PagePipeline(ContentPipeline):
         step_num = ctx.step_num
 
         if pass_num == 0:
+            # Just went through a "load page" job. Let's create a record
+            # entry with the information we got from the worker.
             new_entry = self.createRecordEntry(result['item_spec'])
             new_entry.flags = result['flags']
             new_entry.config = result['config']
@@ -174,6 +183,7 @@ class PagePipeline(ContentPipeline):
             new_entry.timestamp = result['timestamp']
             ctx.record.addEntry(new_entry)
         else:
+            # Update the entry with the new information.
             existing = ctx.record_entry
             merge_job_result_into_record_entry(existing, result)
 
@@ -234,6 +244,11 @@ class PagePipeline(ContentPipeline):
             result['flags'] |= PagePipelineRecordEntry.FLAG_IS_DRAFT
 
     def _renderOrPostpone(self, job, ctx, result):
+        # See if we should immediately kick this job off to the next step.
+        if job.get('uses_sources', False):
+            result['next_step_job'] = create_job(self, job['job_spec'][1])
+            return
+
         # Here our job is to render the page's segments so that they're
         # cached in memory and on disk... unless we detect that the page
         # is using some other sources, in which case we abort and we'll try

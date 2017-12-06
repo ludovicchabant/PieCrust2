@@ -107,7 +107,8 @@ class PageBaker(object):
             if bake_status == STATUS_CLEAN:
                 cur_sub_entry['render_info'] = copy.deepcopy(
                     prev_sub_entry['render_info'])
-                cur_sub_entry['flags'] = SubPageFlags.FLAG_NONE
+                cur_sub_entry['flags'] = \
+                    SubPageFlags.FLAG_COLLAPSED_FROM_LAST_RUN
 
                 if prev_entry.num_subs >= cur_sub + 1:
                     cur_sub += 1

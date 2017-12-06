@@ -10,6 +10,7 @@ class SubPageFlags:
     FLAG_FORCED_BY_PREVIOUS_ERRORS = 2**3
     FLAG_FORCED_BY_GENERAL_FORCE = 2**4
     FLAG_RENDER_CACHE_INVALIDATED = 2**5
+    FLAG_COLLAPSED_FROM_LAST_RUN = 2**6
 
 
 def create_subpage_job_result(out_uri, out_path):
@@ -146,7 +147,8 @@ sub_flag_descriptions = {
     SubPageFlags.FLAG_FORCED_BY_NO_PREVIOUS: 'forced b/c new',
     SubPageFlags.FLAG_FORCED_BY_PREVIOUS_ERRORS: 'forced by errors',
     SubPageFlags.FLAG_FORCED_BY_GENERAL_FORCE: 'manually forced',
-    SubPageFlags.FLAG_RENDER_CACHE_INVALIDATED: 'cache invalidated'
+    SubPageFlags.FLAG_RENDER_CACHE_INVALIDATED: 'cache invalidated',
+    SubPageFlags.FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run'
 }
 
 
