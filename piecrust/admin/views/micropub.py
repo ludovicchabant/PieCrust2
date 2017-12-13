@@ -69,8 +69,10 @@ def post_micropub():
     if data:
         entry_type = _mf2get(data, 'type')
         if entry_type == 'h-entry':
-            source_name, content_item = _create_hentry(data['properties'])
-            _run_publisher()
+            source_name, content_item, do_publish = \
+                _create_hentry(data['properties'])
+            if do_publish:
+                _run_publisher()
             return _get_location_response(source_name, content_item)
 
         else:
@@ -94,7 +96,8 @@ def post_micropub_media():
 
     fn = secure_filename(photo.filename)
     fn = re_unsafe_asset_char.sub('_', fn)
-    fn = '%s_%s' % (str(uuid.uuid1()), fn)
+    fn = '%s_%s' % (uuid.uuid1().hex, fn)
+    fn = fn.rstrip('_')
 
     photo_cache_dir = os.path.join(
         g.site.root_dir,
@@ -271,15 +274,16 @@ def _create_hentry(data):
             'uploads')
 
         for p_url in photo_urls:
-            _, __, p_url = p_url.rpartition('/')
-            p_path = os.path.join(photo_cache_dir, p_url)
-            p_uuid, p_fn = p_url.split('_', 1)
-            p_asset = os.path.join(photo_dir, p_fn)
-            logger.info("Moving upload '%s' to '%s'." % (p_path, p_asset))
+            _, __, p_fn = p_url.rpartition('/')
+            p_cache_path = os.path.join(photo_cache_dir, p_fn)
+            p_asset_path = os.path.join(photo_dir, p_fn)
+            logger.info("Moving upload '%s' to '%s'." %
+                        (p_cache_path, p_asset_path))
             try:
-                os.rename(p_path, p_asset)
+                os.rename(p_cache_path, p_asset_path)
             except OSError:
-                logger.error("Can't move '%s' to '%s'." % (p_path, p_asset))
+                logger.error("Can't move '%s' to '%s'." %
+                             (p_cache_path, p_asset_path))
                 raise
 
             p_fn_no_ext, _ = os.path.splitext(p_fn)
@@ -303,6 +307,7 @@ def _create_hentry(data):
             photo_names.append(fn_no_ext)
 
     # Build the config.
+    do_publish = True
     post_config = {}
     if name:
         post_config['title'] = name
@@ -314,6 +319,7 @@ def _create_hentry(data):
         post_config['reply_to'] = reply_to
     if status and status != 'published':
         post_config['draft'] = True
+        do_publish = False
     if post_format:
         post_config['format'] = post_format
     post_config['time'] = '%02d:%02d:%02d' % (now.hour, now.minute, now.second)
@@ -341,7 +347,7 @@ def _create_hentry(data):
         if photo_names:
             fp.write('\n\n')
             for pn in photo_names:
-                fp.write('<img src="{{assets.%s}}" alt="%s"/>\n\n' %
+                fp.write('<img src="{{assets["%s"]}}" alt="%s"/>\n\n' %
                          (pn, pn))
 
         if os.supports_fd:
@@ -352,5 +358,5 @@ def _create_hentry(data):
             except OSError:
                 pass
 
-    return source_name, content_item
+    return source_name, content_item, do_publish
 
