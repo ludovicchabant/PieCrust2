@@ -53,7 +53,13 @@ class HoedownFormatter(Formatter):
         exts = 0
         rdrf = 0
         other = 0
+        use_smartypants = False
         for n in extensions:
+            # Special case for Smartypants.
+            if n.lower() in ['smarty', 'smartypants']:
+                use_smartypants = True
+                continue
+
             # Try an extension?
             e = getattr(misaka, 'EXT_' + n.upper(), None)
             if e is not None:
@@ -102,15 +108,25 @@ class HoedownFormatter(Formatter):
         renderer = misaka.HtmlRenderer(flags=rdrf)
         self._formatter = misaka.Markdown(renderer, extensions=(exts | other))
 
+        if use_smartypants:
+            self._formatter = _SmartypantsFormatter(self._formatter,
+                                                    misaka.smartypants)
+
 
 ext_translate = {
         'fenced_code': 'EXT_FENCED_CODE',
         'footnotes': 'EXT_FOOTNOTES',
         'tables': 'EXT_TABLES',
         'nl2br': 'HTML_HARD_WRAP',
-        'smarty': 'HTML_SMARTYPANTS',
-        'smartypants': 'HTML_SMARTYPANTS',
         'toc': 'HTML_TOC',
         'extra': ['EXT_FENCED_CODE', 'EXT_FOOTNOTES', 'EXT_TABLES']
         }
 
+
+class _SmartypantsFormatter:
+    def __init__(self, formatter, smartier):
+        self._fmt = formatter
+        self._sp = smartier
+
+    def __call__(self, txt):
+        return self._sp(self._fmt(txt))
