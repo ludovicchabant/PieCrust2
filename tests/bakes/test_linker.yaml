@@ -9,7 +9,7 @@ outfiles:
 ---
 in:
     pages/foo.html: |
-        {%for c in family.children-%}
+        {%for c in family.children|sort(attribute='title')-%}
         {{c.title}}
         {%endfor%}
     pages/foo/one.html: |
@@ -31,7 +31,7 @@ in:
         title: Foo
         date: '2010/01/07'
         ---
-        {%for c in family.siblings-%}
+        {%for c in family.siblings|sort(attribute='title')-%}
         {{c.title}}{%if c.is_self%} SELFIE!{%endif%}
         {%endfor%}
     pages/bar.html: |
