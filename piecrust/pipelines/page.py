@@ -185,8 +185,8 @@ class PagePipeline(ContentPipeline):
         else:
             # Update the entry with the new information.
             existing = ctx.record_entry
-            merge_job_result_into_record_entry(existing, result)
-
+            if not result.get('postponed', False):
+                merge_job_result_into_record_entry(existing, result)
             if existing.was_any_sub_baked:
                 ctx.record.user_data['dirty_source_names'].add(self.source.name)
 
@@ -246,6 +246,7 @@ class PagePipeline(ContentPipeline):
     def _renderOrPostpone(self, job, ctx, result):
         # See if we should immediately kick this job off to the next step.
         if job.get('uses_sources', False):
+            result['postponed'] = True
             result['next_step_job'] = create_job(self, job['job_spec'][1])
             return
 
