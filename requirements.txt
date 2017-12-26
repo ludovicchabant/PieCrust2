@@ -16,6 +16,7 @@ MarkupSafe==1.0
 misaka==2.1.0
 packaging==16.8
 paramiko==2.0.0
+Pillow==4.3.0
 py==1.4.33
 pyasn1==0.2.3
 pycparser==2.18

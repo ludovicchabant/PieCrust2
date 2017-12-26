@@ -242,6 +242,8 @@ def _create_hentry(data):
         logger.error("Can't create item for: %s" % metadata)
         abort(500)
 
+    paths_to_commit = []
+
     # Get the media to attach to the post.
     photos = None
     if 'photo' in request.files:
@@ -273,6 +275,8 @@ def _create_hentry(data):
             CACHE_DIR, g.site.piecrust_factory.cache_key,
             'uploads')
 
+        p_thumb_size = pcapp.config.get('micropub/resize_photos', 800)
+
         for p_url in photo_urls:
             _, __, p_fn = p_url.rpartition('/')
             p_cache_path = os.path.join(photo_cache_dir, p_fn)
@@ -281,13 +285,26 @@ def _create_hentry(data):
                         (p_cache_path, p_asset_path))
             try:
                 os.rename(p_cache_path, p_asset_path)
+                paths_to_commit.append(p_asset_path)
             except OSError:
                 logger.error("Can't move '%s' to '%s'." %
                              (p_cache_path, p_asset_path))
                 raise
 
             p_fn_no_ext, _ = os.path.splitext(p_fn)
-            photo_names.append(p_fn_no_ext)
+            if p_thumb_size > 0:
+                from PIL import Image
+                im = Image.open(p_asset_path)
+                im.thumbnail((p_thumb_size, p_thumb_size))
+                p_thumb_path = os.path.join(photo_dir,
+                                            '%s_thumb.jpg' % p_fn_no_ext)
+                im.save(p_thumb_path)
+                paths_to_commit.append(p_thumb_path)
+
+                p_thumb_no_ext = '%s_thumb' % p_fn_no_ext
+                photo_names.append((p_thumb_no_ext, p_fn_no_ext))
+            else:
+                photo_names.append((p_fn_no_ext, None))
 
     # There could also be some files uploaded along with the post
     # so upload them right now.
@@ -302,9 +319,12 @@ def _create_hentry(data):
             photo_path = os.path.join(photo_dir, fn)
             logger.info("Uploading file to: %s" % photo_path)
             photo.save(photo_path)
+            paths_to_commit.append(photo_path)
+
+            # TODO: generate thumbnail.
 
             fn_no_ext, _ = os.path.splitext(fn)
-            photo_names.append(fn_no_ext)
+            photo_names.append((fn_no_ext, None))
 
     # Build the config.
     do_publish = True
@@ -331,6 +351,7 @@ def _create_hentry(data):
             merge_dicts(post_config, micro_config)
 
     logger.debug("Writing to item: %s" % content_item.spec)
+    paths_to_commit.append(content_item.spec)
     with source.openItem(content_item, mode='w', encoding='utf8') as fp:
         fp.write('---\n')
         yaml.dump(post_config, fp,
@@ -346,9 +367,15 @@ def _create_hentry(data):
 
         if photo_names:
             fp.write('\n\n')
-            for pn in photo_names:
-                fp.write('<img src="{{assets["%s"]}}" alt="%s"/>\n\n' %
-                         (pn, pn))
+            for pthumb, pfull in photo_names:
+                if pfull:
+                    fp.write('<a href="{{assets["%s"]}}">'
+                             '<img src="{{assets["%s"]}}" alt="%s"/>'
+                             '</a>\n\n' %
+                             (pfull, pthumb, pthumb))
+                else:
+                    fp.write('<img src="{{assets["%s"]}}" alt="%s"/>\n\n' %
+                             (pthumb, pthumb))
 
         if os.supports_fd:
             import stat
@@ -357,6 +384,22 @@ def _create_hentry(data):
                          stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP)
             except OSError:
                 pass
+
+    autocommit = pcapp.config.get('micropub/autocommit', False)
+    if autocommit:
+        scm = g.site.scm
+        if scm:
+            commit_msg = None
+            if isinstance(autocommit, dict):
+                commit_msg = autocommit.get('message')
+            if not commit_msg:
+                post_title = post_config.get('title')
+                if post_title:
+                    commit_msg = "New post: %s" % post_title
+                else:
+                    commit_msg = "New post"
+            logger.debug("Commit files: %s" % paths_to_commit)
+            scm.commit(paths_to_commit, commit_msg)
 
     return source_name, content_item, do_publish
 
