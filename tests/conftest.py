@@ -19,24 +19,24 @@ def pytest_runtest_setup(item):
 
 def pytest_addoption(parser):
     parser.addoption(
-        '--log-debug',
+        '--pc-log-debug',
         action='store_true',
         help="Sets the PieCrust logger to output debug info to stdout.")
     parser.addoption(
-        '--log-file',
+        '--pc-log-file',
         help="Sets the PieCrust logger to write to a file.")
     parser.addoption(
-        '--mock-debug',
+        '--pc-mock-debug',
         action='store_true',
         help="Prints contents of the mock file-system.")
     parser.addoption(
-        '--leave-mockfs',
+        '--pc-leave-mockfs',
         action='store_true',
         help="Leave the contents of the mock file-system on disk.")
 
 
 def pytest_configure(config):
-    if config.getoption('--log-debug'):
+    if config.getoption('--pc-log-debug'):
         root_logger = logging.getLogger()
         hdl = logging.StreamHandler(stream=sys.stdout)
         root_logger.addHandler(hdl)
@@ -46,13 +46,13 @@ def pytest_configure(config):
         TestFileSystemBase._use_chef_debug = True
         TestFileSystemBase._pytest_log_handler = hdl
 
-    log_file = config.getoption('--log-file')
+    log_file = config.getoption('--pc-log-file')
     if log_file:
         hdl = logging.StreamHandler(
             stream=open(log_file, 'w', encoding='utf8'))
         logging.getLogger().addHandler(hdl)
 
-    if config.getoption('--leave-mockfs'):
+    if config.getoption('--pc-leave-mockfs'):
         from .basefs import TestFileSystemBase
         TestFileSystemBase._leave_mockfs = True
 
@@ -101,7 +101,7 @@ class YamlTestItemBase(pytest.Item):
 
     @property
     def mock_debug(self):
-        return bool(self.config.getoption('--mock-debug'))
+        return bool(self.config.getoption('--pc-mock-debug'))
 
     def _prepareMockFs(self):
         fs = mock_fs()
