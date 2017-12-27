@@ -26,4 +26,3 @@ def test_loose_file():
         app = fs.getApp()
         assert sorted([p.name for p in app.plugin_loader.plugins]) == \
           sorted(['__builtin__', 'just a test plugin'])
-        assert False
