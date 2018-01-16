@@ -120,6 +120,7 @@ class BuiltInPlugin(PieCrustPlugin):
             TextileFormatter()]
 
     def getProcessors(self):
+        from piecrust.processing.browserify import BrowserifyProcessor
         from piecrust.processing.compass import CompassProcessor
         from piecrust.processing.compressors import (
             CleanCssProcessor, UglifyJSProcessor)
@@ -132,6 +133,7 @@ class BuiltInPlugin(PieCrustPlugin):
         from piecrust.processing.util import ConcatProcessor
 
         return [
+            BrowserifyProcessor(),
             CopyFileProcessor(),
             ConcatProcessor(),
             PygmentsStyleProcessor(),
