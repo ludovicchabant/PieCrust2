@@ -31,6 +31,8 @@ class HoedownFormatter(Formatter):
 
         config = self.app.config.get('hoedown')
         if config is None:
+            config = self.app.config.get('markdown')
+        if config is None:
             config = {}
         elif not isinstance(config, dict):
             raise Exception("The `hoedown` configuration setting must be "
