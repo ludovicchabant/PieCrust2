@@ -68,8 +68,6 @@ class CompassProcessor(Processor):
 
         config = self.app.config.get('compass')
         if config is None or not config.get('enable'):
-            logger.debug("Compass processing is disabled (set "
-                         "`compass/enable` to `true` to enable it).")
             self._state = self.STATE_INACTIVE
             return
 
