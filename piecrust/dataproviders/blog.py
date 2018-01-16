@@ -30,6 +30,9 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     @property
     def posts(self):
         self._buildPosts()
+        # Reset each time on access in case a page is showing 2 different
+        # lists of the same blog.
+        self._posts.reset()
         return self._posts
 
     @property
@@ -70,7 +73,7 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
     def _buildPosts(self):
         if self._posts is None:
             it = PageIterator(self._sources[0], current_page=self._page)
-            it._load_event += self._onIteration
+            self._onIteration()
             self._posts = it
 
     def _buildArchives(self):
@@ -148,11 +151,11 @@ class BlogDataProvider(DataProvider, collections.abc.Mapping):
             self._taxonomies[tax_name] = list(
                 sorted(entries.values(), key=lambda i: i.term))
 
-        self._onIteration(None)
+        self._onIteration()
 
         self._archives_built = True
 
-    def _onIteration(self, it):
+    def _onIteration(self):
         if not self._ctx_set:
             rcs = self._app.env.render_ctx_stack
             if rcs.current_ctx:
