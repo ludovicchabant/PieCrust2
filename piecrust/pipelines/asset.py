@@ -34,11 +34,12 @@ class AssetPipeline(ContentPipeline):
     def initialize(self):
         # Get the list of processors for this run.
         processors = self.app.plugin_loader.getProcessors()
-        enabled_processors = self.app.config.get('pipelines/asset/processors')
-        if enabled_processors is not None:
-            logger.debug("Filtering processors to: %s" % enabled_processors)
-            processors = get_filtered_processors(processors,
-                                                 enabled_processors)
+        for flt in [
+                self.app.config.get('pipelines/asset/processors'),
+                self.source.config.get('processors')]:
+            if flt is not None:
+                logger.debug("Filtering processors to: %s" % flt)
+                processors = get_filtered_processors(processors, flt)
 
         # Invoke pre-processors.
         proc_ctx = ProcessorContext(self)
