@@ -151,8 +151,36 @@ except ImportError:
     version = '0.0'
 
 
-install_requires = readlines('requirements.txt')
-tests_require = readlines('dev-requirements.txt')
+install_requires = [
+    'colorama>=0.3.3',
+    'compressinja>=0.0.2',
+    'Flask>=0.10.1',
+    'Flask-IndieAuth>=0.0.3.2',
+    'Flask-Login>=0.3.2',
+    'Inukshuk>=0.1.1',
+    'Jinja2>=2.9.6',
+    'Markdown>=2.6.2',
+    'MarkupSafe>=1.0',
+    'misaka>=2.1.0',
+    'paramiko>=2.0.0',
+    'Pillow>=4.3.0',
+    'Pygments>=2.0.2',
+    'pystache>=0.5.4',
+    'python-dateutil>=2.4.2',
+    'PyYAML>=3.11',
+    'repoze.lru>=0.6',
+    'smartypants>=1.8.6',
+    'strict-rfc3339>=0.5',
+    'textile>=2.2.2',
+    'Unidecode>=0.4.18',
+    'Werkzeug>=0.12.2'
+]
+tests_require = [
+    'invoke>=0.21.0',
+    'pytest>=2.8.7',
+    'pytest-cov>=2.2.1',
+    'pytest-mock>=0.10.1'
+]
 
 
 setup(
