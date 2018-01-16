@@ -8,11 +8,7 @@ import itertools
 import threading
 from piecrust import CONFIG_PATH, THEME_CONFIG_PATH
 from piecrust.chefutil import format_timed_scope
-from piecrust.pipelines.base import (
-    PipelineJobCreateContext, PipelineJobRunContext, PipelineJobResult,
-    PipelineManager)
-from piecrust.pipelines.records import (
-    MultiRecord, MultiRecordHistory)
+from piecrust.pipelines.records import MultiRecord
 
 
 logger = logging.getLogger(__name__)
@@ -152,11 +148,10 @@ class ProcessingLoop(threading.Thread):
                         found_new_or_modified = True
                         break
                 if found_new_or_modified:
-                    with format_timed_scope(
-                            logger,
-                            "change detected, reprocessed '%s'." %
-                            procinfo.source.name):
-                        self._runPipelinesSafe(procinfo.source)
+                    logger.info("change detected, reprocessed '%s'." %
+                                procinfo.source.name)
+                    self._runPipelinesSafe(procinfo.source)
+                    procinfo.last_bake_time = time.time()
 
             time.sleep(self.interval)
 
