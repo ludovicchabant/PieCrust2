@@ -26,7 +26,11 @@ class BakeCommand(ChefCommand):
             action='store_true')
         parser.add_argument(
             '-p', '--pipelines',
-            help="The pipelines to run.",
+            help="Specifies the pipelines to run.",
+            action='append')
+        parser.add_argument(
+            '-s', '--sources',
+            help="Specifies the content sources to run.",
             action='append')
         parser.add_argument(
             '-w', '--workers',
@@ -140,6 +144,7 @@ class BakeCommand(ChefCommand):
         baker = Baker(
             ctx.appfactory, ctx.app, out_dir,
             force=ctx.args.force,
+            allowed_sources=ctx.args.sources,
             allowed_pipelines=allowed_pipelines,
             forbidden_pipelines=forbidden_pipelines)
         records = baker.bake()
