@@ -396,7 +396,7 @@ class Baker(object):
 
         # Log debug stuff.
         if self.app.debug:
-            logger.error(exc_data.traceback)
+            logger.error(exc_data['traceback'])
 
 
 class _PoolUserData:
