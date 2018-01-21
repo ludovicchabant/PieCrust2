@@ -15,7 +15,7 @@ class BrowserifyProcessor(Processor):
     def __init__(self):
         super(BrowserifyProcessor, self).__init__()
         self.priority = PRIORITY_FIRST
-        self.is_bypassing_structured_processing = True
+        self.is_delegating_dependency_check = False
         self._conf = None
 
     def initialize(self, app):
@@ -36,9 +36,11 @@ class BrowserifyProcessor(Processor):
     def getDependencies(self, path):
         return FORCE_BUILD
 
+    def getOutputFilenames(self, filename):
+        return [filename]
+
     def process(self, path, out_dir):
-        _, fname = os.path.split(path)
-        out_path = os.path.join(out_dir, fname)
+        out_path = os.path.join(out_dir, os.path.basename(path))
 
         args = [self._conf['bin'], path, '-o', out_path]
         cwd = self.app.root_dir
