@@ -77,9 +77,8 @@ class FSContentSource(FSContentSourceBase):
 
         config.setdefault('data_type', 'asset_iterator')
 
-        ig, ir = _parse_ignores(config.get('ignore'))
-        self._ignore_globs = ig
-        self._ignore_regexes = ir
+        self._ignore = _parse_patterns(config.get('ignore'))
+        self._filter = _parse_patterns(config.get('filter'))
 
     def getContents(self, group):
         if not self._checkFSEndpoint():
@@ -91,34 +90,33 @@ class FSContentSource(FSContentSourceBase):
 
         names = filter(_filter_crap_files, osutil.listdir(parent_path))
 
-        final_names = []
-        for name in names:
-            path = os.path.join(parent_path, name)
-            if not self._filterIgnored(path):
-                final_names.append(name)
-
         items = []
         groups = []
-        for name in final_names:
+        for name in names:
             path = os.path.join(parent_path, name)
-            if os.path.isdir(path):
-                metadata = self._createGroupMetadata(path)
-                groups.append(ContentGroup(path, metadata))
-            else:
-                metadata = self._createItemMetadata(path)
-                items.append(ContentItem(path, metadata))
+            if self._filterPath(path):
+                if os.path.isdir(path):
+                    metadata = self._createGroupMetadata(path)
+                    groups.append(ContentGroup(path, metadata))
+                else:
+                    metadata = self._createItemMetadata(path)
+                    items.append(ContentItem(path, metadata))
         self._finalizeContent(group, items, groups)
         return items + groups
 
-    def _filterIgnored(self, path):
+    def _filterPath(self, path):
         rel_path = os.path.relpath(path, self.fs_endpoint_path)
-        for g in self._ignore_globs:
-            if fnmatch.fnmatch(rel_path, g):
+
+        if self._ignore is not None:
+            if _matches_patterns(self._ignore, rel_path):
+                return False
+
+        if self._filter is not None:
+            if _matches_patterns(self._filter, rel_path):
                 return True
-        for r in self._ignore_regexes:
-            if r.search(g):
-                return True
-        return False
+            return False
+
+        return True
 
     def _createGroupMetadata(self, path):
         return {}
@@ -179,13 +177,28 @@ class FSContentSource(FSContentSourceBase):
             RouteParameter('path', RouteParameter.TYPE_PATH)]
 
 
-def _parse_ignores(patterns):
+def _parse_patterns(patterns):
+    if not patterns:
+        return None
+
     globs = []
     regexes = []
-    if patterns:
-        for pat in patterns:
-            if len(pat) > 2 and pat[0] == '/' and pat[-1] == '/':
-                regexes.append(re.compile(pat[1:-1]))
-            else:
-                globs.append(pat)
+    for pat in patterns:
+        if len(pat) > 2 and pat[0] == '/' and pat[-1] == '/':
+            regexes.append(re.compile(pat[1:-1]))
+        else:
+            globs.append(pat)
     return globs, regexes
+
+
+def _matches_patterns(patterns, subj):
+    globs, regexes = patterns
+    if globs:
+        for g in globs:
+            if fnmatch.fnmatch(subj, g):
+                return True
+    if regexes:
+        for r in regexes:
+            if r.search(subj):
+                return True
+    return False
