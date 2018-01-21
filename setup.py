@@ -173,6 +173,7 @@ install_requires = [
     'strict-rfc3339>=0.5',
     'textile>=2.2.2',
     'Unidecode>=0.4.18',
+    'watchdog>=0.8.3',
     'Werkzeug>=0.12.2'
 ]
 tests_require = [
