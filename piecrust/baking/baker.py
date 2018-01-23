@@ -390,9 +390,11 @@ class Baker(object):
         # Add those errors to the record, if possible.
         record_entry_spec = job.get('record_entry_spec', item_spec)
         e = record.getEntry(record_entry_spec)
-        if e:
-            e.errors.append(exc_data['value'])
-            self._logWorkerException(item_spec, exc_data)
+        if not e:
+            e = pipeline.createRecordEntry(item_spec)
+            record.addEntry(e)
+        e.errors.append(exc_data['value'])
+        self._logWorkerException(item_spec, exc_data)
 
         # Log debug stuff.
         if self.app.debug:
