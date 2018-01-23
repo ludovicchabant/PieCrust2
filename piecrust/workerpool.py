@@ -79,6 +79,9 @@ def worker_func(params):
 def _real_worker_func(params):
     try:
         _real_worker_func_unsafe(params)
+    except (KeyboardInterrupt, SystemExit):
+        # Return silently
+        pass
     except Exception as ex:
         logger.exception(ex)
         msg = ("CRITICAL ERROR IN WORKER %d\n%s" % (params.wid, str(ex)))
