@@ -122,7 +122,7 @@ class ProcessingLoopBase:
             return
 
         logger.debug("Doing initial processing loop bake...")
-        # self.runPipelines()
+        self.runPipelines()
 
         self.onStart()
 
