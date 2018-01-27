@@ -152,7 +152,8 @@ class ProcessingLoopBase:
             self.appfactory, self._app, self.out_dir,
             allowed_pipelines=['asset'],
             allowed_sources=allowed_sources,
-            rotate_bake_records=False)
+            rotate_bake_records=False,
+            keep_unused_records=(allowed_sources is not None))
         records = baker.bake()
 
         self._onPipelinesRun(records)

@@ -283,10 +283,22 @@ class PipelineManager:
                         pass
                     logger.info('[delete] %s' % path)
 
-    def collapseRecords(self):
+    def collapseRecords(self, keep_unused_records=False):
+        seen_records = []
         for ppinfo in self.getPipelineInfos():
             ctx = PipelineCollapseRecordContext(ppinfo.record_history)
             ppinfo.pipeline.collapseRecords(ctx)
+            seen_records.append(ppinfo.pipeline.record_name)
+
+        if keep_unused_records:
+            cur_recs = self.record_histories.current
+            prev_recs = self.record_histories.previous
+            for prev_rec in prev_recs.records:
+                if prev_rec.name in seen_records:
+                    continue
+
+                logger.debug("Keeping record: %s" % prev_rec.name)
+                cur_recs.records.append(prev_rec)
 
     def shutdownPipelines(self):
         for ppinfo in self.getPipelineInfos():

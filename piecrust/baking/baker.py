@@ -31,7 +31,8 @@ class Baker(object):
                  allowed_pipelines=None,
                  forbidden_pipelines=None,
                  allowed_sources=None,
-                 rotate_bake_records=True):
+                 rotate_bake_records=True,
+                 keep_unused_records=False):
         self.appfactory = appfactory
         self.app = app
         self.out_dir = out_dir
@@ -40,6 +41,7 @@ class Baker(object):
         self.forbidden_pipelines = forbidden_pipelines
         self.allowed_sources = allowed_sources
         self.rotate_bake_records = rotate_bake_records
+        self.keep_unused_records = keep_unused_records
 
     def bake(self):
         start_time = time.perf_counter()
@@ -108,7 +110,7 @@ class Baker(object):
         # Handle deletions, collapse records, etc.
         ppmngr.postJobRun()
         ppmngr.deleteStaleOutputs()
-        ppmngr.collapseRecords()
+        ppmngr.collapseRecords(self.keep_unused_records)
 
         # All done with the workers. Close the pool and get reports.
         pool_stats = pool.close()
