@@ -1,5 +1,6 @@
 import os
 import os.path
+import hashlib
 import logging
 import platform
 import subprocess
@@ -15,7 +16,7 @@ class BrowserifyProcessor(Processor):
     def __init__(self):
         super(BrowserifyProcessor, self).__init__()
         self.priority = PRIORITY_FIRST
-        self.is_delegating_dependency_check = False
+        self._tmp_dir = None
         self._conf = None
 
     def initialize(self, app):
@@ -30,30 +31,69 @@ class BrowserifyProcessor(Processor):
 
         self._conf.setdefault('bin', 'browserify')
 
+    def onPipelineStart(self, ctx):
+        self._tmp_dir = ctx.tmp_dir
+
     def matches(self, path):
         return self._conf is not None and os.path.splitext(path)[1] == '.js'
 
     def getDependencies(self, path):
-        return FORCE_BUILD
+        deps_path = self._getDepListPath(path)
+        try:
+            with open(deps_path, 'r', encoding='utf8') as f:
+                deps_list = f.read()
+        except OSError:
+            logger.debug("No dependency list found for Browserify target '%s' "
+                         "at '%s'. Rebuilding" % (path, deps_path))
+            return FORCE_BUILD
+
+        deps_list = [d.strip() for d in deps_list.split('\n')]
+        return filter(lambda d: d, deps_list)
 
     def getOutputFilenames(self, filename):
         return [filename]
 
     def process(self, path, out_dir):
-        out_path = os.path.join(out_dir, os.path.basename(path))
+        # Update the dependency list file.
+        # Sadly there doesn't seem to be a way to get the list at the same
+        # time as compiling the bundle so we need to run the process twice :(
+        deps_list = self._runBrowserify([path, '--list'])
+        deps_list = deps_list.decode('utf8')
+        deps_path = self._getDepListPath(path)
+        with open(deps_path, 'w', encoding='utf8') as f:
+            f.write(deps_list)
 
-        args = [self._conf['bin'], path, '-o', out_path]
+        # Actually compile the JS bundle.
+        out_path = os.path.join(out_dir, os.path.basename(path))
+        self._runBrowserify([path, '-o', out_path])
+
+        return True
+
+    def _runBrowserify(self, args):
+        args = [self._conf['bin']] + args
         cwd = self.app.root_dir
         logger.debug("Running Browserify: %s" % ' '.join(args))
         try:
-            retcode = subprocess.call(args, cwd=cwd)
+            return subprocess.check_output(
+                args,
+                cwd=cwd,
+                stderr=subprocess.STDOUT)
         except FileNotFoundError as ex:
-            logger.error("Tried running Browserify processor "
-                         "with command: %s" % args)
+            logger.error("Tried running Browserify with command: %s" % args)
             raise Exception("Error running Browserify. "
                             "Did you install it?") from ex
-        if retcode != 0:
-            raise Exception("Error occured in Browserify compiler. "
+        except subprocess.CalledProcessError as ex:
+            logger.error("Error occured while running Browserify:")
+            logger.info(ex.stdout)
+            logger.error(ex.stderr)
+            raise Exception("Error occured while running Browserify. "
                             "Please check log messages above for "
                             "more information.")
-        return True
+
+    def _getDepListPath(self, path):
+        deps_name = "%s_%s.deps" % (
+            os.path.basename(path),
+            hashlib.md5(path.encode('utf8')).hexdigest())
+        deps_path = os.path.join(self._tmp_dir, deps_name)
+        return deps_path
+
