@@ -207,8 +207,11 @@ class Baker(object):
         return ppmngr
 
     def _populateTemplateCaches(self):
-        for eng in self.app.plugin_loader.getTemplateEngines():
-            eng.populateCache()
+        engine_name = self.app.config.get('site/default_template_engine')
+        for engine in self.app.plugin_loader.getTemplateEngines():
+            if engine_name in engine.ENGINE_NAMES:
+                engine.populateCache()
+                break
 
     def _bakeRealms(self, pool, ppmngr, record_histories):
         # Bake the realms -- user first, theme second, so that a user item
