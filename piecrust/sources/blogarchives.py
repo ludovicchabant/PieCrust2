@@ -121,9 +121,10 @@ class _MonthlyArchiveData(collections.abc.Mapping):
             posts_this_month.append(page.content_item)
 
         self._months = []
-        for m, ptm in month_index.items():
+        for m in sorted(month_index.keys()):
             timestamp = time.mktime((self._year, m, 1, 0, 0, 0, 0, 0, -1))
 
+            ptm = month_index[m]
             it = PageIterator(ListSource(self._inner_source, ptm))
             it._wrapAsSort(DateSortIterator, reverse=False)
 
