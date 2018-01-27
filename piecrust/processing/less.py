@@ -51,7 +51,7 @@ class LessProcessor(SimpleFileProcessor):
         def _makeAbs(p):
             return os.path.join(path_dir, p)
         deps = list(map(_makeAbs, sources))
-        return [map_path] + deps
+        return deps
 
     def _doProcess(self, in_path, out_path):
         self._ensureInitialized()
