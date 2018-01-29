@@ -103,10 +103,11 @@ class AutoConfigContentSource(AutoConfigContentSourceBase):
             for f in filenames:
                 slug, _ = os.path.splitext(f)
                 if slug == route_slug:
+                    metadata = self._createItemMetadata(path)
                     path = os.path.join(dirpath, f)
                     rel_path = os.path.relpath(path, self.fs_endpoint_path)
                     config = self._extractConfigFragment(rel_path)
-                    metadata = {'slug': slug, 'config': config}
+                    metadata.setdefault('config', {}).update(config)
                     return ContentItem(path, metadata)
         return None
 
@@ -170,9 +171,10 @@ class OrderedContentSource(AutoConfigContentSourceBase):
                 if not found:
                     return None
 
+        metadata = self._createItemMetadata(path)
         rel_path = os.path.relpath(path, self.fs_endpoint_path)
         config = self._extractConfigFragment(rel_path)
-        metadata = {'slug': uri_path, 'config': config}
+        metadata.setdefault('config', {}).update(config)
         return ContentItem(path, metadata)
 
     def getSorterIterator(self, it):
