@@ -1,6 +1,7 @@
 ---
 title: Support
-header_class: support
+header_class: pc-support
+nav_key: support
 ---
 
 Want to know what's new with PieCrust? Check out the [CHANGELOG][ch].

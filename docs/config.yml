@@ -5,6 +5,9 @@ site:
     tagline: Freshly baked sites & documents since 2006
     description: A static website generator and flat-file CMS
     pretty_urls: true
+    default_format: pymarkdown
+    auto_formats:
+        md: pymarkdown
     sources:
         docs:
             type: ordered
@@ -38,14 +41,8 @@ markdown:
             css_class: highlight
             guess_lang: false
 
-# Need Foundation for CSS/JS. Install with Bower.
+# Need Bootstrap.
 sass:
     load_paths:
-        - bower_components/foundation/scss
-
-# Using the Sass compiler directly now, but here's how it would look
-# like if we were using the whole Compass machinery instead.
-compass:
-    enable: false
-    options: --css-dir %out_dir%/css --generated-images-path %out_dir%/img
+        - ../node_modules/bootstrap/scss
 

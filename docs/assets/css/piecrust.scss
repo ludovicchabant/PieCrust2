@@ -1,0 +1,290 @@
+
+// Core variables and mixins
+@import "bootstrap-reboot";
+@import "bootstrap-grid";
+
+// Components
+@import "media";
+@import "nav";
+@import "navbar";
+@import "utilities";
+
+
+// Variables
+//$font-size-base:          17px;
+
+
+// Dividers
+@mixin pc-divider-img($offsetx, $offsety) {
+    @media (min-width: map-get($grid-breakpoints, 'sm')) {
+        display: inline-block;
+        content: " ";
+        background-image: url("../img/dividers.png");
+        background-repeat: no-repeat;
+        background-position: (-$offsetx) (-$offsety);
+        width: 100px;
+        height: 50px;
+
+    }
+}
+@mixin pc-divider($offset) {
+    &::before {
+        @include pc-divider-img(0, $offset);
+        margin-right: 0.5em;
+    }
+    &::after {
+        @include pc-divider-img(100px, $offset);
+        margin-left: 0.5em;
+    }
+}
+
+@mixin pc-divider1() {
+    @include pc-divider(0);
+}
+
+@mixin pc-divider1-white() {
+    @include pc-divider(50px);
+}
+
+@mixin pc-divider2() {
+    @include pc-divider(100px);
+}
+
+@mixin pc-divider3() {
+    @include pc-divider(150px);
+}
+
+
+// Icons
+$pc-icon-width: 128px;
+
+
+// Decorators
+@mixin pc-decorator($img-name, $margin-left) {
+    margin-left: $pc-icon-width;
+    &::before {
+        content: " ";
+        background-image: url($img-name);
+        background-repeat: no-repeat;
+        display: block;
+        float: left;
+        width: 128px;
+        height: 92px;
+        margin-left: -($pc-icon-width + $margin-left);
+    }
+}
+
+@mixin pc-banner($img-name) {
+    background-image: url($img-name);
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover;
+}
+
+@mixin pc-banner-header($img-name) {
+    @include pc-banner($img-name);
+    padding: 0 0 3em 0;
+    margin-bottom: 3em;
+    text-align: center;
+    color: black;
+}
+
+// Customizations
+.navbar {
+    padding: 0 1rem;
+    background: #ffffff30;
+    text-shadow: #fff 0 0 1em, #fff 0 0 .1em;
+
+    a {
+        color: #000;
+        padding: 1rem 1rem;
+        
+        &:hover {
+            color: #fff;
+            background: #000000c0 !important;
+            text-shadow: #000 0 0 1em, #000 0 0 .1em;
+        }
+    }
+    a.active {
+        background: #ffffff60;
+    }
+}
+a.navbar-brand {
+    font-family: Lobster, serif;
+    padding: (1rem / 1.25) 1rem;
+}
+
+h1 {
+    font-family: Lobster, serif;
+    font-size: 2em;
+    margin-top: 0;
+    margin-bottom: 0.375em;
+    text-shadow: #fff 0 0 1em, #fff 0 0 0.1em;
+}
+h1.site-title {
+    font-size: 5em;
+    text-align: center;
+}
+@media (min-width: map-get($grid-breakpoints, "sm")) {
+    h1 {
+        font-size: 3em;
+    }
+}
+@media (min-width: map-get($grid-breakpoints, "md")) {
+    h1 {
+        font-size: 4em;
+    }
+}
+
+h2 {
+    font-family: Lobster, serif;
+    font-size: 2.2em;
+}
+
+blockquote {
+    font-size: $font-size-base;
+    border-left: 5px solid #f00; //$brand-info;
+}
+@media (min-width: map-get($grid-breakpoints, "md")) {
+    blockquote {
+        @include pc-decorator('../img/cake.png', 5px + $line-height-base);
+        min-height: 126px;
+    }
+}
+
+header.page-title h1 {
+    @include pc-divider(150px);
+    text-align: center;
+    margin: 0.5em auto 1em;
+}
+
+footer {
+    font-size: 0.8em;
+    text-align: center;
+    margin: 2em;
+}
+
+
+// Splash-page
+.pc-splash {
+    h2 {
+        @include pc-divider2();
+        margin: 1em 0;
+        text-align: center;
+    }
+
+    .pc-splash-logo {
+        background-image: url('../img/logo.png');
+        background-repeat: no-repeat;
+        background-position: center center;
+        background-size: contain;
+        height: 275px;
+    }
+    @media (min-width: map-get($grid-breakpoints, "sm")) {
+        .pc-splash-logo {
+            height: 325px;
+        }
+    }
+    @media (min-width: map-get($grid-breakpoints, "md")) {
+        .pc-splash-logo {
+            height: 375px;
+        }
+    }
+
+    .pc-splash-main {
+        font-size: 1.1em;
+        margin: 1em 0.5em 0 0.5em;
+        padding-bottom: 2em;
+
+        p {
+            margin: 0;
+            text-shadow: #fff 0 0 1em, #fff 0 0 0.1em;
+        }
+    }
+    @media (min-width: map-get($grid-breakpoints, "sm")) {
+        .pc-splash-main {
+            font-size: 1.3em;
+            margin: 1em 2em 0 2em;
+        }
+    }
+    @media (min-width: map-get($grid-breakpoints, "md")) {
+        .pc-splash-main {
+            font-size: 1.5em;
+            width: 50%;
+            margin: 1em auto 0 auto;
+        }
+    }
+
+    .pc-splash-icon {
+        display: block;
+        margin: 0 auto;
+    }
+}
+.pc-splash.pc-header-wrapper {
+    @include pc-banner("../img/header2-bg.jpg");
+    color: black;
+}
+.pc-splash.pc-splash-chalkboard {
+    background: url("../img/chalkboard-bg.jpg");
+    color: white;
+    padding: 0.25em 0 3em 0;
+    margin: 0;
+
+    h2 {
+        @include pc-divider1-white();
+    }
+}
+
+
+// Getting-Started
+.pc-tutorial {
+    @include pc-banner-header("../img/header5-bg.jpg");
+}
+
+
+// Documentation
+.pc-documentation {
+    @include pc-banner-header("../img/header10-bg.jpg");
+}
+
+@mixin pc-docnav() {
+    list-style-type: none;
+    padding: 0;
+}
+
+ul.doc-level1 {
+    @include pc-docnav();
+
+    &>li {
+        margin-bottom: 1em;
+    }
+    &>li>a {
+        font-size: 1.1em;
+        font-weight: bold;
+    }
+
+    $doc-link-active: #f00; //darken($brand-success, 10%);
+    a.active {
+        border-left: 3px solid $doc-link-active;
+        padding-left: 0.5em;
+        color: $doc-link-active;
+    }
+}
+
+ul.doc-level2 {
+    @include pc-docnav();
+}
+
+
+// Code
+.pc-code {
+    @include pc-banner-header("../img/header7-bg.jpg");
+}
+
+
+// Support
+.pc-support {
+    @include pc-banner-header("../img/header9-bg.jpg");
+}
+
+

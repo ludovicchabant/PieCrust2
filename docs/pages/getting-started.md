@@ -1,6 +1,7 @@
 ---
 title: Getting Started
-header_class: tutorial
+header_class: pc-tutorial
+nav_key: tutorial
 ---
 
 This quick tutorial will show you how to create a simple blog with PieCrust.

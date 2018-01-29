@@ -1,18 +1,16 @@
+{% set header_class = 'pc-documentation' %}
 {% extends "default.html" %}
 
 {% block header %}
-<header class="splash">
-    <h1>PieCurst</h1>
-    <div class="splash-logo">
-    </div>
-    <div class="splash-main">
-        {{main|safe}}
-    </div>
-</header>
+<h1 class="sr-only">{{page.title}}</h1>
+<div class="pc-splash-logo"></div>
+<div class="pc-splash-main">
+    {{main|safe}}
+</div>
 {% endblock %}
 
 {% block content %}
-<section class="splash splash-chalkboard">
+<section class="pc-splash pc-splash-chalkboard">
     <div class="container">
         <h2>Chef's Features</h2>
         <div class="row">
@@ -21,21 +19,21 @@
                 {{simple|safe}}
             </div>
             <div class="col-sm-6 col-md-4">
-                <img class="splash-icon hidden-xs" src="{{site.root}}img/chef-hat-white.png" />
+                <img class="splash-icon d-none d-sm-block" src="{{site.root}}img/chef-hat-white.png" />
                 {{bake|safe}}
             </div>
-            <div class="clearfix visible-sm-block"></div>
+            <div class="clearfix d-none d-sm-block"></div>
             <div class="col-sm-6 col-md-4">
-                <img class="splash-icon hidden-sm" src="{{site.root}}img/whisk-white.png" />
+                <img class="splash-icon d-sm-none d-md-block" src="{{site.root}}img/whisk-white.png" />
                 {{ingr|safe}}
             </div>
-            <div class="clearfix visible-md-block visible-lg-block"></div>
+            <div class="clearfix d-none d-md-block"></div>
             <div class="col-sm-6 col-md-4">
                 {{oven|safe}}
             </div>
-            <div class="clearfix visible-sm-block"></div>
+            <div class="clearfix d-none d-sm-block"></div>
             <div class="col-sm-6 col-md-4">
-                <img class="splash-icon visible-xs" src="{{site.root}}img/chef-hat-white.png" />
+                <img class="splash-icon d-sm-none" src="{{site.root}}img/chef-hat-white.png" />
                 {{fast|safe}}
             </div>
             <div class="col-sm-6 col-md-4">
@@ -44,10 +42,10 @@
         </div>
     </div>
 </section>
-<section class="splash splash-board">
+<section class="pc-splash pc-splash-board">
     <div class="container">
         <div class="row">
-            <div class="col-xs-12 col-md-8 col-md-offset-2">
+            <div class="col-xs-12 col-md-9 offset-md-1 col-lg-8 offset-lg-2">
                 {{startnow|safe}}
             </div>
         </div>

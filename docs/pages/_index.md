@@ -1,6 +1,7 @@
 ---
 title: PieCrust
 layout: splash
+header_class: pc-splash
 ---
 
 ---slogan---

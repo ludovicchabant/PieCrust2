@@ -19,33 +19,20 @@
 </head>
 <body data-spy="scroll">
     <div id="wrapper">
-        <nav class="navbar navbar-default" role="navigation">
-            <div class="container">
-                <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#piecrust-menu">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
-                    <a class="navbar-brand" href="{{site.root}}">PieCrust</a>
-                </div>
-                <div class="collapse navbar-collapse" id="piecrust-menu">
-                    {% include 'inc/main-navigation.html' %}
-                </div>
-            </div>
-        </nav>
-        {% block header %}
-        <header{% if page.header_class %} class="{{page.header_class}}"{% endif %}>
-            <h1>{{ page.title }}</h1>
-        </header>
-        {% endblock %}
+        <div class="pc-header-wrapper{% if page.header_class or header_class %} {{ page.header_class|default(header_class) }}{% endif %}">
+            {% include 'inc/nav.html' %}
+            <header>
+                {% block header %}
+                <h1>{{ page.title }}</h1>
+                {% endblock %}
+            </header>
+        </div>
         {% block content %}
         <section class="container" id="content">
         {{ content|safe }}
         </section>
         {% endblock %}
-        <footer>
+        <footer class="container">
             <p>&copy;2014 &mdash; {{ piecrust.branding|safe }}</p>
         </footer>
     </div>
