@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class PaginationData(LazyPageConfigData):
-    def __init__(self, page):
+    def __init__(self, page, extra_data=None):
         super().__init__(page)
+        if extra_data:
+            self._values.update(extra_data)
 
     def _load(self):
         from piecrust.uriutil import split_uri
@@ -30,6 +32,7 @@ class PaginationData(LazyPageConfigData):
         self._mapLoader('timestamp', _load_timestamp)
         self._mapLoader('mtime', _load_content_mtime)
         self._mapLoader('assets', _load_assets)
+        self._mapLoader('family', _load_family)
 
         segment_names = page.config.get('segments')
         for name in segment_names:
@@ -40,6 +43,11 @@ class PaginationData(LazyPageConfigData):
 def _load_assets(data, name):
     from piecrust.data.assetor import Assetor
     return Assetor(data._page)
+
+
+def _load_family(data, name):
+    from piecrust.data.linker import Linker
+    return Linker(data._page.source, data._page.content_item)
 
 
 def _load_date(data, name):

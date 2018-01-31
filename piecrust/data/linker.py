@@ -41,6 +41,18 @@ class Linker:
         return None
 
     @property
+    def root(self):
+        a = self.ancestors
+        if a:
+            return a[-1]
+        return self.myself
+
+    @property
+    def myself(self):
+        page = self._source.app.getPage(self._source, self._content_item)
+        return self._makePageData(page)
+
+    @property
     def ancestors(self):
         if self._ancestors is None:
             src = self._source
@@ -53,7 +65,7 @@ class Linker:
                                             REL_LOGICAL_PARENT_ITEM)
                 if pi is not None:
                     pipage = app.getPage(src, pi)
-                    self._ancestors.append(PaginationData(pipage))
+                    self._ancestors.append(self._makePageData(pipage))
                     cur_group = src.getRelatedContents(
                         pi, REL_PARENT_GROUP)
                 else:
@@ -67,10 +79,14 @@ class Linker:
         for i in self._getAllSiblings():
             if not i.is_group:
                 ipage = app.getPage(src, i)
-                ipage_data = PaginationData(ipage)
-                ipage_data._setValue('is_self',
-                                     i.spec == self._content_item.spec)
+                ipage_data = self._makePageData(ipage)
                 yield ipage_data
+            else:
+                yield self._makeGroupData(i)
+
+    @property
+    def has_children(self):
+        return bool(self.children)
 
     @property
     def children(self):
@@ -79,7 +95,9 @@ class Linker:
         for i in self._getAllChildren():
             if not i.is_group:
                 ipage = app.getPage(src, i)
-                yield PaginationData(ipage)
+                yield self._makePageData(ipage)
+            else:
+                yield self._makeGroupData(i)
 
     def forpath(self, path):
         # TODO: generalize this for sources that aren't file-system based.
@@ -97,7 +115,9 @@ class Linker:
             for i in src.getContents(group):
                 if not i.is_group:
                     ipage = app.getPage(src, i)
-                    yield PaginationData(ipage)
+                    yield self._makePageData(ipage)
+                else:
+                    yield self._makeGroupData(i)
         return None
 
     def _getAllSiblings(self):
@@ -123,6 +143,12 @@ class Linker:
                 self._content_item, REL_PARENT_GROUP)
         return self._parent_group
 
+    def _makePageData(self, page):
+        return _PageData(self, page)
+
+    def _makeGroupData(self, group):
+        return _GroupData(self._source, group)
+
     def _debugRenderAncestors(self):
         return [i.title for i in self.ancestors]
 
@@ -132,3 +158,28 @@ class Linker:
     def _debugRenderChildren(self):
         return [i.title for i in self.children]
 
+
+class _PageData(PaginationData):
+    def __init__(self, linker, page):
+        super().__init__(page)
+        self._linker = linker
+
+    def _load(self):
+        super()._load()
+        self._mapValue('is_page', True)
+        self._mapValue(
+            'is_self',
+            self._page.content_spec == self._linker._content_item.spec)
+
+        self._mapLoader('is_dir', lambda d, n: self._linker.has_children)
+        self._mapLoader('is_group', lambda d, n: self._linker.has_children)
+
+
+class _GroupData:
+    def __init__(self, source, group_item):
+        self._source = source
+        self._group_item = group_item
+        self.is_page = False
+        self.is_dir = True
+        self.is_group = True
+        self.family = Linker(source, group_item)
