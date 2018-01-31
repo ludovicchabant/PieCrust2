@@ -161,7 +161,7 @@ class OrderedContentSource(AutoConfigContentSourceBase):
             else:
                 # Find each sub-directory. It can either be a directory with
                 # the name itself, or the name with a number prefix.
-                p_pat = r'(\d+_)?' + re.escape(p)
+                p_pat = r'(\d+_)?' + re.escape(p) + '$'
                 found = False
                 for name in os.listdir(path):
                     if re.match(p_pat, name):
@@ -181,6 +181,12 @@ class OrderedContentSource(AutoConfigContentSourceBase):
         accessor = self.getSettingAccessor()
         return OrderTrailSortIterator(it, self.setting_name + '_trail',
                                       value_accessor=accessor)
+
+    def _finalizeContent(self, parent_group, items, groups):
+        super()._finalizeContent(parent_group, items, groups)
+
+        sn = self.setting_name
+        items.sort(key=lambda i: i.metadata['config'][sn])
 
     def _extractConfigFragment(self, rel_path):
         values = []
