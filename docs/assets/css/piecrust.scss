@@ -83,7 +83,6 @@ $pc-icon-width: 128px;
 
 @mixin pc-banner-header($img-name) {
     @include pc-banner($img-name);
-    padding: 0 0 3em 0;
     margin-bottom: 3em;
     text-align: center;
     color: black;
@@ -112,6 +111,10 @@ $pc-icon-width: 128px;
 a.navbar-brand {
     font-family: Lobster, serif;
     padding: (1rem / 1.25) 1rem;
+}
+
+header {
+    padding: 3em 0;
 }
 
 h1 {
@@ -143,7 +146,6 @@ h2 {
 
 blockquote {
     font-size: $font-size-base;
-    border-left: 5px solid #f00; //$brand-info;
 }
 @media (min-width: map-get($grid-breakpoints, "md")) {
     blockquote {
@@ -167,6 +169,9 @@ footer {
 
 // Splash-page
 .pc-splash {
+    header {
+        padding: 1em 0 0 0;
+    }
     h2 {
         @include pc-divider2();
         margin: 1em 0;
@@ -263,7 +268,7 @@ ul.doc-level1 {
         font-weight: bold;
     }
 
-    $doc-link-active: #f00; //darken($brand-success, 10%);
+    $doc-link-active: darken($red, 10%);
     a.active {
         border-left: 3px solid $doc-link-active;
         padding-left: 0.5em;
