@@ -7,9 +7,13 @@ contents that you write go through a _templating_ phase, which is when a page
 can execute some logic, insert reusable bits of markup, or reference other
 pieces of content or metadata from elsewhere in your website.
 
-PieCrust uses [Jinja][] for templating. There's too much data exposed to it to
-go over on this page, but check out the [templating data reference][dataref] for
-an exhaustive list. The main pieces of data are:
+PieCrust uses [Jinja][] for templating by default. See the [template engines
+reference][tplengref] for a list of other template engines available by default
+in PieCrust.
+
+There's too much data exposed to it to go over on this page, but check out the
+[templating data reference][dataref] for an exhaustive list. The main pieces of
+data are:
 
 * `page`: the page's configuration header. So if the page has a `title`,
   `page.title` would be its value.
@@ -57,6 +61,7 @@ for the current page:
 [pageconf]: {{docurl('content/page-configuration')}}
 [siteconf]: {{docurl('general/website-configuration')}}
 [dataref]: {{docurl('reference/templating-data')}}
+[tplengref]: {{docurl('reference/template-engines')}}
 [assets]: {{docurl('content/assets')}}
 [jinja]: http://jinja.pocoo.org/docs/dev/templates/
 

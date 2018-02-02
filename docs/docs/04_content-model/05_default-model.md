@@ -12,8 +12,12 @@ content model can be tweaked to one's liking.
 
 ## Sources
 
-The default sources define the strict minimum for a personal website:
-"free-form" pages (`pages`) and blog posts (`posts`).
+The default sources define what you would expect for a personal website:
+"free-form" pages (`pages`), blog posts (`posts`), taxonomies (`tags` and
+`categories`), and yearly archives.
+
+
+### Pages
 
 First, the pages:
 
@@ -31,6 +35,9 @@ Here's a breakdown of those settings:
 * It exposes all those pages as a simple iterator (the default) at `site.pages`.
 * It defines the `item_name` so that you can prepare a new page with `chef
   prepare page`.
+
+
+### Blog posts
 
 The `posts` sources is a bit more complicated:
 
@@ -59,14 +66,12 @@ Here's what this does:
   `default`.
 
 
-## Generators
-
 ### Taxonomies
 
-The default content model defines 2 taxonomies: categories and tags. Categories
-are meant to be exclusive, _i.e._ a blog post can only have one category. Tags
-are meant to be used more freely, where a blog post can be tagged with multiple
-terms.
+The default content model defines 2 taxonomies: "categories" and "tags".
+Categories are meant to be exclusive, _i.e._ a blog post can only have one
+category. Tags are meant to be used more freely, where a blog post can be tagged
+with multiple terms.
 
 This shows up more or less like this in the website configuration:
 
@@ -79,44 +84,38 @@ This shows up more or less like this in the website configuration:
           multiple: true
           term: tag
 
-PieCrust then creates a `taxonomy` generator for each defined taxonomy
-(including custom taxonomies you added). Each taxonomy generator will look like
-this:
+PieCrust then creates a `taxonomy` source for each defined taxonomy (including
+custom taxonomies you added or changed in `sites/taxonomies`). Each taxonomy
+source will look like this:
 
     site:
-      generators:
-        posts_FOOS:
+      sources:
+        posts_TAXONOMY:
           type: taxonomy
-          taxonomy: FOOS
+          taxonomy: TAXONOMY
           source: posts
-          page: "pages:_FOO.%ext%;theme_pages:_FOO.%ext%"
+          template: _TERM.html
 
-In this example, `FOOS` is the name of the taxonomy (_e.g._: `tags`), and `FOO`
-is the `term` value (_e.g._: `tag`). If no `term` is defined, the name of the
-taxonomy is used.
+In this example, `TAXONOMY` is the name of the taxonomy (_e.g._: `tags`), and
+`TERM` is the `term` value (_e.g._: `tag`). If no `term` is defined, the name of
+the taxonomy is used.
 
-As you can see, the taxonomy index pages are set to `_category.*` and `_tag.*`
-respectively, where the extension can be any of the auto-formats (which means
-`.md`, `.textile`, and `.html` by default). They can also fall back to the same
-pages defined in the current theme (whose source name is `theme_pages`), which
-is what makes the default (built-in) PieCrust theme work, for instance.
+As you can see, the taxonomy index layout templates are set to `_category.html`
+and `_tag.html` respectively.
+
 
 ### Archives
 
-The blog archives generator is defined like this by default:
+The blog archives source is defined like this by default:
 
     site:
-      generators:
+      sources:
         posts_archives:
           type: blog_archives
           source: posts
-          page: "pages:_year.%ext%;theme_pages:_year.%ext%"
+          template: _year.html
 
-The index page for each year of archives is set to `_year.*`, where the
-extension can be any of the auto-formats (which means `.md`, `.textile`, and
-`.html` by default). It can also fall back to the same page defined in the
-current theme (whose source name is `theme_pages`), which is what makes the
-default (built-in) PieCrust theme work, for instance.
+The index layout template for each year of archives is set to `_year.html`.
 
 
 ## Routes
@@ -126,27 +125,27 @@ roughly like such:
 
     - url: /%path:slug%
       source: pages
-      func: pcurl(slug)
+      func: pcurl
 
     - url: /%year%/%month%/%day%/%slug%
       source: posts
-      func: pcposturl(year,month,day,slug)
+      func: pcposturl
 
     - url: /archives/%year%
-      generator: posts_archives
-      func: pcyearurl(year)
+      source: posts_archives
+      func: pcyearurl
 
     - url: /tag/%tag%
-      generator: posts_tags
-      func: pctagurl(tag)
+      source: posts_tags
+      func: pctagurl
 
     - url: /category/%category%
-      generator: posts_categories
-      func: pccaturl(category)
+      source: posts_categories
+      func: pccaturl
 
     - url: /%path:slug%
       source: theme_pages
-      func: pcurl(slug)
+      func: pcurl
 
 Let's go through it:
 
@@ -160,9 +159,9 @@ Let's go through it:
   more than one blog in `site/blogs`, there will be more than one route for
   posts, and the route will be rooted with `/<blogname>`.
 
-* The next route is for the blog archives generator.
+* The next route is for the blog archives source.
 
-* There are then routes for the taxonomy generators. By default, there are
+* There are then routes for the taxonomy sources. By default, there are
   2 taxonomies (tags and categories) so that's 2 routes.
 
 * All routes define some URL functions for use in your pages and templates

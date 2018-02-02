@@ -1,5 +1,5 @@
 ---
-title: "Appendix 8: Publishers"
+title: "Appendix 9: Publishers"
 short_title: "Publishers"
 ---
 

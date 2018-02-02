@@ -3,11 +3,11 @@
 {%- endmacro %}
 
 <ul class="doc-level1">
-{% for p in family.root %}
+{% for p in family.root.family.siblings %}
 {% if p.is_dir and p.is_page %}
     <li>{{ pagelink(p.title, p.url) }}
         <ul class="doc-level2">
-        {% for p2 in p.children %}
+        {% for p2 in p.family.children %}
             <li>{{ pagelink(p2.title, p2.url) }}</li>
         {% endfor %}
         </ul>

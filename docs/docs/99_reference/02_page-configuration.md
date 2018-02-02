@@ -23,7 +23,8 @@ header.
   sources, already set the date using the page's filename.
 
 * `format`: Specifies what formatter to use to render this page. Defaults to
-  `site/default_format`, which defaults to Markdown.
+  `site/default_format`, which defaults to Markdown. For a list of valid
+  formatter names, see the [formatters reference][fmtref].
 
 * `items_per_page`: Defines how many items to include per page when using the
   `pagination` data endpoint.
@@ -49,3 +50,4 @@ header.
   setting, whether it was set through the configuration header, or by the
   source.
 
+[fmtref]: {{docurl('reference/formatters')}}

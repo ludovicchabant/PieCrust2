@@ -1,5 +1,6 @@
 ---
 title: Filtering
+needs_pygments: true
 ---
 
 The PieCrust filtering syntax can be used to select items returned by an

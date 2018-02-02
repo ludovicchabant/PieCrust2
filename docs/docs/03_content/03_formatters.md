@@ -21,6 +21,8 @@ If unspecified, the extension of the page file is matched against the
 Otherwise, the `site/default_format` setting in the site configuration will be
 used, and that's Markdown by default.
 
+For a list of valid formatter names, see the [formatters reference][fmtref].
+
 
 
 [how]: {{docurl('general/how-it-works')}}
@@ -28,4 +30,5 @@ used, and that's Markdown by default.
 [siteconf]: {{docurl('general/website-configuration')}}
 [markdown]: https://en.wikipedia.org/wiki/Markdown
 [textile]: https://en.wikipedia.org/wiki/Textile_(markup_language)
+[fmtref]: {{docurl('reference/formatters')}}
 

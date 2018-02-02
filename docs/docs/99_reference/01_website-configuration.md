@@ -16,6 +16,16 @@ given between parenthesis:
   that maps an extension to a format name. This makes it possible to use certain
   file extensions for pages, like `.md` for Markdown content or `.textile` for
   Textile content.
+  
+  Defaults to:
+
+  ```
+  auto_formats:
+    md: markdown
+    textile: textile
+  ```
+
+  See the [formatters reference][fmtref] for a list of valid formatter names.
 
 * `blogs` (`['blog']`): When using the default content model, the list of blogs
   for which to create posts sources.
@@ -42,6 +52,8 @@ given between parenthesis:
   using the default content model.
 
 * `default_template_engine` (`jinja`): Specifies what template engine to use.
+  See the [template engines reference][tplengref] for a list of valid engine
+  names.
 
 * `enable_debug_info` (`true`): If you’re using PieCrust in dynamic CMS mode,
   visitors could use the debugging features to expose potentially private
@@ -120,6 +132,8 @@ given between parenthesis:
 
 [fmt]: {{docurl('content/formatters')}}
 [cm]: {{docurl('content-model')}}
+[fmtref]: {{docurl('reference/formatters')}}
+[tplengref]: {{docurl('reference/template-engines')}}
 
 
 ## Preparation
@@ -146,19 +160,6 @@ The following settings are under the `prepare` section, and are used by the
 The following settings are under the `baker` section, and are used by the `chef
 bake` command:
 
-* `assets_dirs` (`assets`): The name(s) of the directory(ies) on which to run
-  the built-in asset pipeline.
-
-* `force` (`[]`): Patterns to use for always forcing re-processing of some
-  assets with the built-in asset pipeline.
-
-* `ignore` (`[]`): Patterns to use for ignoring certain assets with the built-in
-  asset pipeline. Patterns are either glob-like (_i.e._ using wildcards) or
-  regex-like (when the pattern starts and ends with a slash).
-
-    Some patterns will always be added to the list: `_cache`, `_counter`,
-    `theme_info.yml`, `.DS_Store`, `Thumbs.db`, `.git*`, `.hg*`, and `.svn`.
-
 * `is_baking` (`false`): This setting is read-only, and will be set to true
   while baking the website (_i.e._ while the `chef bake` command is running).
   This is useful for generating things only when baking the website for
@@ -179,99 +180,48 @@ serve` command:
   only for preview purposes.
 
 
-## Template engines
+## Administration panel
 
-### Jinja
+The following settings are under `admin` and are used by the `chef serve
+--admin` command, along with the administration panel that runs if you set that
+up on your server.
 
-Settings for the Jinja template engine are under the `jinja` section:
-
-* `auto_escape` (`true`): Turns on auto-escaping of text for safer HTML output.
-
-
-## Formatters
-
-### Markdown
-
-Settings for the Markdown formatter are under the `markdown` section:
-
-* `extensions` (`[]`): The list of [Markdown extensions][mdext] to enable.
-
-[mdext]: https://pythonhosted.org/Markdown/extensions/index.html
+_Nothing yet._
 
 
-### Smartypants
+## Micropub endpoint
 
-Settings for the Smartypants formatter are under the `smartypants` section:
+The following settings are under the `micropub` section, and are used when the
+Micropub endpoint is running on your server.
 
-* `enable` (`false`): Enables Smartypants on any formatter that outputs HTML.
+* `source`: The source to create new content in when submitting new posts via
+  the Micropub endpoint. Defaults to `posts`.
 
+* `resize_photos`: The thumbnail size (in pixels) to use when receiving pictures
+  via the Micropub endpoint. If set to more than 0, it will create a resized
+  copy of the photo, with a `_thumb` suffix, and save it as a JPEG file.
+  Defaults to 800.
 
-## Asset processors
+* `microblogging`: A dictionary that represents a page configuration that will
+  be used when a microblogging post is submitted via the Micropub endpoint.
+  A post is considered as "microblogging" if it doesn't have a title. The
+  typical use-case for this is to automatically set a tag or category on the
+  post, so that it can be displayed differently. 
 
-### CleanCSS
+* `autocommit`: If `true`, submitted posts will be automatically committed to
+  source control (if available). Currently, Mercurial and Git are supported. See
+  also the "Source Control" section below. Defaults to `false`.
 
-Settings for the CleanCSS processor are under the `cleancss` section:
-
-* `bin` (`cleancss`): The path to the CleanCSS executable. By default, PieCrust
-  assumes it will be in your `PATH` environment variable.
-
-* `options` (`--skip-rebase`): Custom options and arguments to pass to the
-  CleanCSS executable.
-
-
-### Compass
-
-Settings for the Compass processor are under the `compass` section:
-
-* `bin` (`compass`): The path to the Compass executable. By default, PieCrust
-  assumes it will be in your `PATH` environment variable.
-
-* `config_path` (`config.rb`): The path to the Compass project's configuration
-  file, relative to the PieCrust website's root directory.
-
-* `enable` (`false`): Enables Compass processing for this website. This means
-  that the standalone Scss/Sass processor will be disabled and replaced by the
-  Compass processor.
-
-* `frameworks` (empty): A list of Compass frameworks to enable for this website,
-  either as a YAML list, or just comma-separated.
-
-* `options` (empty): Custom options and arguments to pass to the Compass
-  executable.
+* `publish_target`: The publish target to run when submitting new posts via the
+  Micropub endpoint.
 
 
-### LessC
+## Source control
 
-Settings for the Less CSS processor are under the `less` section:
+The following settings are under `scm`. They used by the Micropub endpoint and
+the administration panel (see above).
 
-* `bin` (`lessc`): The path to the Less compiler. By default, PieCrust assumes
-  it will be in your `PATH` environment variable.
-
-* `options` (`--compress`): Custom options and arguments to pass to the Less
-  compiler.
-
-
-### Sass
-
-Settings for the Scss/Sass CSS processor are under the `sass` section:
-
-* `bin` (`scss`): The path to the Sass compiler. By default, PieCrust assumes it
-  will be in your `PATH` environment variable.
-
-* `load_paths` (empty): A list of include paths to pass to the Sass compiler.
-
-* `style` (`nested`): The output CSS style to use.
-
-* `options` (empty): Custom options and arguments to pass to the Sass compiler.
-
-
-### UglifyJS
-
-Settings for the UglifyJS processor are under the `uglifyjs` section:
-
-* `bin` (`uglifyjs`): The path to the UglifyJS executable. By default, PieCrust
-  assumes it will be in your `PATH` environment variable.
-
-* `options` (`--compress`): Custom options and arguments to pass to the UglifyJS
-  executable.
+* `author`: The author name to use when submitting new posts or pages via the
+  administration panel. It's generally of the form `FirstName LastName
+  <email@example.org>`.
 

@@ -10,6 +10,22 @@ Configuration settings for asset processors must be defined in the website
 configuration, unless noted otherwise.
 
 
+## Browserify
+
+Compiles Javascript files using [Browserify][].
+
+Name: `browserify`
+
+This processor isn't used unless the `browserify` configuration exists. It can
+simply be set to `true`.
+
+Configuration settings (under `browserify/`):
+
+* `bin`: the path to the Browserify executable. Defaults to `browserify`.
+
+[browserify]: http://browserify.org/
+
+
 ## CleanCSS
 
 Compresses CSS files using the `cleancss` utility.

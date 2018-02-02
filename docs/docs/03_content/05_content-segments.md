@@ -39,8 +39,8 @@ This mean you can create a page like so:
     ---sidebar---
     Sidebar goes here
 
-You can then use, the page's layout, both the `content` and `sidebar` segments
-to put each piece of text in its appropriate place.
+You can then use, in the page's layout, both the `content` and `sidebar`
+segments to put each piece of text in its appropriate place.
 
 You can also specify a [formatter][] for a given segment, by adding `:formatter`
 after the segment's name. For instance, to disable formatting for the `sidebar`
@@ -54,7 +54,7 @@ Markdown in the way):
 
     ---sidebar:none---
     <aside>
-        Sidebar goes here
+    <p>Sidebar goes here</p>
     </aside>
 
 

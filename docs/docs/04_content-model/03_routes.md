@@ -20,18 +20,17 @@ Each route must define the following settings:
     You need to use _placeholders_ here (things of the form `%blah%`) otherwise
     all your pages would have the same URL and would be overwriting each other.
   
-    The available placeholders depend on the source or generator tied to this
-    route (see below). Refer to the [list of available sources][refsrc] and
-    [generators][refgen] to see what kind of routing information they expose.
+    The available placeholders depend on the source tied to this route (see
+    below). Refer to the [list of available sources][refsrc] to see what kind of
+    routing information they expose.
 
     You'll notice that some routing parameters are *required*, while others are
     *optional*. The *required* parameters *must* be used in the URL pattern. The
     *optional* ones are, well, optional.
 
-  * `source` or `generator`: This defines the source or generator that this
-    route is defined for. Only pages originating from the source or generator of
-    that name will have their bake output generated with this route. You can't
-    define both `source` and `generator` -- it needs to be one or the other.
+  * `source`: This defines the source that this route is defined for. Only pages
+    originating from the source of that name will have their bake output
+    generated with this route.
 
 Optional settings include:
 
@@ -50,8 +49,8 @@ Optional settings include:
     route has a `func` name of `post_url`, then you would use it as such:
     `post_url(2016, "some-blog-post")`.
 
-    To know what routing parameters a given source or generator supports, see 
-    the reference documentation for [sources][refsrc] and [generators][refgen].
+    To know what routing parameters a given source supports, see the reference
+    documentation for [sources][refsrc].
 
 
 ## Route ordering
