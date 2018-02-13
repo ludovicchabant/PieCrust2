@@ -237,7 +237,7 @@ if _has_watchdog:
 
             pl = self._proc_loop
             with pl._lock:
-                pl._ops.append({'op': 'reinit'})
+                pl._ops.append({'op': 'reinit', 'time': time.time()})
                 pl._event.set()
 
 
