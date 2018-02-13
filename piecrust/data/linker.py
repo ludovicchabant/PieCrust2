@@ -76,13 +76,15 @@ class Linker:
     def siblings(self):
         src = self._source
         app = src.app
+        sibs = []
         for i in self._getAllSiblings():
             if not i.is_group:
                 ipage = app.getPage(src, i)
                 ipage_data = self._makePageData(ipage)
-                yield ipage_data
+                sibs.append(ipage_data)
             else:
-                yield self._makeGroupData(i)
+                sibs.append(self._makeGroupData(i))
+        return sibs
 
     @property
     def has_children(self):
@@ -92,32 +94,50 @@ class Linker:
     def children(self):
         src = self._source
         app = src.app
+        childs = []
         for i in self._getAllChildren():
             if not i.is_group:
                 ipage = app.getPage(src, i)
-                yield self._makePageData(ipage)
+                childs.append(self._makePageData(ipage))
+        return childs
+
+    @property
+    def children_and_groups(self):
+        src = self._source
+        app = src.app
+        childs = []
+        for i in self._getAllChildren():
+            if not i.is_group:
+                ipage = app.getPage(src, i)
+                childs.append(self._makePageData(ipage))
             else:
-                yield self._makeGroupData(i)
+                childs.append(self._makeGroupData(i))
+        return childs
 
     def forpath(self, path):
         # TODO: generalize this for sources that aren't file-system based.
-        item = self._source.findContentFromSpec({'slug': path})
+        item = self._source.findContentFromRoute({'slug': path})
         return Linker(self._source, item)
 
-    def childrenof(self, path):
+    def childrenof(self, path, with_groups=False):
         # TODO: generalize this for sources that aren't file-system based.
         src = self._source
         app = src.app
-        group = src.findContentFromSpec(path)
+        item = src.findContentFromRoute({'slug': path})
+        if item is None:
+            raise ValueError("No such content: %s" % path)
+
+        group = self._source.getRelatedContents(item,
+                                                REL_LOGICAL_CHILD_GROUP)
         if group is not None:
-            if not group.is_group:
-                raise Exception("'%s' is not a folder/group." % path)
+            childs = []
             for i in src.getContents(group):
                 if not i.is_group:
                     ipage = app.getPage(src, i)
-                    yield self._makePageData(ipage)
-                else:
-                    yield self._makeGroupData(i)
+                    childs.append(self._makePageData(ipage))
+                elif with_groups:
+                    childs.append(self._makeGroupData(i))
+            return childs
         return None
 
     def _getAllSiblings(self):
