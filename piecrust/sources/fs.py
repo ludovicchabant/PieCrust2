@@ -163,7 +163,10 @@ class FSContentSource(FSContentSourceBase):
             # If we want the children items of an item, we look for
             # a directory that has the same name as the item's file.
             if item.is_group:
-                raise ValueError()
+                raise ValueError(
+                    "'%s' is a content group and doesn't have a logical "
+                    "child. Did you call `family.children` on a group? "
+                    "You need to check `is_group` first.")
             dir_path, _ = os.path.splitext(item.spec)
             if os.path.isdir(dir_path):
                 metadata = self._createGroupMetadata(dir_path)
