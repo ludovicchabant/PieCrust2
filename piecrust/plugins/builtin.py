@@ -107,14 +107,12 @@ class BuiltInPlugin(PieCrustPlugin):
             PystacheTemplateEngine()]
 
     def getFormatters(self):
-        from piecrust.formatting.hoedownformatter import HoedownFormatter
         from piecrust.formatting.markdownformatter import MarkdownFormatter
         from piecrust.formatting.textileformatter import TextileFormatter
         from piecrust.formatting.smartypantsformatter import (
             SmartyPantsFormatter)
 
         return [
-            HoedownFormatter(),
             MarkdownFormatter(),
             SmartyPantsFormatter(),
             TextileFormatter()]

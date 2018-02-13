@@ -2,7 +2,7 @@ from piecrust.formatting.base import Formatter
 
 
 class MarkdownFormatter(Formatter):
-    FORMAT_NAMES = ['pymarkdown']
+    FORMAT_NAMES = ['markdown', 'mdown', 'md']
     OUTPUT_FORMAT = 'html'
 
     def __init__(self):

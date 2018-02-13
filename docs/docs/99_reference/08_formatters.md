@@ -13,29 +13,29 @@ Here is a list of the formatters that come with PieCrust out of the box.
 
 ## Markdown
 
-Name: `markdown` or `pymarkdown`
+Name: `markdown`
 
 [Markdown][] is a lightweight markup language that makes it easy to write HTML.
 For a primer on its syntax, see the [original documentation][gruber].
 
-The default Markdown formatter in PieCrust is powered by [Hoedown][], which is
-fast and effective. However, is you want a more fully featured Markdown
-formatter and don't mind poorer performance, you can switch to `pymarkdown`,
-which uses [Python-Markdown][pymd].
-
-You can enable Markdown extensions in your website configuration:
+The default Markdown formatter in PieCrust is powered by
+[Python-Markdown][pymd], which works well and has a good number of available
+extensions. You can enable those Markdown extensions in your website
+configuration like this:
 
 ```
 markdown:
   extensions: name,name,name
 ```
 
-The available extension names can be found [here][ext1] for Hoedown, and
-[here][ext2] for Python-Markdown.
+The available extension names for Python-Markdown can be found [here][ext]. The
+name to use is the last piece in the list, so for example the "_Fenced Code
+Blocks_" extension would be enabled with `fenced_code`.
 
-In both cases, the name to use in the website configuration should be the short,
-vaguely friendly name listed on the referenced webpage -- like `tables`,
-`footnotes`, or `fenced_code`.
+> For a vast performance improvement, you can install the `PieCrust-Hoedown`
+> plugin which uses a native (_i.e._ written in C) implementation of Markdown.
+> It may not be available for your system however, which is why it doesn't ship
+> by default with PieCrust.
 
 
 ## Textile
@@ -49,10 +49,8 @@ to [this documentation][tx] to learn the syntax.
 
 [markdown]: https://en.wikipedia.org/wiki/Markdown
 [gruber]: https://daringfireball.net/projects/markdown/syntax
-[hoedown]: https://github.com/hoedown/hoedown
 [pymd]: https://python-markdown.github.io/
-[ext1]: http://misaka.61924.nl/#extensions
-[ext2]: https://python-markdown.github.io/extensions/
+[ext]: https://python-markdown.github.io/extensions/
 [textile]: https://en.wikipedia.org/wiki/Textile_%28markup_language%29
 [tx]: https://txstyle.org/
 

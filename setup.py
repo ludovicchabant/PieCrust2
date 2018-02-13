@@ -161,7 +161,6 @@ install_requires = [
     'Jinja2>=2.9.6',
     'Markdown>=2.6.2',
     'MarkupSafe>=1.0',
-    'misaka>=2.1.0',
     'paramiko>=2.0.0',
     'Pillow>=4.3.0',
     'Pygments>=2.0.2',
