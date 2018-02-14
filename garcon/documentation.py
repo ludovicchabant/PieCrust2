@@ -1,7 +1,6 @@
 import os
 import os.path
 import re
-import sys
 from invoke import task, run
 
 
@@ -14,11 +13,11 @@ pyver_re = re.compile('^Python (?P<maj>\d)\.(?P<min>\d)\.(?P<pat>\d)$')
                "the files at the end.",
     'root_url': "Set the docs site root URL to this if needed.",
     'venv_dir': "The directory of the virtual environment to use to run "
-                "PieCrust."
-    })
+                "PieCrust. If none, will create a new one under `venv`."
+})
 def gendocs(ctx, tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
     base_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '..'))
+        os.path.join(os.path.dirname(__file__), '..'))
     os.chdir(base_dir)
 
     if not tmp_dir:
@@ -46,19 +45,17 @@ def gendocs(ctx, tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
     npmver_out = run('npm --version', hide=True)
     print("Using: npm %s" % npmver_out.stdout.strip())
 
-    bowerver_out = run('bower --version', hide=True)
-    print("Using: bower %s" % bowerver_out.stdout.strip())
-
     print("Updating virtual environment.")
     run("%s install pip -U" % pipexe)
     run("%s install -r requirements.txt" % pipexe)
-    run("%s install -r dev-requirements.txt" % pipexe)
 
     print("Update node modules")
     run("npm install")
 
-    print("Update Bower packages")
-    run("bower update")
+    this_pwd = os.path.dirname(os.path.dirname(__file__))
+    node_bin = os.path.join(this_pwd, 'node_modules', '.bin')
+    print("Adding '%s' to the PATH" % node_bin)
+    os.environ['PATH'] = (node_bin + os.pathsep + os.environ['PATH'])
 
     print("Generate PieCrust version")
     run(pyexe + ' setup.py version')
@@ -69,15 +66,15 @@ def gendocs(ctx, tmp_dir=None, out_dir=None, root_url=None, venv_dir=None):
     if root_url:
         print("Using root URL: %s" % root_url)
     args = [
-            pyexe, 'chef.py',
-            '--root', 'docs',
-            '--config', 'dist']
+        pyexe, 'chef.py',
+        '--root', 'docs',
+        '--config', 'dist']
     if root_url:
         args += ['--config-set', 'site/root', root_url]
     args += [
-            'bake',
-            '-o', tmp_dir
-            ]
+        'bake',
+        '-o', tmp_dir
+    ]
     run(' '.join(args))
 
     if out_dir:
