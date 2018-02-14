@@ -126,6 +126,11 @@ class SassProcessor(SimpleFileProcessor):
             raise Exception("The `sass/options` configuration setting "
                             "must be an array of arguments.")
 
+        app_root_dir = self.app.root_dir
+        load_paths = list(self._conf['load_paths'])
+        for i, lp in enumerate(load_paths):
+            self._conf['load_paths'][i] = os.path.join(app_root_dir, lp)
+
         cache_dir = None
         if self.app.cache.enabled:
             cache_dir = os.path.join(self.app.cache_dir, 'sass')
@@ -133,8 +138,8 @@ class SassProcessor(SimpleFileProcessor):
 
     def _getMapPath(self, path):
         map_name = "%s_%s.map" % (
-                os.path.basename(path),
-                hashlib.md5(path.encode('utf8')).hexdigest())
+            os.path.basename(path),
+            hashlib.md5(path.encode('utf8')).hexdigest())
         map_path = os.path.join(self._map_dir, map_name)
         return map_path
 
