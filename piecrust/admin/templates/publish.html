@@ -15,7 +15,7 @@
     {% if target.description %}<p>{{target.description}}</p>{% endif %}
     <form action="{{url_run}}" method="POST">
         <input type="hidden" name="target" value="{{target.name}}" />
-        <button type="submit" class="btn btn-default"><span class="icon ion-funnel"></span> Execute</button>
+        <button type="submit" class="btn btn-default"><span class="oi oi-cloud-upload"></span> Execute</button>
     </form>
 </div>
 {% endfor %}

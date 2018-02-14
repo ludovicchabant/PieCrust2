@@ -3,11 +3,11 @@
     <li>
         <div class="ft-nav-entry-wrapper {%if e.active%}ft-nav-active{%elif e.entries and not e.open%}ft-nav-collapsed{%endif%}">
         <a href="{{e.url}}" class="ft-nav-entry">
-        {%-if e.icon%}<span class="icon ion-{{e.icon}}"></span> {%endif%}{{e.title}}
+        {%-if e.icon%}<span class="oi oi-{{e.icon}}"></span> {%endif%}{{e.title}}
         </a>
         {%-if e.quicklink%}
         <a class="ft-nav-quicklink" href="{{e.quicklink.url}}" alt="{{e.quicklink.title}}">
-            <span class="icon ion-{{e.quicklink.icon}}"></span></a>
+            <span class="oi oi-{{e.quicklink.icon}}"></span></a>
         {%endif%}
         </div>
         {%-if e.entries%}

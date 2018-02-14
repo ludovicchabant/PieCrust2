@@ -18,7 +18,9 @@
     "gulp-uglify": "^1.5.2",
     "gulp-util": "~3.0.7",
     "less": "^2.7.3",
+    "open-iconic": "^1.1.1",
     "popper.js": "^1.12.9",
+    "timeago": "^1.6.1",
     "uglify-js": "^2.8.29"
   }
 }

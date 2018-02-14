@@ -34,9 +34,9 @@
     <div class="col-sm-6 col-sm-offset-3">
         <div class="ft-pagination">
             {% if pagination.prev_page %}
-            <a href="{{pagination.prev_page}}"><span class="icon ion-chevron-left"></span> prev</a>
+            <a href="{{pagination.prev_page}}"><span class="oi oi-chevron-left"></span> prev</a>
             {% else %}
-            <span class="icon ion-chevron-left"></span> prev
+            <span class="oi oi-chevron-left"></span> prev
             {% endif %}
 
             {% for p in pagination.nums %}
@@ -44,9 +44,9 @@
             {% endfor %}
 
             {% if pagination.next_page %}
-            <a href="{{pagination.next_page}}">next <span class="icon ion-chevron-right"></span></a>
+            <a href="{{pagination.next_page}}">next <span class="oi oi-chevron-right"></span></a>
             {% else %}
-            next <span class="icon ion-chevron-right"></span>
+            next <span class="oi oi-chevron-right"></span>
             {% endif %}
         </div>
     </div>

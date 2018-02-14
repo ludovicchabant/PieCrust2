@@ -8,7 +8,7 @@ def get_menu_context():
     entries.append({
         'url': url_for('FoodTruck.index'),
         'title': "Dashboard",
-        'icon': 'speedometer'})
+        'icon': 'dashboard'})
 
     site = g.site.piecrust_app
     for source in site.sources:
@@ -22,11 +22,11 @@ def get_menu_context():
         source_icon = source.config.get('admin_icon')
         if source_icon is None:
             if source.name == 'pages':
-                source_icon = 'document-text'
-            elif 'blog' in source.name or 'posts' in source.name:
-                source_icon = 'filing'
-            else:
                 source_icon = 'document'
+            elif 'blog' in source.name or 'posts' in source.name:
+                source_icon = 'box'
+            else:
+                source_icon = 'file'
 
         url_write = url_for('.write_page', source_name=source.name)
         url_listall = url_for('.list_source', source_name=source.name)
@@ -36,7 +36,7 @@ def get_menu_context():
             'title': source.name,
             'icon': source_icon,
             'quicklink': {
-                'icon': 'plus-round',
+                'icon': 'plus',
                 'url': url_write,
                 'title': "Write New"
             },
@@ -50,7 +50,7 @@ def get_menu_context():
     entries.append({
         'url': url_for('.publish'),
         'title': "Publish",
-        'icon': 'upload'})
+        'icon': 'cloud-upload'})
 
     # TODO: re-enable settings UI at some point.
     # entries.append({

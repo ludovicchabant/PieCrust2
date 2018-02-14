@@ -3,7 +3,7 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12">
-        <h1>{{site_title}} <a href="{{url_preview}}"><span class="icon ion-arrow-right-c"></span></a></h1>
+        <h1>{{site_title}} <a href="{{url_preview}}"><span class="oi oi-arrow-right"></span></a></h1>
     </div>
 </div>
 {% with messages = get_flashed_messages() %}
@@ -17,20 +17,20 @@
 {% endwith %}
 <div class="row">
     <div class="col-md-6">
-        <h2><span class="icon ion-stats-bars"></span> Site Summary</h2>
+        <h2><span class="oi oi-bar-chart"></span> Site Summary</h2>
         {% for s in sources %}
         <div class="ft-summary-source">
-            <a href="{{s.list_url}}">{{s.page_count}} {{s.name}}</a>
+            <p><a href="{{s.list_url}}">{{s.page_count}} {{s.name}}</a></p>
         </div>
         {% endfor %}
 
-        <h2><span class="icon ion-wrench"></span> Site Management</h2>
+        <h2><span class="oi oi-wrench"></span> Site Management</h2>
         <form action="{{url_bake_assets}}" method="POST">
-            <button type="submit" class="btn"><span class="icon ion-loop"></span> Rebake Preview Assets</button>
+            <button type="submit" class="btn"><span class="oi oi-loop"></span> Rebake Preview Assets</button>
         </form>
     </div>
     <div class="col-md-6">
-        <h2><span class="icon ion-erlenmeyer-flask"></span> Work in Progress</h2>
+        <h2><span class="oi oi-beaker"></span> Work in Progress</h2>
         {% if new_pages %}
         <p>New pages:</p>
         <ul>

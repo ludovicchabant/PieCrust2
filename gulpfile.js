@@ -17,8 +17,8 @@ gulp.task('sass', function() {
             errLogToConsole: true,
             outputStyle: 'compressed',
             includePaths: [
-                'bower_components/bootstrap-sass/assets/stylesheets',
-                'bower_components/Ionicons/scss']}))
+                'node_modules/bootstrap/scss',
+                'node_modules/open-iconic/font/css']}))
         .pipe(cssnano())
         //.pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
@@ -31,15 +31,9 @@ gulp.task('sass:watch', function() {
 // Javascript
 gulp.task('js', function() {
     return gulp.src([
-            'bower_components/jquery/dist/jquery.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/alert.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/button.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/collapse.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/dropdown.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/modal.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/tooltip.js',
-            'bower_components/bootstrap-sass/assets/javascripts/bootstrap/transition.js',
-            'bower_components/jquery-timeago/jquery.timeago.js',
+            'node_modules/jquery/dist/jquery.min.js',
+            'node_modules/bootstrap/dist/js/bootstrap.min.js',
+            'node_modules/timeago/jquery.timeago.js',
             'piecrust/admin/assets/js/**/*.js'
             ])
         .pipe(sourcemaps.init())
@@ -56,15 +50,13 @@ gulp.task('js:watch', function() {
 // Fonts/images
 gulp.task('fonts', function() {
     return gulp.src([
-            'bower_components/bootstrap-sass/assets/fonts/bootstrap/*',
-            'bower_components/Ionicons/fonts/*'
+            'node_modules/open-iconic/font/fonts/*'
         ])
         .pipe(gulp.dest('piecrust/admin/static/fonts'));
 });
 
 gulp.task('images', function() {
     return gulp.src([
-            'bower_components/bootstrap-sass/assets/images/*',
             'piecrust/admin/assets/img/*'
         ])
         .pipe(gulp.dest('piecrust/admin/static/img'));

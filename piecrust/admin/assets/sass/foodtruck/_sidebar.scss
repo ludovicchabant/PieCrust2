@@ -2,7 +2,7 @@
 // Sidebar navigation
 // --------------------------------------------------
 
-$ft-nav-width: 25rem;
+$ft-nav-width: 20rem;
 $ft-nav-margin: 2rem;
 
 // Layout
@@ -135,7 +135,7 @@ $ft-nav-margin: 2rem;
     }
 }
 .ft-nav ul li a.ft-nav-active {
-    border-left: 5px solid $ft-color-red;
+    border-left: 0.7em solid $ft-color-red;
     color: $ft-color-white;
     background: $ft-color-gray-darker;
 }
