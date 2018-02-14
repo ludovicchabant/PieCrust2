@@ -1,4 +1,6 @@
+import os.path
 import re
+import shutil
 from invoke import task, run
 
 
@@ -10,8 +12,6 @@ def makerelease(ctx, version, local_only=False):
     # FoodTruck assets.
     print("Update node modules")
     run("npm install")
-    print("Install Bower components")
-    run("bower install")
     print("Generating FoodTruck assets")
     run("gulp")
 
@@ -27,7 +27,15 @@ def makerelease(ctx, version, local_only=False):
     # CHANGELOG.rst and documentation changelog page.
     run("invoke changelog --last %s" % version)
     run("invoke changelog --last %s -o docs/pages/support/changelog.md" %
-            version)
+        version)
+
+    # Clean `dist` folder before running setuptools.
+    dist_dir = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        'dist')
+    if os.path.isdir(dist_dir):
+        print("Removing %s" % dist_dir)
+        shutil.rmtree(dist_dir)
 
     if not local_only:
         if commit_assets:
@@ -47,7 +55,8 @@ def makerelease(ctx, version, local_only=False):
 
         # PyPi upload.
         run("python setup.py version")
-        run("python setup.py sdist upload")
+        run("python setup.py sdist bdist_wheel")
+        run("twine upload dist/*")
     else:
         if commit_assets:
             print("Would submit FoodTruck assets...")
