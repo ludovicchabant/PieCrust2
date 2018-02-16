@@ -1,6 +1,6 @@
 ---
 title: Code
-api_key: code
+nav_key: code
 ---
 
 PieCrust can be extended with plugins in order to support additional features
