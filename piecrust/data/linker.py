@@ -1,7 +1,7 @@
 import logging
 from piecrust.data.paginationdata import PaginationData
 from piecrust.sources.base import (
-    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
+    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAL_CHILD_GROUP)
 
 
 logger = logging.getLogger(__name__)
@@ -16,13 +16,11 @@ class Linker:
     """
     debug_render = ['parent', 'ancestors', 'siblings', 'children', 'root',
                     'forpath']
-    debug_render_invoke = ['parent', 'ancestors', 'siblings', 'children',
-                           'root']
+    debug_render_invoke = ['ancestors', 'siblings', 'children']
     debug_render_redirect = {
         'ancestors': '_debugRenderAncestors',
         'siblings': '_debugRenderSiblings',
-        'children': '_debugRenderChildren',
-        'root': '_debugRenderRoot'}
+        'children': '_debugRenderChildren'}
 
     def __init__(self, source, content_item):
         self._source = source
@@ -82,6 +80,18 @@ class Linker:
                 ipage = app.getPage(src, i)
                 ipage_data = self._makePageData(ipage)
                 sibs.append(ipage_data)
+        return sibs
+
+    @property
+    def siblings_all(self):
+        src = self._source
+        app = src.app
+        sibs = []
+        for i in self._getAllSiblings():
+            if not i.is_group:
+                ipage = app.getPage(src, i)
+                ipage_data = self._makePageData(ipage)
+                sibs.append(ipage_data)
             else:
                 sibs.append(self._makeGroupData(i))
         return sibs
@@ -102,7 +112,7 @@ class Linker:
         return childs
 
     @property
-    def children_and_groups(self):
+    def children_all(self):
         src = self._source
         app = src.app
         childs = []
@@ -149,7 +159,7 @@ class Linker:
     def _getAllChildren(self):
         if self._children is None:
             child_group = self._source.getRelatedContents(
-                self._content_item, REL_LOGICAl_CHILD_GROUP)
+                self._content_item, REL_LOGICAL_CHILD_GROUP)
             if child_group is not None:
                 self._children = list(
                     self._source.getContents(child_group))
