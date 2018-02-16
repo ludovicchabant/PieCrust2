@@ -19,7 +19,6 @@ class PageConfiguration(Configuration):
         super(PageConfiguration, self).__init__(values, validate)
 
     def _validateAll(self, values):
-        values.setdefault('title', '')
         values.setdefault('content_type', 'html')
         ppp = values.get('posts_per_page')
         if ppp is not None:
