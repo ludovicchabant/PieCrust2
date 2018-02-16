@@ -13,8 +13,8 @@ class ProseSource(DefaultContentSource):
         super().__init__(app, name, config)
         self.config_recipe = config.get('config', {})
 
-    def _doCreateItemMetadata(self, path):
-        metadata = super()._doCreateItemMetadata(path)
+    def _createItemMetadata(self, path):
+        metadata = super()._createItemMetadata(path)
         config = metadata.setdefault('config', {})
         config.update(self._makeConfig(path))
         return metadata
@@ -29,12 +29,12 @@ class ProseSource(DefaultContentSource):
 def get_first_line(path):
     with open(path, 'r') as f:
         while True:
-            l = f.readline()
-            if not l:
+            line = f.readline()
+            if not line:
                 break
-            l = l.strip()
-            if not l:
+            line = line.strip()
+            if not line:
                 continue
-            return l
+            return line
     return None
 
