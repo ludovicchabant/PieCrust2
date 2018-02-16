@@ -5,6 +5,17 @@ short_title: Sources Reference
 
 Here are the page sources that come with PieCrust by default.
 
+> Note that all file-based sources support this common set of configuration
+> settings:
+> 
+> * `ignore`: a list of patterns that specifies files to be ignored (similar to
+>   a "_black list_").
+> * `filter`: a list of patterns that specifies files to be exclusively included
+>   (similar to a "_white list_").
+> 
+> Patterns are glob patterns by default, but if they start and end with `/`,
+> they are treated as regular expressions.
+
 
 ## Default source
 
