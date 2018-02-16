@@ -7,7 +7,7 @@ from piecrust import osutil
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import (
     ContentItem, ContentGroup, ContentSource,
-    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAl_CHILD_GROUP)
+    REL_PARENT_GROUP, REL_LOGICAL_PARENT_ITEM, REL_LOGICAL_CHILD_GROUP)
 
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,7 @@ class FSContentSource(FSContentSourceBase):
                     return ContentItem(n, metadata)
             return None
 
-        if relationship == REL_LOGICAl_CHILD_GROUP:
+        if relationship == REL_LOGICAL_CHILD_GROUP:
             # If we want the children items of an item, we look for
             # a directory that has the same name as the item's file.
             if item.is_group:
