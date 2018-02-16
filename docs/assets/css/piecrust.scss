@@ -73,7 +73,7 @@
 // Customizations
 .navbar {
     padding: 0 1rem;
-    background: #ffffff30;
+    background-color: rgba(255, 255, 255, 0.2);
     text-shadow: #fff 0 0 1em, #fff 0 0 .1em;
 
     a {
@@ -82,12 +82,12 @@
         
         &:hover {
             color: #fff;
-            background: #000000c0 !important;
+            background: rgba(0, 0, 0, 0.8) !important;
             text-shadow: #000 0 0 1em, #000 0 0 .1em;
         }
     }
     a.active {
-        background: #ffffff60;
+        background: rgba(255, 255, 255, 0.4);
     }
 }
 a.navbar-brand {
@@ -161,6 +161,10 @@ footer {
     font-size: 0.8em;
     text-align: center;
     margin: 2em;
+}
+
+#content .highlight {
+    background-color: transparent;
 }
 
 
