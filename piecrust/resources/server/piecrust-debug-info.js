@@ -284,13 +284,11 @@ function loadDebugInfo() {
     xmlHttp.onreadystatechange = function() {
         if (xmlHttp.readyState == XMLHttpRequest.DONE) {
             var info = document.querySelector('.piecrust-debug-info');
-            if(xmlHttp.status == 200) {
+            if(xmlHttp.status < 500) {
                 info.innerHTML = xmlHttp.responseText;
             }
-            else if(xmlHttp.status == 400) {
-                info.innerHTML = "Error fetching debug info.";
-            }
             else {
+                console.log(xmlHttp);
                 info.innerHTML = "Unknown error.";
             }
         }

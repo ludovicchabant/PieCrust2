@@ -1,5 +1,5 @@
 import os.path
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import HTTPException, NotFound, Forbidden
 from werkzeug.wrappers import Request, Response
 from werkzeug.wsgi import ClosingIterator
 from piecrust import RESOURCES_DIR, CACHE_DIR
@@ -71,14 +71,17 @@ class PieCrustDebugMiddleware(object):
             rel_req_path = request.path[len(debug_mount):]
             handler = self._handlers.get(rel_req_path)
             if handler is not None:
-                return handler(request, start_response)
+                try:
+                    return handler(request, start_response)
+                except HTTPException as ex:
+                    return ex(environ, start_response)
 
         return self.app(environ, start_response)
 
     def _getDebugInfo(self, request, start_response):
         app = get_app_for_server(self.appfactory)
-        if not app.config.get('site/enable_debug_info'):
-            return Forbidden()
+        if not app.config.get('site/enable_debug_info', True):
+            raise Forbidden("PieCrust debug info isn't enabled.")
 
         found = False
         page_path = request.args.get('page')
@@ -88,7 +91,7 @@ class PieCrustDebugMiddleware(object):
         except (RouteNotFoundError, PageNotFoundError):
             pass
         if not found:
-            return NotFound("No such page: %s" % page_path)
+            raise NotFound("No such page: %s" % page_path)
 
         ctx = DataBuildingContext(req_page.page,
                                   sub_num=req_page.sub_num)
