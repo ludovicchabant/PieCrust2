@@ -55,25 +55,7 @@
 }
 
 
-// Icons
-$pc-icon-width: 128px;
-
-
 // Decorators
-@mixin pc-decorator($img-name, $margin-left) {
-    margin-left: $pc-icon-width;
-    &::before {
-        content: " ";
-        background-image: url($img-name);
-        background-repeat: no-repeat;
-        display: block;
-        float: left;
-        width: 128px;
-        height: 92px;
-        margin-left: -($pc-icon-width + $margin-left);
-    }
-}
-
 @mixin pc-banner($img-name) {
     background-image: url($img-name);
     background-repeat: no-repeat;
@@ -147,9 +129,24 @@ h2 {
 blockquote {
     font-size: $font-size-base;
 }
+$cake-icon-width: 128px;
+$cake-icon-height: 92px;
 @media (min-width: map-get($grid-breakpoints, "md")) {
     blockquote {
-        @include pc-decorator('../img/cake.png', 5px + $line-height-base);
+        &::before {
+            content: " ";
+            background-image: url('../img/cake.png');
+            background-repeat: no-repeat;
+            display: block;
+            float: left;
+            width: $cake-icon-width;
+            height: $cake-icon-height;
+            margin-left: -($cake-icon-width + 5px + $line-height-base);
+        }
+
+        background: #f6f6f6;
+        box-shadow: 0 0 2px #ccc;
+        padding: 1em 1em 1em $cake-icon-width + 10px;
         min-height: 126px;
     }
 }
