@@ -82,7 +82,8 @@ class PageIteratorDataProvider(DataProvider):
     def _onIteration(self, it):
         if not self._iterated:
             rcs = self._app.env.render_ctx_stack
-            rcs.current_ctx.addUsedSource(it._source)
+            if rcs.current_ctx is not None:
+                rcs.current_ctx.addUsedSource(it._source)
             self._iterated = True
 
     def _addSource(self, source):
