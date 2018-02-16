@@ -5,9 +5,6 @@ site:
     tagline: Freshly baked sites & documents since 2006
     description: A static website generator and flat-file CMS
     pretty_urls: true
-    default_format: pymarkdown
-    auto_formats:
-        md: pymarkdown
     sources:
         docs:
             type: ordered
