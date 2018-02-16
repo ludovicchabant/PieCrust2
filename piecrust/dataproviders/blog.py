@@ -1,11 +1,12 @@
 import time
+import collections.abc
 from piecrust.dataproviders.base import DataProvider
 from piecrust.dataproviders.pageiterator import PageIterator
 from piecrust.sources.list import ListSource
 from piecrust.sources.taxonomy import Taxonomy
 
 
-class BlogDataProvider(DataProvider):
+class BlogDataProvider(DataProvider, collections.abc.Mapping):
     PROVIDER_NAME = 'blog'
 
     debug_render_doc = """Provides a list of blog posts and yearly/monthly
@@ -42,13 +43,16 @@ class BlogDataProvider(DataProvider):
     @property
     def months(self):
         self._buildArchives()
-        return self._montly
+        return self._monthly
 
     @property
     def taxonomies(self):
         return list(self._app.config.get('site/taxonomies').keys())
 
     def __getitem__(self, name):
+        if name in ['posts', 'years', 'months', 'taxonomies']:
+            return getattr(self, name)
+
         self._buildArchives()
         return self._taxonomies[name]
 
@@ -58,6 +62,16 @@ class BlogDataProvider(DataProvider):
             return self._taxonomies[name]
         except KeyError:
             raise AttributeError("No such taxonomy: %s" % name)
+
+    def __len__(self):
+        return 4 + len(self.taxonomies)
+
+    def __iter__(self):
+        yield 'posts'
+        yield 'years'
+        yield 'months'
+        yield 'taxonomies'
+        yield from self.taxonomies
 
     def _debugRenderTaxonomies(self):
         return self.taxonomies
