@@ -1,0 +1,14 @@
+Routes are specified in the `site/routes` configuration section of your website. This should be a list, where each item is a mapping with the following entries:
+
+url: The URL pattern for the route.
+source: The name of the source this route is for.
+func (optional): The name of a templating function you can use to generate URLs for this route.
+
+The URL pattern typically includes placeholders for information obtained by the source, like a blog post's date and slug. For example:
+
+site:
+  routes:
+    - url: /myblog/%year%/%month%/%slug%
+      source: posts
+
+To know which placeholders are available, see `chef help route_params`.

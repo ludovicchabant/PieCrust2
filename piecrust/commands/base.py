@@ -1,6 +1,9 @@
+import os.path
 import logging
 import argparse
+import textwrap
 import functools
+from piecrust import RESOURCES_DIR
 from piecrust.pathutil import SiteNotFoundError
 
 
@@ -24,6 +27,9 @@ class ChefCommand(object):
 
     def setupParser(self, parser, app):
         raise NotImplementedError()
+
+    def provideExtensions(self):
+        return None
 
     def run(self, ctx):
         raise NotImplementedError(
@@ -54,10 +60,18 @@ class ExtendableChefCommand(ChefCommand):
     def _loadExtensions(self, app):
         if self._extensions is not None:
             return
-        self._extensions = []
+
+        possible_exts = []
         for e in app.plugin_loader.getCommandExtensions():
-            if e.command_name == self.name and e.supports(app):
-                self._extensions.append(e)
+            possible_exts.append(e)
+        for c in app.plugin_loader.getCommands():
+            exts = c.provideExtensions()
+            if exts is not None:
+                possible_exts += exts
+
+        self._extensions = list(filter(
+            lambda e: e.command_name == self.name and e.supports(app),
+            possible_exts))
 
 
 class ChefCommandExtension(object):
@@ -139,3 +153,26 @@ def simple_command(f, name, description=None):
 def get_func_command(f):
     return getattr(f, '__command_class__')
 
+
+def _get_help_topic_from_resources(command_name, topic):
+    path = os.path.join(RESOURCES_DIR, 'helptopics',
+                        '%s_%s.txt' % (command_name, topic))
+    with open(path, 'r', encoding='utf8') as fp:
+        lines = fp.readlines()
+
+    wrapped_lines = []
+    for ln in lines:
+        ln = ln.rstrip('\n')
+        if not ln:
+            wrapped_lines.append('')
+        else:
+            wrapped_lines += textwrap.wrap(ln, width=80)
+    return '\n'.join(wrapped_lines)
+
+
+class _ResourcesHelpTopics:
+    def getHelpTopic(self, topic, app):
+        category = self.__class__.__name__.lower()
+        if category.endswith('helptopic'):
+            category = category[:-len('helptopic')]
+        return _get_help_topic_from_resources(category, topic)
