@@ -23,6 +23,10 @@ class InvalidRouteError(Exception):
     pass
 
 
+class InvalidRouteParameterError(Exception):
+    pass
+
+
 class RouteParameter(object):
     TYPE_STRING = 0
     TYPE_PATH = 1
@@ -111,8 +115,9 @@ class Route(object):
         for p in self.supported_params:
             if p.param_name == name:
                 return p
-        raise Exception("No such supported route parameter '%s' in: %s" %
-                        (name, self.uri_pattern))
+        raise InvalidRouteParameterError(
+            "No such supported route parameter '%s' in: %s" %
+            (name, self.uri_pattern))
 
     def getParameterType(self, name):
         return self.getParameter(name).param_type
@@ -200,7 +205,11 @@ class Route(object):
                 if suffix:
                     uri = base_uri + suffix + ext
                 else:
-                    uri = base_uri + ext
+                    # If we just have the extension to add to the URL, we
+                    # strip any trailing slash to prevent, say, the index
+                    # page of a source from generating an URL like
+                    # `subdir/.html`. Instead, it does `subdir.html`.
+                    uri = base_uri.rstrip('/') + ext
 
         uri = self.uri_root + urllib.parse.quote(uri)
 
@@ -255,7 +264,7 @@ class Route(object):
             elif param_type == RouteParameter.TYPE_INT2:
                 return '%%(%s)02d' % name
             return '%%(%s)s' % name
-        except:
+        except InvalidRouteParameterError:
             known = [p.name for p in self.supported_params]
             raise Exception("Unknown route parameter '%s' for route '%s'. "
                             "Must be one of: %s'" %
@@ -282,7 +291,7 @@ class Route(object):
     def _coerceRouteParameter(self, name, val):
         try:
             param_type = self.getParameterType(name)
-        except:
+        except InvalidRouteParameterError:
             # Unknown parameter... just leave it.
             return val
 

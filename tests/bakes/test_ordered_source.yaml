@@ -1,0 +1,50 @@
+---
+in:
+    manual/00__index.html: "my index"
+    manual/01_zzz.html: "zzz"
+    manual/02_aaa.html: "aaa"
+    manual/02_aaa/01_aaa_zzz: "aaa with zzz"
+    manual/02_aaa/02_aaa_bbb: "aaa with bbb"
+    manual/03_yyy.html: "yyy"
+config:
+    site:
+        pretty_urls: true
+        sources:
+            manual:
+                type: ordered
+                default_layout: none
+        routes:
+            - url: '/man/%slug%'
+              source: manual
+outfiles:
+    man/index.html: "my index"
+    man/aaa/index.html: "aaa"
+    man/zzz/index.html: "zzz"
+    man/yyy/index.html: "yyy"
+    man/aaa/aaa_zzz/index.html: "aaa with zzz"
+    man/aaa/aaa_bbb/index.html: "aaa with bbb"
+---
+in:
+    manual/00__index.html: "my index"
+    manual/01_zzz.html: "zzz"
+    manual/02_aaa.html: "aaa"
+    manual/02_aaa/01_aaa_zzz: "aaa with zzz"
+    manual/02_aaa/02_aaa_bbb: "aaa with bbb"
+    manual/03_yyy.html: "yyy"
+config:
+    site:
+        sources:
+            manual:
+                type: ordered
+                default_layout: none
+        routes:
+            - url: '/man/%slug%'
+              source: manual
+outfiles:
+    man.html: "my index"
+    man/aaa.html: "aaa"
+    man/zzz.html: "zzz"
+    man/yyy.html: "yyy"
+    man/aaa/aaa_zzz.html: "aaa with zzz"
+    man/aaa/aaa_bbb.html: "aaa with bbb"
+
