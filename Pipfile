@@ -1,0 +1,40 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+colorama = "*"
+compressinja = "*"
+flask = "*"
+flask-indieauth = "*"
+flask-login = "*"
+inukshuk = "*"
+"jinja2" = "*"
+markdown = "*"
+markupsafe = "*"
+paramiko = "*"
+pillow = "*"
+pygments = "*"
+pystache = "*"
+python-dateutil = "*"
+pyyaml = "*"
+"repoze.lru" = "*"
+smartypants = "*"
+"strict-rfc3339" = "*"
+textile = "*"
+unidecode = "*"
+watchdog = "*"
+werkzeug = "*"
+
+
+[dev-packages]
+
+invoke = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-mock = "*"
+mock = "*"
