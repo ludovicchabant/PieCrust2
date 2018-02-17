@@ -42,6 +42,8 @@ def _wrap_fs_funcs():
     glob = _glob
 
 
-if sys.platform == 'darwin':
+_do_wrap_mac_fs = False
+
+if _do_wrap_mac_fs and sys.platform == 'darwin':
     _wrap_fs_funcs()
 
