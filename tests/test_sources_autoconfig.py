@@ -77,7 +77,10 @@ def test_autoconfig_fails_if_multiple_folders():
             'test': {'type': 'autoconfig',
                      'setting_name': 'foo',
                      'only_single_values': True}
-        }
+        },
+        'routes': [
+            {'url': '/blah', 'source': 'test'}
+        ]
     }
     fs = mock_fs().withConfig({'site': site_config})
     fs.withPage('test/bar1/bar2/something.md')
@@ -140,30 +143,43 @@ def test_ordered_source_items(fs_fac, expected_paths, expected_route_params,
 @pytest.mark.parametrize(
     'fs_fac, route_path, expected_path, expected_metadata',
     [
-        (lambda: mock_fs(), 'missing', None, None),
-        (lambda: mock_fs().withPage('test/something.md'),
-         'something', 'something.md',
-         {'slug': 'something',
-          'config': {'foo': 0, 'foo_trail': [0]}}),
-        (lambda: mock_fs().withPage('test/bar/something.md'),
-         'bar/something', 'bar/something.md',
-         {'slug': 'bar/something',
-          'config': {'foo': 0, 'foo_trail': [0]}}),
-        (lambda: mock_fs().withPage('test/42_something.md'),
-         'something', '42_something.md',
-         {'slug': 'something',
-          'config': {'foo': 42, 'foo_trail': [42]}}),
-        (lambda: mock_fs().withPage('test/bar/42_something.md'),
-         'bar/something', 'bar/42_something.md',
-         {'slug': 'bar/something',
-          'config': {'foo': 42, 'foo_trail': [42]}}),
-
-        ((lambda: mock_fs()
-          .withPage('test/42_something.md')
-          .withPage('test/43_other_something.md')),
-         'something', '42_something.md',
-         {'slug': 'something',
-          'config': {'foo': 42, 'foo_trail': [42]}}),
+        (
+            lambda: mock_fs(),
+            'missing',
+            None,
+            None),
+        (
+            lambda: mock_fs().withPage('test/something.html'),
+            'something',
+            'something.html',
+            {'route_params': {'slug': 'something'},
+             'config': {'foo': 0, 'foo_trail': [0]}}),
+        (
+            lambda: mock_fs().withPage('test/bar/something.html'),
+            'bar/something',
+            'bar/something.html',
+            {'route_params': {'slug': 'bar/something'},
+             'config': {'foo': 0, 'foo_trail': [0]}}),
+        (
+            lambda: mock_fs().withPage('test/42_something.html'),
+            'something',
+            '42_something.html',
+            {'route_params': {'slug': 'something'},
+             'config': {'foo': 42, 'foo_trail': [42]}}),
+        (
+            lambda: mock_fs().withPage('test/bar/42_something.html'),
+            'bar/something',
+            'bar/42_something.html',
+            {'route_params': {'slug': 'bar/something'},
+             'config': {'foo': 42, 'foo_trail': [42]}}),
+        (
+            (lambda: mock_fs()
+             .withPage('test/42_something.html')
+             .withPage('test/43_other_something.html')),
+            'something',
+            '42_something.html',
+            {'route_params': {'slug': 'something'},
+             'config': {'foo': 42, 'foo_trail': [42]}}),
     ])
 def test_ordered_source_find(fs_fac, route_path, expected_path,
                              expected_metadata):

@@ -418,7 +418,8 @@ def _validate_site_routes(v, values, cache):
     # Check routes are referencing correct sources, have default
     # values, etc.
     used_sources = set()
-    existing_sources = set(values['site']['sources'].keys())
+    source_configs = values['site']['sources']
+    existing_sources = set(source_configs.keys())
     for rc in v:
         if not isinstance(rc, dict):
             raise ConfigurationError("All routes in 'site/routes' must be "
@@ -443,6 +444,15 @@ def _validate_site_routes(v, values, cache):
 
         rc.setdefault('pass', 1)
         rc.setdefault('page_suffix', '/%num%')
+
+    # Raise errors about non-asset sources that have no URL routes.
+    sources_with_no_route = list(filter(
+        lambda s: source_configs[s].get('pipeline') != 'asset',
+        existing_sources.difference(used_sources)))
+    if sources_with_no_route:
+        raise ConfigurationError(
+            "The following sources have no routes: %s" %
+            ', '.join(sources_with_no_route))
 
     return v
 
