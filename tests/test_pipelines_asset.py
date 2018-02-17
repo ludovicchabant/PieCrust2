@@ -210,12 +210,13 @@ def test_ignore_pattern(patterns, expected):
 
 
 @pytest.mark.parametrize('names, expected', [
-    ('all', ['cleancss', 'compass', 'copy', 'concat', 'less', 'requirejs',
-             'sass', 'sitemap', 'uglifyjs', 'pygments_style']),
-    ('all -sitemap', ['cleancss', 'copy', 'compass', 'concat', 'less',
-                      'requirejs', 'sass', 'uglifyjs', 'pygments_style']),
-    ('-sitemap -less -sass all', ['cleancss', 'copy', 'compass', 'concat',
-                                  'requirejs', 'uglifyjs',
+    ('all', ['browserify', 'cleancss', 'compass', 'copy', 'concat', 'less',
+             'requirejs', 'sass', 'sitemap', 'uglifyjs', 'pygments_style']),
+    ('all -sitemap', ['browserify', 'cleancss', 'copy', 'compass', 'concat',
+                      'less', 'requirejs', 'sass', 'uglifyjs',
+                      'pygments_style']),
+    ('-sitemap -less -sass all', ['browserify', 'cleancss', 'copy', 'compass',
+                                  'concat', 'requirejs', 'uglifyjs',
                                   'pygments_style']),
     ('copy', ['copy']),
     ('less sass', ['less', 'sass'])
