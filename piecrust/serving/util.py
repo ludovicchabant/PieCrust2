@@ -107,17 +107,17 @@ def load_mimetype_map():
 
 
 def make_wrapped_file_response(environ, request, path):
-    logger.debug("Serving %s" % path)
-
     # Check if we can return a 304 status code.
     mtime = os.path.getmtime(path)
     etag_str = '%s$$%s' % (path, mtime)
     etag = hashlib.md5(etag_str.encode('utf8')).hexdigest()
     if etag in request.if_none_match:
+        logger.debug("Serving %s [no download, E-Tag matches]" % path)
         response = Response()
         response.status_code = 304
         return response
 
+    logger.debug("Serving %s [full download]" % path)
     wrapper = wrap_file(environ, open(path, 'rb'))
     response = Response(wrapper)
     _, ext = os.path.splitext(path)
