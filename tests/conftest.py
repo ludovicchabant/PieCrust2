@@ -246,7 +246,7 @@ class ChefTestItem(YamlTestItemBase):
         return self.fspath, 0, "bake: %s" % self.name
 
     def repr_failure(self, excinfo):
-        if isinstance(excinfo.value, ExpectedChefOutputError):
+        if isinstance(excinfo.value, UnexpectedChefOutputError):
             return ('\n'.join(
                 ['Unexpected command output. Left is expected output, '
                     'right is actual output'] +
@@ -254,7 +254,7 @@ class ChefTestItem(YamlTestItemBase):
         return super(ChefTestItem, self).repr_failure(excinfo)
 
 
-class ExpectedChefOutputError(Exception):
+class UnexpectedChefOutputError(Exception):
     pass
 
 
@@ -349,7 +349,12 @@ class ServeTestItem(YamlTestItemBase):
 
             client = Client(server, BaseResponse)
             resp = client.get(url)
-            assert expected_status == resp.status_code
+            if expected_status != resp.status_code:
+                raise UnexpectedChefServingError(
+                    url,
+                    "Expected HTTP status '%s', got '%s'" %
+                    (expected_status, resp.status_code),
+                    resp)
 
             if expected_headers:
                 for k, v in expected_headers.items():
@@ -380,7 +385,19 @@ class ServeTestItem(YamlTestItemBase):
                  excinfo.value.description])
             res += repr_nested_failure(excinfo)
             return res
+        elif isinstance(excinfo.value, UnexpectedChefServingError):
+            res = str(excinfo.value)
+            res += '\nWhile requesting URL: %s' % excinfo.value.url
+            res += '\nBody:\n%s' % excinfo.value.resp.data.decode('utf8')
+            return res
         return super(ServeTestItem, self).repr_failure(excinfo)
+
+
+class UnexpectedChefServingError(Exception):
+    def __init__(self, url, msg, resp):
+        super().__init__(msg)
+        self.url = url
+        self.resp = resp
 
 
 class ServeTestFile(YamlTestFileBase):
@@ -454,9 +471,9 @@ def _compare_dicts(left, right, ctx):
 
 def _compare_lists(left, right, ctx):
     for i in range(min(len(left), len(right))):
-        l = left[i]
-        r = right[i]
-        cmpres = _compare(l, r, ctx)
+        lc = left[i]
+        rc = right[i]
+        cmpres = _compare(lc, rc, ctx)
         if cmpres:
             return cmpres
     if len(left) > len(right):
