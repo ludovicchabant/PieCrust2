@@ -18,5 +18,6 @@ _docs-counter
 foodtruck/static
 piecrust.egg-info
 piecrust/__version__.py
+tests/__tmpfs__
 .ropeproject
 
