@@ -101,11 +101,11 @@ class RoutesHelpTopic(ChefCommandExtension, _ResourcesHelpTopics):
     def getHelpTopics(self):
         return [('routes_config',
                  "Specifying URL routes for your site's content."),
-                ('route_params',
+                ('routes_params',
                  "Show the available route parameters.")]
 
     def getHelpTopic(self, topic, app):
-        if topic != 'route_params':
+        if topic != 'routes_params':
             return _ResourcesHelpTopics.getHelpTopic(self, topic, app)
 
         import textwrap

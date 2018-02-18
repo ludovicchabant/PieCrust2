@@ -11,4 +11,4 @@ site:
     - url: /myblog/%year%/%month%/%slug%
       source: posts
 
-To know which placeholders are available, see `chef help route_params`.
+To know which placeholders are available, see `chef help routes_params`.
