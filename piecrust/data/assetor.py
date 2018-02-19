@@ -1,5 +1,6 @@
 import os
 import os.path
+import json
 import logging
 from piecrust.sources.base import REL_ASSETS
 from piecrust.uriutil import multi_replace
@@ -17,6 +18,13 @@ class _AssetInfo:
         self.content_item = content_item
         self.uri = uri
 
+    def __str__(self):
+        return self.uri
+
+    def json(self):
+        with open(self.content_item.spec, 'r', encoding='utf8') as fp:
+            return json.load(fp)
+
 
 class Assetor:
     debug_render_doc = """Helps render URLs to files in the current page's
@@ -32,13 +40,13 @@ class Assetor:
     def __getattr__(self, name):
         try:
             self._cacheAssets()
-            return self._cache_map[name].uri
+            return self._cache_map[name]
         except KeyError:
             raise AttributeError()
 
     def __getitem__(self, name):
         self._cacheAssets()
-        return self._cache_map[name].uri
+        return self._cache_map[name]
 
     def __contains__(self, name):
         self._cacheAssets()
@@ -106,7 +114,7 @@ class Assetor:
             # TODO: this assumes a file-system source!
             uri_build_tokens['%path%'] = \
                 os.path.relpath(a.spec, root_dir).replace('\\', '/')
-            uri_build_tokens['%filename%'] = a.metadata['filename']
+            uri_build_tokens['%filename%'] = a.metadata.get('filename')
             uri = multi_replace(asset_url_format, uri_build_tokens)
 
             self._cache_map[name] = _AssetInfo(a, uri)
