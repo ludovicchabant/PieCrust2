@@ -162,7 +162,6 @@ def _get_piecrust_server(appfactory, *,
                          serve_site=True,
                          serve_admin=False,
                          is_cmdline_mode=False,
-                         admin_root_url=None,
                          run_sse_check=None):
     app = None
 
@@ -181,7 +180,7 @@ def _get_piecrust_server(appfactory, *,
     if serve_admin:
         from piecrust.admin.web import create_foodtruck_app
 
-        admin_root_url = admin_root_url or '/pc-admin'
+        admin_root_url = ('/pc-admin' if is_cmdline_mode else None)
 
         es = {
             'FOODTRUCK_CMDLINE_MODE': is_cmdline_mode,
