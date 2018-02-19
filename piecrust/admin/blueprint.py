@@ -129,6 +129,7 @@ def timestamp_to_datetime(t, fmt=None):
 import piecrust.admin.views.create  # NOQA
 import piecrust.admin.views.dashboard  # NOQA
 import piecrust.admin.views.edit  # NOQA
+import piecrust.admin.views.mentions  # NOQA
 import piecrust.admin.views.menu  # NOQA
 import piecrust.admin.views.micropub  # NOQA
 import piecrust.admin.views.preview  # NOQA
