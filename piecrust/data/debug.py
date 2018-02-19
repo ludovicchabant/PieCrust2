@@ -79,8 +79,11 @@ def _do_build_debug_info(page, output):
 
     print('</div>', file=output)
 
-    print('<script src="/__piecrust_static/piecrust-debug-info.js"></script>',
-          file=output)
+    root_url = page.app.config.get('site/root')
+    print(
+        '<script src="%s__piecrust_static/piecrust-debug-info.js"></script>' %
+        root_url,
+        file=output)
 
 
 def build_var_debug_info(data, var_path=None):
