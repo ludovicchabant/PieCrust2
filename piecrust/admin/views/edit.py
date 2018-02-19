@@ -78,7 +78,8 @@ def upload_page_asset(url):
         _, ext = os.path.splitext(filename)
         filename = request.form['ft-asset-name'] + ext
     filename = secure_filename(filename)
-    dirname, _ = os.path.splitext(page.path)
+    # TODO: this only works for FS sources.
+    dirname, _ = os.path.splitext(page.content_spec)
     dirname += '-assets'
     if not os.path.exists(dirname):
         os.makedirs(dirname)
