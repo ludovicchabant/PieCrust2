@@ -3,9 +3,8 @@ import os.path
 import sys
 import copy
 import logging
-import threading
 import subprocess
-from flask import request, flash
+from flask import flash
 from piecrust import CACHE_DIR
 from piecrust.app import PieCrustFactory
 
@@ -101,7 +100,8 @@ class SiteInfo:
                 flash("Asset baking process returned '%s'... check the log." %
                       proc.returncode)
         except subprocess.TimeoutExpired:
-            flash("Asset baking process is still running... check the log later.")
+            flash("Asset baking process is still running... "
+                  "check the log later.")
 
     def getPublishTargetLogFile(self, target):
         target = target.replace(' ', '_').lower()
