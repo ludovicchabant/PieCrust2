@@ -77,13 +77,8 @@ class LessProcessor(SimpleFileProcessor):
         args.append(out_path)
         logger.debug("Processing LESS file: %s" % args)
 
-        # On Windows, we need to run the process in a shell environment
-        # otherwise it looks like `PATH` isn't taken into account.
-        shell = (platform.system() == 'Windows')
         try:
-            proc = subprocess.Popen(
-                args, shell=shell,
-                stderr=subprocess.PIPE)
+            proc = subprocess.Popen(args, stderr=subprocess.PIPE)
             stdout_data, stderr_data = proc.communicate()
         except FileNotFoundError as ex:
             logger.error("Tried running LESS processor with command: %s" %
@@ -105,8 +100,12 @@ class LessProcessor(SimpleFileProcessor):
         if self._conf is not None:
             return
 
+        bin_name = 'lessc'
+        if platform.system() == 'Windows':
+            bin_name += '.cmd'
+
         self._conf = self.app.config.get('less') or {}
-        self._conf.setdefault('bin', 'lessc')
+        self._conf.setdefault('bin', bin_name)
         self._conf.setdefault('options', ['--compress'])
         if not isinstance(self._conf['options'], list):
             raise Exception("The `less/options` configuration setting "

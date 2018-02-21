@@ -29,7 +29,10 @@ class BrowserifyProcessor(Processor):
         if self._conf is True:
             self._conf = {}
 
-        self._conf.setdefault('bin', 'browserify')
+        bin_name = 'browserify'
+        if platform.system() == 'Windows':
+            bin_name += '.cmd'
+        self._conf.setdefault('bin', bin_name)
 
     def onPipelineStart(self, ctx):
         self._tmp_dir = ctx.tmp_dir

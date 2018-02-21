@@ -83,11 +83,8 @@ class SassProcessor(SimpleFileProcessor):
         args += [in_path, out_path]
         logger.debug("Processing Sass file: %s" % args)
 
-        # On Windows, we need to run the process in a shell environment
-        # otherwise it looks like `PATH` isn't taken into account.
-        shell = (platform.system() == 'Windows')
         try:
-            retcode = subprocess.call(args, shell=shell)
+            retcode = subprocess.call(args)
         except FileNotFoundError as ex:
             logger.error("Tried running Sass processor with command: %s" %
                          args)
@@ -114,8 +111,12 @@ class SassProcessor(SimpleFileProcessor):
         if self._conf is not None:
             return
 
+        bin_name = 'scss'
+        if platform.system() == 'Windows':
+            bin_name += '.cmd'
+
         self._conf = self.app.config.get('sass') or {}
-        self._conf.setdefault('bin', 'scss')
+        self._conf.setdefault('bin', bin_name)
         self._conf.setdefault('style', 'nested')
         self._conf.setdefault('load_paths', [])
         if not isinstance(self._conf['load_paths'], list):

@@ -36,11 +36,8 @@ class CleanCssProcessor(Processor):
         args.append(path)
         logger.debug("Cleaning CSS file: %s" % args)
 
-        # On Windows, we need to run the process in a shell environment
-        # otherwise it looks like `PATH` isn't taken into account.
-        shell = (platform.system() == 'Windows')
         try:
-            retcode = subprocess.call(args, shell=shell)
+            retcode = subprocess.call(args)
         except FileNotFoundError as ex:
             logger.error("Tried running CleanCSS processor with command: %s" %
                          args)
@@ -55,8 +52,12 @@ class CleanCssProcessor(Processor):
         if self._conf is not None:
             return
 
+        bin_name = 'cleancss'
+        if platform.system() == 'Windows':
+            bin_name += '.cmd'
+
         self._conf = self.app.config.get('cleancss') or {}
-        self._conf.setdefault('bin', 'cleancss')
+        self._conf.setdefault('bin', bin_name)
         self._conf.setdefault('options', ['--skip-rebase'])
         self._conf.setdefault('out_ext', '.css')
         if len(self._conf['out_ext']) > 0 and self._conf['out_ext'][0] != '.':
@@ -83,11 +84,8 @@ class UglifyJSProcessor(SimpleFileProcessor):
         args += self._conf['options']
         logger.debug("Uglifying JS file: %s" % args)
 
-        # On Windows, we need to run the process in a shell environment
-        # otherwise it looks like `PATH` isn't taken into account.
-        shell = (platform.system() == 'Windows')
         try:
-            retcode = subprocess.call(args, shell=shell)
+            retcode = subprocess.call(args)
         except FileNotFoundError as ex:
             logger.error("Tried running UglifyJS processor with command: %s" %
                          args)
@@ -102,10 +100,13 @@ class UglifyJSProcessor(SimpleFileProcessor):
         if self._conf is not None:
             return
 
+        bin_name = 'uglifyjs'
+        if platform.system() == 'Windows':
+            bin_name += '.cmd'
+
         self._conf = self.app.config.get('uglifyjs') or {}
-        self._conf.setdefault('bin', 'uglifyjs')
+        self._conf.setdefault('bin', bin_name)
         self._conf.setdefault('options', ['--compress'])
         if not isinstance(self._conf['options'], list):
             raise Exception("The `uglify/options` configuration setting "
                             "must be an array of arguments.")
-
