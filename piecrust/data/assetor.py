@@ -21,7 +21,7 @@ class _AssetInfo:
     def __str__(self):
         return self.uri
 
-    def json(self):
+    def as_json(self):
         with open(self.content_item.spec, 'r', encoding='utf8') as fp:
             return json.load(fp)
 
