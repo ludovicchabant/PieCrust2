@@ -44,6 +44,9 @@ class PieCrustPlugin(object):
     def getPublishers(self):
         return []
 
+    def getTaskRunners(self):
+        return []
+
     def initialize(self, app):
         pass
 
@@ -104,6 +107,9 @@ class PluginLoader(object):
 
     def getPublishers(self):
         return self._getPluginComponents('getPublishers')
+
+    def getTaskRunners(self):
+        return self._getPluginComponents('getTaskRunners')
 
     def _ensureLoaded(self):
         if self._plugins is not None:

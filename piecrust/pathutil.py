@@ -56,3 +56,9 @@ def multi_fnmatch_filter(names, patterns, modifier=None, inverse=True):
             res.append(n)
     return res
 
+
+def ensure_dir(path, mode=0o755):
+    try:
+        os.makedirs(path, mode=mode, exist_ok=True)
+    except OSError:
+        pass

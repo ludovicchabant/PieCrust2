@@ -17,6 +17,7 @@ class BuiltInPlugin(PieCrustPlugin):
         from piecrust.commands.builtin.publishing import PublishCommand
         from piecrust.commands.builtin.scaffolding import PrepareCommand
         from piecrust.commands.builtin.serving import ServeCommand
+        from piecrust.commands.builtin.tasks import TasksCommand
         from piecrust.commands.builtin.themes import ThemesCommand
         from piecrust.commands.builtin.util import (
             InitCommand, PurgeCommand, ImportCommand)
@@ -39,7 +40,9 @@ class BuiltInPlugin(PieCrustPlugin):
             ShowRecordCommand(),
             ServeCommand(),
             AdministrationPanelCommand(),
-            PublishCommand()]
+            PublishCommand(),
+            TasksCommand()
+        ]
 
     def getCommandExtensions(self):
         from piecrust.commands.builtin.scaffolding import (
@@ -165,3 +168,8 @@ class BuiltInPlugin(PieCrustPlugin):
             SftpPublisher,
             RsyncPublisher]
 
+    def getTaskRunners(self):
+        from piecrust.tasks.mentions import MentionTaskRunner
+
+        return [
+            MentionTaskRunner]

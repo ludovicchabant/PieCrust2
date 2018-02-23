@@ -128,6 +128,13 @@ class SiteInfo:
         except subprocess.TimeoutExpired:
             flash("Publish process is still running... check the log later.")
 
+    def runTask(self, task_id):
+        args = [
+            '--no-color',
+            'tasks', 'run',
+            '-t', task_id]
+        self._runChef(args)
+
     def _runChef(self, args):
         chef_path = os.path.realpath(os.path.join(
             os.path.dirname(__file__),
