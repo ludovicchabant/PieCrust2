@@ -43,8 +43,8 @@ def test_assets(fs_fac, site_root, expected):
             assert en in assetor
             assert hasattr(assetor, en)
             path = site_root.rstrip('/') + '/foo/bar/%s.txt' % en
-            assert assetor[en] == path
-            assert getattr(assetor, en) == path
+            assert str(assetor[en]) == path
+            assert str(getattr(assetor, en)) == path
 
 
 def test_missing_asset():
