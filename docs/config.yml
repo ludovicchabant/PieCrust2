@@ -24,6 +24,10 @@ site:
             source: api
             func: apiurl
 
+chef:
+    env:
+        PATH: node_modules/.bin
+
 baker:
     assets_dirs:
         assets:

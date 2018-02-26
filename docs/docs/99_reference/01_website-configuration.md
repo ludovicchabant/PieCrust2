@@ -136,6 +136,26 @@ given between parenthesis:
 [tplengref]: {{docurl('reference/template-engines')}}
 
 
+## Chef Command Line
+
+The following settings are unde the `chef` section, and all valid for _all_ chef
+commands.
+
+* `env`: A mapping of environment variables and values to set before running the
+  current command. By default, variables are set to the given value. If a `+` is
+  added to the variable name, the value will be _appended_ instead. The `PATH`
+  variable's value is _always_ appended with either `:` or `;` depending on the
+  OS.
+    
+    For example:
+
+        chef:
+          env:
+            PATH: node_modules/.bin
+            SOME_VAR: value
+            "OTHER_VAR+": ",append this"
+
+
 ## Preparation
 
 The following settings are under the `prepare` section, and are used by the

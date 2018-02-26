@@ -246,6 +246,25 @@ def _build_cache_key(pre_args):
     return cache_key
 
 
+def _setup_app_environment(env):
+    for k, v in env.items():
+        varname = k
+        append = False
+        if k.lower() == 'path':
+            append = True
+            v = os.pathsep + v
+        elif k.endswith('+'):
+            varname = k[:-1]
+            append = True
+
+        if append:
+            logger.debug("Env: $%s += %s" % (varname, v))
+            os.environ[varname] += v
+        else:
+            logger.debug("Env: $%s = %s" % (varname, v))
+            os.environ[varname] = v
+
+
 def _run_chef(pre_args, argv):
     # Setup the app.
     root = None
@@ -314,6 +333,11 @@ def _run_chef(pre_args, argv):
     if not hasattr(result, 'func'):
         parser.print_help()
         return 0
+
+    # Do any custom setup the user wants.
+    custom_env = app.config.get('chef/env')
+    if custom_env:
+        _setup_app_environment(custom_env)
 
     # Add some timing information.
     if app.env:
