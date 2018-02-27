@@ -84,12 +84,15 @@ The rest is pretty much the same as what the Flask documentation says.
 The PieCrust administration panel supports the [Micropub][] protocol, so
 applications like [Micro.blog][mb] can be used to create new blog posts.
 
-This however requires you to specify ways to authenticate yourself as the owner
-of your website. Thankfully, this is done quite easily with the [IndieAuth][]
-protocol:
+### HTML Markup
+
+First you need to specify ways to authenticate yourself as the owner of your
+website. Thankfully, this is done quite easily with the [IndieAuth][] protocol:
 
 * Add some markup to your website's `<head>` section so that you point to, say,
-  your Twitter profile with a `rel="me"` attribute.
+  your Twitter profile with a `rel="me"` attribute. Then make sure your Twitter
+  profile has a link back to your website.
+
 * Add some authorization endpoints that handle all the security handshaking
   stuff.
 
@@ -99,17 +102,73 @@ For instance:
     <link rel="authorization_endpoint" href="https://indieauth.com/auth">
     <link rel="token_endpoint" href="https://tokens.indieauth.com/token">
 
-Make sure your Twitter profile has a link that points back at your website.
-That's it!
-
 Now you need to indicate to client applications what to do to make new blog
 posts. You also do this by adding an entry in your `<head>` section:
 
     <link rel="micropub" href="https://your-website.com/pc-admin/micropub">
 
-That's it too!
+
+This endpoint runs a part of the administration panel that can create new posts
+and publish your website. This requires a bit of configuration, which is
+addressed below.
+
+
+### Site Configuration
+
+When the `micropub` endpoint receives instructions to create a new post, it
+needs to know a couple things beforehand:
+
+* Which page source to add the new post to.
+* How to publish it.
+
+This is done in the `micropub` section of the [website
+configuration][siteconfig] with, respectively, the `source` and `publish_target`
+sub-settings. For instance:
+
+    micropub:
+      source: myblog
+      publish_target: mypublication
+
+This will add any new post to the `myblog` source, and subsequently run the
+`mypublication` [publish target][pub].
+
+If no publish target is specified, the new post will be created but you will
+have to bake your site by hand, or using some other infrastructure like an
+automatically scheduled job.
+
+> **Microblogging**: when you use a Microblogging (_i.e._ Twitter-like) client,
+> the post won't typically have any title, tags, or anything besides its
+> generally short content.
+> 
+> You can specify a custom bit of configuration to apply to such posts, like for
+> example give them a specific tag. This is done with the
+> `micropub/microblogging` setting:
+>
+>     microblogging:
+>       tags: [micro]
+>
+> This would add the `tags: [micro]` configuration settings to microblogging
+> posts, which effectively assigns them with the `micro` tag.
+
+&nbsp;
+
+> **Photos**: by default, any attached photo is added as an asset to the new
+> post, and a resized version of that photo is created with a `_thumb` suffix.
+> That thumbnail is created with a maximum height or width of 800 pixels
+> (whichever is bigger). The thumbnail is included in the post, with a link to
+> the full size photo.
+>
+> Setting the `micropub/resize_photos` to another number changes the thubnail
+> size. Setting it to `-1` disables thumbnail creation, in which case the
+> original photo is added directly to the post, with no link.
+
+For more advanced options, refer to the "Micropub endpoint" section of the
+[website configuration reference][siteconfig].
 
 
 [mb]: https://micro.blog/
 [micropub]: https://en.wikipedia.org/wiki/Micropub_(protocol)
 [indieauth]: https://indieauth.com/
+[siteconfig]: {{docurl('reference/website-configuration')}}
+[pub]: {{docurl('publishing')}}
+
