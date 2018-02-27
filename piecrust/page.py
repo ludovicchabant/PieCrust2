@@ -301,8 +301,7 @@ def _do_load_page(source, content_item):
 
 
 segment_pattern = re.compile(
-    r"""^\-\-\-\s*(?P<name>\w+)(\:(?P<fmt>\w+))?\s*\-\-\-\s*$""",
-    re.M)
+    r"^\-\-\-[ \t]*(?P<name>\w+)(\:(?P<fmt>\w+))?[ \t]*\-\-\-[ \t]*$", re.M)
 
 
 def _count_lines(txt, start=0, end=-1):
