@@ -100,7 +100,7 @@ def _run_werkzeug_server(appfactory, host, port, *,
     # Disable debugger PIN protection.
     os.environ['WERKZEUG_DEBUG_PIN'] = 'off'
 
-    if is_cmdline_mode:
+    if is_cmdline_mode and serve_admin:
         admin_url = 'http://%s:%s%s' % (host, port, '/pc-admin')
         logger.info("The administrative panel is available at: %s" %
                     admin_url)
