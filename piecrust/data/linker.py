@@ -98,7 +98,7 @@ class Linker:
 
     @property
     def has_children(self):
-        return bool(self.children)
+        return bool(self._getAllChildren())
 
     @property
     def children(self):
@@ -174,7 +174,8 @@ class Linker:
         return self._parent_group
 
     def _makePageData(self, page):
-        return _PageData(self, page)
+        is_self = page.content_spec == self._content_item.spec
+        return _PageData(page, is_self)
 
     def _makeGroupData(self, group):
         return _GroupData(self._source, group)
@@ -190,19 +191,15 @@ class Linker:
 
 
 class _PageData(PaginationData):
-    def __init__(self, linker, page):
+    def __init__(self, page, is_self):
         super().__init__(page)
-        self._linker = linker
+        self.is_self = is_self
+        self.is_page = True
 
     def _load(self):
         super()._load()
-        self._mapValue('is_page', True)
-        self._mapValue(
-            'is_self',
-            self._page.content_spec == self._linker._content_item.spec)
-
-        self._mapLoader('is_dir', lambda d, n: self._linker.has_children)
-        self._mapLoader('is_group', lambda d, n: self._linker.has_children)
+        self._mapLoader('is_dir', lambda d, n: self.family.has_children)
+        self._mapLoader('is_group', lambda d, n: self.family.has_children)
 
 
 class _GroupData:
