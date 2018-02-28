@@ -49,7 +49,7 @@ def _debug_req():
         logger.warning("Data: %s" % request.get_data(True))
         try:
             logger.warning("JSON: %s" % request.json)
-        except:
+        except:  # NOQA
             pass
 
 
@@ -63,7 +63,7 @@ def post_micropub():
     else:
         try:
             data = json.loads(request.get_data(as_text=True))
-        except:
+        except Exception:
             data = None
 
     if data:
@@ -76,7 +76,7 @@ def post_micropub():
             return _get_location_response(source_name, content_item)
 
         else:
-            logger.error("Post type '%s' is not supported." % post_type)
+            logger.error("Post type '%s' is not supported." % entry_type)
     else:
         logger.error("Missing form or JSON data.")
 
@@ -125,7 +125,7 @@ def get_micropub():
         endpoint_url = (request.host_url.rstrip('/') +
                         url_for('.post_micropub_media'))
         data.update({
-           "media-endpoint": endpoint_url
+            "media-endpoint": endpoint_url
         })
 
         pcapp = g.site.piecrust_app
@@ -380,8 +380,9 @@ def _create_hentry(data):
         if os.supports_fd:
             import stat
             try:
-                os.chmod(fp.fileno(),
-                         stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IWGRP)
+                os.chmod(
+                    fp.fileno(),
+                    stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP)
             except OSError:
                 pass
 
