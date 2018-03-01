@@ -1,0 +1,19 @@
+---
+no_kitchen: true
+args: init .
+files:
+    - config.yml
+---
+no_kitchen: true
+args: init myblog
+files:
+    - myblog/config.yml
+---
+args: prepare page foobar
+files:
+    - kitchen/pages/foobar.md
+---
+args: prepare post -d 2017/01/08 new-post
+files:
+    - kitchen/posts/2017-01-08_new-post.md
+

@@ -174,8 +174,10 @@ class PostsSource(FSContentSource,
                 try:
                     year, month, day = [int(s) for s in date.split('/')]
                 except ValueError:
-                    raise Exception("Dates must be of the form: "
-                                    "YEAR/MONTH/DAY.")
+                    raise Exception(
+                        "Dates must be of the form 'YEAR/MONTH/DAY', "
+                        "got '%s'." %
+                        str(date))
                 dt = datetime.date(year, month, day)
         elif isinstance(date, datetime.datetime):
             dt = datetime.date(date.year, date.month, date.day)

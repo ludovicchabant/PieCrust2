@@ -100,7 +100,7 @@ class DefaultContentSource(FSContentSource,
         metadata = self._createItemMetadata(path)
         config = metadata.setdefault('config', {})
         config.update({'title': uri_to_title(
-            os.path.basename(metadata['slug']))})
+            os.path.basename(metadata['route_params']['slug']))})
         return ContentItem(path, metadata)
 
     def getInteractiveFields(self):
