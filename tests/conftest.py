@@ -106,6 +106,10 @@ class YamlTestItemBase(pytest.Item):
     def _prepareMockFs(self):
         fs = mock_fs()
 
+        if self.spec.get('no_kitchen', False):
+            fs.withDir('/')
+            return fs
+
         # Suppress any formatting or layout so we can compare
         # much simpler strings.
         config = {
@@ -215,24 +219,29 @@ class ChefTestItem(YamlTestItemBase):
             argv = argv.split(' ')
         if self.is_theme_site:
             argv.insert(0, '--theme')
-        argv = ['--root', fs.path('/kitchen')] + argv
-
-        expected_code = self.spec.get('code', 0)
-        expected_out = self.spec.get('out', None)
+        if not self.spec.get('no_kitchen', False):
+            argv = ['--root', fs.path('/kitchen')] + argv
 
         with mock_fs_scope(fs, keep=self.mock_debug):
+            cwd = os.getcwd()
             memstream = io.StringIO()
             hdl = logging.StreamHandler(stream=memstream)
             logging.getLogger().addHandler(hdl)
             try:
                 from piecrust.main import _pre_parse_chef_args, _run_chef
+                os.chdir(fs.path('/'))
                 pre_args = _pre_parse_chef_args(argv)
                 exit_code = _run_chef(pre_args, argv)
             finally:
                 logging.getLogger().removeHandler(hdl)
+                os.chdir(cwd)
 
-            assert expected_code == exit_code
+            expected_code = self.spec.get('code', 0)
+            if expected_code != exit_code:
+                raise UnexpectedChefExitCodeError("Got '%d', expected '%d'." %
+                                                  (exit_code, expected_code))
 
+            expected_out = self.spec.get('out', None)
             if expected_out is not None:
                 actual_out = memstream.getvalue()
                 if not self.spec.get('no_strip'):
@@ -240,21 +249,46 @@ class ChefTestItem(YamlTestItemBase):
                     expected_out = expected_out.rstrip(' \n')
                 if self.spec.get('replace_out_path_sep'):
                     expected_out = expected_out.replace('/', os.sep)
-                assert expected_out == actual_out
+                if expected_out != actual_out:
+                    raise UnexpectedChefOutputError(expected_out, actual_out)
+
+            expected_files = self.spec.get('files', None)
+            if expected_files is not None:
+                for path in expected_files:
+                    path = '/' + path.lstrip('/')
+                    if not os.path.exists(fs.path(path)):
+                        raise MissingChefOutputFileError(fs, path)
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name
 
     def repr_failure(self, excinfo):
+        if isinstance(excinfo.value, UnexpectedChefExitCodeError):
+            return str(excinfo.value)
         if isinstance(excinfo.value, UnexpectedChefOutputError):
             return ('\n'.join(
-                ['Unexpected command output. Left is expected output, '
-                    'right is actual output'] +
-                excinfo.value.args[0]))
+                ['Unexpected command output. Expected:',
+                 excinfo.value.args[0],
+                 "Got:",
+                 excinfo.value.args[1]]))
+        if isinstance(excinfo.value, MissingChefOutputFileError):
+            lines = print_fs_tree(excinfo.value.args[0].path(''))
+            return ('\n'.join(
+                ["Missing file: %s" % excinfo.value.args[1],
+                 "Got output directory:"] +
+                lines))
         return super(ChefTestItem, self).repr_failure(excinfo)
 
 
+class UnexpectedChefExitCodeError(Exception):
+    pass
+
+
 class UnexpectedChefOutputError(Exception):
+    pass
+
+
+class MissingChefOutputFileError(Exception):
     pass
 
 
@@ -291,13 +325,13 @@ class BakeTestItem(YamlTestItemBase):
                         errors += e.getAllErrors()
                 raise BakeError(errors)
 
-            check_expected_outputs(self.spec, fs, ExpectedBakeOutputError)
+            check_expected_outputs(self.spec, fs, UnexpectedBakeOutputError)
 
     def reportinfo(self):
         return self.fspath, 0, "bake: %s" % self.name
 
     def repr_failure(self, excinfo):
-        if isinstance(excinfo.value, ExpectedBakeOutputError):
+        if isinstance(excinfo.value, UnexpectedBakeOutputError):
             return ('\n'.join(
                 ['Unexpected bake output. Left is expected output, '
                     'right is actual output'] +
@@ -315,7 +349,7 @@ class BakeError(Exception):
     pass
 
 
-class ExpectedBakeOutputError(Exception):
+class UnexpectedBakeOutputError(Exception):
     pass
 
 
