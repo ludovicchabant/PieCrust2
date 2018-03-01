@@ -1,6 +1,6 @@
 ---
 title: 
-format: none
+format: markdown
 ---
 
 {% if pagination.has_posts %}
@@ -15,8 +15,6 @@ format: none
 </section>
 {% endif %}
 
-
-<--markdown-->
 
 {% if not pagination.has_posts and not site.hide_quickstart %}
 
@@ -57,5 +55,6 @@ Run `chef serve`, and point your browser to `http://localhost:8080`.
 [piecrust]: {{ piecrust.url }}
 [doc]: http://bolt80.com/piecrust/
 [slug]: http://en.wikipedia.org/wiki/Clean_URL#Slug
+
 {% endif %}
 
