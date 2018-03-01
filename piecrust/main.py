@@ -246,7 +246,12 @@ def _build_cache_key(pre_args):
     return cache_key
 
 
-def _setup_app_environment(env):
+def _setup_app_environment(app, env):
+    from piecrust.uriutil import multi_replace
+
+    tokens = {
+        '%root_dir%': app.root_dir}
+
     for k, v in env.items():
         varname = k
         append = False
@@ -256,6 +261,8 @@ def _setup_app_environment(env):
         elif k.endswith('+'):
             varname = k[:-1]
             append = True
+
+        v = multi_replace(v, tokens)
 
         if append:
             logger.debug("Env: $%s += %s" % (varname, v))
@@ -337,7 +344,7 @@ def _run_chef(pre_args, argv):
     # Do any custom setup the user wants.
     custom_env = app.config.get('chef/env')
     if custom_env:
-        _setup_app_environment(custom_env)
+        _setup_app_environment(app, custom_env)
 
     # Add some timing information.
     if app.env:
