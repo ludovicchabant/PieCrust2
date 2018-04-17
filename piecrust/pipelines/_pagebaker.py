@@ -69,12 +69,14 @@ class PageBaker(object):
         with open(out_path, 'w', encoding='utf8') as fp:
             fp.write(content)
 
-    def bake(self, page, prev_entry, force=False):
+    def bake(self, page, prev_entry,
+             force_segments=False, force_layout=False):
         cur_sub = 1
         has_more_subs = True
         app = self.app
         out_dir = self.out_dir
-        force_bake = self.force or force
+        force_segments = self.force or force_segments
+        force_layout = self.force or force_layout
         pretty_urls = page.config.get('pretty_urls', self.pretty_urls)
 
         rendered_subs = []
@@ -99,7 +101,8 @@ class PageBaker(object):
                     pass
 
             # Figure out if we need to bake this page.
-            bake_status = _get_bake_status(page, out_path, force_bake,
+            bake_status = _get_bake_status(page, out_path,
+                                           force_segments, force_layout,
                                            prev_sub_entry, cur_sub_entry)
 
             # If this page didn't bake because it's already up-to-date.
@@ -207,19 +210,18 @@ STATUS_BAKE = 1
 STATUS_INVALIDATE_AND_BAKE = 2
 
 
-def _get_bake_status(page, out_path, force, prev_sub_entry, cur_sub_entry):
+def _get_bake_status(page, out_path, force_segments, force_layout,
+                     prev_sub_entry, cur_sub_entry):
+    # Easy tests.
+    if force_segments:
+        return STATUS_INVALIDATE_AND_BAKE
+    if force_layout:
+        return STATUS_BAKE
+
     # Figure out if we need to invalidate or force anything.
     status = _compute_force_flags(prev_sub_entry, cur_sub_entry)
     if status != STATUS_CLEAN:
         return status
-
-    # Easy test.
-    if force:
-        cur_sub_entry['flags'] |= \
-            SubPageFlags.FLAG_FORCED_BY_GENERAL_FORCE
-        # We need to invalidate any cache we have on this page because
-        # it's being forced, so something important has changed somehow.
-        return STATUS_INVALIDATE_AND_BAKE
 
     # Check for up-to-date outputs.
     in_path_time = page.content_mtime

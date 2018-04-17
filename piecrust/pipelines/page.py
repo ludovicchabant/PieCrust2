@@ -37,6 +37,7 @@ class PagePipeline(ContentPipeline):
     def createJobs(self, ctx):
         pass_num = ctx.pass_num
         if pass_num == 0:
+            ctx.current_record.user_data['dirty_source_names'] = set()
             return self._createLoadJobs(ctx)
         if pass_num == 1:
             return self._createSecondPassJobs(ctx)
@@ -68,8 +69,6 @@ class PagePipeline(ContentPipeline):
         history.build()
 
         pass_num = ctx.pass_num
-        record = ctx.current_record
-        record.user_data['dirty_source_names'] = set()
 
         for prev, cur in history.diffs:
             # Ignore pages that disappeared since last bake.
@@ -151,12 +150,16 @@ class PagePipeline(ContentPipeline):
             if cur.was_any_sub_baked:
                 continue
             if prev:
-                if any(map(
-                        lambda usn: usn in dirty_source_names,
-                        prev.getAllUsedSourceNames()[0])):
+                usn1, usn2 = prev.getAllUsedSourceNames()
+                force_segments = any(map(lambda u: u in dirty_source_names,
+                                     usn1))
+                force_layout = any(map(lambda u: u in dirty_source_names,
+                                   usn2))
+                if force_segments or force_layout:
                     jobs.append(create_job(self, prev.item_spec,
                                            pass_num=pass_num,
-                                           force_bake=True))
+                                           force_segments=force_segments,
+                                           force_layout=force_layout))
                 else:
                     # This page uses other sources, but no source was dirty
                     # this time around (it was a null build, maybe). We
@@ -182,13 +185,17 @@ class PagePipeline(ContentPipeline):
             new_entry.route_params = result['route_params']
             new_entry.timestamp = result['timestamp']
             ctx.record.addEntry(new_entry)
+
+            # If this page was modified, flag its entire source as "dirty",
+            # so any pages using that source can be re-baked.
+            if (new_entry.flags & PagePipelineRecordEntry.FLAG_SOURCE_MODIFIED):
+                ctx.record.user_data['dirty_source_names'].add(
+                    self.source.name)
         else:
             # Update the entry with the new information.
             existing = ctx.record_entry
             if not result.get('postponed', False):
                 merge_job_result_into_record_entry(existing, result)
-            if existing.was_any_sub_baked:
-                ctx.record.user_data['dirty_source_names'].add(self.source.name)
 
     def run(self, job, ctx, result):
         pass_num = job.get('pass_num', 0)
@@ -284,8 +291,10 @@ class PagePipeline(ContentPipeline):
         logger.debug("Full render for: %s" % content_item.spec)
         page = self.app.getPage(self.source, content_item)
         prev_entry = ctx.previous_entry
-        rdr_subs = self._pagebaker.bake(page, prev_entry,
-                                        force=job.get('force_bake'))
+        rdr_subs = self._pagebaker.bake(
+            page, prev_entry,
+            force_segments=job.get('force_segments'),
+            force_layout=job.get('force_layout'))
 
         add_page_job_result(result)
         result['subs'] = rdr_subs
