@@ -1,3 +1,4 @@
+import os
 import os.path
 import logging
 from piecrust.commands.base import (
@@ -233,3 +234,62 @@ class FindCommand(ChefCommand):
                         if pattern is None or fnmatch.fnmatch(name, pattern):
                             logger.info(item.spec)
 
+
+class UrlCommand(ChefCommand):
+    def __init__(self):
+        super().__init__()
+        self.name = 'url'
+        self.description = "Gets the URL to a given page."
+
+    def setupParser(self, parser, app):
+        parser.add_argument(
+            'path',
+            help="The path to the page.")
+        parser.add_argument(
+            '-f', '--func',
+            dest='tpl_func',
+            action='store_true',
+            help="Return the template function call instead of the URL.")
+
+    def run(self, ctx):
+        from piecrust.sources.fs import FSContentSourceBase
+        from piecrust.routing import RouteParameter
+
+        # Find which source this page might belong to.
+        full_path = os.path.join(ctx.app.root_dir, ctx.args.path)
+        for src in ctx.app.sources:
+            if not isinstance(src, FSContentSourceBase):
+                continue
+
+            if full_path.startswith(src.fs_endpoint_path + os.sep):
+                parent_src = src
+                break
+        else:
+            raise Exception("Can't find which source this page belongs to.")
+
+        route = ctx.app.getSourceRoute(parent_src.name)
+        content_item = parent_src.findContentFromSpec(full_path)
+        route_params = content_item.metadata['route_params']
+
+        if ctx.args.tpl_func:
+            if not route.func_name:
+                raise Exception("Source '%s' doesn't have a route with "
+                                "a template function name defined." %
+                                parent_src.name)
+
+            url = '%s(' % route.func_name
+            for i, p in enumerate(route.uri_params):
+                if i > 0:
+                    url += ', '
+                pinfo = route.getParameter(p)
+                if pinfo.param_type == RouteParameter.TYPE_INT2:
+                    url += '%02d' % route_params[p]
+                elif pinfo.param_type == RouteParameter.TYPE_INT4:
+                    url += '%04d' % route_params[p]
+                else:
+                    url += str(route_params[p])
+            url += ')'
+            logger.info(url)
+        else:
+            url = route.getUri(route_params)
+            logger.info(url)
