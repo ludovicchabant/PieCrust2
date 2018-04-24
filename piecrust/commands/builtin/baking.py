@@ -293,6 +293,7 @@ class ShowRecordCommand(ChefCommand):
                         for k, v in rec.user_data.items():
                             logger.info("  %s: %s" % (k, v))
 
+                    logger.info("Entries:")
                     for e in entries_to_show:
                         _print_record_entry(e)
                     logger.info("")
