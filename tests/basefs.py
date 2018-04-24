@@ -53,18 +53,18 @@ class TestFileSystemBase(object):
             config = {}
         return self.withFile(
             'kitchen/config.yml',
-            yaml.dump(config))
+            yaml.dump(config, default_flow_style=False))
 
     def withThemeConfig(self, config):
         return self.withFile(
             'kitchen/theme_config.yml',
-            yaml.dump(config))
+            yaml.dump(config, default_flow_style=False))
 
     def withPage(self, url, config=None, contents=None):
         config = config or {}
         contents = contents or "A test page."
         text = "---\n"
-        text += yaml.dump(config)
+        text += yaml.dump(config, default_flow_style=False)
         text += "---\n"
         text += contents
 
