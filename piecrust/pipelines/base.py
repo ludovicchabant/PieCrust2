@@ -2,7 +2,6 @@ import os.path
 import logging
 from werkzeug.utils import cached_property
 from piecrust.configuration import ConfigurationError
-from piecrust.sources.base import ContentItem
 
 
 logger = logging.getLogger(__name__)
@@ -58,19 +57,6 @@ class PipelineJobCreateContext(_PipelineMasterProcessJobContextBase):
         self.pass_num = pass_num
 
 
-class PipelineJobValidateContext(_PipelineMasterProcessJobContextBase):
-    """ Context for validating jobs on subsequent step runs (i.e. validating
-        the list of jobs to run starting with the second step).
-
-        This is run on the master process, so it can access both the
-        previous and current records.
-    """
-    def __init__(self, pass_num, step_num, record_name, record_histories):
-        super().__init__(record_name, record_histories)
-        self.pass_num = pass_num
-        self.step_num = step_num
-
-
 class PipelineJobRunContext:
     """ Context for running pipeline baking jobs.
 
@@ -103,11 +89,10 @@ class PipelineJobResultHandleContext:
         This is run on the master process, so it can access the current
         record.
     """
-    def __init__(self, record, job, pass_num, step_num):
+    def __init__(self, record, job, pass_num):
         self.record = record
         self.job = job
         self.pass_num = pass_num
-        self.step_num = step_num
 
     @cached_property
     def record_entry(self):
@@ -160,7 +145,7 @@ class ContentPipeline:
     def createJobs(self, ctx):
         return [
             create_job(self, item.spec)
-            for item in self.source.getAllContents()]
+            for item in self.source.getAllContents()], None
 
     def createRecordEntry(self, item_spec):
         entry_class = self.RECORD_ENTRY_CLASS
@@ -170,9 +155,6 @@ class ContentPipeline:
 
     def handleJobResult(self, result, ctx):
         raise NotImplementedError()
-
-    def validateNextStepJobs(self, jobs, ctx):
-        pass
 
     def run(self, job, ctx, result):
         raise NotImplementedError()

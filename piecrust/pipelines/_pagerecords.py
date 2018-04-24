@@ -1,4 +1,3 @@
-import copy
 from piecrust.pipelines.records import RecordEntry, get_flag_descriptions
 
 
@@ -7,10 +6,11 @@ class SubPageFlags:
     FLAG_BAKED = 2**0
     FLAG_FORCED_BY_SOURCE = 2**1
     FLAG_FORCED_BY_NO_PREVIOUS = 2**2
-    FLAG_FORCED_BY_PREVIOUS_ERRORS = 2**3
-    FLAG_FORCED_BY_GENERAL_FORCE = 2**4
-    FLAG_RENDER_CACHE_INVALIDATED = 2**5
-    FLAG_COLLAPSED_FROM_LAST_RUN = 2**6
+    FLAG_FORCED_BY_NO_RECORD = 2**3
+    FLAG_FORCED_BY_PREVIOUS_ERRORS = 2**4
+    FLAG_FORCED_BY_GENERAL_FORCE = 2**5
+    FLAG_RENDER_CACHE_INVALIDATED = 2**6
+    FLAG_COLLAPSED_FROM_LAST_RUN = 2**7
 
 
 def create_subpage_job_result(out_uri, out_path):
@@ -23,23 +23,10 @@ def create_subpage_job_result(out_uri, out_path):
     }
 
 
-def was_subpage_clean(sub):
-    return ((sub['flags'] & SubPageFlags.FLAG_BAKED) == 0 and
-            len(sub['errors']) == 0)
-
-
-def was_subpage_baked(sub):
-    return (sub['flags'] & SubPageFlags.FLAG_BAKED) != 0
-
-
-def was_subpage_baked_successfully(sub):
-    return was_subpage_baked(sub) and len(sub['errors']) == 0
-
-
 class PagePipelineRecordEntry(RecordEntry):
     FLAG_NONE = 0
-    FLAG_NEW = 2**0
-    FLAG_SOURCE_MODIFIED = 2**1
+    FLAG_SOURCE_MODIFIED = 2**0
+    FLAG_SEGMENTS_RENDERED = 2**1
     FLAG_OVERRIDEN = 2**2
     FLAG_COLLAPSED_FROM_LAST_RUN = 2**3
     FLAG_IS_DRAFT = 2**4
@@ -54,23 +41,8 @@ class PagePipelineRecordEntry(RecordEntry):
         self.subs = []
 
     @property
-    def was_touched(self):
-        return (self.flags & self.FLAG_SOURCE_MODIFIED) != 0
-
-    @property
-    def was_overriden(self):
-        return (self.flags & self.FLAG_OVERRIDEN) != 0
-
-    @property
     def num_subs(self):
         return len(self.subs)
-
-    @property
-    def was_any_sub_baked(self):
-        for o in self.subs:
-            if was_subpage_baked(o):
-                return True
-        return False
 
     @property
     def has_any_error(self):
@@ -80,6 +52,9 @@ class PagePipelineRecordEntry(RecordEntry):
             if len(o['errors']) > 0:
                 return True
         return False
+
+    def hasFlag(self, flag):
+        return (self.flags & flag) != 0
 
     def getSub(self, page_num):
         return self.subs[page_num - 1]
@@ -118,33 +93,21 @@ class PagePipelineRecordEntry(RecordEntry):
         return d
 
 
-def add_page_job_result(result):
-    result.update({
-        'flags': PagePipelineRecordEntry.FLAG_NONE,
-        'errors': [],
-        'subs': []
-    })
-
-
-def merge_job_result_into_record_entry(record_entry, result):
-    record_entry.flags |= result['flags']
-    record_entry.errors += result['errors']
-    record_entry.subs += result['subs']
-
-
 flag_descriptions = {
-    PagePipelineRecordEntry.FLAG_NEW: 'new',
     PagePipelineRecordEntry.FLAG_SOURCE_MODIFIED: 'touched',
+    PagePipelineRecordEntry.FLAG_SEGMENTS_RENDERED: 'rendered segments',
     PagePipelineRecordEntry.FLAG_OVERRIDEN: 'overriden',
     PagePipelineRecordEntry.FLAG_COLLAPSED_FROM_LAST_RUN: 'from last run',
     PagePipelineRecordEntry.FLAG_IS_DRAFT: 'draft',
-    PagePipelineRecordEntry.FLAG_ABORTED_FOR_SOURCE_USE: 'aborted for source use'}
+    PagePipelineRecordEntry.FLAG_ABORTED_FOR_SOURCE_USE: ('aborted for '
+                                                          'source use')}
 
 
 sub_flag_descriptions = {
     SubPageFlags.FLAG_BAKED: 'baked',
     SubPageFlags.FLAG_FORCED_BY_SOURCE: 'forced by source',
     SubPageFlags.FLAG_FORCED_BY_NO_PREVIOUS: 'forced b/c new',
+    SubPageFlags.FLAG_FORCED_BY_NO_RECORD: 'forced b/c no record',
     SubPageFlags.FLAG_FORCED_BY_PREVIOUS_ERRORS: 'forced by errors',
     SubPageFlags.FLAG_FORCED_BY_GENERAL_FORCE: 'manually forced',
     SubPageFlags.FLAG_RENDER_CACHE_INVALIDATED: 'cache invalidated',

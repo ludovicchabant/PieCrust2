@@ -7,13 +7,9 @@ from piecrust.data.filters import (
     PaginationFilter, SettingFilterClause)
 from piecrust.page import Page
 from piecrust.pipelines._pagebaker import PageBaker
-from piecrust.pipelines._pagerecords import (
-    PagePipelineRecordEntry,
-    add_page_job_result, merge_job_result_into_record_entry)
+from piecrust.pipelines._pagerecords import PagePipelineRecordEntry
 from piecrust.pipelines.base import (
-    ContentPipeline, get_record_name_for_source,
-    create_job, content_item_from_job)
-from piecrust.pipelines.records import RecordHistory
+    ContentPipeline, get_record_name_for_source, create_job)
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentItem
 from piecrust.sources.generator import GeneratorSourceBase
@@ -307,8 +303,8 @@ class TaxonomyPipeline(ContentPipeline):
             current_record.addEntry(entry)
 
         if len(jobs) > 0:
-            return jobs
-        return None
+            return jobs, "taxonomize"
+        return None, None
 
     def run(self, job, ctx, result):
         term = job['term']
@@ -324,13 +320,12 @@ class TaxonomyPipeline(ContentPipeline):
         prev_entry = ctx.previous_entry
         rdr_subs = self._pagebaker.bake(page, prev_entry)
 
-        add_page_job_result(result)
         result['subs'] = rdr_subs
         result['term'] = page.source_metadata['term']
 
     def handleJobResult(self, result, ctx):
         existing = ctx.record_entry
-        merge_job_result_into_record_entry(existing, result)
+        existing.subs = result['subs']
         existing.term = result['term']
 
     def postJobRun(self, ctx):
@@ -362,7 +357,6 @@ class _TaxonomyTermsAnalyzer(object):
         self.pipeline = pipeline
         self.record_histories = record_histories
         self._all_terms = {}
-        self._single_dirty_slugified_terms = set()
         self._all_dirty_slugified_terms = None
 
     @property
@@ -381,49 +375,48 @@ class _TaxonomyTermsAnalyzer(object):
     def analyze(self):
         # Build the list of terms for our taxonomy, and figure out which ones
         # are 'dirty' for the current bake.
-        #
-        # Remember all terms used.
         source = self.pipeline.inner_source
         taxonomy = self.pipeline.taxonomy
         slugifier = self.pipeline.slugifier
 
-        record_name = get_record_name_for_source(source)
+        tax_is_mult = taxonomy.is_multiple
+        tax_setting_name = taxonomy.setting_name
+
+        # First, go over all of our source's pages seen during this bake.
+        # Gather all the taxonomy terms they have, and also keep track of
+        # the ones used by the pages that were actually rendered (instead of
+        # those that were up-to-date and skipped).
+        single_dirty_slugified_terms = set()
         current_records = self.record_histories.current
+        record_name = get_record_name_for_source(source)
         cur_rec = current_records.getRecord(record_name)
         for cur_entry in cur_rec.getEntries():
-            if not cur_entry.was_overriden:
-                cur_terms = cur_entry.config.get(taxonomy.setting_name)
-                if cur_terms:
-                    if not taxonomy.is_multiple:
-                        self._addTerm(
-                            slugifier, cur_entry.item_spec, cur_terms)
-                    else:
-                        self._addTerms(
-                            slugifier, cur_entry.item_spec, cur_terms)
+            if cur_entry.hasFlag(PagePipelineRecordEntry.FLAG_OVERRIDEN):
+                continue
 
-        # Re-bake all taxonomy terms that include new or changed pages, by
-        # marking them as 'dirty'.
-        history = self.record_histories.getHistory(record_name).copy()
-        history.build()
-        for prev_entry, cur_entry in history.diffs:
-            entries = [cur_entry]
-            if prev_entry:
-                entries.append(prev_entry)
+            cur_terms = cur_entry.config.get(tax_setting_name)
+            if not cur_terms:
+                continue
 
-            for e in entries:
-                if e and e.was_any_sub_baked:
-                    entry_terms = e.config.get(taxonomy.setting_name)
-                    if entry_terms:
-                        if not taxonomy.is_multiple:
-                            self._single_dirty_slugified_terms.add(
-                                slugifier.slugify(entry_terms))
-                        else:
-                            self._single_dirty_slugified_terms.update(
-                                (slugifier.slugify(t)
-                                 for t in entry_terms))
+            if not tax_is_mult:
+                self._addTerm(
+                    slugifier, cur_entry.item_spec, cur_terms)
+            else:
+                self._addTerms(
+                    slugifier, cur_entry.item_spec, cur_terms)
+
+            if cur_entry.hasFlag(
+                    PagePipelineRecordEntry.FLAG_SEGMENTS_RENDERED):
+                if not tax_is_mult:
+                    single_dirty_slugified_terms.add(
+                        slugifier.slugify(cur_terms))
+                else:
+                    single_dirty_slugified_terms.update(
+                        (slugifier.slugify(t)
+                         for t in cur_terms))
 
         self._all_dirty_slugified_terms = list(
-            self._single_dirty_slugified_terms)
+            single_dirty_slugified_terms)
         logger.debug("Gathered %d dirty taxonomy terms",
                      len(self._all_dirty_slugified_terms))
 
@@ -438,7 +431,7 @@ class _TaxonomyTermsAnalyzer(object):
         # by any page in the website (anywhere someone can ask for an URL
         # to the combination page), it means we check all the records, not
         # just the record for our source.
-        if taxonomy.is_multiple:
+        if tax_is_mult:
             known_combinations = set()
             for rec in current_records.records:
                 # Cheap way to test if a record contains entries that
@@ -456,7 +449,7 @@ class _TaxonomyTermsAnalyzer(object):
 
             dcc = 0
             for terms in known_combinations:
-                if not self._single_dirty_slugified_terms.isdisjoint(
+                if not single_dirty_slugified_terms.isdisjoint(
                         set(terms)):
                     self._all_dirty_slugified_terms.append(
                         taxonomy.separator.join(terms))

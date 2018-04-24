@@ -250,7 +250,7 @@ def _compute_force_flags(prev_sub_entry, cur_sub_entry):
     if not prev_sub_entry:
         # No previous record, so most probably was never baked. Bake it.
         cur_sub_entry['flags'] |= \
-            SubPageFlags.FLAG_FORCED_BY_NO_PREVIOUS
+            SubPageFlags.FLAG_FORCED_BY_NO_RECORD
         return STATUS_BAKE
 
     return STATUS_CLEAN

@@ -7,12 +7,10 @@ from piecrust.dataproviders.pageiterator import (
     PageIterator, HardCodedFilterIterator, DateSortIterator)
 from piecrust.page import Page
 from piecrust.pipelines._pagebaker import PageBaker
-from piecrust.pipelines._pagerecords import (
-    PagePipelineRecordEntry,
-    add_page_job_result, merge_job_result_into_record_entry)
+from piecrust.pipelines._pagerecords import PagePipelineRecordEntry
 from piecrust.pipelines.base import (
     ContentPipeline,
-    create_job, get_record_name_for_source, content_item_from_job)
+    create_job, get_record_name_for_source)
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import ContentItem
 from piecrust.sources.generator import GeneratorSourceBase
@@ -193,8 +191,8 @@ class BlogArchivesPipeline(ContentPipeline):
             current_record.addEntry(entry)
 
         if len(jobs) > 0:
-            return jobs
-        return None
+            return jobs, "archive"
+        return None, None
 
     def run(self, job, ctx, result):
         year = job['year']
@@ -206,13 +204,12 @@ class BlogArchivesPipeline(ContentPipeline):
         prev_entry = ctx.previous_entry
         rdr_subs = self._pagebaker.bake(page, prev_entry)
 
-        add_page_job_result(result)
         result['subs'] = rdr_subs
         result['year'] = page.source_metadata['year']
 
     def handleJobResult(self, result, ctx):
         existing = ctx.record_entry
-        merge_job_result_into_record_entry(existing, result)
+        existing.subs = result['subs']
         existing.year = result['year']
 
     def postJobRun(self, ctx):
@@ -243,7 +240,8 @@ class BlogArchivesPipeline(ContentPipeline):
         for cur_entry in cur_rec.getEntries():
             dt = datetime.datetime.fromtimestamp(cur_entry.timestamp)
             all_years.add(dt.year)
-            if cur_entry.was_any_sub_baked:
+            if cur_entry.hasFlag(
+                    PagePipelineRecordEntry.FLAG_SEGMENTS_RENDERED):
                 dirty_years.add(dt.year)
 
         self._all_years = all_years
