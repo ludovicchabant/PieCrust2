@@ -52,7 +52,7 @@ class PieCrustExtension(Extension):
         if ctx is None or ctx.page is None:
             raise Exception("Can't paginate when no page has been pushed "
                             "on the execution stack.")
-        return Paginator(ctx.page, value,
+        return Paginator(value, ctx.page,
                          sub_num=ctx.sub_num,
                          items_per_page=items_per_page)
 
