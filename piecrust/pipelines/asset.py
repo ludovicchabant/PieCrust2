@@ -38,8 +38,8 @@ class AssetPipeline(ContentPipeline):
                 self.app.config.get('pipelines/asset/processors'),
                 self.source.config.get('processors')]:
             if flt is not None:
-                logger.debug("Filtering processors to: %s" % flt)
                 processors = get_filtered_processors(processors, flt)
+        logger.debug("Filtering processors to: %s" % processors)
 
         # Invoke pre-processors.
         proc_ctx = ProcessorContext(self)

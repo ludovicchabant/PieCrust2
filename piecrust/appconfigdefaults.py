@@ -40,6 +40,11 @@ default_configuration = collections.OrderedDict({
         'cache_time': 28800,
         'enable_debug_info': True,
         'show_debug_info': False
+    }),
+    'pipelines': collections.OrderedDict({
+        'asset': collections.OrderedDict({
+            'processors': ['all', '-uglifyjs', '-cleancss']
+        })
     })
 })
 
