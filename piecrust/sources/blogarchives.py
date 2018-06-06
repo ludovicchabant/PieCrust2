@@ -42,7 +42,7 @@ class BlogArchivesSource(GeneratorSourceBase):
     def findContentFromRoute(self, route_params):
         year = route_params['year']
         return ContentItem(
-            '_index',
+            '_index[%s]' % year,
             {'route_params': {'year': year}})
 
     def prepareRenderContext(self, ctx):
@@ -165,11 +165,6 @@ class BlogArchivesPipeline(ContentPipeline):
         self._pagebaker.stopWriterQueue()
 
     def createJobs(self, ctx):
-        logger.debug("Caching template page for blog archives '%s'." %
-                     self.inner_source.name)
-        page = self.app.getPage(self.source, ContentItem('_index', {}))
-        page._load()
-
         logger.debug("Building blog archives for: %s" %
                      self.inner_source.name)
         self._buildDirtyYears(ctx)
@@ -181,13 +176,12 @@ class BlogArchivesPipeline(ContentPipeline):
         current_record = ctx.current_record
 
         for y in self._dirty_years:
-            record_entry_spec = '_index[%04d]' % y
+            item_spec = '_index[%04d]' % y
 
-            jobs.append(create_job(self, '_index',
-                                   year=y,
-                                   record_entry_spec=record_entry_spec))
+            jobs.append(create_job(self, item_spec,
+                                   year=y))
 
-            entry = rec_fac(record_entry_spec)
+            entry = rec_fac(item_spec)
             current_record.addEntry(entry)
 
         if len(jobs) > 0:
@@ -196,7 +190,7 @@ class BlogArchivesPipeline(ContentPipeline):
 
     def run(self, job, ctx, result):
         year = job['year']
-        content_item = ContentItem('_index',
+        content_item = ContentItem('_index[%04d]' % year,
                                    {'year': year,
                                     'route_params': {'year': year}})
         page = Page(self.source, content_item)

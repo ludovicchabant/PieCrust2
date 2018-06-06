@@ -84,7 +84,7 @@ class TaxonomySource(GeneratorSourceBase):
 
     def findContentFromRoute(self, route_params):
         slugified_term = route_params[self.taxonomy.term_name]
-        spec = '_index'
+        spec = '_index[%s]' % slugified_term
         metadata = {'term': slugified_term,
                     'route_params': {
                         self.taxonomy.term_name: slugified_term}
@@ -274,11 +274,6 @@ class TaxonomyPipeline(ContentPipeline):
         self._pagebaker.stopWriterQueue()
 
     def createJobs(self, ctx):
-        logger.debug("Caching template page for taxonomy '%s'." %
-                     self.taxonomy.name)
-        page = self.app.getPage(self.source, ContentItem('_index', {}))
-        page._load()
-
         logger.debug("Building '%s' taxonomy pages for source: %s" %
                      (self.taxonomy.name, self.inner_source.name))
         self._analyzer = _TaxonomyTermsAnalyzer(self, ctx.record_histories)
@@ -292,14 +287,12 @@ class TaxonomyPipeline(ContentPipeline):
         current_record = ctx.current_record
 
         for slugified_term in self._analyzer.dirty_slugified_terms:
-            item_spec = '_index'
-            record_entry_spec = '_index[%s]' % slugified_term
+            item_spec = '_index[%s]' % slugified_term
 
             jobs.append(create_job(self, item_spec,
-                                   term=slugified_term,
-                                   record_entry_spec=record_entry_spec))
+                                   term=slugified_term))
 
-            entry = rec_fac(record_entry_spec)
+            entry = rec_fac(item_spec)
             current_record.addEntry(entry)
 
         if len(jobs) > 0:
@@ -308,7 +301,7 @@ class TaxonomyPipeline(ContentPipeline):
 
     def run(self, job, ctx, result):
         term = job['term']
-        content_item = ContentItem('_index',
+        content_item = ContentItem('_index[%s]' % term,
                                    {'term': term,
                                     'route_params': {
                                         self.taxonomy.term_name: term}
