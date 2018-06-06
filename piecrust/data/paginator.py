@@ -81,7 +81,7 @@ class Paginator(object):
 
     @property
     def has_items(self):
-        return self.posts_this_page > 0
+        return self.items_this_page > 0
 
     @cached_property
     def items_per_page(self):
