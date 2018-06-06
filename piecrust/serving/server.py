@@ -10,10 +10,11 @@ from werkzeug.exceptions import (
 from werkzeug.wrappers import Request, Response
 from jinja2 import FileSystemLoader, Environment
 from piecrust import CACHE_DIR, RESOURCES_DIR
+from piecrust.page import PageNotFoundError
 from piecrust.rendering import RenderingContext, render_page
 from piecrust.routing import RouteNotFoundError
 from piecrust.serving.util import (
-    content_type_map, make_wrapped_file_response, get_requested_page,
+    content_type_map, make_wrapped_file_response, get_requested_pages,
     get_app_for_server)
 from piecrust.sources.base import SourceNotFoundError
 
@@ -152,22 +153,44 @@ class _ServerImpl(object):
 
     def _try_serve_page(self, app, environ, request):
         # Find a matching page.
-        req_page = get_requested_page(app, request.path)
+        req_pages, not_founds = get_requested_pages(app, request.path)
+
+        rendered_page = None
+
+        for req_page in req_pages:
+            # We have a page, let's try to render it.
+            render_ctx = RenderingContext(req_page.page,
+                                          sub_num=req_page.sub_num,
+                                          force_render=True)
+            req_page.page.source.prepareRenderContext(render_ctx)
+
+            # Render the page.
+            this_rendered_page = render_page(render_ctx)
+
+            # We might have rendered a page that technically exists, but
+            # has no interesting content, like a tag page for a tag that
+            # isn't used by any page. To eliminate these false positives,
+            # we check if there was pagination used, and if so, if it had
+            # anything in it.
+            # TODO: we might need a more generic system for other cases.
+            render_info = this_rendered_page.render_info
+            if (render_info['used_pagination'] and
+                    not render_info['pagination_has_items']):
+                not_founds.append(PageNotFoundError(
+                    ("Rendered '%s' (page %d) in source '%s' "
+                     "but got empty content:\n\n%s\n\n") %
+                    (req_page.req_path, req_page.sub_num,
+                     req_page.page.source.name, this_rendered_page.content)))
+                continue
+
+            rendered_page = this_rendered_page
+            break
 
         # If we haven't found any good match, report all the places we didn't
         # find it at.
-        if req_page.page is None:
+        if rendered_page is None:
             msg = "Can't find path for '%s':" % request.path
-            raise MultipleNotFound(msg, req_page.not_found_errors)
-
-        # We have a page, let's try to render it.
-        render_ctx = RenderingContext(req_page.page,
-                                      sub_num=req_page.sub_num,
-                                      force_render=True)
-        req_page.page.source.prepareRenderContext(render_ctx)
-
-        # Render the page.
-        rendered_page = render_page(render_ctx)
+            raise MultipleNotFound(msg, not_founds)
 
         # Start doing stuff.
         page = rendered_page.page

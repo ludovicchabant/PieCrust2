@@ -39,19 +39,22 @@ def find_routes(routes, uri, decomposed_uri=None):
         uri_no_sub, sub_num = decomposed_uri
 
     res = []
+
     for route in routes:
         route_params = route.matchUri(uri)
         if route_params is not None:
             res.append((route, route_params, 1))
 
-        if sub_num > 1:
+    if sub_num > 1:
+        for route in routes:
             route_params = route.matchUri(uri_no_sub)
             if route_params is not None:
                 res.append((route, route_params, sub_num))
+
     return res
 
 
-def get_requested_page(app, req_path):
+def get_requested_pages(app, req_path):
     # Remove the trailing slash to simplify how we parse URLs.
     root_url = app.config.get('site/root')
     if req_path != root_url:
@@ -65,7 +68,9 @@ def get_requested_page(app, req_path):
     if len(routes) == 0:
         raise RouteNotFoundError("Can't find route for: %s" % req_path)
 
-    req_page = RequestedPage()
+    req_pages = []
+    not_founds = []
+
     for route, route_params, route_sub_num in routes:
         cur_req_path = req_path
         if route_sub_num > 1:
@@ -73,16 +78,27 @@ def get_requested_page(app, req_path):
 
         page = _get_requested_page_for_route(app, route, route_params)
         if page is not None:
+            req_page = RequestedPage()
             req_page.page = page
             req_page.sub_num = route_sub_num
             req_page.req_path = cur_req_path
-            break
+            req_pages.append(req_page)
+        else:
+            not_founds.append(PageNotFoundError(
+                "No path found for '%s' in source '%s'." %
+                (cur_req_path, route.source_name)))
 
-        req_page.not_found_errors.append(PageNotFoundError(
-            "No path found for '%s' in source '%s'." %
-            (cur_req_path, route.source_name)))
+    return req_pages, not_founds
 
-    return req_page
+
+def get_requested_page(app, req_path):
+    req_pages, not_founds = get_requested_pages(app, req_path)
+    if req_pages:
+        return req_pages[0]
+
+    nfrp = RequestedPage()
+    nfrp.not_found_errors = not_founds
+    return nfrp
 
 
 def _get_requested_page_for_route(app, route, route_params):

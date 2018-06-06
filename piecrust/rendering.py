@@ -54,6 +54,7 @@ def create_render_info():
     return {
         'used_source_names': {'segments': [], 'layout': []},
         'used_pagination': False,
+        'pagination_has_items': False,
         'pagination_has_more': False,
         'used_assets': False,
     }
@@ -95,6 +96,7 @@ class RenderingContext(object):
             raise Exception("Pagination has already been used.")
         assert paginator.is_loaded
         ri['used_pagination'] = True
+        ri['pagination_has_items'] = paginator.has_items
         ri['pagination_has_more'] = paginator.has_more
         self.addUsedSource(paginator._source)
 

@@ -1,0 +1,41 @@
+---
+url: /tag/foo.html
+config:
+    site:
+        posts_per_page: 3
+in:
+    templates/_tag.html: |
+        Posts with {{tag}}
+        {% for post in pagination.posts -%}
+        {{post.url}}
+        {% endfor %}
+    posts/2016-06-01_post0.html: "---\ntags: [foo]\n---\nPost 0"
+    posts/2016-06-02_post1.html: "---\ntags: [foo]\n---\nPost 1"
+    posts/2016-06-03_post2.html: "---\ntags: [foo]\n---\nPost 2"
+    posts/2016-06-04_post3.html: "---\ntags: [foo]\n---\nPost 3"
+    posts/2016-06-05_post4.html: "---\ntags: [foo]\n---\nPost 4"
+out: |
+    Posts with foo
+    /2016/06/05/post4.html
+    /2016/06/04/post3.html
+    /2016/06/03/post2.html
+---
+url: /tag/foo/2.html
+config:
+    site:
+        posts_per_page: 3
+in:
+    templates/_tag.html: |
+        Posts with {{tag}}
+        {% for post in pagination.posts -%}
+        {{post.url}}
+        {% endfor %}
+    posts/2016-06-01_post0.html: "---\ntags: [foo]\n---\nPost 0"
+    posts/2016-06-02_post1.html: "---\ntags: [foo]\n---\nPost 1"
+    posts/2016-06-03_post2.html: "---\ntags: [foo]\n---\nPost 2"
+    posts/2016-06-04_post3.html: "---\ntags: [foo]\n---\nPost 3"
+    posts/2016-06-05_post4.html: "---\ntags: [foo]\n---\nPost 4"
+out: |
+    Posts with foo
+    /2016/06/02/post1.html
+    /2016/06/01/post0.html
