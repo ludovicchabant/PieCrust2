@@ -334,7 +334,7 @@ class BakeTestItem(YamlTestItemBase):
         if isinstance(excinfo.value, UnexpectedBakeOutputError):
             return ('\n'.join(
                 ['Unexpected bake output. Left is expected output, '
-                    'right is actual output'] +
+                    'right is actual output.'] +
                 excinfo.value.args[0]))
         elif isinstance(excinfo.value, BakeError):
             res = ('\n'.join(
@@ -390,13 +390,19 @@ class ServeTestItem(YamlTestItemBase):
                     (expected_status, resp.status_code),
                     resp)
 
+            cctx = CompareContext()
+
             if expected_headers:
                 for k, v in expected_headers.items():
-                    assert v == resp.headers.get(k)
+                    cmpres = _compare_str(v, resp.headers.get(k), cctx)
+                    if cmpres:
+                        raise UnexpectedChefServingOutput(cmpres)
 
             actual = resp.data.decode('utf8').rstrip()
             if expected_output:
-                assert expected_output.rstrip() == actual
+                cmpres = _compare_str(expected_output.rstrip(), actual, cctx)
+                if cmpres:
+                    raise UnexpectedChefServingOutput(cmpres)
 
             if expected_contains:
                 assert expected_contains.rstrip() in actual
@@ -424,6 +430,12 @@ class ServeTestItem(YamlTestItemBase):
             res += '\nWhile requesting URL: %s' % excinfo.value.url
             res += '\nBody:\n%s' % excinfo.value.resp.data.decode('utf8')
             return res
+        elif isinstance(excinfo.value, UnexpectedChefServingOutput):
+            res = '\n'.join(
+                ["Unexpected serving output. Left is expected output, "
+                 "right is actual output."] +
+                excinfo.value.args[0])
+            return res
         return super(ServeTestItem, self).repr_failure(excinfo)
 
 
@@ -432,6 +444,10 @@ class UnexpectedChefServingError(Exception):
         super().__init__(msg)
         self.url = url
         self.resp = resp
+
+
+class UnexpectedChefServingOutput(Exception):
+    pass
 
 
 class ServeTestFile(YamlTestFileBase):
