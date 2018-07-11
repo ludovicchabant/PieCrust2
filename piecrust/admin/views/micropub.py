@@ -98,6 +98,9 @@ def post_micropub_media():
     fn = re_unsafe_asset_char.sub('_', fn)
     fn = '%s_%s' % (uuid.uuid1().hex, fn)
     fn = fn.rstrip('_')
+    _, fnext = os.path.splitext(fn)
+    if not fnext:
+        fn = fn + '.jpg'
 
     photo_cache_dir = os.path.join(
         g.site.root_dir,
@@ -302,7 +305,7 @@ def _create_hentry(data):
                 paths_to_commit.append(p_thumb_path)
 
                 p_thumb_no_ext = '%s_thumb' % p_fn_no_ext
-                photo_names.append((p_thumb_no_ext, p_fn_no_ext))
+                photo_names.append((p_fn_no_ext, p_thumb_no_ext))
             else:
                 photo_names.append((p_fn_no_ext, None))
 
@@ -354,9 +357,18 @@ def _create_hentry(data):
     paths_to_commit.append(content_item.spec)
     with source.openItem(content_item, mode='w', encoding='utf8') as fp:
         fp.write('---\n')
+
         yaml.dump(post_config, fp,
                   default_flow_style=False,
                   allow_unicode=True)
+
+        if photo_names:
+            fp.write('photos:\n')
+            for pfull, pthumb in photo_names:
+                fp.write('- name: %s\n' % pfull)
+                if pthumb:
+                    fp.write('  thumb: %s\n' % pthumb)
+
         fp.write('---\n')
 
         if summary:
@@ -364,18 +376,6 @@ def _create_hentry(data):
             fp.write('\n')
             fp.write('<!--break-->\n\n')
         fp.write(content)
-
-        if photo_names:
-            fp.write('\n\n')
-            for pthumb, pfull in photo_names:
-                if pfull:
-                    fp.write('<a href="{{assets["%s"]}}">'
-                             '<img src="{{assets["%s"]}}" alt="%s"/>'
-                             '</a>\n\n' %
-                             (pfull, pthumb, pthumb))
-                else:
-                    fp.write('<img src="{{assets["%s"]}}" alt="%s"/>\n\n' %
-                             (pthumb, pthumb))
 
         if os.supports_fd:
             import stat
