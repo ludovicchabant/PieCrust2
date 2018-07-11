@@ -78,7 +78,10 @@ class Assetor:
 
         source = self._page.source
         content_item = self._page.content_item
-        assets = source.getRelatedContents(content_item, REL_ASSETS)
+        try:
+            assets = source.getRelatedContents(content_item, REL_ASSETS)
+        except NotImplementedError:
+            assets = None
 
         self._cache_map = {}
         self._cache_list = []
