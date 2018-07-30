@@ -246,7 +246,11 @@ class PieCrustConfiguration(Configuration):
                     theme_site=self.theme_config)
                 merge_dicts(values, blog_cfg)
 
+            for route in dcm['site']['routes']:
+                values
+
         # Merge the site config into the result config.
+        _merge_route_configs(values, site_values)
         merge_dicts(values, site_values)
 
     def _validateAll(self, values):
@@ -279,6 +283,18 @@ class PieCrustConfiguration(Configuration):
         visit_dict(values, _visitor)
 
         return values
+
+
+def _merge_route_configs(values, from_default):
+    actual_routes = values.get('site', {}).get('routes', [])
+    default_routes = from_default.get('site', {}).get('routes', [])
+    for dr in list(default_routes):  # copy because we'll trim it as we go.
+        ar = next((i for i in actual_routes
+                   if i.get('source') == dr['source']),
+                  None)
+        if ar is not None:
+            merge_dicts(ar, dr)
+            default_routes.remove(dr)
 
 
 class _ConfigCacheWriter(object):
