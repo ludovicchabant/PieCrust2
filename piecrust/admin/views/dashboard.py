@@ -4,7 +4,7 @@ import logging
 from flask import (
     current_app, g, request,
     render_template, url_for, redirect)
-from flask.ext.login import login_user, logout_user, login_required
+from flask_login import login_user, logout_user, login_required
 from piecrust.sources.fs import FSContentSourceBase
 from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.uriutil import split_uri

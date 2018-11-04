@@ -1,6 +1,6 @@
 import re
 from flask import g, abort, render_template, url_for
-from flask.ext.login import login_required
+from flask_login import login_required
 from piecrust.data.paginator import Paginator
 from ..blueprint import foodtruck_bp
 from ..views import with_menu_context

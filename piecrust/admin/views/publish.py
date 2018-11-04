@@ -1,7 +1,7 @@
 import copy
 import logging
 from flask import request, g, url_for, render_template, Response
-from flask.ext.login import login_required
+from flask_login import login_required
 from ..blueprint import foodtruck_bp
 from ..pubutil import PublishLogReader
 from ..views import with_menu_context

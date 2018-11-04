@@ -3,7 +3,7 @@ import logging
 from werkzeug.utils import secure_filename
 from flask import (
     g, request, abort, render_template, url_for, redirect, flash)
-from flask.ext.login import login_required
+from flask_login import login_required
 from piecrust.data.assetor import Assetor
 from piecrust.serving.util import get_requested_page
 from ..blueprint import foodtruck_bp

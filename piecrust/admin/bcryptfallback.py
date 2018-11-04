@@ -19,7 +19,7 @@ except ImportError:
 
 
 try:
-    from flask.ext.bcrypt import Bcrypt
+    from flask_bcrypt import Bcrypt
 except ImportError:
     print_warning = True
 

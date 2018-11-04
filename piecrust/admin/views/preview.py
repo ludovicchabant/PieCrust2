@@ -1,5 +1,5 @@
 from flask import g, request, make_response
-from flask.ext.login import login_required
+from flask_login import login_required
 from piecrust.serving.server import PieCrustServer
 from ..blueprint import foodtruck_bp
 

@@ -1,7 +1,7 @@
 import logging
 from flask import (
     g, request, abort, render_template, url_for, redirect, flash)
-from flask.ext.login import login_required
+from flask_login import login_required
 from piecrust.page import Page
 from piecrust.sources.interfaces import IInteractiveSource
 from piecrust.uriutil import split_uri

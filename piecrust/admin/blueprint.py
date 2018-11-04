@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 # Prepare the Login extension.
-from flask.ext.login import LoginManager, UserMixin  # NOQA
+from flask_login import LoginManager, UserMixin  # NOQA
 
 
 class User(UserMixin):
