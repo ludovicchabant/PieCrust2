@@ -1,7 +1,8 @@
 import os
 import os.path
 import logging
-from piecrust.commands.base import ExtendableChefCommand, ChefCommandExtension
+from piecrust.commands.base import (
+    ChefCommand, ExtendableChefCommand, ChefCommandExtension)
 
 
 logger = logging.getLogger(__name__)
@@ -225,3 +226,59 @@ class DefaultPrepareTemplatesHelpTopic(ChefCommandExtension):
             "`scaffold/pages` sub-directory in your website.")
         return help_txt
 
+
+class CopyAssetCommand(ChefCommand):
+    """ Chef command for copying files into a page's assets folder.
+    """
+    def __init__(self):
+        super().__init__()
+        self.name = 'copyasset'
+        self.description = "Copies files into a page's assets folder."
+
+    def setupParser(self, parser, app):
+        parser.add_argument('path',
+                            help="The path to the asset file.")
+        parser.add_argument('page',
+                            help="The path to the page file.")
+        parser.add_argument('-n', '--rename',
+                            help=("Rename the file so that it will be known "
+                                  "by this name in the `{{assets}}` syntax."))
+
+    def checkedRun(self, ctx):
+        # TODO: suppor other types of sources...
+        import shutil
+        from piecrust.sources import mixins
+
+        item = None
+        spec = ctx.args.page
+        for src in ctx.app.sources:
+            if not isinstance(src, mixins.SimpleAssetsSubDirMixin):
+                logger.warning(
+                    "Ignoring source '%s' because it's not supported yet." %
+                    src.name)
+                continue
+
+            try:
+                item = src.findContentFromSpec(spec)
+                break
+            except Exception as ex:
+                logger.warning(
+                    "Ignoring source '%s' because it raised an error: %s" %
+                    src.name, ex)
+                continue
+
+        if item is None:
+            raise Exception("No such page: %s" % ctx.args.page)
+
+        spec_no_ext, _ = os.path.splitext(item.spec)
+        assets_dir = spec_no_ext + mixins.assets_suffix
+        if not os.path.isdir(assets_dir):
+            logger.info("Creating directory: %s" % assets_dir)
+            os.makedirs(assets_dir)
+
+        dest_name, dest_ext = os.path.splitext(os.path.basename(ctx.args.path))
+        dest_name = ctx.args.rename or dest_name
+
+        dest_path = os.path.join(assets_dir, dest_name + dest_ext)
+        logger.info("Copying '%s' to '%s'." % (ctx.args.path, dest_path))
+        shutil.copy2(ctx.args.path, dest_path)

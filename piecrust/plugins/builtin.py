@@ -15,7 +15,8 @@ class BuiltInPlugin(PieCrustPlugin):
             ShowPathsCommand, UrlCommand)
         from piecrust.commands.builtin.plugins import PluginsCommand
         from piecrust.commands.builtin.publishing import PublishCommand
-        from piecrust.commands.builtin.scaffolding import PrepareCommand
+        from piecrust.commands.builtin.scaffolding import (
+            PrepareCommand, CopyAssetCommand)
         from piecrust.commands.builtin.serving import ServeCommand
         from piecrust.commands.builtin.tasks import TasksCommand
         from piecrust.commands.builtin.themes import ThemesCommand
@@ -31,6 +32,7 @@ class BuiltInPlugin(PieCrustPlugin):
             ShowConfigCommand(),
             FindCommand(),
             PrepareCommand(),
+            CopyAssetCommand(),
             ShowSourcesCommand(),
             ShowRoutesCommand(),
             ShowPathsCommand(),
