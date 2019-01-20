@@ -1,5 +1,6 @@
 import time
 import logging
+import datetime
 import contextlib
 
 
@@ -79,6 +80,7 @@ class Environment:
 
         self.app = None
         self.start_time = None
+        self.start_datetime = None
         self.was_cache_cleaned = False
         self.page_repository = MemCache()
         self.rendered_segments_repository = MemCache()
@@ -94,6 +96,7 @@ class Environment:
     def initialize(self, app):
         self.app = app
         self.start_time = time.perf_counter()
+        self.start_datetime = datetime.datetime.now()
 
         self.rendered_segments_repository.fs_cache = \
             app.cache.getCache('renders')

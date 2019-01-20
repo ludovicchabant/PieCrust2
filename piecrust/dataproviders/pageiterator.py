@@ -266,6 +266,16 @@ class PageIterator:
                 # the `draft` setting.
                 draft_setting = app.config['baker/no_bake_setting']
                 self._it = NoDraftsIterator(self._it, draft_setting)
+
+                if not app.config.get('baker/bake_future'):
+                    # Don't bake pages from the future.
+                    self._it = PruneFutureIterator(self._it,
+                                                   app.env.start_datetime)
+            elif app.config.get('server/is_serving'):
+                if not app.config.get('server/serve_future'):
+                    # Don't serve pages from the future.
+                    self._it = PruneFutureIterator(self._it,
+                                                   app.env.start_datetime)
         else:
             self._it = GenericSourceIterator(self._source)
 
@@ -424,6 +434,17 @@ class NoDraftsIterator:
         nds = self.no_draft_setting
         yield from filter(lambda i: not i.config.get(nds), self.it)
 
+
+class PruneFutureIterator:
+    def __init__(self, source, now_dt):
+        self.it = source
+        self.now_dt = now_dt
+
+    def __iter__(self):
+        now_dt = self.now_dt
+        for i in self.it:
+            if i.datetime <= now_dt:
+                yield i
 
 class PaginationDataBuilderIterator:
     def __init__(self, it):

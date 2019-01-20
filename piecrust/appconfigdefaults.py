@@ -32,10 +32,12 @@ default_configuration = collections.OrderedDict({
     }),
     'baker': collections.OrderedDict({
         'no_bake_setting': 'draft',
+        'bake_future': False,
         'workers': None,
         'batch_size': None
     }),
     'server': collections.OrderedDict({
+        'serve_future': True,
         'enable_gzip': True,
         'cache_time': 28800,
         'enable_debug_info': True,
