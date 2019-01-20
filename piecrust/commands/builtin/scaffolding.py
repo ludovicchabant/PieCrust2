@@ -133,11 +133,12 @@ class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
         self.command_name = 'prepare'
 
     def getTemplateNames(self, app):
-        return ['default', 'rss', 'atom']
+        return ['default', 'micro', 'rss', 'atom']
 
     def getTemplateDescription(self, app, name):
         descs = {
             'default': "The default template, for a simple page.",
+            'micro': "A micro-post.",
             'rss': "A fully functional RSS feed.",
             'atom': "A fully functional Atom feed."}
         return descs[name]
@@ -145,7 +146,7 @@ class DefaultPrepareTemplatesCommandExtension(ChefCommandExtension):
     def getTemplate(self, app, name):
         from piecrust import RESOURCES_DIR
 
-        assert name in ['default', 'rss', 'atom']
+        assert name in ['default', 'micro', 'rss', 'atom']
         src_path = os.path.join(RESOURCES_DIR, 'prepare', '%s.html' % name)
         with open(src_path, 'r', encoding='utf8') as fp:
             return fp.read()
