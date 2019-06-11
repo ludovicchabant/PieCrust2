@@ -2,6 +2,7 @@ import os
 import os.path
 import sys
 import json
+import shutil
 import hashlib
 import logging
 import platform
@@ -92,7 +93,7 @@ class LessProcessor(SimpleFileProcessor):
         logger.debug("Moving map file: %s -> %s" % (temp_map_path, map_path))
         if os.path.exists(map_path):
             os.remove(map_path)
-        os.rename(temp_map_path, map_path)
+        shutil.move(temp_map_path, map_path)
 
         return True
 
