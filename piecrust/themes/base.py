@@ -34,13 +34,13 @@ class ThemeLoader(object):
             return None
 
         # Get the list of directories in which themes are installed.
+        from piecrust.pathutil import expandall
         dirs = []
         themes_dirs = site_config.get('themes_dirs', [])
         if isinstance(themes_dirs, str):
-            dirs.append(os.path.join(self.root_dir,
-                                     os.path.expanduser(themes_dirs)))
+            dirs.append(os.path.join(self.root_dir, expandall(themes_dirs)))
         else:
-            dirs += [os.path.join(self.root_dir, os.path.expanduser(p))
+            dirs += [os.path.join(self.root_dir, expandall(p))
                      for p in themes_dirs]
 
         # Add the default `themes` directory.

@@ -62,3 +62,9 @@ def ensure_dir(path, mode=0o755):
         os.makedirs(path, mode=mode, exist_ok=True)
     except OSError:
         pass
+
+
+def expandall(path):
+    path = os.path.expandvars(path)
+    path = os.path.expanduser(path)
+    return path
