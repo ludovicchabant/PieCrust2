@@ -63,7 +63,7 @@ class ConcatProcessor(Processor):
             self._cache[path] = info
 
         with open(path, 'r') as fp:
-            config = yaml.load(fp)
+            config = yaml.load(fp, Loader=yaml.SafeLoader)
 
         info.files = config.get('files', [])
         info.delim = config.get('delim', "\n")

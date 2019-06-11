@@ -25,7 +25,7 @@ class ThemeLoader(object):
         # TODO: make configs and themes load together to speed this up.
         config_path = os.path.join(self.root_dir, CONFIG_PATH)
         with open(config_path, 'r', encoding='utf8') as fp:
-            config = yaml.load(fp.read())
+            config = yaml.load(fp.read(), Loader=yaml.SafeLoader)
         if not config:
             return None
         site_config = config.get('site', {})
