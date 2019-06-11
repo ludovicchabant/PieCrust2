@@ -3,6 +3,7 @@ import re
 import glob
 import fnmatch
 import logging
+from werkzeug.utils import cached_property
 from piecrust import osutil
 from piecrust.routing import RouteParameter
 from piecrust.sources.base import (
@@ -34,9 +35,9 @@ class FSContentSourceBase(ContentSource):
         self.fs_endpoint = config.get('fs_endpoint', name)
         self.fs_endpoint_path = os.path.join(self.root_dir, self.fs_endpoint)
 
-    @property
+    @cached_property
     def root_dir(self):
-        if self.is_theme_source:
+        if self.is_theme_source and not self.config.get('force_user_realm'):
             return self.app.theme_dir
         return self.app.root_dir
 
