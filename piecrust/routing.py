@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<var>\+)?(?P<name>\w+)%')
 route_esc_re = re.compile(
-    r'\\%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)\\%')
+    r'%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)%')
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
