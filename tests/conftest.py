@@ -82,7 +82,8 @@ def repr_nested_failure(excinfo):
 
 class YamlTestFileBase(pytest.File):
     def collect(self):
-        spec = yaml.load_all(self.fspath.open(encoding='utf8'))
+        spec = yaml.load_all(self.fspath.open(encoding='utf8'),
+                             Loader=yaml.SafeLoader)
         for i, item in enumerate(spec):
             name = '%s_%d' % (self.fspath.basename, i)
             if 'test_name' in item:
