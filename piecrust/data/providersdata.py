@@ -48,16 +48,6 @@ class DataProvidersData(collections.abc.Mapping):
                 provider = build_data_provider(pname, source, self._page)
                 endpoint[endpoint_bits[-1]] = provider
             elif isinstance(existing, DataProvider):
-                existing_source = existing._sources[0]
-                if (existing.PROVIDER_NAME != pname or
-                        existing_source.SOURCE_NAME != source.SOURCE_NAME):
-                    raise ConfigurationError(
-                        "Can't combine data providers '%s' and '%' "
-                        "(using sources '%s' and '%s') "
-                        "on endpoint '%s'." %
-                        (existing.PROVIDER_NAME, pname,
-                         existing_source.SOURCE_NAME, source.SOURCE_NAME,
-                         pendpoint))
                 existing._addSource(source)
             else:
                 raise ConfigurationError(
