@@ -2,6 +2,7 @@ syntax: glob
 *.pyc
 *.egg-info
 .cache
+.eggs
 __pycache__
 venv
 tags
