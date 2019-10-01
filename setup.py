@@ -152,37 +152,37 @@ except ImportError:
 
 
 install_requires = [
+    'beautifulsoup4>=4.7.0',
     'colorama>=0.4.0',
     'compressinja>=0.0.2',
-    'beautifulsoup4>=4.6.3',
-    'Flask>=1.0.2',
     'Flask-IndieAuth>=0.0.3.2',
     'Flask-Login>=0.4.1',
+    'Flask>=1.0.2',
     'Inukshuk>=0.1.2',
     'Jinja2>=2.10',
-    'Markdown>=3.0.1',
-    'MarkupSafe>=1.0',
+    'Markdown>=3.1',
+    'MarkupSafe>=1.1',
     'mf2py>=1.1.2',
     'paramiko>=2.4.2',
-    'Pillow>=5.3.0',
+    'Pillow>=6.0.0',
     'Pygments>=2.2.0',
     'pystache>=0.5.4',
-    'python-dateutil>=2.7.5',
-    'PyYAML>=3.13',
+    'python-dateutil>=2.8',
+    'PyYAML>=5.1',
     'repoze.lru>=0.7',
-    'requests>=2.20.0',
+    'requests>=2.21.0',
     'smartypants>=2.0.1',
-    'strict-rfc3339>=0.5',
+    'strict-rfc3339>=0.7',
     'textile>=3.0.3',
-    'Unidecode>=1.0.22',
+    'Unidecode>=1.0.23',
     'watchdog>=0.9.0',
-    'Werkzeug>=0.14.1'
+    'Werkzeug>=0.15.2',
 ]
 tests_require = [
-    'invoke>=0.21.0',
-    'pytest>=2.8.7',
-    'pytest-cov>=2.2.1',
-    'pytest-mock>=0.10.1'
+    'invoke>=1.2.0',
+    'pytest>=4.4.1',
+    'pytest-cov>=2.6.1',
+    'pytest-mock>=1.10.4',
 ]
 
 
