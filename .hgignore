@@ -18,9 +18,9 @@ dist
 docs/_cache
 docs/_counter
 _docs-counter
-foodtruck/static
 piecrust.egg-info
 piecrust/__version__.py
+piecrust/admin/static/
 tests/__tmpfs__
 .ropeproject
 
