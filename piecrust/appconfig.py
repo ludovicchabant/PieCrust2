@@ -1,5 +1,6 @@
 import re
 import os.path
+import sys
 import copy
 import json
 import urllib
@@ -372,7 +373,8 @@ def _validate_site_pagination_suffix(v, values, cache):
     cache.write('pagination_suffix_format', pgn_suffix_fmt)
 
     pgn_suffix_re = re.escape(v)
-    pgn_suffix_re = (pgn_suffix_re.replace("\\%num\\%", "(?P<num>\\d+)") +
+    escaped_token = "%num%" if sys.hexversion >= 0x3070000 else "\\%num\\%"
+    pgn_suffix_re = (pgn_suffix_re.replace(escaped_token, "(?P<num>\\d+)") +
                      '$')
     cache.write('pagination_suffix_re', pgn_suffix_re)
     return v

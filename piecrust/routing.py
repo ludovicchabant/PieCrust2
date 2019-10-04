@@ -1,5 +1,6 @@
 import re
 import os.path
+import sys
 import copy
 import logging
 import urllib.parse
@@ -10,8 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 route_re = re.compile(r'%((?P<qual>[\w\d]+):)?(?P<var>\+)?(?P<name>\w+)%')
-route_esc_re = re.compile(
-    r'%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)%')
+if sys.hexversion >= 0x3070000:
+    route_esc_re = re.compile(
+        r'%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)%')
+else:
+    route_esc_re = re.compile(
+        r'\\%((?P<qual>[\w\d]+)\\:)?(?P<var>\\\+)?(?P<name>\w+)\\%')
+
 ugly_url_cleaner = re.compile(r'\.html$')
 
 
