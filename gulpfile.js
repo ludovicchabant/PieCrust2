@@ -24,9 +24,6 @@ gulp.task('sass', function() {
         .pipe(rename({suffix: '.min'}))
         .pipe(gulp.dest('piecrust/admin/static/css'));
 });
-gulp.task('sass:watch', function() {
-    return gulp.watch('piecrust/admin/assets/sass/**/*.scss', ['sass']);
-});
 
 // Javascript
 gulp.task('js', function() {
@@ -42,9 +39,6 @@ gulp.task('js', function() {
         .pipe(sourcemaps.write())
         .pipe(rename({suffix: '.min'}))
         .pipe(gulp.dest('piecrust/admin/static/js'));
-});
-gulp.task('js:watch', function() {
-    return gulp.watch('piecrust/admin/assets/js/**/*.js', ['js']);
 });
 
 // Fonts/images
@@ -63,12 +57,10 @@ gulp.task('images', function() {
 });
 
 // Launch tasks
-gulp.task('default', function() {
-    gulp.start(['sass', 'js', 'fonts', 'images']);
-});
+gulp.task('default', gulp.parallel(['sass', 'js', 'fonts', 'images']));
 
 gulp.task('watch', function() {
-    gulp.start(['sass:watch', 'js:watch']);
+    gulp.watch('piecrust/admin/assets/sass/**/*.scss', gulp.series('sass'));
+    gulp.watch('piecrust/admin/assets/js/**/*.js', gulp.series('js'));
 });
-
 
