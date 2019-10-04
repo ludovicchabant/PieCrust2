@@ -11,7 +11,7 @@ class PygmentsStyleProcessor(SimpleFileProcessor):
 
     def _doProcess(self, in_path, out_path):
         with open(in_path, 'r') as fp:
-            config = yaml.load(fp)
+            config = yaml.safe_load(fp)
 
         style_name = config.get('style', 'default')
         class_name = config.get('class', '.highlight')

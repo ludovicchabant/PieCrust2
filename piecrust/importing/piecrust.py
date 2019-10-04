@@ -96,7 +96,7 @@ class PieCrust1Importer(FileWalkingImporter):
                 shutil.rmtree(item_path)
 
     def convertConfig(self, content):
-        config = yaml.load(content)
+        config = yaml.safe_load(content)
         sitec = config.setdefault('site', {})
         if 'templates_dirs' in sitec:
             tdc = sitec['templates_dirs']

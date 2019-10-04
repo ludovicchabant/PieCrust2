@@ -36,7 +36,7 @@ class SitemapProcessor(SimpleFileProcessor):
 
     def _doProcess(self, in_path, out_path):
         with open(in_path, 'r') as fp:
-            sitemap = yaml.load(fp)
+            sitemap = yaml.safe_load(fp)
 
         try:
             with open(out_path, 'w') as fp:

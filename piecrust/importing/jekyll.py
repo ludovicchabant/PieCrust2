@@ -47,7 +47,7 @@ class JekyllImporter(FileWalkingImporter):
     def convertConfig(self, app, src_path):
         logger.debug("  Converting configuration file.")
         with open(src_path, 'r', encoding='utf8') as fp:
-            config = yaml.load(fp)
+            config = yaml.safe_load(fp)
 
         if 'site' not in config:
             config['site'] = {}

@@ -75,7 +75,7 @@ class ThemesCommand(ChefCommand):
         if os.path.exists(info_path):
             info = None
             with open(info_path, 'r', encoding='utf8') as fp:
-                theme_cfg = yaml.load(fp.read())
+                theme_cfg = yaml.safe_load(fp.read())
                 if isinstance(theme_cfg, dict):
                     info = theme_cfg.get('theme')
             if info:
