@@ -1,4 +1,5 @@
 import io
+import re
 import sys
 import time
 import pprint
@@ -162,17 +163,27 @@ def check_expected_outputs(spec, fs, error_type):
         if error:
             raise error_type(error)
 
+    pyversion = sys.hexversion
+
     expected_partial_files = spec.get('outfiles')
     if expected_partial_files:
         keys = list(sorted(expected_partial_files.keys()))
         for key in keys:
+
+            cleankey, valid = _eval_pyversion_condition(key)
+            if not valid:
+                logging.getLogger().warning(
+                    "Skipping '%s' because the python version condition "
+                    "was not met" % key)
+                continue
+
             try:
                 actual = fs.getFileEntry('kitchen/_counter/' +
-                                         key.lstrip('/'))
+                                         cleankey.lstrip('/'))
             except Exception as e:
                 lines = print_fs_tree(fs.path('kitchen/_counter'))
                 raise error_type([
-                    "Can't access output file %s: %s" % (key, e),
+                    "Can't access output file %s: %s" % (cleankey, e),
                     "Got output directory:"] +
                     lines)
 
@@ -181,7 +192,7 @@ def check_expected_outputs(spec, fs, error_type):
             # those and I have no idea why.
             actual = actual.rstrip('\n')
             expected = expected.rstrip('\n')
-            cctx.path = key
+            cctx.path = cleankey
             cmpres = _compare_str(expected, actual, cctx)
             if cmpres:
                 raise error_type(cmpres)
@@ -619,3 +630,36 @@ def _compare_str(left, right, ctx):
                 "Right '%s': " % ctx.path, right,
                 "Extra items: %r" % right[len(left):]]
 
+
+re_pyver_cond = re.compile(r'^\{py(?P<cmp>[\<\>\=]\=?)(?P<ver>[\d\.]+)\}')
+
+_cur_pyver = (sys.version_info.major, sys.version_info.minor,
+             sys.version_info.micro)
+
+
+def _eval_pyversion_condition(string):
+    m = re_pyver_cond.match(string)
+    if m is None:
+        return string, True
+
+
+    pyver_bits = m.group('ver').split('.')
+    while len(pyver_bits) < 3:
+        pyver_bits.append('0')
+    cmp_ver = tuple([int(b) for b in pyver_bits])
+
+    cmp_op = m.group('cmp')
+    if cmp_op == '>':
+        res = _cur_pyver > cmp_ver
+    elif cmp_op == '>=':
+        res = _cur_pyver >= cmp_ver
+    elif cmp_op == '<':
+        res = _cur_pyver < cmp_ver
+    elif cmp_op == '<=':
+        res = _cur_pyver <= cmp_ver
+    elif cmp_op == '==':
+        res = _cur_pyver == cmp_ver
+    else:
+        raise Exception("Unknown comparison operator: %s" % cmp_op)
+
+    return string[m.end():], res
