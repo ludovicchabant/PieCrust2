@@ -3,6 +3,8 @@ syntax: glob
 *.egg-info
 .cache
 .eggs
+.pytest_cache
+.python-version
 __pycache__
 venv
 tags
