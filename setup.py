@@ -180,6 +180,7 @@ install_requires = [
 ]
 tests_require = [
     'invoke>=1.2.0',
+    'mock>=3.0.5',
     'pytest>=4.4.1',
     'pytest-cov>=2.6.1',
     'pytest-mock>=1.10.4',
