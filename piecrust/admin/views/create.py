@@ -42,6 +42,15 @@ def _write_page_form(source):
             'type': f.field_type,
             'value': f.default_value})
 
+    tpl_names = []
+    pcapp = g.site.piecrust_app
+    for ext in pcapp.getCommandExtensions('prepare'):
+        try:
+            tpl_names += list(ext.getTemplateNames(pcapp))
+        except AttributeError:
+            pass   # For extensions that don't define `getTemplateNames`.
+    data['content_templates'] = tpl_names
+
     with_menu_context(data)
     return render_template('create_page.html', **data)
 
@@ -54,19 +63,12 @@ def _submit_page_form(pcapp, source):
         if fk.startswith('meta-'):
             metadata[fk[5:]] = fv
 
-    logger.debug("Creating item with metadata: %s" % metadata)
-    content_item = source.createContent(metadata)
-    if content_item is None:
-        logger.error("Can't create item for: %s" % metadata)
-        abort(500)
+    tpl_name = request.form['content-template']
 
-    logger.debug("Creating content: %s" % content_item.spec)
-    with source.openItem(content_item, 'w') as fp:
-        fp.write('---\n')
-        fp.write('draft: true\n')
-        fp.write('---\n')
-        fp.write('\n')
-        fp.write("Start writing!\n")
+    logger.debug("Creating content with template '%s' and metadata: %s" %
+                 (tpl_name, str(metadata)))
+    from piecrust.commands.builtin.scaffolding import build_content
+    content_item = build_content(source, metadata, tpl_name)
     flash("'%s' was created." % content_item.spec)
 
     page = Page(source, content_item)

@@ -18,6 +18,15 @@
 
     {% endfor %}
 
+    {% if content_templates %}
+    <label for="content-template">Content Template:</label>
+    <select name="content-template" id="content-template">
+        {% for ctpl in content_templates %}
+        <option value="{{ctpl}}">{{ctpl}}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+
     <input type="hidden" name="source_name" value="{{source_name}}" />
 
     <div class="row">
