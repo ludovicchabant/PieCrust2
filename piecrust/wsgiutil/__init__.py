@@ -4,10 +4,13 @@ from piecrust.serving.wrappers import get_piecrust_server
 
 def _setup_logging(log_file, log_level, max_log_bytes, log_backup_count):
     if log_file:
+        from logging import Formatter
         from logging.handlers import RotatingFileHandler
         handler = RotatingFileHandler(log_file, maxBytes=max_log_bytes,
                                       backupCount=log_backup_count)
         handler.setLevel(log_level)
+        handler.setFormatter(Formatter(
+            fmt='%(asctime)s %(levelname)s %(name)s: %(message)s'))
         logging.getLogger().addHandler(handler)
 
 
