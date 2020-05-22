@@ -60,48 +60,18 @@ class PrepareCommand(ExtendableChefCommand):
         ctx.args.sub_func(ctx)
 
     def _doRun(self, ctx):
-        import time
-        from piecrust.uriutil import multi_replace
         from piecrust.sources.fs import FSContentSourceBase
 
         if not hasattr(ctx.args, 'source'):
             raise Exception("No source specified. "
                             "Please run `chef prepare -h` for usage.")
-
-        app = ctx.app
-        tpl_name = ctx.args.template
-        extensions = self.getExtensions(app)
-        ext = next(
-            filter(
-                lambda e: tpl_name in e.getTemplateNames(app),
-                extensions),
-            None)
-        if ext is None:
-            raise Exception("No such page template: %s" % tpl_name)
-        tpl_text = ext.getTemplate(app, tpl_name)
-        if tpl_text is None:
-            raise Exception("Error loading template: %s" % tpl_name)
-
         source = ctx.args.source
-        content_item = source.createContent(vars(ctx.args))
-        if content_item is None:
-            raise Exception("Can't create item.")
 
-        config_tokens = {
-            '%title%': "Untitled Content",
-            '%time.today%': time.strftime('%Y/%m/%d'),
-            '%time.now%': time.strftime('%H:%M:%S')
-        }
-        config = content_item.metadata.get('config')
-        if config:
-            for k, v in config.items():
-                config_tokens['%%%s%%' % k] = v
-        tpl_text = multi_replace(tpl_text, config_tokens)
-
-        logger.info("Creating content: %s" % content_item.spec)
-        mode = 'w' if ctx.args.force else 'x'
-        with source.openItem(content_item, mode) as f:
-            f.write(tpl_text)
+        content_item = build_content(
+            source,
+            vars(ctx.args),
+            ctx.args.template,
+            force_overwrite=ctx.args.force)
 
         # If this was a file-system content item, see if we need to auto-open
         # an editor on it.

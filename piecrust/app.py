@@ -224,6 +224,19 @@ class PieCrust(object):
                 return pub
         return None
 
+    def getCommand(self, command_name):
+        for cmd in self.plugin_loader.getCommands():
+            if cmd.name == command_name:
+                return cmd
+        return None
+
+    def getCommandExtensions(self, command_name, supported_only=True):
+        extensions = self.plugin_loader.getCommandExtensions()
+        for e in extensions:
+            if (e.command_name == command_name and
+                    (not supported_only or e.supports(self))):
+                yield e
+
     def getPage(self, source, content_item):
         cache_key = '%s@%s' % (source.name, content_item.spec)
         return self.env.page_repository.get(
