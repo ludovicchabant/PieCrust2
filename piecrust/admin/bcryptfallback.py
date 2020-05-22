@@ -21,26 +21,29 @@ except ImportError:
 try:
     from flask_bcrypt import Bcrypt
 except ImportError:
-    print_warning = True
+    try:
+        from flask.ext.bcrypt import Bcrypt
+    except ImportError:
+        print_warning = True
 
-    def generate_password_hash(password):
-        return hashlib.sha512(password.encode('utf8')).hexdigest()
+        def generate_password_hash(password):
+            return hashlib.sha512(password.encode('utf8')).hexdigest()
 
-    def check_password_hash(reference, check):
-        check_hash = hashlib.sha512(check.encode('utf8')).hexdigest()
-        return check_hash == reference
+        def check_password_hash(reference, check):
+            check_hash = hashlib.sha512(check.encode('utf8')).hexdigest()
+            return check_hash == reference
 
-    class SHA512Fallback(object):
-        is_fallback_bcrypt = True
+        class SHA512Fallback(object):
+            is_fallback_bcrypt = True
 
-        def __init__(self, app=None):
-            self.generate_password_hash = generate_password_hash
-            self.check_password_hash = check_password_hash
+            def __init__(self, app=None):
+                self.generate_password_hash = generate_password_hash
+                self.check_password_hash = check_password_hash
 
-        def init_app(self, app):
-            app.bcrypt = self
+            def init_app(self, app):
+                app.bcrypt = self
 
-    Bcrypt = SHA512Fallback
+        Bcrypt = SHA512Fallback
 
 
 if print_warning:
