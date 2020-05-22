@@ -258,7 +258,7 @@ def load_page(source, content_item):
         with source.app.env.stats.timerScope('PageLoad'):
             return _do_load_page(source, content_item)
     except Exception as e:
-        logger.exception("Error loading page: %s" % content_item.spec)
+        logger.exception("Error loading page '%s': %s" % (content_item.spec, e))
         raise PageLoadingError(content_item.spec) from e
 
 
@@ -270,14 +270,18 @@ def _do_load_page(source, content_item):
     cache_path = hashlib.md5(cache_token.encode('utf8')).hexdigest() + '.json'
     page_time = source.getItemMtime(content_item)
     if cache.isValid(cache_path, page_time):
-        cache_data = json.loads(
-            cache.read(cache_path),
-            object_pairs_hook=collections.OrderedDict)
-        config = PageConfiguration(
-            values=cache_data['config'],
-            validate=False)
-        content = json_load_segments(cache_data['content'])
-        return config, content, True
+        try:
+            cache_data = json.loads(
+                cache.read(cache_path),
+                object_pairs_hook=collections.OrderedDict)
+            config = PageConfiguration(
+                values=cache_data['config'],
+                validate=False)
+            content = json_load_segments(cache_data['content'])
+            return config, content, True
+        except Exception as e:
+            logger.exception("Error loading cache for '%s': %s" % (content_item.spec, e))
+            logger.exception("Falling back on actual page.")
 
     # Nope, load the page from the source file.
     logger.debug("Loading page configuration from: %s" % content_item.spec)
