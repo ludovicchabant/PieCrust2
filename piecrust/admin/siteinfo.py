@@ -141,12 +141,7 @@ class SiteInfo:
             '../../chef.py'))
         args = [sys.executable, chef_path] + args
 
-        env = {}
-        for k, v in os.environ.items():
-            env[k] = v
-        env['PYTHONHOME'] = sys.prefix
-
         logger.info("Running chef command: %s" % args)
-        proc = subprocess.Popen(args, cwd=self.root_dir, env=env)
+        proc = subprocess.Popen(args, cwd=self.root_dir)
         logger.info("Chef process ID: %s" % proc.pid)
         return proc
