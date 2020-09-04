@@ -17,7 +17,7 @@
     "gulp-uglify": "^3.0.2",
     "gulp-util": "~3.0.8",
     "less": "^3.10.3",
-    "node-sass": "^4.12.0",
+    "node-sass": "^4.13.1",
     "open-iconic": "^1.1.1",
     "popper.js": "^1.15.0",
     "timeago": "^1.6.7",
