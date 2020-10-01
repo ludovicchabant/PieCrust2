@@ -1,4 +1,7 @@
+import os
+import sys
 import copy
+import pprint
 import logging
 from flask import request, g, url_for, render_template, Response
 from flask_login import login_required
@@ -37,15 +40,32 @@ def publish():
     data['url_run'] = url_for('.publish')
     data['site_title'] = site.piecrust_app.config.get('site/title',
                                                       "Unnamed Website")
+    data['sysinfo'] = str({
+        'sys.base_exec_prefix': sys.base_exec_prefix,
+        'sys.base_prefix': sys.base_prefix,
+        'sys.exec_prefix': sys.exec_prefix,
+        'sys.executable': sys.executable,
+        'sys.path': sys.path,
+        'sys.platform': sys.platform,
+        'sys.prefix': sys.prefix,
+        'PYTHONHOME': os.getenv('PYTHONHOME'),
+        'PYTHONPATH': os.getenv('PYTHONPATH')
+    })
     data['targets'] = []
     for tn in sorted(pub_cfg.keys()):
         tc = pub_cfg[tn]
         desc = None
         if isinstance(tc, dict):
             desc = tc.get('description')
+
+            tc = tc.copy()
+            tc.pop('description')
+            tc = pprint.pformat(tc, indent=4)
+
         data['targets'].append({
             'name': tn,
-            'description': desc
+            'description': desc,
+            'config': tc
         })
 
     data['last_log'] = last_pub_log
