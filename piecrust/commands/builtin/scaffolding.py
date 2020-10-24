@@ -1,11 +1,51 @@
 import os
 import os.path
 import logging
+import time
 from piecrust.commands.base import (
     ChefCommand, ExtendableChefCommand, ChefCommandExtension)
 
 
 logger = logging.getLogger(__name__)
+
+
+def build_content(source, content_metadata, tpl_name, force_overwrite=False):
+    app = source.app
+    extensions = app.getCommandExtensions('prepare')
+    ext = next(
+        filter(
+            lambda e: tpl_name in e.getTemplateNames(app),
+            extensions),
+        None)
+    if ext is None:
+        raise Exception("No such page template: %s" % tpl_name)
+    tpl_text = ext.getTemplate(app, tpl_name)
+    if tpl_text is None:
+        raise Exception("Error loading template: %s" % tpl_name)
+
+    content_item = source.createContent(content_metadata)
+    if content_item is None:
+        raise Exception("Can't create item.")
+
+    from piecrust.uriutil import multi_replace
+
+    config_tokens = {
+        '%title%': "Untitled Content",
+        '%time.today%': time.strftime('%Y/%m/%d'),
+        '%time.now%': time.strftime('%H:%M:%S')
+    }
+    config = content_item.metadata.get('config')
+    if config:
+        for k, v in config.items():
+            config_tokens['%%%s%%' % k] = v
+    tpl_text = multi_replace(tpl_text, config_tokens)
+
+    logger.info("Creating content: %s" % content_item.spec)
+    mode = 'w' if force_overwrite else 'x'
+    with source.openItem(content_item, mode) as f:
+        f.write(tpl_text)
+
+    return content_item
 
 
 class PrepareCommand(ExtendableChefCommand):
