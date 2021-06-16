@@ -93,6 +93,8 @@ class SimpleCache(object):
     def write(self, path, content):
         with self.openWrite(path, mode='w', encoding='utf8') as fp:
             fp.write(content)
+            fp.flush()
+            os.fsync(fp)
 
     def openWrite(self, path, mode='w', encoding=None):
         cache_path = self.getCachePath(path)
@@ -186,6 +188,8 @@ class MemCache(object):
             fs_key = _make_fs_cache_key(key)
             with self.fs_cache.openWrite(fs_key, mode='wb') as fp:
                 pickle.dump(item, fp, pickle.HIGHEST_PROTOCOL)
+                fp.flush()
+                os.fsync(fp)
 
     def get(self, key, item_maker, fs_cache_time=None, save_to_fs=True):
         self._last_access_hit = True
@@ -221,6 +225,8 @@ class MemCache(object):
         if self.fs_cache is not None and save_to_fs:
             with self.fs_cache.openWrite(fs_key, mode='wb') as fp:
                 pickle.dump(item, fp, pickle.HIGHEST_PROTOCOL)
+                fp.flush()
+                os.fsync(fp)
 
         return item
 

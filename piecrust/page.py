@@ -271,8 +271,18 @@ def _do_load_page(source, content_item):
     page_time = source.getItemMtime(content_item)
     if cache.isValid(cache_path, page_time):
         try:
+            cache_raw = cache.read(cache_path)
+            if not cache_raw:
+                for i in range(5):
+                    cache_raw = cache.read(cache_path)
+                    if cache_raw:
+                        logger.warn("Had to re-pull the cache %d time(s)!" % (i + 1))
+                        break
+                if not cache_raw:
+                    raise Exception("Cache is busted!")
+
             cache_data = json.loads(
-                cache.read(cache_path),
+                cache_raw,
                 object_pairs_hook=collections.OrderedDict)
             config = PageConfiguration(
                 values=cache_data['config'],
