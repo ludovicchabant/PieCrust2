@@ -62,11 +62,11 @@ def pytest_collect_file(parent, path):
     if path.ext == '.yaml' and path.basename.startswith("test"):
         category = os.path.basename(path.dirname)
         if category == 'bakes':
-            return BakeTestFile(path, parent)
+            return BakeTestFile.from_parent(parent, fspath=path)
         elif category == 'cli':
-            return ChefTestFile(path, parent)
+            return ChefTestFile.from_parent(parent, fspath=path)
         elif category == 'servings':
-            return ServeTestFile(path, parent)
+            return ServeTestFile.from_parent(parent, fspath=path)
 
 
 def repr_nested_failure(excinfo):
@@ -89,7 +89,7 @@ class YamlTestFileBase(pytest.File):
             name = '%s_%d' % (self.fspath.basename, i)
             if 'test_name' in item:
                 name += '_%s' % item['test_name']
-            yield self.__item_class__(name, self, item)
+            yield self.__item_class__.from_parent(self, name=name, spec=item)
 
 
 class YamlTestItemBase(pytest.Item):
