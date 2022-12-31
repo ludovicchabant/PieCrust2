@@ -221,7 +221,7 @@ class PostsSource(FSContentSource,
 
     def _checkFsEndpointPath(self):
         if not os.path.isdir(self.fs_endpoint_path):
-            if self.ignore_missing_dir:
+            if self.config.get('ignore_missing_dir'):
                 return False
             raise InvalidFileSystemEndpointError(self.name,
                                                  self.fs_endpoint_path)
