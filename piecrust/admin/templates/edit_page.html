@@ -26,11 +26,11 @@
     <input type="hidden" name="is_dos_nl" value="{{is_dos_nl}}" />
 
     <div class="row">
-        <div class="col-sm-6 col-sm-offset-1 col-xs-8">
+        <div class="col-sm-6 col-sm-offset-1">
             <a class="btn btn-info" href="{{url_preview}}">Preview</a>
             <a class="btn btn-danger" href="{{url_cancel}}">Cancel</a>
         </div>
-        <div class="col-sm-4 col-xs-4">
+        <div class="col-sm-2">
             <div class="btn-group pull-right">
                 <button type="submit" name="do_save" class="btn btn-primary">Save</button>
                 <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -41,6 +41,10 @@
                     <li><button type="button" class="btn btn-link" data-toggle="modal" data-target="#ft-commit-modal">Save and Commit</button></li>
                 </ul>
             </div>
+        </div>
+        <div class="col-sm-2">
+            <input type="checkbox" class="form-check-input" value="" name="do_publish" id="ft-publish-toggle"/>
+            <label class="form-check-label" for="ft-publish-toggle">Publish</label>
         </div>
     </div>
 

@@ -49,6 +49,13 @@ def edit_page(url):
                     commit_paths += list(os.listdir(assets_dir))
                 site.scm.commit(commit_paths, message)
 
+        if 'do_publish' in request.form:
+            pub_cfg = site_app.config.get('publish', {})
+            if pub_cfg:
+                first_target = pub_cfg.keys()[0]
+                site_app.publish(first_target)
+                return redirect(url_for('.publish'))
+
         if 'do_save' in request.form or 'do_save_and_commit' in request.form:
             return _edit_page_form(page, url)
 
